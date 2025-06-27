@@ -1,0 +1,15 @@
+{{! layouts/blog/category.hbs }}
+<article class="w-100">
+    <h1 class="f1 fw8 mt0 mb3">Category: {{term.name}}</h1>
+    {{#if term.description}}
+        <p class="lh-copy measure mb4">{{term.description}}</p>
+    {{/if}}
+
+    <div class="item-loop">
+        {{#each collectionItems}}
+            {{{render_item this}}}
+        {{/each}}
+    </div>
+
+    {{{pager pagination}}}
+</article>

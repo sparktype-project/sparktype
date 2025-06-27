@@ -1,0 +1,20 @@
+{{! layouts/blog/index.hbs }}
+<article class="mw8 center prose">
+    <h1 class="f1 fw8 mt0 mb3">{{contentFile.frontmatter.title}}</h1>
+    {{#if contentFile.frontmatter.description}}
+        <p class="lh-copy measure mb4">{{contentFile.frontmatter.description}}</p>
+    {{/if}}
+
+    <div class="item-loop">
+        {{#each collectionItems}}
+            {{!-- 
+              This generic helper is the key. It will look up the user's chosen teaser style
+              (e.g., 'standard_card') and render the correct partial for this item.
+            --}}
+            {{{render_item this}}}
+        {{/each}}
+    </div>
+
+    {{!-- The pager helper will only render if pagination data exists. --}}
+    {{{pager pagination}}}
+</article>

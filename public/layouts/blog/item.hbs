@@ -1,0 +1,21 @@
+{{! layouts/blog/item.hbs }}
+<article class="prose">
+    {{!-- Use the 'banner' image preset defined in the layout.json --}}
+    {{#if images.banner}}
+        <figure class="banner-image-wrapper">
+            <img src="{{images.banner.url}}" alt="{{contentFile.frontmatter.title}} banner" class="w-100">
+        </figure>
+    {{/if}}
+    
+    <h1>{{contentFile.frontmatter.title}}</h1>
+
+    {{#if contentFile.frontmatter.date}}
+        <p class="text-sm text-muted-foreground -mt3">Published on {{formatDate contentFile.frontmatter.date}}</p>
+    {{/if}}
+
+    {{#if contentFile.frontmatter.summary}}
+      <p class="f4 i">{{contentFile.frontmatter.summary}}</p>
+    {{/if}}
+    
+    {{{markdown contentFile.content}}}
+</article>

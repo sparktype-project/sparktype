@@ -1,0 +1,14 @@
+{{! layouts/blog/partials/compact.hbs }}
+<div class="flex items-center mb3 pb3 bb b--black-10">
+    {{#if this.images.teaser_thumbnail}}
+        <a href="{{this.url}}" class="w4 h3 mr3 flex-shrink-0 db link dim">
+            <img src="{{this.images.teaser_thumbnail.url}}" width="{{this.images.teaser_thumbnail.width}}" height="{{this.images.teaser_thumbnail.height}}" alt="{{this.frontmatter.title}}" class="w-100 h-100 br2 object-cover">
+        </a>
+    {{/if}}
+    <div class="flex-auto">
+        <a href="{{this.url}}" class="link black dim">
+            <h3 class="f5 fw6 mv0">{{this.frontmatter.title}}</h3>
+        </a>
+        <p class="f7 gray mt1 mb0">{{formatDate this.frontmatter.date}}</p>
+    </div>
+</div>

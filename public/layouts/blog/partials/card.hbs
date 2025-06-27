@@ -1,0 +1,20 @@
+{{! layouts/blog/partials/card.hbs }}
+{{! The context 'this' is an enriched item with its own `images` object. }}
+<div class="mb4 pb3 bb b--black-10">
+    
+    {{!-- Use the 'teaser_thumbnail' image preset. --}}
+    {{#if this.images.teaser_thumbnail}}
+        <a href="{{this.url}}" class="db link dim mb2">
+            <img src="{{this.images.teaser_thumbnail.url}}" width="{{this.images.teaser_thumbnail.width}}" height="{{this.images.teaser_thumbnail.height}}" alt="{{this.frontmatter.title}}" class="w-100 br2">
+        </a>
+    {{/if}}
+
+    <a href="{{this.url}}" class="link black dim">
+        <h3 class="f4 fw6 mv0">{{this.frontmatter.title}}</h3>
+    </a>
+    <p class="f6 gray mt1 mb2">{{formatDate this.frontmatter.date}}</p>
+
+    {{#if this.frontmatter.summary}}
+        <p class="lh-copy mid-gray mv0 f6">{{this.frontmatter.summary}}</p>
+    {{/if}}
+</div>

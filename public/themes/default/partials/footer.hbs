@@ -1,0 +1,15 @@
+<footer class="border-t border-gray-200 dark:border-gray-800">
+    <div class="mw8 center pa3 pa4-ns">
+        {{#if (themeData 'footer_text')}}
+            <div class="footer-content">
+                {{{themeData 'footer_text'}}}
+            </div>
+        {{else}}
+            <p>© {{year}} {{manifest.title}}. All Rights Reserved.</p>
+        {{/if}}
+        <p class="mt-1">
+            Published with 
+            <a href="https://signum-project-url.com" target="_blank" rel="noopener" class="font-medium hover:text-blue-600 dark:hover:text-blue-400 underline decoration-dotted underline-offset-4">Signum</a>.
+        </p>
+    </div>
+</footer>

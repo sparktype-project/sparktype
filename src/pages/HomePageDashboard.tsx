@@ -1,0 +1,218 @@
+// src/pages/HomePageDashboard.tsx
+
+import { useState, useRef, useCallback } from 'react';
+import { Link } from 'react-router-dom'; // Use react-router-dom's Link
+
+// State Management (no changes needed)
+import { useAppStore } from '@/core/state/useAppStore';
+import { type LocalSiteData } from '@/core/types';
+
+// Services (no changes needed)
+import { importSiteFromZip, exportSiteBackup } from '@/core/services/siteBackup.service';
+import { saveAllImageAssetsForSite } from '@/core/services/localFileSystem.service';
+import { slugify } from '@/core/libraries/utils';
+
+// UI Components & Icons (no changes needed)
+import { Button } from '@/core/components/ui/button';
+import { toast } from 'sonner';
+import { FilePlus2, Leaf, Upload, Eye, Edit3, Archive, Trash2, MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/core/components/ui/alert-dialog";
+
+export default function HomePageDashboard() {
+  // All state management, handlers, and logic are ported directly from the original
+  // component. No changes are needed here as this logic is framework-agnostic.
+  const { sites, getSiteById, addSite, updateSiteSecrets, loadSite, deleteSiteAndState } = useAppStore();
+  const [isImporting, setIsImporting] = useState(false);
+  const [isOverwriteDialogOpen, setIsOverwriteDialogOpen] = useState(false);
+  const [importedData, setImportedData] = useState<(LocalSiteData & { imageAssetsToSave?: Record<string, Blob> }) | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const finishImport = useCallback(async (data: LocalSiteData & { imageAssetsToSave?: Record<string, Blob> }) => {
+    try {
+      const { imageAssetsToSave, ...siteDataToSave } = data;
+      await addSite(siteDataToSave);
+      if(siteDataToSave.secrets) {
+        await updateSiteSecrets(siteDataToSave.siteId, siteDataToSave.secrets);
+      }
+      if(imageAssetsToSave) {
+        await saveAllImageAssetsForSite(siteDataToSave.siteId, imageAssetsToSave);
+      }
+      toast.success(`Site "${data.manifest.title}" imported successfully!`);
+    } catch (error) {
+      console.error("Error finishing site import:", error);
+      toast.error(`Failed to save imported site: ${(error as Error).message}`);
+    }
+  }, [addSite, updateSiteSecrets]);
+
+  const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    toast.info("Importing site from backup...");
+    try {
+      const data = await importSiteFromZip(file);
+      const existingSite = getSiteById(data.siteId);
+      if (existingSite) {
+        setImportedData(data);
+        setIsOverwriteDialogOpen(true);
+      } else {
+        await finishImport(data);
+      }
+    } catch (error) {
+      console.error("Error during site import:", error);
+      toast.error(`Import failed: ${(error as Error).message}`);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setIsImporting(false);
+    }
+  };
+
+  const handleOverwriteConfirm = async () => {
+    if (importedData) await finishImport(importedData);
+    setIsOverwriteDialogOpen(false);
+    setImportedData(null);
+  };
+  
+  const handleExportBackup = async (siteId: string) => {
+    toast.info("Preparing site backup...");
+    try {
+        await loadSite(siteId);
+        const siteToExport = getSiteById(siteId);
+        if (!siteToExport) throw new Error("Could not load site data for export.");
+        const blob = await exportSiteBackup(siteToExport);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${slugify(siteToExport.manifest.title || 'signum-backup')}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+        toast.success("Site backup downloaded!");
+    } catch (error) {
+        console.error("Failed to export site:", error);
+        toast.error(`Export failed: ${(error as Error).message}`);
+    }
+  };
+
+  const handleDeleteSite = async (siteId: string, siteTitle: string) => {
+    try {
+      await deleteSiteAndState(siteId);
+      toast.success(`Site "${siteTitle}" has been deleted.`);
+    } catch (error) {
+      toast.error(`Failed to delete site "${siteTitle}".`);
+      console.error("Error deleting site:", error);
+    }
+  };
+
+    const validSites = sites.filter((site: LocalSiteData) => site && site.manifest);
+
+  return (
+    <>
+       <title>My Sites - Signum Dashboard</title>
+      
+      {/* The JSX is identical, but Next's <Link> is replaced with react-router-dom's <Link> */}
+      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+          <Link to="/" className="flex items-center gap-2">
+            <Leaf className="h-7 w-7 text-primary" />
+            <span className="text-2xl font-bold text-foreground hidden sm:inline">Signum</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
+              <Upload className="mr-2 h-4 w-4" /> {isImporting ? 'Importing...' : 'Import site'}
+            </Button>
+            <Button asChild>
+              <Link to="/create-site"><FilePlus2 className="mr-2 h-4 w-4" /> Create new site</Link>
+            </Button>
+          </div>
+        </div>
+      </header>
+      
+      <main className="container mx-auto p-4 sm:p-6 lg:p-8">
+        <h1 className="text-3xl font-bold text-foreground mb-8">My sites</h1>
+        {validSites.length === 0 ? (
+          <div className="text-center py-10 border-2 border-dashed border-muted rounded-lg">
+            <h2 className="text-xl font-semibold text-muted-foreground mb-2">No Sites Yet!</h2>
+            <p className="text-muted-foreground mb-4">Click "Create New Site" or "Import Site" to get started.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {validSites.map((site: LocalSiteData) => (
+              <div key={site.siteId} className="bg-card border rounded-lg p-6 shadow-sm hover:shadow-lg transition-shadow flex flex-col justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-card-foreground mb-2 truncate" title={site.manifest.title}>
+                    {site.manifest.title || "Untitled Site"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2" title={site.manifest.description}>
+                    {site.manifest.description || 'No description provided.'}
+                  </p>
+                </div>
+                <div className="mt-4 flex flex-wrap justify-end gap-2">
+                  <Button variant="default" size="sm" asChild>
+                    <Link to={`/sites/${site.siteId}/edit`}><Edit3 className="mr-2 h-4 w-4" /> Edit</Link>
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {/*
+                        The "View Live Preview" link now correctly navigates to the hash-based route.
+                        `target="_blank"` will open a new browser tab with the hash URL, which works perfectly.
+                      */}
+                      <DropdownMenuItem asChild>
+                        <Link to={`/sites/${site.siteId}/view`} target="_blank" rel="noopener noreferrer">
+                          <Eye className="mr-2 h-4 w-4" /> View site
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleExportBackup(site.siteId)}><Archive className="mr-2 h-4 w-4" /> Export backup</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem onSelect={(e: Event) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete site
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>This action will permanently delete "{site.manifest.title}" and cannot be undone.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteSite(site.siteId, site.manifest.title)} className="bg-destructive hover:bg-destructive/90">Yes, delete site</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+
+      <input type="file" ref={fileInputRef} onChange={handleFileSelected} accept=".zip" className="hidden" />
+
+      {/* The AlertDialog logic is self-contained and requires no changes */}
+      <AlertDialog open={isOverwriteDialogOpen} onOpenChange={setIsOverwriteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Site Already Exists</AlertDialogTitle>
+            <AlertDialogDescription>
+              A site with the ID "{importedData?.siteId}" already exists. Do you want to overwrite it with the data from the backup file?
+              <br/><br/>
+              <strong>This action cannot be undone.</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setImportedData(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleOverwriteConfirm} className="bg-destructive hover:bg-destructive/90">Overwrite</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
