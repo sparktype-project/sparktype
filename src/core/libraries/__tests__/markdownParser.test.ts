@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-require-imports */
 import { parseMarkdownString, stringifyToMarkdown, parseAndRenderMarkdown } from '../markdownParser';
-import { MarkdownFrontmatter } from '@/core/types';
+import type { MarkdownFrontmatter } from '@/core/types';
 
 describe('markdownParser', () => {
   describe('parseMarkdownString', () => {

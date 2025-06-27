@@ -14,6 +14,8 @@ describe('themeData helpers', () => {
   const mockSiteData: LocalSiteData = {
     siteId: 'test-site',
     manifest: {
+      siteId: 'test-site',
+      generatorVersion: '1.0.0',
       title: 'Test Site',
       description: 'Test description',
       structure: [],
@@ -36,6 +38,8 @@ describe('themeData helpers', () => {
   const mockSiteDataNoThemeData: LocalSiteData = {
     siteId: 'test-site-no-data',
     manifest: {
+      siteId: 'test-site-no-data',
+      generatorVersion: '1.0.0',
       title: 'Test Site',
       description: 'Test description',
       structure: [],

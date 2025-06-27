@@ -19,6 +19,8 @@ describe('siteBuilder.service', () => {
   const mockSiteData: LocalSiteData = {
     siteId: 'test-site',
     manifest: {
+      siteId: 'test-site',
+      generatorVersion: '1.0.0',
       title: 'Test Site',
       description: 'Test description',
       structure: [
@@ -208,7 +210,7 @@ describe('siteBuilder.service', () => {
         layoutFiles: [{ path: 'layout.json', content: '{}' }],
         themeFiles: [{ path: 'theme.css', content: 'body {}' }],
         dataFiles: { 'categories.json': '[]' },
-        secrets: { apiKey: 'secret' }
+        secrets: { cloudinary: { uploadPreset: 'test-preset' } }
       };
 
       await buildSiteBundle(siteDataWithExtras);

@@ -1,7 +1,7 @@
 // src/features/editor/components/FrontmatterSidebar.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Manifest, RawFile, StructureNode, ParsedMarkdownFile, MarkdownFrontmatter } from '@/core/types';
 import { getAvailableLayouts } from '@/core/services/config/configHelpers.service';
 import { type LayoutManifest } from '@/core/types';

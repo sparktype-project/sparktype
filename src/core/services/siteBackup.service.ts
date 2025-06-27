@@ -108,7 +108,7 @@ export async function importSiteFromZip(zipFile: File): Promise<LocalSiteData & 
 
 
     const themePromises: Promise<RawFile>[] = [];
-    signumFolder.folder('themes')?.forEach((relativePath, fileObject) => {
+    signumFolder.folder('themes')?.forEach((_relativePath, fileObject) => {
         if (!fileObject.dir) {
             const promise = fileObject.async('string').then(content => ({
                 path: fileObject.name.replace(`${SIGNUM_FOLDER}/`, ''),
@@ -120,7 +120,7 @@ export async function importSiteFromZip(zipFile: File): Promise<LocalSiteData & 
     const themeFiles = await Promise.all(themePromises);
 
     const layoutPromises: Promise<RawFile>[] = [];
-    signumFolder.folder('layouts')?.forEach((relativePath, fileObject) => {
+    signumFolder.folder('layouts')?.forEach((_relativePath, fileObject) => {
         if (!fileObject.dir) {
             const promise = fileObject.async('string').then(content => ({
                 path: fileObject.name.replace(`${SIGNUM_FOLDER}/`, ''),

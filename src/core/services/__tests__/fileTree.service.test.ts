@@ -287,7 +287,7 @@ describe('fileTree.service', () => {
     test('roundtrip test: flatten then build preserves structure', () => {
       const flattened = flattenTree(sampleStructure, sampleContentFiles);
       const rebuilt = buildTree(flattened);
-      const reflattened = flattenTree(rebuilt, sampleContentFiles);
+      flattenTree(rebuilt, sampleContentFiles);
 
       // Compare structure (excluding frontmatter which is added during flattening)
       const originalPaths = flattenStructure(sampleStructure).map(n => n.path);
@@ -800,7 +800,7 @@ describe('fileTree.service', () => {
   describe('Integration Tests', () => {
     test('complex workflow: flatten, modify, rebuild', () => {
       // Start with structure
-      const flattened = flattenTree(sampleStructure, sampleContentFiles);
+      flattenTree(sampleStructure, sampleContentFiles);
       
       // Remove a node
       const { tree: withoutAbout } = findAndRemoveNode(sampleStructure, 'content/about.md');

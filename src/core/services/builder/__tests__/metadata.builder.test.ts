@@ -12,11 +12,17 @@ describe('metadata.builder', () => {
   const mockSiteData: LocalSiteData = {
     siteId: 'test-site',
     manifest: {
+      siteId: 'test-site',
+      generatorVersion: '1.0.0',
       title: 'Test Site',
       description: 'A test website for unit testing',
       baseUrl: 'https://example.com',
       author: 'Test Author',
-      structure: []
+      structure: [],
+      theme: {
+        name: 'default',
+        config: {}
+      }
     },
     contentFiles: [
       {
@@ -59,19 +65,28 @@ describe('metadata.builder', () => {
       type: 'page' as const,
       title: 'Home Page',
       path: 'content/index.md',
-      slug: 'home'
+      slug: 'home',
+      parentId: null,
+      depth: 0,
+      index: 0
     },
     {
       type: 'page' as const,
       title: 'About Us',
       path: 'content/about.md',
-      slug: 'about'
+      slug: 'about',
+      parentId: null,
+      depth: 0,
+      index: 1
     },
     {
       type: 'page' as const,
       title: 'Blog Post',
       path: 'content/blog/post.md',
-      slug: 'blog-post'
+      slug: 'blog-post',
+      parentId: null,
+      depth: 0,
+      index: 2
     }
   ];
 
@@ -199,13 +214,19 @@ describe('metadata.builder', () => {
           type: 'page' as const,
           title: 'Café & Résumé',
           path: 'cafe-resume/index.html',
-          slug: 'cafe-resume'
+          slug: 'cafe-resume',
+          parentId: null,
+          depth: 0,
+          index: 0
         },
         {
           type: 'page' as const,
           title: 'Test with "Quotes"',
           path: 'quotes/index.html',
-          slug: 'quotes'
+          slug: 'quotes',
+          parentId: null,
+          depth: 0,
+          index: 1
         }
       ];
 
@@ -252,7 +273,7 @@ describe('metadata.builder', () => {
 
       generateMetadataFiles(mockBundle, siteDataSpecialChars, mockAllStaticNodes);
 
-      const sitemap = mockBundle['sitemap.xml'] as string;
+      mockBundle['sitemap.xml'] as string;
       const rss = mockBundle['rss.xml'] as string;
       
       // Should properly escape XML entities

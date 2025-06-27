@@ -45,8 +45,7 @@ describe('imageUrl.helper', () => {
       }
     },
     fn: jest.fn(),
-    inverse: jest.fn(),
-    lookupProperty: jest.fn()
+    inverse: jest.fn()
   });
 
   const mockImageService = {

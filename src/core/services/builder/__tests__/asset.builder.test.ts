@@ -12,6 +12,8 @@ describe('asset.builder', () => {
   const mockSiteData: LocalSiteData = {
     siteId: 'test-site',
     manifest: {
+      siteId: 'test-site',
+      generatorVersion: '1.0.0',
       title: 'Test Site',
       description: 'Test description',
       structure: [],
@@ -81,7 +83,7 @@ describe('asset.builder', () => {
 
     // Mock config helpers
     (configHelpers.getJsonAsset as jest.Mock)
-      .mockImplementation(async (siteData, assetType, assetId, fileName) => {
+      .mockImplementation(async (_siteData, assetType, assetId, fileName) => {
         if (assetType === 'theme' && assetId === 'default' && fileName === 'theme.json') {
           return mockThemeManifest;
         }
@@ -92,7 +94,7 @@ describe('asset.builder', () => {
       });
 
     (configHelpers.getAssetContent as jest.Mock)
-      .mockImplementation(async (siteData, assetType, assetId, filePath) => {
+      .mockImplementation(async (_siteData, _assetType, _assetId, filePath) => {
         if (filePath === 'base.hbs') return '<html>{{{body}}}</html>';
         if (filePath === 'css/theme.css') return 'body { margin: 0; }';
         if (filePath === 'blog.hbs') return '<article>{{{content}}}</article>';
@@ -218,7 +220,7 @@ describe('asset.builder', () => {
 
     test('handles missing layout manifest', async () => {
       (configHelpers.getJsonAsset as jest.Mock)
-        .mockImplementation(async (siteData, assetType, assetId, fileName) => {
+        .mockImplementation(async (_siteData, assetType, _assetId, _fileName) => {
           if (assetType === 'theme') return mockThemeManifest;
           return null; // No layout manifest
         });

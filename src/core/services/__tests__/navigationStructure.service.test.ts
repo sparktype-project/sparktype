@@ -255,12 +255,12 @@ describe('navigationStructure.service', () => {
 
         expect(result[1].label).toBe('Products');
         expect(result[1].children).toHaveLength(2);
-        expect(result[1].children[0]).toEqual({
+        expect(result[1]?.children?.[0]).toEqual({
           href: '/site/products/software',
           label: 'Software',
           children: []
         });
-        expect(result[1].children[1]).toEqual({
+        expect(result[1]?.children?.[1]).toEqual({
           href: '/site/products/hardware',
           label: 'Hardware',
           children: []
@@ -294,8 +294,8 @@ describe('navigationStructure.service', () => {
         const result = generateNavLinks(siteData, 'content/current.md', options);
 
         expect(result[0].children).toHaveLength(2); // services filtered out
-        expect(result[0].children[0].label).toBe('Software');
-        expect(result[0].children[1].label).toBe('Hardware');
+        expect(result[0]?.children?.[0]?.label).toBe('Software');
+        expect(result[0]?.children?.[1]?.label).toBe('Hardware');
       });
 
       test('handles deeply nested structures', () => {
@@ -329,10 +329,10 @@ describe('navigationStructure.service', () => {
         expect(result).toHaveLength(1);
         expect(result[0].label).toBe('Documentation');
         expect(result[0].children).toHaveLength(1);
-        expect(result[0].children[0].label).toBe('API');
-        expect(result[0].children[0].children).toHaveLength(2);
-        expect(result[0].children[0].children[0].label).toBe('Authentication');
-        expect(result[0].children[0].children[1].label).toBe('Endpoints');
+        expect(result[0]?.children?.[0]?.label).toBe('API');
+        expect(result[0]?.children?.[0]?.children).toHaveLength(2);
+        expect(result[0]?.children?.[0]?.children?.[0]?.label).toBe('Authentication');
+        expect(result[0]?.children?.[0]?.children?.[1]?.label).toBe('Endpoints');
       });
     });
 
@@ -394,8 +394,8 @@ describe('navigationStructure.service', () => {
         const result = generateNavLinks(siteData, 'content/current.md', options);
 
         expect(result[0].children).toHaveLength(2); // Children included
-        expect(result[0].children[0].label).toBe('Web Development');
-        expect(result[0].children[1].label).toBe('Mobile Apps');
+        expect(result[0]?.children?.[0]?.label).toBe('Web Development');
+        expect(result[0]?.children?.[1]?.label).toBe('Mobile Apps');
       });
     });
 

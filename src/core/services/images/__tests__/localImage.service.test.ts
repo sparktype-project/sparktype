@@ -325,7 +325,7 @@ describe('localImage.service', () => {
       };
 
       mockGetCachedDerivative.mockResolvedValue(null); // Not cached
-      mockImageCompression.mockResolvedValue(new Blob(['compressed'], { type: 'image/jpeg' }));
+      mockImageCompression.mockResolvedValue(new File(['compressed'], 'test.jpg', { type: 'image/jpeg' }));
 
       // Mock successful image loading for dimensions
       setTimeout(() => {
@@ -353,10 +353,10 @@ describe('localImage.service', () => {
 
     test('processes new derivative when not cached', async () => {
       const options: ImageTransformOptions = { width: 300, height: 200 };
-      const compressedBlob = new Blob(['compressed'], { type: 'image/jpeg' });
+      const compressedFile = new File(['compressed'], 'test.jpg', { type: 'image/jpeg' });
 
       mockGetCachedDerivative.mockResolvedValue(null);
-      mockImageCompression.mockResolvedValue(compressedBlob);
+      mockImageCompression.mockResolvedValue(compressedFile);
 
       // Mock successful image loading
       setTimeout(() => {
@@ -378,7 +378,7 @@ describe('localImage.service', () => {
       ];
 
       mockGetCachedDerivative.mockResolvedValue(null);
-      mockImageCompression.mockResolvedValue(new Blob(['compressed'], { type: 'image/jpeg' }));
+      mockImageCompression.mockResolvedValue(new File(['compressed'], 'test.jpg', { type: 'image/jpeg' }));
 
       for (const options of testCases) {
         setTimeout(() => {
@@ -390,7 +390,7 @@ describe('localImage.service', () => {
         expect(mockImageCompression).toHaveBeenCalled();
         jest.clearAllMocks();
         mockGetCachedDerivative.mockResolvedValue(null);
-        mockImageCompression.mockResolvedValue(new Blob(['compressed'], { type: 'image/jpeg' }));
+        mockImageCompression.mockResolvedValue(new File(['compressed'], 'test.jpg', { type: 'image/jpeg' }));
       }
     });
 
@@ -402,7 +402,7 @@ describe('localImage.service', () => {
       };
 
       mockGetCachedDerivative.mockResolvedValue(null);
-      mockImageCompression.mockResolvedValue(new Blob(['compressed'], { type: 'image/jpeg' }));
+      mockImageCompression.mockResolvedValue(new File(['compressed'], 'test.jpg', { type: 'image/jpeg' }));
 
       // Mock image dimensions from getImageDimensions
       setTimeout(() => {
@@ -474,7 +474,7 @@ describe('localImage.service', () => {
 
       mockGetCachedDerivative.mockResolvedValue(null);
       mockImageCompression.mockImplementation(() => 
-        new Promise(resolve => setTimeout(() => resolve(new Blob(['compressed'])), 100))
+        new Promise(resolve => setTimeout(() => resolve(new File(['compressed'], 'test.jpg', { type: 'image/jpeg' })), 100))
       );
 
       setTimeout(() => {

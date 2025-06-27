@@ -12,6 +12,8 @@ describe('source.builder', () => {
   const mockSiteData: LocalSiteData = {
     siteId: 'test-site',
     manifest: {
+      siteId: 'test-site',
+      generatorVersion: '1.0.0',
       title: 'Test Site',
       description: 'Test description',
       structure: [
@@ -210,7 +212,7 @@ describe('source.builder', () => {
         baseUrl: 'https://example.com',
         customField: 'custom value',
         settings: {
-          imageService: 'cloudinary',
+          imageService: 'cloudinary' as const,
           customSetting: true
         }
       };
