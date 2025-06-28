@@ -1,4 +1,42 @@
-# React + TypeScript + Vite
+# Get Static
+
+[![Deploy Web Version](https://github.com/yourusername/yourrepo/actions/workflows/deploy-web.yml/badge.svg)](https://github.com/yourusername/yourrepo/actions/workflows/deploy-web.yml)
+
+A static site generator built with React and Tauri.
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Build for web deployment
+npm run build:web
+
+# Build Tauri desktop app
+npm run tauri build
+```
+
+## Deployment
+
+The web version is automatically deployed to Netlify on every push to the main branch.
+
+- **Live Site**: [your-site-name.netlify.app](https://your-site-name.netlify.app)
+- **Deploy Status**: Check the Actions tab for build status
+
+## Architecture
+
+- **Frontend**: React + TypeScript + Tailwind CSS
+- **Desktop**: Tauri (Rust + WebView)
+- **Web Deployment**: Netlify
+- **CI/CD**: GitHub Actions
+
+---
+
+## Original Vite Template Info
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
@@ -6,64 +44,3 @@ Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
 - [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```

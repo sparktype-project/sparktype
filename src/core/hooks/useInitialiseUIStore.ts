@@ -1,6 +1,6 @@
 'use client';
 
-import { useUIStore } from '@/core/state/uiStore';
+import { useUIStore } from '../../core/state/uiStore';
 import { useEffect } from 'react';
 
 export function useInitialiseUIStore() {

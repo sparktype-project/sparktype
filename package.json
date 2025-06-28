@@ -6,8 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:web": "tsc -b && vite build --config vite.config.web.ts",
+    "preview:web": "vite preview --config vite.config.web.ts --outDir dist",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "ci:install": "npm ci --prefer-offline --no-audit",
+    "ci:build": "npm run build:web"
   },
   "dependencies": {
     "@blocknote/core": "^0.32.0-hackdays.0",
@@ -34,6 +38,7 @@
     "@rjsf/utils": "^6.0.0-beta.11",
     "@rjsf/validator-ajv8": "^6.0.0-beta.10",
     "@tailwindcss/vite": "^4.1.11",
+    "@tauri-apps/api": "^2.6.0",
     "@types/dompurify": "^3.0.5",
     "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.1",

@@ -13,13 +13,13 @@ import { Toaster } from "./core/components/ui/sonner";
 // Each page component is only loaded when its route is visited.
 
 // Marketing and Site Management Pages
-const MarketingHomePage = lazy(() => import('@/pages/MarketingHomePage')); // app/page.tsx
-const HomePageDashboard = lazy(() => import('@/pages/HomePageDashboard')); // app/sites/page.tsx
-const CreateSitePage = lazy(() => import('@/pages/CreateSitePage'));     // app/create-site/page.tsx
+const MarketingHomePage = lazy(() => import('./pages/MarketingHomePage')); // app/page.tsx
+const HomePageDashboard = lazy(() => import('./pages/HomePageDashboard')); // app/sites/page.tsx
+const CreateSitePage = lazy(() => import('./pages/CreateSitePage'));     // app/create-site/page.tsx
 
 // Site-Specific Layouts and Pages
-const SiteLayout = lazy(() => import('@/pages/sites/SiteLayout'));             // app/sites/[siteId]/layout.tsx
-const EditContentPage = lazy(() => import('@/pages/sites/edit/EditContentPage'));// app/sites/[siteId]/edit/content/[[...slug]]/page.tsx
+const SiteLayout = lazy(() => import('./pages/sites/SiteLayout'));             // app/sites/[siteId]/layout.tsx
+const EditContentPage = lazy(() => import('./pages/sites/edit/EditContentPage'));// app/sites/[siteId]/edit/content/[[...slug]]/page.tsx
 const SettingsSectionLayout = lazy(() => import('@/pages/sites/settings/SettingsSectionLayout')); // app/sites/[siteId]/settings/layout.tsx
 const SiteSettingsPage = lazy(() => import('@/pages/sites/settings/SiteSettingsPage'));         // app/sites/[siteId]/settings/page.tsx
 const ThemeSettingsPage = lazy(() => import('@/pages/sites/settings/ThemeSettingsPage'));       // app/sites/[siteId]/settings/theme/page.tsx

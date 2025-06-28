@@ -1,6 +1,6 @@
 // src/pages/HomePageDashboard.tsx
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom'; // Use react-router-dom's Link
 
 // State Management (no changes needed)
@@ -105,7 +105,19 @@ export default function HomePageDashboard() {
     }
   };
 
-    const validSites = sites.filter((site: LocalSiteData) => site && site.manifest);
+    // Listen for global import trigger from menu
+  useEffect(() => {
+    const handleTriggerImport = () => {
+      fileInputRef.current?.click();
+    };
+
+    window.addEventListener('triggerImport', handleTriggerImport);
+    return () => {
+      window.removeEventListener('triggerImport', handleTriggerImport);
+    };
+  }, []);
+
+  const validSites = sites.filter((site: LocalSiteData) => site && site.manifest);
 
   return (
     <>

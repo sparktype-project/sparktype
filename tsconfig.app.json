@@ -22,8 +22,10 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
-    "paths": {
-      "@/*": ["./src/*"]
+   "paths": {
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
   "include": ["src"]
