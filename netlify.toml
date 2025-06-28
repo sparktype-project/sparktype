@@ -4,6 +4,8 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # Skip Next.js plugin detection
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
 
 # Handle client-side routing
 [[redirects]]
