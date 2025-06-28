@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { FilePlus2, Leaf, Upload, Eye, Edit3, Archive, Trash2, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/core/components/ui/alert-dialog";
+import CreateSiteModal from '@/core/components/CreateSiteModal';
 
 export default function HomePageDashboard() {
   // All state management, handlers, and logic are ported directly from the original
@@ -26,6 +27,7 @@ export default function HomePageDashboard() {
   const [isImporting, setIsImporting] = useState(false);
   const [isOverwriteDialogOpen, setIsOverwriteDialogOpen] = useState(false);
   const [importedData, setImportedData] = useState<(LocalSiteData & { imageAssetsToSave?: Record<string, Blob> }) | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const finishImport = useCallback(async (data: LocalSiteData & { imageAssetsToSave?: Record<string, Blob> }) => {
@@ -134,8 +136,8 @@ export default function HomePageDashboard() {
             <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
               <Upload className="mr-2 h-4 w-4" /> {isImporting ? 'Importing...' : 'Import site'}
             </Button>
-            <Button asChild>
-              <Link to="/create-site"><FilePlus2 className="mr-2 h-4 w-4" /> Create new site</Link>
+            <Button onClick={() => setIsCreateModalOpen(true)}>
+              <FilePlus2 className="mr-2 h-4 w-4" /> Create new site
             </Button>
           </div>
         </div>
@@ -225,6 +227,12 @@ export default function HomePageDashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Site Modal */}
+      <CreateSiteModal 
+        open={isCreateModalOpen} 
+        onOpenChange={setIsCreateModalOpen} 
+      />
     </>
   );
 }

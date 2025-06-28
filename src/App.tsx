@@ -15,7 +15,6 @@ import { Toaster } from "./core/components/ui/sonner";
 // Marketing and Site Management Pages
 const MarketingHomePage = lazy(() => import('./pages/MarketingHomePage')); // app/page.tsx
 const HomePageDashboard = lazy(() => import('./pages/HomePageDashboard')); // app/sites/page.tsx
-const CreateSitePage = lazy(() => import('./pages/CreateSitePage'));     // app/create-site/page.tsx
 
 // Site-Specific Layouts and Pages
 const SiteLayout = lazy(() => import('./pages/sites/SiteLayout'));             // app/sites/[siteId]/layout.tsx
@@ -70,7 +69,6 @@ export default function App() {
           {/* Top-level routes remain the same */}
           <Route path="/" element={<MarketingHomePage />} />
           <Route path="/sites" element={<HomePageDashboard />} />
-          <Route path="/create-site" element={<CreateSitePage />} />
 
           {/* --- NEW, SIMPLIFIED SITE-SPECIFIC ROUTES --- */}
           {/* The SiteLayout component now wraps all site-specific pages */}
