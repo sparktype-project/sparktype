@@ -22,10 +22,11 @@ npm run tauri build
 
 ## Deployment
 
-The web version is automatically deployed to Netlify on every push to the main branch.
+The web version is automatically built and deployed by Netlify on every push to the main branch.
 
 - **Live Site**: [your-site-name.netlify.app](https://your-site-name.netlify.app)
-- **Deploy Status**: Check the Actions tab for build status
+- **Deploy Status**: [![Netlify Status](https://api.netlify.com/api/v1/badges/your-site-id/deploy-status)](https://app.netlify.com/sites/your-site-name/deploys)
+- **Build Checks**: GitHub Actions run linting and build tests on PRs
 
 ## Architecture
 
