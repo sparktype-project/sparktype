@@ -36,8 +36,15 @@ function executeCollectionQuery(
     const childNodes = findChildNodes(siteData.manifest.structure, collectionNode.path);
     const childPaths = new Set(childNodes.map(child => child.path));
 
-    // Filter the site's content files to get only the ones that are children.
-    const items = siteData.contentFiles.filter(file => childPaths.has(file.path));
+    // Filter the site's content files to get only the ones that are children and are published.
+    const items = siteData.contentFiles.filter(file => {
+        // Must be a child of the collection
+        if (!childPaths.has(file.path)) return false;
+        
+        // Must be published (default to true for backward compatibility)
+        const isPublished = file.frontmatter.published !== false;
+        return isPublished;
+    });
 
     const sortBy = collectionConfig.sort_by || 'date';
     const sortOrder = collectionConfig.sort_order || 'desc';

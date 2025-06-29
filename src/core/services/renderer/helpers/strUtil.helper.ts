@@ -1,8 +1,8 @@
 // src/core/services/theme-engine/helpers/strUtil.helper.ts
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import type { HelperOptions } from 'handlebars';
 
-export const strUtilHelper: SignumHelper = () => ({
+export const strUtilHelper: SparktypeHelper = () => ({
   /**
    * A generic string utility helper for common text manipulations like
    * truncating, uppercasing, and lowercasing.
@@ -10,7 +10,7 @@ export const strUtilHelper: SignumHelper = () => ({
    * @example {{str-util some.text op="truncate" len=100}}
    * @example {{str-util some.text op="uppercase"}}
    */
-  // --- FIX: The function signature now correctly matches SignumHelperFunction ---
+  // --- FIX: The function signature now correctly matches SparktypeHelperFunction ---
   'str-util': function(...args: unknown[]): string {
     // The options object from Handlebars is always the last argument.
     const options = args.pop() as HelperOptions;

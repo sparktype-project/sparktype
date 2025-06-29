@@ -1,8 +1,8 @@
 // src/core/services/theme-engine/helpers/assign.helper.ts
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import type { HelperOptions } from 'handlebars';
 
-export const assignHelper: SignumHelper = () => ({
+export const assignHelper: SparktypeHelper = () => ({
   /**
    * A Handlebars helper to add a new property to an object's context
    * before rendering a block. This is useful for augmenting data inside a loop.

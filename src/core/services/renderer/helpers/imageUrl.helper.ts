@@ -1,7 +1,7 @@
 // src/core/services/themes/helpers/image_url.helper.ts
 
 import Handlebars from 'handlebars';
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import type { ImageRef, LocalSiteData, ImageTransformOptions } from '@/core/types';
 import { getActiveImageService } from '@/core/services/images/images.service';
 
@@ -17,7 +17,7 @@ interface RootTemplateContext {
 /**
  * A Handlebars helper factory for creating the `image_url` helper.
  */
-export const imageUrlHelper: SignumHelper = (siteData: LocalSiteData) => ({
+export const imageUrlHelper: SparktypeHelper = (siteData: LocalSiteData) => ({
   /**
    * An async Handlebars helper that generates only the URL for an image,
    * applying transformations as specified. This is essential for use in

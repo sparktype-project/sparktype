@@ -11,7 +11,7 @@ import localforage from 'localforage';
 // A single, global IndexedDB store is used for all derivatives.
 // Scoping is handled by prefixing keys with the site's ID.
 const derivativeCacheStore = localforage.createInstance({
-  name: 'SignumDB',
+  name: 'SparktypeDB',
   storeName: 'derivativeCacheStore',
 });
 

@@ -40,7 +40,7 @@ async function bundleAssetFiles(
     await Promise.all(manifest.files.map(async (file) => {
         const content = await getAssetContent(siteData, assetType, assetId, file.path);
         if (content) {
-            const bundlePath = `_signum/${assetType}s/${assetId}/${file.path}`;
+            const bundlePath = `_site/${assetType}s/${assetId}/${file.path}`;
             bundle[bundlePath] = content;
         }
     }));

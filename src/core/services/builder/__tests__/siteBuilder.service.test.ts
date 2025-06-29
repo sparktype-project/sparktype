@@ -236,8 +236,8 @@ describe('siteBuilder.service', () => {
     test('accumulates bundle content from all builders', async () => {
       // Mock builders to add content to bundle
       (sourceBuilder.bundleSourceFiles as jest.Mock).mockImplementation((bundle) => {
-        bundle['_signum/manifest.json'] = '{"title":"Test"}';
-        bundle['_signum/content/index.md'] = '# Home';
+        bundle['_site/manifest.json'] = '{"title":"Test"}';
+        bundle['_site/content/index.md'] = '# Home';
       });
 
       (assetBuilder.bundleAllAssets as jest.Mock).mockImplementation((bundle) => {
@@ -256,8 +256,8 @@ describe('siteBuilder.service', () => {
       expect(result).toEqual({
         'index.html': '<html><body>Home Page Content</body></html>',
         'about.html': '<html><body>About Page Content</body></html>',
-        '_signum/manifest.json': '{"title":"Test"}',
-        '_signum/content/index.md': '# Home',
+        '_site/manifest.json': '{"title":"Test"}',
+        '_site/content/index.md': '# Home',
         'themes/default/theme.css': 'body { margin: 0; }',
         'images/logo.png': 'binary-data',
         'sitemap.xml': '<sitemap></sitemap>',

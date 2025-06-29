@@ -1,7 +1,7 @@
 // src/core/services/themes/helpers/render_item.helper.ts
 
 import Handlebars from 'handlebars';
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import type { ParsedMarkdownFile, CollectionConfig, LayoutManifest } from '@/core/types';
 import type { HelperOptions } from 'handlebars';
 
@@ -17,7 +17,7 @@ interface RootContext {
 /**
  * A Handlebars helper factory for creating the `render_item` helper.
  */
-export const renderItemHelper: SignumHelper = () => ({
+export const renderItemHelper: SparktypeHelper = () => ({
   /**
    * --- FIX: This helper is now `async` ---
    * Renders the correct teaser/partial for a single content item within a collection loop.

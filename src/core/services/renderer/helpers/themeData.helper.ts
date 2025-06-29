@@ -1,10 +1,10 @@
 // src/core/services/renderer/helpers/themeData.helper.ts
 
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import { HtmlSanitizerService } from '../../htmlSanitizer.service';
 import type { LocalSiteData } from '@/core/types';
 
-export const themeDataHelper: SignumHelper = (siteData: LocalSiteData) => ({
+export const themeDataHelper: SparktypeHelper = (siteData: LocalSiteData) => ({
   themeData: function(this: unknown, ...args: unknown[]) {
     const fieldName = args[0] as string;
     
@@ -31,7 +31,7 @@ export const themeDataHelper: SignumHelper = (siteData: LocalSiteData) => ({
   }
 });
 
-export const rawThemeDataHelper: SignumHelper = (siteData: LocalSiteData) => ({
+export const rawThemeDataHelper: SparktypeHelper = (siteData: LocalSiteData) => ({
   rawThemeData: function(this: unknown, ...args: unknown[]) {
     const fieldName = args[0] as string;
     

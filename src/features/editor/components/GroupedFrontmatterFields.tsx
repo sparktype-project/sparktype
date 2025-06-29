@@ -10,6 +10,7 @@ import {
   AccordionTrigger,
 } from "@/core/components/ui/accordion";
 import ImageUploadWidget from './ImageUploadWidget';
+import SwitchWidget from './SwitchWidget';
 
 interface Group {
   title: string;
@@ -49,7 +50,10 @@ export default function GroupedFrontmatterForm({
   onFormChange,
 }: GroupedFrontmatterFormProps) {
   
-  const customWidgets = { imageUploader: ImageUploadWidget };
+  const customWidgets = { 
+    imageUploader: ImageUploadWidget,
+    switch: SwitchWidget
+  };
   
   const { groups, ungroupedFields } = useMemo(() => {
     const definedGroups = uiSchema?.['ui:groups'] || [];

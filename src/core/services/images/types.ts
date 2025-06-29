@@ -3,11 +3,11 @@ import type { LocalSiteData } from '@/core/types';
 import Handlebars from 'handlebars';
 
 /**
- * Defines the function signature for a Handlebars helper function within Signum.
+ * Defines the function signature for a Handlebars helper function within Sparktype.
  * `this` refers to the current template context.
  * `args` are the arguments passed to the helper in the template.
  */
-export type SignumHelperFunction = (
+export type SparktypeHelperFunction = (
   this: unknown,
   ...args: unknown[]
 ) => string | Handlebars.SafeString | boolean | Promise<Handlebars.SafeString>;
@@ -16,4 +16,4 @@ export type SignumHelperFunction = (
  * Defines a "Helper Factory". It's a function that receives the full site data
  * and returns an object mapping helper names to their implementation functions.
  */
-export type SignumHelper = (siteData: LocalSiteData) => Record<string, SignumHelperFunction>;
+export type SparktypeHelper = (siteData: LocalSiteData) => Record<string, SparktypeHelperFunction>;

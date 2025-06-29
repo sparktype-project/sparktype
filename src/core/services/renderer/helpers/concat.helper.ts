@@ -1,9 +1,9 @@
 // src/core/services/theme-engine/helpers/concat.helper.ts
 
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 
 
-export const concatHelper: SignumHelper = () => ({
+export const concatHelper: SparktypeHelper = () => ({
   /**
    * Concatenates multiple string arguments into a single string.
    *

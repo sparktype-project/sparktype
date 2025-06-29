@@ -123,14 +123,14 @@ export default function HomePageDashboard() {
 
   return (
     <>
-       <title>My Sites - Signum Dashboard</title>
+       <title>My Sites - Sparktype</title>
       
       {/* The JSX is identical, but Next's <Link> is replaced with react-router-dom's <Link> */}
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2">
             <Leaf className="h-7 w-7 text-primary" />
-            <span className="text-2xl font-bold text-foreground hidden sm:inline">Signum</span>
+            <span className="text-2xl font-bold text-foreground hidden sm:inline">Sparktype</span>
           </Link>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>

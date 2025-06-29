@@ -31,12 +31,19 @@ export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBund
     // This is needed by multiple builders, so we compute it once.
     const contentFiles = synchronizedSiteData.contentFiles || [];
     const allStaticNodes = flattenTree(synchronizedSiteData.manifest.structure, contentFiles);
+    
+    // Filter out draft pages from the build
+    const publishedNodes = allStaticNodes.filter(node => {
+        // Default to published for backward compatibility
+        const isPublished = node.frontmatter?.published !== false;
+        return isPublished;
+    });
 
-    // 2. Generate all HTML pages
-    const htmlPages = await generateHtmlPages(synchronizedSiteData, allStaticNodes);
+    // 2. Generate all HTML pages (only for published content)
+    const htmlPages = await generateHtmlPages(synchronizedSiteData, publishedNodes);
     Object.assign(bundle, htmlPages);
 
-    // 3. Bundle source files (_signum directory)
+    // 3. Bundle source files (_site directory)
     await bundleSourceFiles(bundle, synchronizedSiteData);
 
     // 4. Bundle all assets (images, themes, layouts)

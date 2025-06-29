@@ -1,11 +1,11 @@
 // src/core/services/theme-engine/helpers/getUrl.helper.ts
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import { getUrlForNode as getUrlUtil } from '@/core/services/urlUtils.service';
 import type { StructureNode } from '@/core/types';
 import type { HelperOptions } from 'handlebars';
 
 // The helper factory receives the full siteData object.
-export const getUrlHelper: SignumHelper = (siteData) => ({
+export const getUrlHelper: SparktypeHelper = (siteData) => ({
   /**
    * A Handlebars helper to expose the getUrlForNode utility to templates.
    * This allows templates to generate correct, context-aware links for pages.

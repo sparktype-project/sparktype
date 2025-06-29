@@ -23,6 +23,7 @@ const SettingsSectionLayout = lazy(() => import('@/pages/sites/settings/Settings
 const SiteSettingsPage = lazy(() => import('@/pages/sites/settings/SiteSettingsPage'));         // app/sites/[siteId]/settings/page.tsx
 const ThemeSettingsPage = lazy(() => import('@/pages/sites/settings/ThemeSettingsPage'));       // app/sites/[siteId]/settings/theme/page.tsx
 const ImageSettingsPage = lazy(() => import('@/pages/sites/settings/ImageSettingsPage'));       // app/sites/[siteId]/settings/images/page.tsx
+const PublishingSettingsPage = lazy(() => import('@/pages/sites/settings/PublishingSettingsPage')); // app/sites/[siteId]/settings/publishing/page.tsx
 const ViewSitePage = lazy(() => import('@/pages/sites/view/ViewSitePage'));                     // app/sites/[siteId]/view/[[...slug]]/page.tsx
 
 /**
@@ -84,6 +85,7 @@ export default function App() {
               <Route index element={<SiteSettingsPage />} />
               <Route path="theme" element={<ThemeSettingsPage />} />
               <Route path="images" element={<ImageSettingsPage />} />
+              <Route path="publishing" element={<PublishingSettingsPage />} />
             </Route>
           </Route>
           

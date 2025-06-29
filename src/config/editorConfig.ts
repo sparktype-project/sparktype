@@ -3,11 +3,11 @@ import type { ThemeInfo, LayoutInfo } from '@/core/types';
 import type { RJSFSchema, UiSchema } from '@rjsf/utils'; 
 
 /**
- * The official version of the Signum generator client.
+ * The official version of the Sparktype generator client.
  * This is written to the manifest.json on site creation and can be used
  * by the theme engine or other tools to check for compatibility.
  */
-export const GENERATOR_VERSION = 'SignumClient/1.3.0';
+export const GENERATOR_VERSION = 'SparktypeClient/1.3.0';
 
 /**
  * The URL segment used to identify a new, unsaved content file.
@@ -105,16 +105,20 @@ export const BASE_SCHEMA: { schema: RJSFSchema; uiSchema: UiSchema } = {
         title: 'Slug (URL Path)',
         description: 'The URL-friendly version of the title. Auto-generated, but can be edited.',
       },
+      menuTitle: {
+        type: 'string',
+        title: 'Menu Title',
+        description: 'Alternative title to use in navigation menus. If not set, the page title will be used.',
+      },
       date: {
         type: 'string',
         title: 'Publication date',
         format: 'date',
       },
-      status: {
-        type: 'string',
-        title: 'Status',
-        enum: ['published', 'draft'],
-        default: 'draft',
+      published: {
+        type: 'boolean',
+        title: 'Published',
+        default: true,
       },
       author: {
         type: 'string',
@@ -146,6 +150,9 @@ export const BASE_SCHEMA: { schema: RJSFSchema; uiSchema: UiSchema } = {
         addable: true,
         removable: true,
       },
+    },
+    published: {
+      'ui:widget': 'switch',
     },
   },
 };

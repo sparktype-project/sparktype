@@ -1,9 +1,9 @@
 // src/core/services/theme-engine/helpers/query.helper.ts
 import Handlebars from 'handlebars';
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 
 // The helper factory receives the full siteData object, which it can use.
-export const queryHelper: SignumHelper = (siteData) => ({
+export const queryHelper: SparktypeHelper = (siteData) => ({
   /**
    * Fetches, filters, and sorts a list of content items from a collection.
    * The resulting array is made available to the inner block of the helper.
@@ -13,7 +13,7 @@ export const queryHelper: SignumHelper = (siteData) => ({
    *   {{#each posts}} ... {{/each}}
    * {{/query}}
    */
-  // --- FIX: The function signature now correctly matches SignumHelperFunction ---
+  // --- FIX: The function signature now correctly matches SparktypeHelperFunction ---
   // The 'this' context is now 'unknown' and is not used.
   query: function(this: unknown, ...args: unknown[]): string {
     const options = args[args.length - 1] as Handlebars.HelperOptions;
@@ -35,7 +35,14 @@ export const queryHelper: SignumHelper = (siteData) => ({
     }
     
     const childPaths = new Set(collectionNode.children.map(c => c.path));
-    let items = (siteData.contentFiles ?? []).filter(f => childPaths.has(f.path));
+    let items = (siteData.contentFiles ?? []).filter(f => {
+        // Must be a child of the collection
+        if (!childPaths.has(f.path)) return false;
+        
+        // Must be published (default to true for backward compatibility)
+        const isPublished = f.frontmatter.published !== false;
+        return isPublished;
+    });
 
     const sortBy = config.sort_by || 'date';
     const sortOrder = config.sort_order || 'desc';

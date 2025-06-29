@@ -13,9 +13,9 @@ async function fetchRemoteFile(baseUrl: string, filePath: string): Promise<strin
 }
 
 /**
- * Fetches and reconstructs an entire remote Signum site into the LocalSiteData format.
+ * Fetches and reconstructs an entire remote Sparktype site into the LocalSiteData format.
  * It fetches the manifest, then fetches all content files listed within it.
- * @param remoteSiteUrl The base URL of the remote Signum site.
+ * @param remoteSiteUrl The base URL of the remote Sparktype site.
  * @returns A Promise that resolves to a complete LocalSiteData object, or null if fetching fails.
  */
 export async function fetchRemoteSiteData(remoteSiteUrl: string): Promise<LocalSiteData | null> {
@@ -26,7 +26,7 @@ export async function fetchRemoteSiteData(remoteSiteUrl: string): Promise<LocalS
 
   try {
     // 1. Fetch manifest.json, which is now the single source of truth.
-    const manifestString = await fetchRemoteFile(remoteSiteUrl, '_signum/manifest.json');
+    const manifestString = await fetchRemoteFile(remoteSiteUrl, '_site/manifest.json');
     const manifest: Manifest = JSON.parse(manifestString);
 
     if (!manifest || !manifest.siteId || !manifest.structure) {
@@ -40,7 +40,7 @@ export async function fetchRemoteSiteData(remoteSiteUrl: string): Promise<LocalS
     // 3. Fetch all content files in parallel.
     const contentFilesPromises = contentFilePaths.map(async (path) => {
         try {
-            const rawMarkdown = await fetchRemoteFile(remoteSiteUrl, `_signum/${path}`);
+            const rawMarkdown = await fetchRemoteFile(remoteSiteUrl, `_site/${path}`);
             const { frontmatter, content } = parseMarkdownString(rawMarkdown);
             const slug = path.substring(path.lastIndexOf('/') + 1).replace('.md', '');
             return { slug, path, frontmatter, content };

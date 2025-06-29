@@ -11,10 +11,10 @@ import { stringifyToMarkdown, parseMarkdownString } from '@/core/libraries/markd
 import { isCoreTheme, isCoreLayout } from './config/configHelpers.service';
 import * as localSiteFs from './localFileSystem.service';
 
-const SIGNUM_FOLDER = '_signum';
+const SIGNUM_FOLDER = '_site';
 
 /**
- * Exports a complete backup of a Signum site's source data into a ZIP archive.
+ * Exports a complete backup of a Sparktype site's source data into a ZIP archive.
  * This function's logic is sound and does not require changes.
  */
 export async function exportSiteBackup(siteData: LocalSiteData): Promise<Blob> {
@@ -82,7 +82,7 @@ export async function importSiteFromZip(zipFile: File): Promise<LocalSiteData & 
     const zip = await JSZip.loadAsync(zipFile);
     const signumFolder = zip.folder(SIGNUM_FOLDER);
 
-    if (!signumFolder) throw new Error("Invalid backup file: _signum folder not found.");
+    if (!signumFolder) throw new Error("Invalid backup file: _site folder not found.");
     
     const manifestFile = signumFolder.file('manifest.json');
     if (!manifestFile) throw new Error("Invalid backup file: manifest.json is missing.");

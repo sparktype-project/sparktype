@@ -25,7 +25,7 @@ export default function MarkdownRenderer({ markdown }: MarkdownRendererProps) {
 
   // Using dangerouslySetInnerHTML because 'marked' produces an HTML string.
   // Ensure that the 'markdown' content is from a trusted source or sanitized.
-  // Since in Signum, users are creating their own local content first,
+  // Since in Sparktype, users are creating their own local content first,
   // the trust level is higher for this local-only phase.
   // For remote content later, sanitization will be critical.
   return <div dangerouslySetInnerHTML={{ __html: html }} />;

@@ -16,14 +16,14 @@ export default function MarketingHomePage() {
         You can render <title> and <meta> tags directly in your component.
         React 19 will automatically move them to the document <head>.
       */}
-      <title>Signum - Own Your Content</title>
+      <title>Sparktype - Own Your Content</title>
       <meta name="description" content="A simple, private, and portable publishing platform that puts you back in control." />
       
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2">
             <Leaf className="h-7 w-7 text-primary" />
-            <span className="text-2xl font-bold text-foreground hidden sm:inline">Signum</span>
+            <span className="text-2xl font-bold text-foreground hidden sm:inline">Sparktype</span>
           </Link>
           <Button asChild variant="ghost">
             <Link to="/sites">Dashboard</Link>
@@ -34,7 +34,7 @@ export default function MarketingHomePage() {
       <div className="container mx-auto px-4 py-16 sm:py-24 text-center">
         <header className="mb-12">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-foreground">
-            Signum: Own Your Content.
+            Sparktype: Own Your Content.
           </h1>
           <p className="mt-4 max-w-2xl mx-auto text-lg sm:text-xl text-muted-foreground">
             A simple, private, and portable publishing platform that puts you back in control.

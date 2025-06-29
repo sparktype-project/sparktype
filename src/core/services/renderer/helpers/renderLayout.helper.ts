@@ -1,9 +1,9 @@
 // src/core/services/themes/helpers/render_layout.helper.ts
 
 import Handlebars from 'handlebars';
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 
-export const renderLayoutHelper: SignumHelper = () => ({
+export const renderLayoutHelper: SparktypeHelper = () => ({
   /**
    * An async Handlebars helper that renders a specified layout/partial
    * and waits for any async helpers within it to resolve.

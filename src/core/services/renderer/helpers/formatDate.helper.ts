@@ -1,7 +1,7 @@
 // src/core/services/theme-engine/helpers/formatDate.helper.ts
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 
-export const formatDateHelper: SignumHelper = () => ({
+export const formatDateHelper: SparktypeHelper = () => ({
   /**
    * Formats a date string or Date object into a more readable format.
    * @example {{formatDate some.date_string}}

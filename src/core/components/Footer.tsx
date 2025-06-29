@@ -8,7 +8,7 @@ export default function Footer() {
   return (
     <footer className="border-t bg-muted/50">
       <div className="container mx-auto py-8 text-center text-sm text-muted-foreground">
-        <p>© {currentYear} Signum Project. All Rights Reserved (Placeholder).</p>
+        <p>© {currentYear} Sparktype. All Rights Reserved (Placeholder).</p>
         <p className="mt-1">
           <Link 
             to="https://github.com/your-repo/signum-client" // Replace with your actual repo URL

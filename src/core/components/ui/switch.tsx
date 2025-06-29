@@ -1,4 +1,4 @@
-"use client"
+// src/core/components/ui/switch.tsx
 
 import * as React from "react"
 import * as SwitchPrimitive from "@radix-ui/react-switch"

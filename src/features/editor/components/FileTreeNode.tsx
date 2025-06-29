@@ -3,7 +3,7 @@
 import { Link } from 'react-router-dom'; // CORRECT: Import from react-router-dom
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, ChevronRight, File as FileIcon, LayoutGrid, Home } from 'lucide-react';
+import { GripVertical, ChevronRight, File as FileIcon, LayoutGrid, Home, EyeOff } from 'lucide-react';
 import { cn } from '@/core/libraries/utils';
 import type { FlattenedNode } from '@/core/services/fileTree.service';
 import type { MarkdownFrontmatter } from '@/core/types';
@@ -65,6 +65,7 @@ export default function FileTreeNode({
   const frontmatter = item.frontmatter as MarkdownFrontmatter | undefined;
   const isCollection = !!(frontmatter?.collection);
   const hasChildren = item.children && item.children.length > 0;
+  const isDraft = frontmatter?.published === false;
 
   const showCollapseButton = hasChildren && !isCollection && !isHomepage;
 
@@ -127,6 +128,10 @@ export default function FileTreeNode({
             <LayoutGrid className="h-4 w-4 shrink-0 text-muted-foreground" />
           ) : (
             <FileIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          )}
+          
+          {isDraft && (
+            <EyeOff className="h-3 w-3 shrink-0 text-muted-foreground/60 ml-1" title="Draft - not published" />
           )}
           
           {/* CORRECT: Use the react-router-dom Link with the `to` prop */}

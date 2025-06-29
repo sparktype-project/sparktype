@@ -9,6 +9,7 @@ import { BASE_SCHEMA } from '@/config/editorConfig';
 // Reusable components for form rendering
 import SchemaDrivenForm from '@/core/components/SchemaDrivenForm';
 import ImageUploadWidget from '@/features/editor/components/ImageUploadWidget';
+import SwitchWidget from '@/features/editor/components/SwitchWidget';
 
 /**
  * Defines the props for the PageMetadataForm component.
@@ -44,7 +45,10 @@ export default function PageMetadataForm({
 }: PageMetadataFormProps) {
 
   // Define the custom widgets that can be used by the SchemaDrivenForm.
-  const customWidgets = { imageUploader: ImageUploadWidget };
+  const customWidgets = { 
+    imageUploader: ImageUploadWidget,
+    switch: SwitchWidget
+  };
 
   /**
    * This is the core logic of the component.

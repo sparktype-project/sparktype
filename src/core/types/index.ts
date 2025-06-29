@@ -200,6 +200,13 @@ export interface Manifest {
     },
     [key: string]: unknown; 
   };
+  publishingConfig?: {
+    provider: 'zip' | 'netlify';
+    netlify?: {
+      siteId?: string;
+      siteName?: string;
+    };
+  };
 }
 
 /**
@@ -338,6 +345,11 @@ export interface ImageService {
 export interface SiteSecrets {
   cloudinary?: {
     uploadPreset?: string;
+  };
+  publishing?: {
+    netlify?: {
+      apiToken?: string;
+    };
   };
 }
 

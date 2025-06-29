@@ -6,7 +6,7 @@ import { markdownHelper } from './markdown.helper';
 import { strUtilHelper } from './strUtil.helper';
 import { formatDateHelper } from './formatDate.helper';
 import { pagerHelper } from './pager.helper';
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import { getUrlHelper } from './getUrl.helper';
 import { assignHelper } from './assign.helper';
 import { imageHelper } from './image.helper';
@@ -16,7 +16,7 @@ import { renderLayoutHelper } from './renderLayout.helper';
 import { renderItemHelper } from './renderItem.helper';
 import { themeDataHelper, rawThemeDataHelper } from './themeData.helper';
 
-export const coreHelpers: SignumHelper[] = [
+export const coreHelpers: SparktypeHelper[] = [
   queryHelper,
   strUtilHelper,
   formatDateHelper,

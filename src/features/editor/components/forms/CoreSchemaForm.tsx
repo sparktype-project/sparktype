@@ -6,6 +6,7 @@ import SchemaDrivenForm from '@/core/components/SchemaDrivenForm';
 import { BASE_SCHEMA } from '@/config/editorConfig';
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 import ImageUploadWidget from '../ImageUploadWidget';
+import SwitchWidget from '../SwitchWidget';
 
 interface CoreSchemaFormProps {
   siteId: string;
@@ -29,7 +30,10 @@ export default function CoreSchemaForm({
   // Dynamically adjust the schema based on context
   const schema: RJSFSchema = { ...BASE_SCHEMA.schema };
   const uiSchema: UiSchema = { ...BASE_SCHEMA.uiSchema };
-    const customWidgets = { imageUploader: ImageUploadWidget };
+    const customWidgets = { 
+      imageUploader: ImageUploadWidget,
+      switch: SwitchWidget
+    };
 
   // Hide the date field for collection items, as it's often managed differently
   if (isCollectionItem && schema.properties?.date) {

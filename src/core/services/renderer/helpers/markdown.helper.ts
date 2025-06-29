@@ -1,17 +1,17 @@
 // src/core/services/theme-engine/helpers/markdown.helper.ts
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import Handlebars from 'handlebars';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
-export const markdownHelper: SignumHelper = () => ({
+export const markdownHelper: SparktypeHelper = () => ({
   /**
    * Safely renders a string of Markdown into HTML.
    * It uses 'marked' to parse the Markdown and 'DOMPurify' to sanitize
    * the resulting HTML, preventing XSS attacks.
    * @example {{{markdown some.body_content}}}
    */
-  // --- FIX: The function signature now correctly matches SignumHelperFunction ---
+  // --- FIX: The function signature now correctly matches SparktypeHelperFunction ---
   markdown: function(...args: unknown[]): Handlebars.SafeString {
     // The markdown content is the first argument passed to the helper.
     const markdownString = args[0];

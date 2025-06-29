@@ -5,6 +5,7 @@
 import type { MarkdownFrontmatter, LayoutManifest } from '@/core/types';
 import SchemaDrivenForm from '@/core/components/SchemaDrivenForm';
 import ImageUploadWidget from '../ImageUploadWidget';
+import SwitchWidget from '../SwitchWidget';
 
 interface CollectionLayoutSchemaFormProps {
   siteId: string;
@@ -24,7 +25,10 @@ export default function CollectionLayoutSchemaForm({
   onFrontmatterChange,
 }: CollectionLayoutSchemaFormProps) {
   
-  const customWidgets = { imageUploader: ImageUploadWidget };
+  const customWidgets = { 
+    imageUploader: ImageUploadWidget,
+    switch: SwitchWidget
+  };
 
   if (!layoutManifest?.schema) {
     return <p className="text-sm text-muted-foreground p-2">This layout has no custom collection page options.</p>;

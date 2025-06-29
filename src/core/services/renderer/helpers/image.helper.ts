@@ -1,7 +1,7 @@
 // src/core/services/theme-engine/helpers/image.helper.ts
 
 import Handlebars from 'handlebars';
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 // --- FIX: Import ImageTransformOptions along with the other types ---
 import type { ImageRef, LocalSiteData, ImageTransformOptions } from '@/core/types';
 import { getActiveImageService } from '@/core/services/images/images.service';
@@ -12,7 +12,7 @@ interface RootTemplateContext {
   };
 }
 
-export const imageHelper: SignumHelper = (siteData: LocalSiteData) => ({
+export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => ({
   /**
    * An async Handlebars helper to generate image URLs with transformations.
    * It reads parameters from the helper's hash.

@@ -127,7 +127,7 @@ export default function SiteLayout() {
             title="Dashboard"
             className='lg:flex hidden flex-col items-center w-[40px] h-[40px] mb-4'
           >
-            <img src="/signum.svg" width={32} height={32} alt="Signum Logo" className='m-auto'/>
+            <img src="/signum.svg" width={32} height={32} alt="Sparktype Logo" className='m-auto'/>
           </Link>
           
           {navItems.map((item) => {

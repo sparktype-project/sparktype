@@ -136,8 +136,8 @@ describe('asset.builder', () => {
       );
 
       // Should add theme files to bundle with correct paths
-      expect(mockBundle['_signum/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
-      expect(mockBundle['_signum/themes/default/css/theme.css']).toBe('body { margin: 0; }');
+      expect(mockBundle['_site/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
+      expect(mockBundle['_site/themes/default/css/theme.css']).toBe('body { margin: 0; }');
     });
 
     test('bundles layout assets correctly', async () => {
@@ -160,7 +160,7 @@ describe('asset.builder', () => {
       );
 
       // Should add layout files to bundle with correct paths
-      expect(mockBundle['_signum/layouts/blog/blog.hbs']).toBe('<article>{{{content}}}</article>');
+      expect(mockBundle['_site/layouts/blog/blog.hbs']).toBe('<article>{{{content}}}</article>');
     });
 
     test('bundles only unique layouts', async () => {
@@ -228,7 +228,7 @@ describe('asset.builder', () => {
       await bundleAllAssets(mockBundle, mockSiteData);
 
       // Should still bundle theme and images
-      expect(mockBundle['_signum/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
+      expect(mockBundle['_site/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
       expect(mockBundle['images/logo.png']).toBe('logo-binary-data');
     });
 
@@ -238,7 +238,7 @@ describe('asset.builder', () => {
       await bundleAllAssets(mockBundle, mockSiteData);
 
       // Should not add null content to bundle
-      expect(mockBundle['_signum/themes/default/base.hbs']).toBeUndefined();
+      expect(mockBundle['_site/themes/default/base.hbs']).toBeUndefined();
       expect(mockBundle['images/logo.png']).toBe('logo-binary-data');
     });
 
@@ -251,7 +251,7 @@ describe('asset.builder', () => {
       await bundleAllAssets(mockBundle, siteDataNoContent);
 
       // Should still bundle theme and manifest images
-      expect(mockBundle['_signum/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
+      expect(mockBundle['_site/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
       expect(mockBundle['images/logo.png']).toBe('logo-binary-data');
     });
 
@@ -277,7 +277,7 @@ describe('asset.builder', () => {
       await bundleAllAssets(mockBundle, siteDataNoImages);
 
       // Should still bundle theme assets
-      expect(mockBundle['_signum/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
+      expect(mockBundle['_site/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
       
       // Should not have any image assets
       expect(Object.keys(mockBundle).filter(key => key.startsWith('images/'))).toHaveLength(0);

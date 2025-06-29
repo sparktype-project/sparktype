@@ -1,7 +1,7 @@
 // src/core/services/siteSecrets.service.ts
 import localforage from 'localforage';
 
-const DB_NAME = 'SignumDB';
+const DB_NAME = 'SparktypeDB';
 
 // This store is NEVER included in the site export.
 const siteSecretsStore = localforage.createInstance({

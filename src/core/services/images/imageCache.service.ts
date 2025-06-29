@@ -2,7 +2,7 @@
 import localforage from 'localforage';
 
 const derivativeCacheStore = localforage.createInstance({
-  name: 'SignumDB',
+  name: 'SparktypeDB',
   storeName: 'derivativeCacheStore',
 });
 

@@ -60,7 +60,7 @@ export default function Navbar() {
         {/* The main logo links to the marketing page or dashboard root */}
         <Link to="/" className="flex items-center space-x-2">
           <Leaf className="h-7 w-7 text-primary" />
-          <span className="text-2xl font-bold text-foreground hidden sm:inline">Signum</span>
+          <span className="text-2xl font-bold text-foreground hidden sm:inline">Sparktype</span>
         </Link>
         
         <form onSubmit={handleBrowseRemoteSite} className="flex-grow max-w-xl flex items-center gap-2">
@@ -70,7 +70,7 @@ export default function Navbar() {
               type="url"
               value={remoteUrl}
               onChange={(e) => setRemoteUrl(e.target.value)}
-              placeholder="Enter remote Signum site URL..."
+              placeholder="Enter remote Sparktype site URL..."
               className="pl-9"
             />
           </div>

@@ -803,7 +803,7 @@ export function stringifyToMarkdown(frontmatter: MarkdownFrontmatter, content: s
 
 /**
  * Parses a raw markdown string and also renders its body content to HTML using 'marked'.
- * This is primarily a utility if pre-rendered HTML is needed somewhere, but Signum focuses
+ * This is primarily a utility if pre-rendered HTML is needed somewhere, but Sparktype focuses
  * on client-side rendering of raw markdown.
  *
  * @param slug The slug for the parsed file.
@@ -972,9 +972,9 @@ async function fetchRemoteFile(baseUrl: string, filePath: string): Promise<strin
 }
 
 /**
- * Fetches and reconstructs an entire remote Signum site into the LocalSiteData format.
+ * Fetches and reconstructs an entire remote Sparktype site into the LocalSiteData format.
  * It fetches the manifest, then fetches all content files listed within it.
- * @param remoteSiteUrl The base URL of the remote Signum site.
+ * @param remoteSiteUrl The base URL of the remote Sparktype site.
  * @returns A Promise that resolves to a complete LocalSiteData object, or null if fetching fails.
  */
 export async function fetchRemoteSiteData(remoteSiteUrl: string): Promise<LocalSiteData | null> {
@@ -985,7 +985,7 @@ export async function fetchRemoteSiteData(remoteSiteUrl: string): Promise<LocalS
 
   try {
     // 1. Fetch manifest.json, which is now the single source of truth.
-    const manifestString = await fetchRemoteFile(remoteSiteUrl, '_signum/manifest.json');
+    const manifestString = await fetchRemoteFile(remoteSiteUrl, '_site/manifest.json');
     const manifest: Manifest = JSON.parse(manifestString);
 
     if (!manifest || !manifest.siteId || !manifest.structure) {
@@ -999,7 +999,7 @@ export async function fetchRemoteSiteData(remoteSiteUrl: string): Promise<LocalS
     // 3. Fetch all content files in parallel.
     const contentFilesPromises = contentFilePaths.map(async (path) => {
         try {
-            const rawMarkdown = await fetchRemoteFile(remoteSiteUrl, `_signum/${path}`);
+            const rawMarkdown = await fetchRemoteFile(remoteSiteUrl, `_site/${path}`);
             const { frontmatter, content } = parseMarkdownString(rawMarkdown);
             const slug = path.substring(path.lastIndexOf('/') + 1).replace('.md', '');
             return { slug, path, frontmatter, content };
@@ -2989,7 +2989,7 @@ export default function Navbar() {
         {/* The main logo links to the marketing page or dashboard root */}
         <Link to="/" className="flex items-center space-x-2">
           <Leaf className="h-7 w-7 text-primary" />
-          <span className="text-2xl font-bold text-foreground hidden sm:inline">Signum</span>
+          <span className="text-2xl font-bold text-foreground hidden sm:inline">Sparktype</span>
         </Link>
         
         <form onSubmit={handleBrowseRemoteSite} className="flex-grow max-w-xl flex items-center gap-2">
@@ -2999,7 +2999,7 @@ export default function Navbar() {
               type="url"
               value={remoteUrl}
               onChange={(e) => setRemoteUrl(e.target.value)}
-              placeholder="Enter remote Signum site URL..."
+              placeholder="Enter remote Sparktype site URL..."
               className="pl-9"
             />
           </div>
@@ -3064,7 +3064,7 @@ export default function Footer() {
   return (
     <footer className="border-t bg-muted/50">
       <div className="container mx-auto py-8 text-center text-sm text-muted-foreground">
-        <p>© {currentYear} Signum Project. All Rights Reserved (Placeholder).</p>
+        <p>© {currentYear} Sparktype Project. All Rights Reserved (Placeholder).</p>
         <p className="mt-1">
           <Link 
             href="https://github.com/your-repo/signum-client" // Replace with your actual repo URL
@@ -4707,10 +4707,10 @@ import { stringifyToMarkdown, parseMarkdownString } from '@/core/libraries/markd
 import { isCoreTheme, isCoreLayout } from './config/configHelpers.service';
 import * as localSiteFs from './localFileSystem.service';
 
-const SIGNUM_FOLDER = '_signum';
+const SIGNUM_FOLDER = '_site';
 
 /**
- * Exports a complete backup of a Signum site's source data into a ZIP archive.
+ * Exports a complete backup of a Sparktype site's source data into a ZIP archive.
  * This function's logic is sound and does not require changes.
  */
 export async function exportSiteBackup(siteData: LocalSiteData): Promise<Blob> {
@@ -4778,7 +4778,7 @@ export async function importSiteFromZip(zipFile: File): Promise<LocalSiteData & 
     const zip = await JSZip.loadAsync(zipFile);
     const signumFolder = zip.folder(SIGNUM_FOLDER);
 
-    if (!signumFolder) throw new Error("Invalid backup file: _signum folder not found.");
+    if (!signumFolder) throw new Error("Invalid backup file: _site folder not found.");
     
     const manifestFile = signumFolder.file('manifest.json');
     if (!manifestFile) throw new Error("Invalid backup file: manifest.json is missing.");
@@ -4910,7 +4910,7 @@ import { type LocalSiteData, type ParsedMarkdownFile, type Manifest, type RawFil
 import localforage from 'localforage';
 import { stringifyToMarkdown, parseMarkdownString } from '@/core/libraries/markdownParser';
 
-const DB_NAME = 'SignumDB';
+const DB_NAME = 'SparktypeDB';
 
 const siteManifestsStore = localforage.createInstance({
   name: DB_NAME,
@@ -5384,7 +5384,7 @@ export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBund
     const htmlPages = await generateHtmlPages(synchronizedSiteData, allStaticNodes);
     Object.assign(bundle, htmlPages);
 
-    // 3. Bundle source files (_signum directory)
+    // 3. Bundle source files (_site directory)
     await bundleSourceFiles(bundle, synchronizedSiteData);
 
     // 4. Bundle all assets (images, themes, layouts)
@@ -5564,7 +5564,7 @@ File: core/services/siteSecrets.service.ts
 // src/core/services/siteSecrets.service.ts
 import localforage from 'localforage';
 
-const DB_NAME = 'SignumDB';
+const DB_NAME = 'SparktypeDB';
 
 // This store is NEVER included in the site export.
 const siteSecretsStore = localforage.createInstance({
@@ -6126,7 +6126,7 @@ File: core/services/renderer/helpers/imageUrl.helper.ts
 
 // --- 1. Import Handlebars to access the SafeString constructor ---
 import Handlebars from 'handlebars';
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import type { ImageRef, LocalSiteData, ImageTransformOptions } from '@/core/types';
 import { getActiveImageService } from '@/core/services/images/images.service';
 
@@ -6142,7 +6142,7 @@ interface RootTemplateContext {
 /**
  * A Handlebars helper factory for creating the `image_url` helper.
  */
-export const imageUrlHelper: SignumHelper = (siteData: LocalSiteData) => ({
+export const imageUrlHelper: SparktypeHelper = (siteData: LocalSiteData) => ({
   /**
    * An async Handlebars helper that generates only the URL for an image,
    * applying transformations as specified. This is essential for use in
@@ -6193,9 +6193,9 @@ File: core/services/renderer/helpers/renderLayout.helper.ts
 // src/core/services/themes/helpers/render_layout.helper.ts
 
 import Handlebars from 'handlebars';
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 
-export const renderLayoutHelper: SignumHelper = () => ({
+export const renderLayoutHelper: SparktypeHelper = () => ({
   /**
    * An async Handlebars helper that renders a specified layout/partial
    * and waits for any async helpers within it to resolve.
@@ -6242,10 +6242,10 @@ export const renderLayoutHelper: SignumHelper = () => ({
 
 File: core/services/renderer/helpers/strUtil.helper.ts
 // src/core/services/theme-engine/helpers/strUtil.helper.ts
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import type { HelperOptions } from 'handlebars';
 
-export const strUtilHelper: SignumHelper = () => ({
+export const strUtilHelper: SparktypeHelper = () => ({
   /**
    * A generic string utility helper for common text manipulations like
    * truncating, uppercasing, and lowercasing.
@@ -6253,7 +6253,7 @@ export const strUtilHelper: SignumHelper = () => ({
    * @example {{str-util some.text op="truncate" len=100}}
    * @example {{str-util some.text op="uppercase"}}
    */
-  // --- FIX: The function signature now correctly matches SignumHelperFunction ---
+  // --- FIX: The function signature now correctly matches SparktypeHelperFunction ---
   'str-util': function(...args: unknown[]): string {
     // The options object from Handlebars is always the last argument.
     const options = args.pop() as HelperOptions;
@@ -6294,10 +6294,10 @@ export const strUtilHelper: SignumHelper = () => ({
 File: core/services/renderer/helpers/concat.helper.ts
 // src/core/services/theme-engine/helpers/concat.helper.ts
 
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 
 
-export const concatHelper: SignumHelper = () => ({
+export const concatHelper: SparktypeHelper = () => ({
   /**
    * Concatenates multiple string arguments into a single string.
    *
@@ -6321,10 +6321,10 @@ export const concatHelper: SignumHelper = () => ({
 File: core/services/renderer/helpers/query.helper.ts
 // src/core/services/theme-engine/helpers/query.helper.ts
 import Handlebars from 'handlebars';
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 
 // The helper factory receives the full siteData object, which it can use.
-export const queryHelper: SignumHelper = (siteData) => ({
+export const queryHelper: SparktypeHelper = (siteData) => ({
   /**
    * Fetches, filters, and sorts a list of content items from a collection.
    * The resulting array is made available to the inner block of the helper.
@@ -6334,7 +6334,7 @@ export const queryHelper: SignumHelper = (siteData) => ({
    *   {{#each posts}} ... {{/each}}
    * {{/query}}
    */
-  // --- FIX: The function signature now correctly matches SignumHelperFunction ---
+  // --- FIX: The function signature now correctly matches SparktypeHelperFunction ---
   // The 'this' context is now 'unknown' and is not used.
   query: function(this: unknown, ...args: unknown[]): string {
     const options = args[args.length - 1] as Handlebars.HelperOptions;
@@ -6405,19 +6405,19 @@ export const queryHelper: SignumHelper = (siteData) => ({
 
 File: core/services/renderer/helpers/markdown.helper.ts
 // src/core/services/theme-engine/helpers/markdown.helper.ts
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import Handlebars from 'handlebars';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
-export const markdownHelper: SignumHelper = () => ({
+export const markdownHelper: SparktypeHelper = () => ({
   /**
    * Safely renders a string of Markdown into HTML.
    * It uses 'marked' to parse the Markdown and 'DOMPurify' to sanitize
    * the resulting HTML, preventing XSS attacks.
    * @example {{{markdown some.body_content}}}
    */
-  // --- FIX: The function signature now correctly matches SignumHelperFunction ---
+  // --- FIX: The function signature now correctly matches SparktypeHelperFunction ---
   markdown: function(...args: unknown[]): Handlebars.SafeString {
     // The markdown content is the first argument passed to the helper.
     const markdownString = args[0];
@@ -6447,11 +6447,11 @@ export const markdownHelper: SignumHelper = () => ({
 File: core/services/renderer/helpers/themeData.helper.ts
 // src/core/services/renderer/helpers/themeData.helper.ts
 
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import { HtmlSanitizerService } from '../../htmlSanitizer.service';
 import type { LocalSiteData } from '@/core/types';
 
-export const themeDataHelper: SignumHelper = (siteData: LocalSiteData) => ({
+export const themeDataHelper: SparktypeHelper = (siteData: LocalSiteData) => ({
   themeData: function(this: unknown, ...args: unknown[]) {
     const fieldName = args[0] as string;
     
@@ -6478,7 +6478,7 @@ export const themeDataHelper: SignumHelper = (siteData: LocalSiteData) => ({
   }
 });
 
-export const rawThemeDataHelper: SignumHelper = (siteData: LocalSiteData) => ({
+export const rawThemeDataHelper: SparktypeHelper = (siteData: LocalSiteData) => ({
   rawThemeData: function(this: unknown, ...args: unknown[]) {
     const fieldName = args[0] as string;
     
@@ -6503,7 +6503,7 @@ export const rawThemeDataHelper: SignumHelper = (siteData: LocalSiteData) => ({
 
 File: core/services/renderer/helpers/comparison.helper.ts
 // src/core/services/theme-engine/helpers/comparison.helper.ts
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 
 /**
  * Provides a set of comparison helpers for Handlebars templates.
@@ -6513,7 +6513,7 @@ import type { SignumHelper } from './types';
  * {{#if (eq post.status "published")}} ... {{/if}}
  * {{#if (gt comment.likes 10)}} ... {{/if}}
  */
-export const comparisonHelpers: SignumHelper = () => ({
+export const comparisonHelpers: SparktypeHelper = () => ({
   /**
    * Checks for strict equality (===). Safe for any type.
    */
@@ -6556,13 +6556,13 @@ export const comparisonHelpers: SignumHelper = () => ({
 
 File: core/services/renderer/helpers/getUrl.helper.ts
 // src/core/services/theme-engine/helpers/getUrl.helper.ts
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import { getUrlForNode as getUrlUtil } from '@/core/services/urlUtils.service';
 import type { StructureNode } from '@/core/types';
 import type { HelperOptions } from 'handlebars';
 
 // The helper factory receives the full siteData object.
-export const getUrlHelper: SignumHelper = (siteData) => ({
+export const getUrlHelper: SparktypeHelper = (siteData) => ({
   /**
    * A Handlebars helper to expose the getUrlForNode utility to templates.
    * This allows templates to generate correct, context-aware links for pages.
@@ -6600,11 +6600,11 @@ import type { LocalSiteData } from '@/core/types';
 import Handlebars from 'handlebars';
 
 /**
- * Defines the function signature for a Handlebars helper function within Signum.
+ * Defines the function signature for a Handlebars helper function within Sparktype.
  * `this` refers to the current template context.
  * `args` are the arguments passed to the helper in the template.
  */
-export type SignumHelperFunction = (
+export type SparktypeHelperFunction = (
   /**
    * FIX: Replaced 'any' with 'unknown' for the 'this' context.
    * The context within a Handlebars helper is dynamic. 'unknown' is the
@@ -6623,7 +6623,7 @@ export type SignumHelperFunction = (
  * Defines a "Helper Factory". It's a function that receives the full site data
  * and returns an object mapping helper names to their implementation functions.
  */
-export type SignumHelper = (siteData: LocalSiteData) => Record<string, SignumHelperFunction>;
+export type SparktypeHelper = (siteData: LocalSiteData) => Record<string, SparktypeHelperFunction>;
 
 ================================================================================
 
@@ -6631,7 +6631,7 @@ File: core/services/renderer/helpers/pager.helper.ts
 // src/core/services/theme-engine/helpers/pager.helper.ts
 
 import Handlebars from 'handlebars';
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import type { PaginationData } from '@/core/types';
 
 /**
@@ -6661,8 +6661,8 @@ function isPaginationData(data: unknown): data is PaginationData {
  * @example
  * {{{pager pagination}}}
  */
-export const pagerHelper: SignumHelper = () => ({
-  // --- FIX: The function signature now correctly matches SignumHelperFunction ---
+export const pagerHelper: SparktypeHelper = () => ({
+  // --- FIX: The function signature now correctly matches SparktypeHelperFunction ---
   pager: function(...args: unknown[]): Handlebars.SafeString {
     // The pagination object is the first argument passed from the template.
     const pagination = args[0];
@@ -6701,10 +6701,10 @@ export const pagerHelper: SignumHelper = () => ({
 
 File: core/services/renderer/helpers/assign.helper.ts
 // src/core/services/theme-engine/helpers/assign.helper.ts
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import type { HelperOptions } from 'handlebars';
 
-export const assignHelper: SignumHelper = () => ({
+export const assignHelper: SparktypeHelper = () => ({
   /**
    * A Handlebars helper to add a new property to an object's context
    * before rendering a block. This is useful for augmenting data inside a loop.
@@ -6759,7 +6759,7 @@ import { markdownHelper } from './markdown.helper';
 import { strUtilHelper } from './strUtil.helper';
 import { formatDateHelper } from './formatDate.helper';
 import { pagerHelper } from './pager.helper';
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import { getUrlHelper } from './getUrl.helper';
 import { assignHelper } from './assign.helper';
 import { imageHelper } from './image.helper';
@@ -6769,7 +6769,7 @@ import { renderLayoutHelper } from './renderLayout.helper';
 import { renderItemHelper } from './renderItem.helper';
 import { themeDataHelper, rawThemeDataHelper } from './themeData.helper';
 
-export const coreHelpers: SignumHelper[] = [
+export const coreHelpers: SparktypeHelper[] = [
   queryHelper,
   strUtilHelper,
   formatDateHelper,
@@ -6791,9 +6791,9 @@ export const coreHelpers: SignumHelper[] = [
 
 File: core/services/renderer/helpers/formatDate.helper.ts
 // src/core/services/theme-engine/helpers/formatDate.helper.ts
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 
-export const formatDateHelper: SignumHelper = () => ({
+export const formatDateHelper: SparktypeHelper = () => ({
   /**
    * Formats a date string or Date object into a more readable format.
    * @example {{formatDate some.date_string}}
@@ -6839,7 +6839,7 @@ File: core/services/renderer/helpers/renderItem.helper.ts
 // src/core/services/themes/helpers/render_item.helper.ts
 
 import Handlebars from 'handlebars';
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import type { ParsedMarkdownFile, CollectionConfig } from '@/core/types';
 import type { LayoutManifest } from '@/core/services/config/configHelpers.service';
 import type { HelperOptions } from 'handlebars';
@@ -6856,7 +6856,7 @@ interface RootContext {
 /**
  * A Handlebars helper factory for creating the `render_item` helper.
  */
-export const renderItemHelper: SignumHelper = () => ({
+export const renderItemHelper: SparktypeHelper = () => ({
   /**
    * --- FIX: This helper is now `async` ---
    * Renders the correct teaser/partial for a single content item within a collection loop.
@@ -6928,7 +6928,7 @@ File: core/services/renderer/helpers/image.helper.ts
 // src/core/services/theme-engine/helpers/image.helper.ts
 
 import Handlebars from 'handlebars';
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 // --- FIX: Import ImageTransformOptions along with the other types ---
 import type { ImageRef, LocalSiteData, ImageTransformOptions } from '@/core/types';
 import { getActiveImageService } from '@/core/services/images/images.service';
@@ -6939,7 +6939,7 @@ interface RootTemplateContext {
   };
 }
 
-export const imageHelper: SignumHelper = (siteData: LocalSiteData) => ({
+export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => ({
   /**
    * An async Handlebars helper to generate image URLs with transformations.
    * It reads parameters from the helper's hash.
@@ -8675,11 +8675,11 @@ import type { LocalSiteData } from '@/core/types';
 import Handlebars from 'handlebars';
 
 /**
- * Defines the function signature for a Handlebars helper function within Signum.
+ * Defines the function signature for a Handlebars helper function within Sparktype.
  * `this` refers to the current template context.
  * `args` are the arguments passed to the helper in the template.
  */
-export type SignumHelperFunction = (
+export type SparktypeHelperFunction = (
   this: unknown,
   ...args: unknown[]
 ) => string | Handlebars.SafeString | boolean | Promise<Handlebars.SafeString>;
@@ -8688,7 +8688,7 @@ export type SignumHelperFunction = (
  * Defines a "Helper Factory". It's a function that receives the full site data
  * and returns an object mapping helper names to their implementation functions.
  */
-export type SignumHelper = (siteData: LocalSiteData) => Record<string, SignumHelperFunction>;
+export type SparktypeHelper = (siteData: LocalSiteData) => Record<string, SparktypeHelperFunction>;
 
 ================================================================================
 
@@ -9022,7 +9022,7 @@ import localforage from 'localforage';
 // A single, global IndexedDB store is used for all derivatives.
 // Scoping is handled by prefixing keys with the site's ID.
 const derivativeCacheStore = localforage.createInstance({
-  name: 'SignumDB',
+  name: 'SparktypeDB',
   storeName: 'derivativeCacheStore',
 });
 
@@ -9093,7 +9093,7 @@ File: core/services/images/imageCache.service.ts
 import localforage from 'localforage';
 
 const derivativeCacheStore = localforage.createInstance({
-  name: 'SignumDB',
+  name: 'SparktypeDB',
   storeName: 'derivativeCacheStore',
 });
 
@@ -13508,7 +13508,7 @@ async function bundleAssetFiles(
     await Promise.all(manifest.files.map(async (file) => {
         const content = await getAssetContent(siteData, assetType, assetId, file.path);
         if (content) {
-            const bundlePath = `_signum/${assetType}s/${assetId}/${file.path}`;
+            const bundlePath = `_site/${assetType}s/${assetId}/${file.path}`;
             bundle[bundlePath] = content;
         }
     }));
@@ -13550,22 +13550,22 @@ import { stringifyToMarkdown } from '@/core/libraries/markdownParser';
 import * as localSiteFs from '@/core/services/localFileSystem.service';
 
 /**
- * Bundles all raw source files (Markdown, manifest) into the `_signum` directory.
+ * Bundles all raw source files (Markdown, manifest) into the `_site` directory.
  */
 export async function bundleSourceFiles(bundle: SiteBundle, siteData: LocalSiteData): Promise<void> {
     // 1. Add the synchronized manifest
-    bundle['_signum/manifest.json'] = JSON.stringify(siteData.manifest, null, 2);
+    bundle['_site/manifest.json'] = JSON.stringify(siteData.manifest, null, 2);
 
     // 2. Add all content files
     siteData.contentFiles?.forEach(file => {
-        bundle[`_signum/${file.path}`] = stringifyToMarkdown(file.frontmatter, file.content);
+        bundle[`_site/${file.path}`] = stringifyToMarkdown(file.frontmatter, file.content);
     });
 
     // 3. Add all data files (e.g., categories.json)
     const dataFiles = await localSiteFs.getAllDataFiles(siteData.siteId);
     for (const [path, content] of Object.entries(dataFiles)) {
         if (typeof content === 'string') {
-            bundle[`_signum/${path}`] = content;
+            bundle[`_site/${path}`] = content;
         }
     }
 }
@@ -13691,9 +13691,9 @@ describe('source.builder', () => {
     test('adds synchronized manifest to bundle', async () => {
       await bundleSourceFiles(mockBundle, mockSiteData);
 
-      expect(mockBundle['_signum/manifest.json']).toBeDefined();
+      expect(mockBundle['_site/manifest.json']).toBeDefined();
       
-      const manifestContent = JSON.parse(mockBundle['_signum/manifest.json'] as string);
+      const manifestContent = JSON.parse(mockBundle['_site/manifest.json'] as string);
       expect(manifestContent).toEqual(mockSiteData.manifest);
       expect(manifestContent.title).toBe('Test Site');
       expect(manifestContent.theme.name).toBe('default');
@@ -13702,17 +13702,17 @@ describe('source.builder', () => {
     test('adds all content files to bundle with correct paths', async () => {
       await bundleSourceFiles(mockBundle, mockSiteData);
 
-      expect(mockBundle['_signum/content/index.md']).toBeDefined();
-      expect(mockBundle['_signum/content/about.md']).toBeDefined();
+      expect(mockBundle['_site/content/index.md']).toBeDefined();
+      expect(mockBundle['_site/content/about.md']).toBeDefined();
 
       // Verify content format
-      const homeContent = mockBundle['_signum/content/index.md'] as string;
+      const homeContent = mockBundle['_site/content/index.md'] as string;
       expect(homeContent).toContain('---');
       expect(homeContent).toContain('title: "Home Page"');
       expect(homeContent).toContain('layout: "page"');
       expect(homeContent).toContain('Welcome to our site!');
 
-      const aboutContent = mockBundle['_signum/content/about.md'] as string;
+      const aboutContent = mockBundle['_site/content/about.md'] as string;
       expect(aboutContent).toContain('title: "About Us"');
       expect(aboutContent).toContain('author: "John Doe"');
       expect(aboutContent).toContain('Learn more about us.');
@@ -13746,9 +13746,9 @@ describe('source.builder', () => {
 
       expect(localSiteFs.getAllDataFiles).toHaveBeenCalledWith('test-site');
 
-      expect(mockBundle['_signum/data/categories.json']).toBe('["tech", "lifestyle", "travel"]');
-      expect(mockBundle['_signum/data/config.yaml']).toBe('site_config: true');
-      expect(mockBundle['_signum/data/authors.json']).toBe('[{"name": "John", "bio": "Writer"}]');
+      expect(mockBundle['_site/data/categories.json']).toBe('["tech", "lifestyle", "travel"]');
+      expect(mockBundle['_site/data/config.yaml']).toBe('site_config: true');
+      expect(mockBundle['_site/data/authors.json']).toBe('[{"name": "John", "bio": "Writer"}]');
     });
 
     test('handles empty content files', async () => {
@@ -13760,11 +13760,11 @@ describe('source.builder', () => {
       await bundleSourceFiles(mockBundle, siteDataEmpty);
 
       // Should still add manifest and data files
-      expect(mockBundle['_signum/manifest.json']).toBeDefined();
-      expect(mockBundle['_signum/data/categories.json']).toBe('["tech", "lifestyle", "travel"]');
+      expect(mockBundle['_site/manifest.json']).toBeDefined();
+      expect(mockBundle['_site/data/categories.json']).toBe('["tech", "lifestyle", "travel"]');
       
       // Should not have any content files
-      expect(Object.keys(mockBundle).filter(key => key.startsWith('_signum/content/'))).toHaveLength(0);
+      expect(Object.keys(mockBundle).filter(key => key.startsWith('_site/content/'))).toHaveLength(0);
     });
 
     test('handles undefined content files', async () => {
@@ -13776,8 +13776,8 @@ describe('source.builder', () => {
       await bundleSourceFiles(mockBundle, siteDataUndefined);
 
       // Should still add manifest and data files
-      expect(mockBundle['_signum/manifest.json']).toBeDefined();
-      expect(mockBundle['_signum/data/categories.json']).toBe('["tech", "lifestyle", "travel"]');
+      expect(mockBundle['_site/manifest.json']).toBeDefined();
+      expect(mockBundle['_site/data/categories.json']).toBe('["tech", "lifestyle", "travel"]');
       
       // Should not call stringifyToMarkdown
       expect(markdownParser.stringifyToMarkdown).not.toHaveBeenCalled();
@@ -13789,11 +13789,11 @@ describe('source.builder', () => {
       await bundleSourceFiles(mockBundle, mockSiteData);
 
       // Should still add manifest and content files
-      expect(mockBundle['_signum/manifest.json']).toBeDefined();
-      expect(mockBundle['_signum/content/index.md']).toBeDefined();
+      expect(mockBundle['_site/manifest.json']).toBeDefined();
+      expect(mockBundle['_site/content/index.md']).toBeDefined();
       
       // Should not have any data files
-      expect(Object.keys(mockBundle).filter(key => key.startsWith('_signum/data/'))).toHaveLength(0);
+      expect(Object.keys(mockBundle).filter(key => key.startsWith('_site/data/'))).toHaveLength(0);
     });
 
     test('handles non-string data files', async () => {
@@ -13808,9 +13808,9 @@ describe('source.builder', () => {
       await bundleSourceFiles(mockBundle, mockSiteData);
 
       // Should only add string data files
-      expect(mockBundle['_signum/data/valid.json']).toBe('{"valid": true}');
-      expect(mockBundle['_signum/data/another.txt']).toBe('text content');
-      expect(mockBundle['_signum/data/invalid.bin']).toBeUndefined();
+      expect(mockBundle['_site/data/valid.json']).toBe('{"valid": true}');
+      expect(mockBundle['_site/data/another.txt']).toBe('text content');
+      expect(mockBundle['_site/data/invalid.bin']).toBeUndefined();
     });
 
     test('preserves manifest structure exactly', async () => {
@@ -13832,7 +13832,7 @@ describe('source.builder', () => {
 
       await bundleSourceFiles(mockBundle, siteDataComplex);
 
-      const manifestContent = JSON.parse(mockBundle['_signum/manifest.json'] as string);
+      const manifestContent = JSON.parse(mockBundle['_site/manifest.json'] as string);
       expect(manifestContent).toEqual(complexManifest);
       expect(manifestContent.author).toBe('Site Author');
       expect(manifestContent.settings.imageService).toBe('cloudinary');
@@ -13842,7 +13842,7 @@ describe('source.builder', () => {
     test('formats manifest JSON with proper indentation', async () => {
       await bundleSourceFiles(mockBundle, mockSiteData);
 
-      const manifestJson = mockBundle['_signum/manifest.json'] as string;
+      const manifestJson = mockBundle['_site/manifest.json'] as string;
       
       // Should be formatted with 2-space indentation
       expect(manifestJson).toContain('{\n  "title":');
@@ -14465,8 +14465,8 @@ describe('siteBuilder.service', () => {
     test('accumulates bundle content from all builders', async () => {
       // Mock builders to add content to bundle
       (sourceBuilder.bundleSourceFiles as jest.Mock).mockImplementation((bundle) => {
-        bundle['_signum/manifest.json'] = '{"title":"Test"}';
-        bundle['_signum/content/index.md'] = '# Home';
+        bundle['_site/manifest.json'] = '{"title":"Test"}';
+        bundle['_site/content/index.md'] = '# Home';
       });
 
       (assetBuilder.bundleAllAssets as jest.Mock).mockImplementation((bundle) => {
@@ -14485,8 +14485,8 @@ describe('siteBuilder.service', () => {
       expect(result).toEqual({
         'index.html': '<html><body>Home Page Content</body></html>',
         'about.html': '<html><body>About Page Content</body></html>',
-        '_signum/manifest.json': '{"title":"Test"}',
-        '_signum/content/index.md': '# Home',
+        '_site/manifest.json': '{"title":"Test"}',
+        '_site/content/index.md': '# Home',
         'themes/default/theme.css': 'body { margin: 0; }',
         'images/logo.png': 'binary-data',
         'sitemap.xml': '<sitemap></sitemap>',
@@ -14635,8 +14635,8 @@ describe('asset.builder', () => {
       );
 
       // Should add theme files to bundle with correct paths
-      expect(mockBundle['_signum/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
-      expect(mockBundle['_signum/themes/default/css/theme.css']).toBe('body { margin: 0; }');
+      expect(mockBundle['_site/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
+      expect(mockBundle['_site/themes/default/css/theme.css']).toBe('body { margin: 0; }');
     });
 
     test('bundles layout assets correctly', async () => {
@@ -14659,7 +14659,7 @@ describe('asset.builder', () => {
       );
 
       // Should add layout files to bundle with correct paths
-      expect(mockBundle['_signum/layouts/blog/blog.hbs']).toBe('<article>{{{content}}}</article>');
+      expect(mockBundle['_site/layouts/blog/blog.hbs']).toBe('<article>{{{content}}}</article>');
     });
 
     test('bundles only unique layouts', async () => {
@@ -14727,7 +14727,7 @@ describe('asset.builder', () => {
       await bundleAllAssets(mockBundle, mockSiteData);
 
       // Should still bundle theme and images
-      expect(mockBundle['_signum/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
+      expect(mockBundle['_site/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
       expect(mockBundle['images/logo.png']).toBe('logo-binary-data');
     });
 
@@ -14737,7 +14737,7 @@ describe('asset.builder', () => {
       await bundleAllAssets(mockBundle, mockSiteData);
 
       // Should not add null content to bundle
-      expect(mockBundle['_signum/themes/default/base.hbs']).toBeUndefined();
+      expect(mockBundle['_site/themes/default/base.hbs']).toBeUndefined();
       expect(mockBundle['images/logo.png']).toBe('logo-binary-data');
     });
 
@@ -14750,7 +14750,7 @@ describe('asset.builder', () => {
       await bundleAllAssets(mockBundle, siteDataNoContent);
 
       // Should still bundle theme and manifest images
-      expect(mockBundle['_signum/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
+      expect(mockBundle['_site/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
       expect(mockBundle['images/logo.png']).toBe('logo-binary-data');
     });
 
@@ -14776,7 +14776,7 @@ describe('asset.builder', () => {
       await bundleAllAssets(mockBundle, siteDataNoImages);
 
       // Should still bundle theme assets
-      expect(mockBundle['_signum/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
+      expect(mockBundle['_site/themes/default/base.hbs']).toBe('<html>{{{body}}}</html>');
       
       // Should not have any image assets
       expect(Object.keys(mockBundle).filter(key => key.startsWith('images/'))).toHaveLength(0);
@@ -14840,11 +14840,11 @@ import type { ThemeInfo, LayoutInfo } from '@/core/types';
 import type { RJSFSchema, UiSchema } from '@rjsf/utils'; 
 
 /**
- * The official version of the Signum generator client.
+ * The official version of the Sparktype generator client.
  * This is written to the manifest.json on site creation and can be used
  * by the theme engine or other tools to check for compatibility.
  */
-export const GENERATOR_VERSION = 'SignumClient/1.3.0';
+export const GENERATOR_VERSION = 'SparktypeClient/1.3.0';
 
 /**
  * The URL segment used to identify a new, unsaved content file.
@@ -15208,7 +15208,7 @@ export default function MarkdownRenderer({ markdown }: MarkdownRendererProps) {
 
   // Using dangerouslySetInnerHTML because 'marked' produces an HTML string.
   // Ensure that the 'markdown' content is from a trusted source or sanitized.
-  // Since in Signum, users are creating their own local content first,
+  // Since in Sparktype, users are creating their own local content first,
   // the trust level is higher for this local-only phase.
   // For remote content later, sanitization will be critical.
   return <div dangerouslySetInnerHTML={{ __html: html }} />;
@@ -18535,14 +18535,14 @@ export default function HomePageDashboard() {
 
   return (
     <>
-       <title>My Sites - Signum Dashboard</title>
+       <title>My Sites - Sparktype Dashboard</title>
       
       {/* The JSX is identical, but Next's <Link> is replaced with react-router-dom's <Link> */}
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2">
             <Leaf className="h-7 w-7 text-primary" />
-            <span className="text-2xl font-bold text-foreground hidden sm:inline">Signum</span>
+            <span className="text-2xl font-bold text-foreground hidden sm:inline">Sparktype</span>
           </Link>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
@@ -18664,14 +18664,14 @@ export default function MarketingHomePage() {
         You can render <title> and <meta> tags directly in your component.
         React 19 will automatically move them to the document <head>.
       */}
-      <title>Signum - Own Your Content</title>
+      <title>Sparktype - Own Your Content</title>
       <meta name="description" content="A simple, private, and portable publishing platform that puts you back in control." />
       
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2">
             <Leaf className="h-7 w-7 text-primary" />
-            <span className="text-2xl font-bold text-foreground hidden sm:inline">Signum</span>
+            <span className="text-2xl font-bold text-foreground hidden sm:inline">Sparktype</span>
           </Link>
           <Button asChild variant="ghost">
             <Link to="/sites">Dashboard</Link>
@@ -18682,7 +18682,7 @@ export default function MarketingHomePage() {
       <div className="container mx-auto px-4 py-16 sm:py-24 text-center">
         <header className="mb-12">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-foreground">
-            Signum: Own Your Content.
+            Sparktype: Own Your Content.
           </h1>
           <p className="mt-4 max-w-2xl mx-auto text-lg sm:text-xl text-muted-foreground">
             A simple, private, and portable publishing platform that puts you back in control.
@@ -18818,7 +18818,7 @@ export default function CreateSitePage() {
   return (
     <>
       {/* React 19 native head management */}
-      <title>Create New Site - Signum</title>
+      <title>Create New Site - Sparktype</title>
 
       <div className="container mx-auto p-4 max-w-2xl">
         <div className="space-y-6">
@@ -18970,7 +18970,7 @@ export default function SiteLayout() {
             title="Dashboard"
             className='lg:flex hidden flex-col items-center w-[60px] h-[60px] border-b'
           >
-            <img src="/signum.svg" width={34} height={34} alt="Signum Logo" className='m-auto' />
+            <img src="/signum.svg" width={34} height={34} alt="Sparktype Logo" className='m-auto' />
           </Link>
           
           {navItems.map((item) => (
@@ -19746,8 +19746,8 @@ export default function EditContentPage() {
   const isSiteEmpty = siteId && siteStructure.length === 0 && !isNewFileMode;
   
   const pageTitle = status === 'ready' && frontmatter?.title 
-    ? `Editing: ${frontmatter.title} | ${site?.manifest.title || 'Signum'}` 
-    : `Editor - ${site?.manifest.title || 'Signum'}`;
+    ? `Editing: ${frontmatter.title} | ${site?.manifest.title || 'Sparktype'}` 
+    : `Editor - ${site?.manifest.title || 'Sparktype'}`;
 
   // --- THIS IS THE FIX ---
   // Define the header actions as a separate variable *before* the return statement.

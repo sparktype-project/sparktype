@@ -1,7 +1,7 @@
 // src/core/services/theme-engine/helpers/pager.helper.ts
 
 import Handlebars from 'handlebars';
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 import type { PaginationData } from '@/core/types';
 
 /**
@@ -31,8 +31,8 @@ function isPaginationData(data: unknown): data is PaginationData {
  * @example
  * {{{pager pagination}}}
  */
-export const pagerHelper: SignumHelper = () => ({
-  // --- FIX: The function signature now correctly matches SignumHelperFunction ---
+export const pagerHelper: SparktypeHelper = () => ({
+  // --- FIX: The function signature now correctly matches SparktypeHelperFunction ---
   pager: function(...args: unknown[]): Handlebars.SafeString {
     // The pagination object is the first argument passed from the template.
     const pagination = args[0];

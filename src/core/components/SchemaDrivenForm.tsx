@@ -11,6 +11,7 @@ import type {
   FormContextType
  } from '@rjsf/utils';
 import { Label } from '@/core/components/ui/label';
+import SwitchWidget from '@/features/editor/components/SwitchWidget';
 
 
 // --- Props Definition ---
@@ -96,6 +97,12 @@ export default function SchemaDrivenForm<T>({
 }: SchemaDrivenFormProps<T>) {
 
   const safeFormData = formData || {};
+  
+  // Always include essential widgets, with user widgets taking precedence
+  const mergedWidgets = {
+    switch: SwitchWidget,
+    ...widgets,
+  };
 
   return (
     <Form
@@ -106,7 +113,7 @@ export default function SchemaDrivenForm<T>({
       onChange={(e) => onFormChange(e.formData)}
       liveValidate={liveValidate}
       showErrorList={false}
-      widgets={widgets}
+      widgets={mergedWidgets}
       formContext={formContext}
       
       templates={{

@@ -1,7 +1,7 @@
 // src/features/site-settings/components/SettingsNav.tsx
 
 import { NavLink, useParams } from 'react-router-dom'; // Import NavLink and useParams
-import { TbUserCircle, TbPalette, TbPhoto } from 'react-icons/tb';
+import { TbUserCircle, TbPalette, TbPhoto, TbCloudUpload } from 'react-icons/tb';
 import { cn } from '@/core/libraries/utils';
 
 /**
@@ -19,6 +19,7 @@ export default function SettingsNav() {
     { to: settingsBasePath, title: 'Site details', icon: TbUserCircle, end: true },
     { to: `${settingsBasePath}/theme`, title: 'Theme config', icon: TbPalette, end: false },
     { to: `${settingsBasePath}/images`, title: 'Image handling', icon: TbPhoto, end: false },
+    { to: `${settingsBasePath}/publishing`, title: 'Publishing', icon: TbCloudUpload, end: false },
   ];
 
   return (

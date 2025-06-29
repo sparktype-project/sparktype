@@ -1,5 +1,5 @@
 // src/core/services/theme-engine/helpers/comparison.helper.ts
-import type { SignumHelper } from './types';
+import type { SparktypeHelper } from './types';
 
 /**
  * Provides a set of comparison helpers for Handlebars templates.
@@ -9,7 +9,7 @@ import type { SignumHelper } from './types';
  * {{#if (eq post.status "published")}} ... {{/if}}
  * {{#if (gt comment.likes 10)}} ... {{/if}}
  */
-export const comparisonHelpers: SignumHelper = () => ({
+export const comparisonHelpers: SparktypeHelper = () => ({
   /**
    * Checks for strict equality (===). Safe for any type.
    */

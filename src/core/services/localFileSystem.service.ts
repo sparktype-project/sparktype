@@ -3,7 +3,7 @@ import { type LocalSiteData, type ParsedMarkdownFile, type Manifest, type RawFil
 import localforage from 'localforage';
 import { stringifyToMarkdown, parseMarkdownString } from '@/core/libraries/markdownParser';
 
-const DB_NAME = 'SignumDB';
+const DB_NAME = 'SparktypeDB';
 
 const siteManifestsStore = localforage.createInstance({
   name: DB_NAME,

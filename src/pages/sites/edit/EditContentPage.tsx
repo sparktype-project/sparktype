@@ -108,8 +108,8 @@ function EditContentPageInternal() {
   const isSiteEmpty = siteId && siteStructure.length === 0 && !isNewFileMode;
 
   const pageTitle = status === 'ready' && frontmatter?.title 
-    ? `Editing: ${frontmatter.title} | ${site?.manifest.title || 'Signum'}` 
-    : `Editor - ${site?.manifest.title || 'Signum'}`;
+    ? `Editing: ${frontmatter.title} | ${site?.manifest.title || 'Sparktype'}` 
+    : `Editor - ${site?.manifest.title || 'Sparktype'}`;
 
   const headerActions = isSiteEmpty ? null : <SaveButton />;
 

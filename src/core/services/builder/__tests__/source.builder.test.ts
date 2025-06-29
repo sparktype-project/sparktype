@@ -83,9 +83,9 @@ describe('source.builder', () => {
     test('adds synchronized manifest to bundle', async () => {
       await bundleSourceFiles(mockBundle, mockSiteData);
 
-      expect(mockBundle['_signum/manifest.json']).toBeDefined();
+      expect(mockBundle['_site/manifest.json']).toBeDefined();
       
-      const manifestContent = JSON.parse(mockBundle['_signum/manifest.json'] as string);
+      const manifestContent = JSON.parse(mockBundle['_site/manifest.json'] as string);
       expect(manifestContent).toEqual(mockSiteData.manifest);
       expect(manifestContent.title).toBe('Test Site');
       expect(manifestContent.theme.name).toBe('default');
@@ -94,17 +94,17 @@ describe('source.builder', () => {
     test('adds all content files to bundle with correct paths', async () => {
       await bundleSourceFiles(mockBundle, mockSiteData);
 
-      expect(mockBundle['_signum/content/index.md']).toBeDefined();
-      expect(mockBundle['_signum/content/about.md']).toBeDefined();
+      expect(mockBundle['_site/content/index.md']).toBeDefined();
+      expect(mockBundle['_site/content/about.md']).toBeDefined();
 
       // Verify content format
-      const homeContent = mockBundle['_signum/content/index.md'] as string;
+      const homeContent = mockBundle['_site/content/index.md'] as string;
       expect(homeContent).toContain('---');
       expect(homeContent).toContain('title: "Home Page"');
       expect(homeContent).toContain('layout: "page"');
       expect(homeContent).toContain('Welcome to our site!');
 
-      const aboutContent = mockBundle['_signum/content/about.md'] as string;
+      const aboutContent = mockBundle['_site/content/about.md'] as string;
       expect(aboutContent).toContain('title: "About Us"');
       expect(aboutContent).toContain('author: "John Doe"');
       expect(aboutContent).toContain('Learn more about us.');
@@ -138,9 +138,9 @@ describe('source.builder', () => {
 
       expect(localSiteFs.getAllDataFiles).toHaveBeenCalledWith('test-site');
 
-      expect(mockBundle['_signum/data/categories.json']).toBe('["tech", "lifestyle", "travel"]');
-      expect(mockBundle['_signum/data/config.yaml']).toBe('site_config: true');
-      expect(mockBundle['_signum/data/authors.json']).toBe('[{"name": "John", "bio": "Writer"}]');
+      expect(mockBundle['_site/data/categories.json']).toBe('["tech", "lifestyle", "travel"]');
+      expect(mockBundle['_site/data/config.yaml']).toBe('site_config: true');
+      expect(mockBundle['_site/data/authors.json']).toBe('[{"name": "John", "bio": "Writer"}]');
     });
 
     test('handles empty content files', async () => {
@@ -152,11 +152,11 @@ describe('source.builder', () => {
       await bundleSourceFiles(mockBundle, siteDataEmpty);
 
       // Should still add manifest and data files
-      expect(mockBundle['_signum/manifest.json']).toBeDefined();
-      expect(mockBundle['_signum/data/categories.json']).toBe('["tech", "lifestyle", "travel"]');
+      expect(mockBundle['_site/manifest.json']).toBeDefined();
+      expect(mockBundle['_site/data/categories.json']).toBe('["tech", "lifestyle", "travel"]');
       
       // Should not have any content files
-      expect(Object.keys(mockBundle).filter(key => key.startsWith('_signum/content/'))).toHaveLength(0);
+      expect(Object.keys(mockBundle).filter(key => key.startsWith('_site/content/'))).toHaveLength(0);
     });
 
     test('handles undefined content files', async () => {
@@ -168,8 +168,8 @@ describe('source.builder', () => {
       await bundleSourceFiles(mockBundle, siteDataUndefined);
 
       // Should still add manifest and data files
-      expect(mockBundle['_signum/manifest.json']).toBeDefined();
-      expect(mockBundle['_signum/data/categories.json']).toBe('["tech", "lifestyle", "travel"]');
+      expect(mockBundle['_site/manifest.json']).toBeDefined();
+      expect(mockBundle['_site/data/categories.json']).toBe('["tech", "lifestyle", "travel"]');
       
       // Should not call stringifyToMarkdown
       expect(markdownParser.stringifyToMarkdown).not.toHaveBeenCalled();
@@ -181,11 +181,11 @@ describe('source.builder', () => {
       await bundleSourceFiles(mockBundle, mockSiteData);
 
       // Should still add manifest and content files
-      expect(mockBundle['_signum/manifest.json']).toBeDefined();
-      expect(mockBundle['_signum/content/index.md']).toBeDefined();
+      expect(mockBundle['_site/manifest.json']).toBeDefined();
+      expect(mockBundle['_site/content/index.md']).toBeDefined();
       
       // Should not have any data files
-      expect(Object.keys(mockBundle).filter(key => key.startsWith('_signum/data/'))).toHaveLength(0);
+      expect(Object.keys(mockBundle).filter(key => key.startsWith('_site/data/'))).toHaveLength(0);
     });
 
     test('handles non-string data files', async () => {
@@ -200,9 +200,9 @@ describe('source.builder', () => {
       await bundleSourceFiles(mockBundle, mockSiteData);
 
       // Should only add string data files
-      expect(mockBundle['_signum/data/valid.json']).toBe('{"valid": true}');
-      expect(mockBundle['_signum/data/another.txt']).toBe('text content');
-      expect(mockBundle['_signum/data/invalid.bin']).toBeUndefined();
+      expect(mockBundle['_site/data/valid.json']).toBe('{"valid": true}');
+      expect(mockBundle['_site/data/another.txt']).toBe('text content');
+      expect(mockBundle['_site/data/invalid.bin']).toBeUndefined();
     });
 
     test('preserves manifest structure exactly', async () => {
@@ -224,7 +224,7 @@ describe('source.builder', () => {
 
       await bundleSourceFiles(mockBundle, siteDataComplex);
 
-      const manifestContent = JSON.parse(mockBundle['_signum/manifest.json'] as string);
+      const manifestContent = JSON.parse(mockBundle['_site/manifest.json'] as string);
       expect(manifestContent).toEqual(complexManifest);
       expect(manifestContent.author).toBe('Site Author');
       expect(manifestContent.settings.imageService).toBe('cloudinary');
@@ -234,7 +234,7 @@ describe('source.builder', () => {
     test('formats manifest JSON with proper indentation', async () => {
       await bundleSourceFiles(mockBundle, mockSiteData);
 
-      const manifestJson = mockBundle['_signum/manifest.json'] as string;
+      const manifestJson = mockBundle['_site/manifest.json'] as string;
       
       // Should be formatted with 2-space indentation
       expect(manifestJson).toContain('{\n  "title":');
