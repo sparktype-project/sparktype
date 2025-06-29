@@ -131,7 +131,7 @@ export default function FileTreeNode({
           )}
           
           {isDraft && (
-            <EyeOff className="h-3 w-3 shrink-0 text-muted-foreground/60 ml-1" title="Draft - not published" />
+            <EyeOff className="h-3 w-3 shrink-0 text-muted-foreground/60 ml-1" />
           )}
           
           {/* CORRECT: Use the react-router-dom Link with the `to` prop */}
