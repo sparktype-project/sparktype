@@ -123,7 +123,7 @@ export default function HomePageDashboard() {
 
   return (
     <>
-       <title>My Sites - Sparktype</title>
+       <title>My sites - Sparktype</title>
       
       {/* The JSX is identical, but Next's <Link> is replaced with react-router-dom's <Link> */}
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
