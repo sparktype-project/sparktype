@@ -127,7 +127,7 @@ export default function HomePageDashboard() {
       
       {/* The JSX is identical, but Next's <Link> is replaced with react-router-dom's <Link> */}
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2">
             <img src="/sparktype.svg" className='size-7' />
             <span className="text-2xl font-bold text-foreground hidden sm:inline">Sparktype</span>
@@ -143,12 +143,12 @@ export default function HomePageDashboard() {
         </div>
       </header>
       
-      <main className="container mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="p-4">
         <h1 className="text-3xl font-bold text-foreground mb-8">My sites</h1>
         {validSites.length === 0 ? (
           <div className="text-center py-10 border-2 border-dashed border-muted rounded-lg">
-            <h2 className="text-xl font-semibold text-muted-foreground mb-2">No Sites Yet!</h2>
-            <p className="text-muted-foreground mb-4">Click "Create New Site" or "Import Site" to get started.</p>
+            <h2 className="text-xl font-semibold text-muted-foreground mb-2">No sites yet</h2>
+            <p className="text-muted-foreground mb-4">Click create new site or import a site to get started.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
