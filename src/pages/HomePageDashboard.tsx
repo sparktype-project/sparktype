@@ -15,7 +15,7 @@ import { slugify } from '@/core/libraries/utils';
 // UI Components & Icons (no changes needed)
 import { Button } from '@/core/components/ui/button';
 import { toast } from 'sonner';
-import { FilePlus2, Leaf, Upload, Eye, Edit3, Archive, Trash2, MoreVertical } from 'lucide-react';
+import { FilePlus2, Upload, Eye, Edit3, Archive, Trash2, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/core/components/ui/alert-dialog";
 import CreateSiteModal from '@/core/components/CreateSiteModal';
@@ -129,7 +129,7 @@ export default function HomePageDashboard() {
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2">
-            <Leaf className="h-7 w-7 text-primary" />
+            <img src="/sparktype.svg" className='size-7' />
             <span className="text-2xl font-bold text-foreground hidden sm:inline">Sparktype</span>
           </Link>
           <div className="flex items-center gap-2">

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 // UI Components (no changes needed)
 import { Button } from '@/core/components/ui/button';
-import { ShieldCheck, Feather, Zap, Archive, Leaf } from 'lucide-react';
+import { ShieldCheck, Feather, Zap, Archive } from 'lucide-react';
 
 // NO MORE 'react-helmet-async' import needed!
 
@@ -22,7 +22,7 @@ export default function MarketingHomePage() {
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2">
-            <Leaf className="h-7 w-7 text-primary" />
+            <img src="/sparktype.svg" className='size-7' />
             <span className="text-2xl font-bold text-foreground hidden sm:inline">Sparktype</span>
           </Link>
           <Button asChild variant="ghost">

@@ -88,7 +88,12 @@ a:hover {
     font-size: 18px;
 
 }
-
+.prose p.f3 {
+  font-size: 1.5rem;
+}
+.prose p.f4 {
+  font-size: 1.4rem;
+}
 /* Links inside prose content get an underline on hover */
 .prose a {
   font-weight: 500;
@@ -202,4 +207,7 @@ a:hover {
   object-fit: cover;
   overflow: hidden;
   object-position: center;
+}
+.header-60 {
+  height: 59px;
 }

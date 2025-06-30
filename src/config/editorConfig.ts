@@ -91,12 +91,12 @@ export const BASE_SCHEMA: { schema: RJSFSchema; uiSchema: UiSchema } = {
     properties: {
       // --- CORRECTED SECTION ---
       featured_image: {
-        title: 'Featured Image',
+        title: 'Featured image',
         description: 'The main image for this content, used in listings and social sharing.',
         type: 'string',
       },
       banner_image: {
-        title: 'Banner Image',
+        title: 'Banner image',
         description: 'A large, wide image for the top of the page.',
         type: 'string', 
       },
@@ -107,7 +107,7 @@ export const BASE_SCHEMA: { schema: RJSFSchema; uiSchema: UiSchema } = {
       },
       menuTitle: {
         type: 'string',
-        title: 'Menu Title',
+        title: 'Menu title',
         description: 'Alternative title to use in navigation menus. If not set, the page title will be used.',
       },
       date: {
@@ -124,13 +124,6 @@ export const BASE_SCHEMA: { schema: RJSFSchema; uiSchema: UiSchema } = {
         type: 'string',
         title: 'Author',
       },
-      tags: {
-        type: 'array',
-        title: 'Tags',
-        items: {
-          type: 'string',
-        },
-      },
     },
   },
    uiSchema: {
@@ -145,12 +138,7 @@ export const BASE_SCHEMA: { schema: RJSFSchema; uiSchema: UiSchema } = {
     slug: {
       'ui:widget': 'hidden',
     },
-    tags: {
-      'ui:options': {
-        addable: true,
-        removable: true,
-      },
-    },
+
     published: {
       'ui:widget': 'switch',
     },

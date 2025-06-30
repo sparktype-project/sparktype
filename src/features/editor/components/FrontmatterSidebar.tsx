@@ -132,13 +132,13 @@ export default function FrontmatterSidebar({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-grow overflow-y-auto p-3">
+      <div className="flex-grow overflow-y-auto">
         <Accordion type="multiple" defaultValue={defaultOpenSections} className="w-full">
           
           {!isCollectionItem && (
             <AccordionItem value="content-type">
               <AccordionTrigger>Content Type</AccordionTrigger>
-              <AccordionContent className="pt-4">
+              <AccordionContent>
                 <ContentTypeSelector
                   availableTypes={availableContentTypes}
                   selectedType={frontmatter.layout || (isCollectionPage ? 'blog' : 'page')}
@@ -151,7 +151,7 @@ export default function FrontmatterSidebar({
           {isCollectionPage && (
             <AccordionItem value="list-settings">
               <AccordionTrigger>List Settings</AccordionTrigger>
-              <AccordionContent className="pt-4">
+              <AccordionContent>
                 <CollectionSettingsForm
                   frontmatter={frontmatter}
                   onFrontmatterChange={onFrontmatterChange}
@@ -163,7 +163,7 @@ export default function FrontmatterSidebar({
 
           <AccordionItem value="metadata">
             <AccordionTrigger>Metadata</AccordionTrigger>
-            <AccordionContent className="pt-4">
+            <AccordionContent>
               <PageMetadataForm
                 siteId={siteId}
                 frontmatter={frontmatter}
@@ -176,7 +176,7 @@ export default function FrontmatterSidebar({
 
           <AccordionItem value="advanced">
             <AccordionTrigger>Advanced</AccordionTrigger>
-            <AccordionContent className="space-y-4 pt-4">
+            <AccordionContent className="space-y-4">
               <AdvancedSettingsForm
                 slug={slug}
                 onSlugChange={onSlugChange}

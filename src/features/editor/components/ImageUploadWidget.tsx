@@ -89,7 +89,6 @@ export default function ImageUploadWidget(props: WidgetProps) {
       
       {previewUrl ? (
         <div className="relative w-full aspect-video bg-muted rounded-md overflow-hidden">
-           {/* FIX: Replaced next/image's <Image> with a standard <img> tag. */}
           <img src={previewUrl} alt={`${label} preview`} className="absolute inset-0 w-full h-full object-contain" />
           <Button 
             size="icon" 

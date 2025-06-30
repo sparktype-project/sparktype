@@ -11,22 +11,22 @@
       We use the `{{{image}}}` helper to generate the full <img> tag.
       `crop='scale'` will resize it to fit the width without distortion.
     --}}
-   
+   <div class="mw7 center">
     
     <h1>{{contentFile.frontmatter.title}}</h1>
 
-    {{!-- 
-      FIX: Use the pre-resolved 'featured' image preset.
-    --}}
     {{#if images.featured}}
         <figure class="featured-image-wrapper">
             <img src="{{images.featured.url}}" width="{{images.featured.width}}" height="{{images.featured.height}}" class="db center" alt="{{contentFile.frontmatter.title}}">
         </figure>
     {{/if}}
+    
 
     <p class="f4">{{contentFile.frontmatter.description}} </p>
     
     {{{markdown contentFile.content}}}
+
+    </div>
 
     {{#if collectionItems}}
         <hr/>

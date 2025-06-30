@@ -56,7 +56,7 @@ function SiteIcon({ site }: { site: AppStore['sites'][0] }) {
   const firstLetter = site.manifest.title ? site.manifest.title.charAt(0).toUpperCase() : '?';
   
   return (
-    <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
+    <div className="flex h-full w-full items-center justify-center border rounded-lg text-muted-foreground">
       <span className="text-xl font-semibold">{firstLetter}</span>
     </div>
   );
@@ -121,13 +121,13 @@ export default function SiteLayout() {
   return (
     <div className="flex h-screen flex-col lg:flex-row bg-muted/20">
       <aside className="fixed inset-x-0 bottom-0 z-30 flex h-16 w-full shrink-0 border-t bg-background lg:static lg:inset-y-0 lg:left-0 lg:h-full lg:w-[60px] lg:border-r lg:border-t-0">
-        <nav className="flex w-full items-center justify-center gap-4 px-2 lg:flex-col lg:justify-start lg:py-4">
+        <nav className="flex w-full items-center justify-center gap-2  lg:flex-col lg:justify-start">
           <Link
             to="/sites"
             title="Dashboard"
-            className='lg:flex hidden flex-col items-center w-[40px] h-[40px] mb-4'
+            className='lg:flex hidden flex-col items-center w-[60px] h-[60px] border-b'
           >
-            <img src="/signum.svg" width={32} height={32} alt="Sparktype Logo" className='m-auto'/>
+            <img src="/sparktype.svg" width={32} height={32} alt="Sparktype Logo" className='m-auto'/>
           </Link>
           
           {navItems.map((item) => {
