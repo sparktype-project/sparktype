@@ -14,6 +14,7 @@ import { concatHelper } from './concat.helper';
 import { imageUrlHelper } from './imageUrl.helper';
 import { renderLayoutHelper } from './renderLayout.helper';
 import { renderItemHelper } from './renderItem.helper';
+import { renderCollectionHelper } from './renderCollection.helper';
 import { themeDataHelper, rawThemeDataHelper } from './themeData.helper';
 
 export const coreHelpers: SparktypeHelper[] = [
@@ -23,6 +24,7 @@ export const coreHelpers: SparktypeHelper[] = [
   comparisonHelpers,
   markdownHelper,
   renderItemHelper, 
+  renderCollectionHelper,
   pagerHelper,
   getUrlHelper,
   assignHelper,

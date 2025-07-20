@@ -2,8 +2,9 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Manifest, RawFile, StructureNode, ParsedMarkdownFile, MarkdownFrontmatter } from '@/core/types';
+import type { Manifest, RawFile, StructureNode, ParsedMarkdownFile, MarkdownFrontmatter, LayoutConfig } from '@/core/types';
 import { getAvailableLayouts } from '@/core/services/config/configHelpers.service';
+import { isCollectionTypeLayout } from '@/core/services/config/configHelpers.service';
 import { type LayoutManifest } from '@/core/types';
 
 // UI Component Imports
@@ -14,7 +15,7 @@ import { Trash2 } from 'lucide-react';
 
 // Form & Sub-component Imports
 import ContentTypeSelector from '@/features/editor/components/forms/ContentTypeSelector';
-import CollectionSettingsForm from '@/features/editor/components/forms/CollectionSettingsForm';
+import CollectionLayoutForm from '@/features/editor/components/forms/CollectionLayoutForm';
 import PageMetadataForm from '@/features/editor/components/forms/PageMetaDataForm';
 import AdvancedSettingsForm from '@/features/editor/components/forms/AdvancedSettingsForm';
 
@@ -105,19 +106,18 @@ export default function FrontmatterSidebar({
     return allLayouts.find(l => l.id === parentFile.frontmatter.layout) ?? null;
   }, [allLayouts, isCollectionItem, parentFile]);
 
-  const availableContentTypes = useMemo(() => {
-    const requiredType = isCollectionPage ? 'collection' : 'page';
-    const filtered = allLayouts.filter(layout => layout.layoutType === requiredType);
-
-    // De-duplicate by id to prevent React key warnings
-    const unique = Array.from(new Map(filtered.map(item => [item.id, item])).values());
-    return unique;
-    
-  }, [allLayouts, isCollectionPage]);
 
   const handleContentTypeChange = useCallback((newLayoutId: string) => {
     onFrontmatterChange({ layout: newLayoutId });
   }, [onFrontmatterChange]);
+
+  const handleLayoutConfigChange = useCallback((newConfig: LayoutConfig) => {
+    onFrontmatterChange({ layoutConfig: newConfig });
+  }, [onFrontmatterChange]);
+
+  const isCollectionLayout = useMemo(() => {
+    return frontmatter.layout ? isCollectionTypeLayout(frontmatter.layout) : false;
+  }, [frontmatter.layout]);
 
   // FIX #2: Add a loading guard to prevent rendering with incomplete data.
   // This ensures `currentLayoutManifest` is populated before children render.
@@ -126,8 +126,8 @@ export default function FrontmatterSidebar({
   }
 
   const defaultOpenSections = ['content-type', 'metadata', 'advanced'];
-  if (isCollectionPage) {
-    defaultOpenSections.push('list-settings');
+  if (isCollectionLayout) {
+    defaultOpenSections.push('collection-settings');
   }
 
   return (
@@ -140,7 +140,7 @@ export default function FrontmatterSidebar({
               <AccordionTrigger>Content Type</AccordionTrigger>
               <AccordionContent>
                 <ContentTypeSelector
-                  availableTypes={availableContentTypes}
+                  siteId={siteId}
                   selectedType={frontmatter.layout || (isCollectionPage ? 'blog' : 'page')}
                   onChange={handleContentTypeChange}
                 />
@@ -148,14 +148,15 @@ export default function FrontmatterSidebar({
             </AccordionItem>
           )}
 
-          {isCollectionPage && (
-            <AccordionItem value="list-settings">
-              <AccordionTrigger>List Settings</AccordionTrigger>
+          {isCollectionLayout && (
+            <AccordionItem value="collection-settings">
+              <AccordionTrigger>Collection Settings</AccordionTrigger>
               <AccordionContent>
-                <CollectionSettingsForm
-                  frontmatter={frontmatter}
-                  onFrontmatterChange={onFrontmatterChange}
-                  layoutManifest={currentLayoutManifest}
+                <CollectionLayoutForm
+                  siteId={siteId}
+                  selectedLayout={frontmatter.layout || ''}
+                  layoutConfig={frontmatter.layoutConfig}
+                  onLayoutConfigChange={handleLayoutConfigChange}
                 />
               </AccordionContent>
             </AccordionItem>

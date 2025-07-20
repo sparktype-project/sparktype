@@ -45,7 +45,7 @@ export default function SiteViewer() {
 
     // The slug array is derived from the relative path inside the viewer
     const slugArray = currentRelativePath.split('/').filter(Boolean);
-    const resolution = resolvePageContent(site, slugArray);
+    const resolution = await resolvePageContent(site, slugArray);
     
     if (resolution.type === PageType.NotFound) {
       setErrorMessage(resolution.errorMessage);

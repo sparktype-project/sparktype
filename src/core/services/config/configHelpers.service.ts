@@ -10,6 +10,7 @@ import type {
     RawFile,
     LayoutManifest, // Now imported
 } from '@/core/types';
+import { getAvailableCollectionTypes } from '../collectionTypes.service';
 
 
 
@@ -188,4 +189,78 @@ export async function getAvailableLayouts(
   }
 
   return allManifests;
+}
+
+/**
+ * Gets all available layout options including both regular layouts and collection type layouts.
+ * Returns LayoutInfo objects that can be used in UI selectors.
+ */
+export async function getAllAvailableLayoutOptions(
+  siteData: SiteDataForAssets
+): Promise<LayoutInfo[]> {
+  const layouts: LayoutInfo[] = [];
+  
+  // 1. Add regular page and collection layouts
+  const regularLayouts = await getAvailableLayouts(siteData);
+  regularLayouts.forEach(manifest => {
+    layouts.push({
+      id: manifest.id,
+      name: manifest.name,
+      type: manifest.layoutType,
+      path: manifest.id, // For regular layouts, id and path are the same
+      description: manifest.description
+    });
+  });
+  
+  // 2. Add collection type layouts dynamically
+  try {
+    const collectionTypes = await getAvailableCollectionTypes();
+    for (const {id: typeId, manifest} of collectionTypes) {
+      for (const [layoutKey, layoutDef] of Object.entries(manifest.layouts)) {
+        layouts.push({
+          id: `${typeId}.${layoutKey}`, // e.g., 'blog.listing', 'portfolio.grid'
+          name: `${layoutDef.name} (${manifest.name})`, // e.g., 'Blog Listing (Blog)'
+          type: 'collection',
+          path: `${typeId}.${layoutKey}`, // Collection type layouts use compound paths
+          description: layoutDef.description,
+          // Add metadata to distinguish collection layouts
+          collectionTypeId: typeId,
+          layoutKey: layoutKey
+        } as LayoutInfo & { collectionTypeId?: string; layoutKey?: string });
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load collection type layouts:', error);
+    // Continue without collection layouts if there's an error
+  }
+  
+  return layouts;
+}
+
+/**
+ * Checks if a layout ID refers to a collection type layout.
+ * Collection type layouts have the format: 'typeId.layoutKey'
+ */
+export function isCollectionTypeLayout(layoutId: string): boolean {
+  return layoutId.includes('.') && !isCoreLayout(layoutId);
+}
+
+/**
+ * Parses a collection type layout ID into its components.
+ * Returns null if the ID is not a valid collection type layout.
+ */
+export function parseCollectionTypeLayoutId(layoutId: string): {typeId: string, layoutKey: string} | null {
+  if (!isCollectionTypeLayout(layoutId)) {
+    return null;
+  }
+  
+  const parts = layoutId.split('.');
+  if (parts.length !== 2) {
+    return null;
+  }
+  
+  return {
+    typeId: parts[0],
+    layoutKey: parts[1]
+  };
 }

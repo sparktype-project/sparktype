@@ -3,7 +3,7 @@
 import Handlebars from 'handlebars';
 import type { LocalSiteData, PageResolutionResult, LayoutManifest } from '@/core/types';
 import { PageType } from '@/core/types';
-import { getAssetContent, getLayoutManifest } from '@/core/services/config/configHelpers.service';
+import { getAssetContent, getLayoutManifest, isCollectionTypeLayout } from '@/core/services/config/configHelpers.service';
 import { getActiveImageService } from '@/core/services/images/images.service';
 import { getMergedThemeDataForForm } from '@/core/services/config/theme.service';
 import { prepareRenderEnvironment } from './asset.service';
@@ -25,21 +25,18 @@ function getBodyTemplatePath(resolution: PageResolutionResult, pageLayoutManifes
 
     if (resolution.type === PageType.NotFound) return 'index.hbs'; // Fallback
     
-    // --- FIX: This logic was flawed. It was trying to read collection options for a single page. ---
-    // It should check if the current page is a collection page or a collection *item*.
-    const isCollectionPage = !!resolution.contentFile.frontmatter.collection;
+    // Check if this page uses a collection layout with layoutConfig
+    const layoutConfig = resolution.contentFile.frontmatter.layoutConfig;
+    const isCollectionPage = !!layoutConfig?.collectionId;
 
-    if (isCollectionPage) {
-        // This is a collection list page (e.g., /blog)
-        const collectionOptions = resolution.contentFile.frontmatter.collection || {};
-        const choiceKey = (collectionOptions.listingStyle as string) || pageLayoutManifest?.display_options?.listingStyle?.default;
-        const template = choiceKey ? pageLayoutManifest?.display_options?.listingStyle.options[choiceKey]?.template : 'index.hbs';
+    if (isCollectionPage && layoutConfig) {
+        // This is a collection layout page - use display options from layoutConfig
+        const displayOptions = layoutConfig.displayOptions || {};
+        const choiceKey = displayOptions.style || pageLayoutManifest?.display_options?.style?.default;
+        const template = choiceKey ? pageLayoutManifest?.display_options?.style?.options[choiceKey]?.template : 'index.hbs';
         return template || 'index.hbs';
     } else {
-        // This is a single page or a collection item page (e.g., /blog/my-post).
-        // For collection items, the layout choice comes from the *parent* collection's config.
-        // This logic is complex for the renderer; for now, we assume a single item template per layout.
-        // A more robust solution might involve looking up the parent config, but this is a safe default.
+        // This is a single page or a collection item page
         return pageLayoutManifest?.files.find(f => f.path.includes('item.hbs'))?.path || 'index.hbs';
     }
 }
@@ -64,7 +61,17 @@ export async function render(
 
     // 2. Get Services and Manifests
     const imageService = getActiveImageService(synchronizedSiteData.manifest);
-    const pageLayoutManifest = await getLayoutManifest(synchronizedSiteData, resolution.layoutPath);
+    
+    // If this is a collection type layout (e.g., "blog.listing"), use a fallback regular layout
+    // The collection rendering will be handled by the render_collection helper
+    let actualLayoutPath = resolution.layoutPath;
+    if (isCollectionTypeLayout(resolution.layoutPath)) {
+        // Use "page" as the fallback layout for collection type layouts
+        // This allows pages with collection layouts to still have a base page structure
+        actualLayoutPath = 'page';
+    }
+    
+    const pageLayoutManifest = await getLayoutManifest(synchronizedSiteData, actualLayoutPath);
 
     // 3. Assemble Contexts
     const pageContext = await assemblePageContext(synchronizedSiteData, resolution, options, imageService, pageLayoutManifest);
@@ -72,8 +79,8 @@ export async function render(
 
     // 4. Compile and Render Body
     const bodyTemplatePath = getBodyTemplatePath(resolution, pageLayoutManifest);
-    const bodyTemplateSource = await getAssetContent(synchronizedSiteData, 'layout', resolution.layoutPath, bodyTemplatePath);
-    if (!bodyTemplateSource) throw new Error(`Body template not found: layouts/${resolution.layoutPath}/${bodyTemplatePath}`);
+    const bodyTemplateSource = await getAssetContent(synchronizedSiteData, 'layout', actualLayoutPath, bodyTemplatePath);
+    if (!bodyTemplateSource) throw new Error(`Body template not found: layouts/${actualLayoutPath}/${bodyTemplatePath}`);
     
     // --- FIX #1: AWAIT the template execution to resolve async helpers inside the body. ---
     const bodyHtml = await Handlebars.compile(bodyTemplateSource)(pageContext);

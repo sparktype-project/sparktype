@@ -5,6 +5,7 @@ import { produce } from 'immer';
 import {  type LocalSiteData,  type Manifest } from '@/core/types';
 import * as localSiteFs from '@/core/services/localFileSystem.service';
 import { loadSiteSecretsFromDb } from '@/core/services/siteSecrets.service';
+import { cleanCollectionItemsFromStructure } from '@/core/services/collections.service';
 import { toast } from 'sonner';
 
 export interface SiteSlice {
@@ -16,6 +17,7 @@ export interface SiteSlice {
   updateManifest: (siteId: string, manifest: Manifest) => Promise<void>;
   deleteSiteAndState: (siteId: string) => Promise<void>;
   initializeSites: () => Promise<void>;
+  migrateCollectionStructures: () => Promise<void>;
 }
 
 export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set, get) => ({
@@ -49,8 +51,16 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
     set(produce(draft => { draft.loadingSites.add(siteId); }));
 
     try {
-      const manifest = await localSiteFs.getManifestById(siteId);
-      if (!manifest) throw new Error(`Failed to load manifest for siteId: ${siteId}`);
+      const rawManifest = await localSiteFs.getManifestById(siteId);
+      if (!rawManifest) throw new Error(`Failed to load manifest for siteId: ${siteId}`);
+      
+      // Clean any collection items from the structure during load
+      const manifest = cleanCollectionItemsFromStructure(rawManifest);
+      
+      // If the manifest was cleaned, save it back to storage
+      if (JSON.stringify(manifest.structure) !== JSON.stringify(rawManifest.structure)) {
+        await localSiteFs.saveManifest(siteId, manifest);
+      }
       
       const [contentFiles, layoutFiles, themeFiles, secrets] = await Promise.all([
         localSiteFs.getSiteContentFiles(siteId),
@@ -89,15 +99,20 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
     }));
   },
 
-  // ... (addSite and deleteSiteAndState remain the same)
   addSite: async (newSiteData) => {
-    await localSiteFs.saveSite(newSiteData);
+    // Clean any collection items from the structure before saving
+    const cleanedSiteData = {
+      ...newSiteData,
+      manifest: cleanCollectionItemsFromStructure(newSiteData.manifest)
+    };
+    
+    await localSiteFs.saveSite(cleanedSiteData);
     set(produce((draft: SiteSlice) => {
-      const siteIndex = draft.sites.findIndex(s => s.siteId === newSiteData.siteId);
+      const siteIndex = draft.sites.findIndex(s => s.siteId === cleanedSiteData.siteId);
       if (siteIndex > -1) {
-        draft.sites[siteIndex] = newSiteData;
+        draft.sites[siteIndex] = cleanedSiteData;
       } else {
-        draft.sites.push(newSiteData);
+        draft.sites.push(cleanedSiteData);
       }
     }));
   },
@@ -107,5 +122,32 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
     set(produce((draft: SiteSlice) => {
       draft.sites = draft.sites.filter(s => s.siteId !== siteId);
     }));
+  },
+
+  migrateCollectionStructures: async () => {
+    const manifests = await localSiteFs.loadAllSiteManifests();
+    let migratedCount = 0;
+    
+    for (const manifest of manifests) {
+      const cleanedManifest = cleanCollectionItemsFromStructure(manifest);
+      
+      // Only save if there were changes
+      if (JSON.stringify(cleanedManifest.structure) !== JSON.stringify(manifest.structure)) {
+        await localSiteFs.saveManifest(manifest.siteId, cleanedManifest);
+        migratedCount++;
+        
+        // Update in-memory state if the site is loaded
+        set(produce((draft: SiteSlice) => {
+          const site = draft.sites.find(s => s.siteId === manifest.siteId);
+          if (site) {
+            site.manifest = cleanedManifest;
+          }
+        }));
+      }
+    }
+    
+    if (migratedCount > 0) {
+      toast.success(`Migrated ${migratedCount} site(s) to remove collection items from structure`);
+    }
   },
 });

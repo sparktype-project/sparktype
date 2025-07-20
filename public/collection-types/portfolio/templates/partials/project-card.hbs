@@ -1,0 +1,71 @@
+{{!-- Project Card Partial --}}
+<article class="project-card">
+  {{#if frontmatter.featured_image}}
+    <div class="project-image">
+      <a href="{{getUrl this}}">
+        {{image frontmatter.featured_image alt=frontmatter.title width=400 height=300 crop="fill"}}
+      </a>
+      
+      {{#if frontmatter.featured}}
+        <span class="featured-badge">Featured</span>
+      {{/if}}
+      
+      {{#if frontmatter.status}}
+        <span class="status-badge status-{{frontmatter.status}}">{{frontmatter.status}}</span>
+      {{/if}}
+      
+      <div class="project-overlay">
+        <div class="project-links">
+          {{#if frontmatter.project_url}}
+            <a href="{{frontmatter.project_url}}" class="overlay-link live-link" target="_blank" rel="noopener" title="View Live Site">
+              🔗
+            </a>
+          {{/if}}
+          
+          {{#if frontmatter.github_url}}
+            <a href="{{frontmatter.github_url}}" class="overlay-link github-link" target="_blank" rel="noopener" title="View Source Code">
+              📁
+            </a>
+          {{/if}}
+        </div>
+      </div>
+    </div>
+  {{/if}}
+  
+  <div class="project-content">
+    <header class="project-header">
+      <h3 class="project-title">
+        <a href="{{getUrl this}}">{{frontmatter.title}}</a>
+      </h3>
+      
+      <div class="project-meta">
+        {{#if frontmatter.client}}
+          <span class="client">{{frontmatter.client}}</span>
+        {{/if}}
+        {{#if frontmatter.year}}
+          <span class="year">{{frontmatter.year}}</span>
+        {{/if}}
+      </div>
+    </header>
+    
+    {{#if content}}
+      <p class="project-excerpt">{{truncate (stripHtml content) 120}}</p>
+    {{/if}}
+    
+    {{#if frontmatter.technologies}}
+      <div class="project-technologies">
+        {{#each frontmatter.technologies}}
+          <span class="tech-tag">{{this}}</span>
+        {{/each}}
+      </div>
+    {{/if}}
+    
+    {{#if frontmatter.categories}}
+      <div class="project-categories">
+        {{#each frontmatter.categories}}
+          <span class="category-tag">{{this}}</span>
+        {{/each}}
+      </div>
+    {{/if}}
+  </div>
+</article>

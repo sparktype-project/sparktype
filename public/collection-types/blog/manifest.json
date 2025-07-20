@@ -1,0 +1,99 @@
+{
+  "name": "Blog",
+  "version": "1.0.0",
+  "description": "Standard blog with posts, categories, and tags",
+  "files": [
+    {"path": "templates/listing.hbs", "type": "template"},
+    {"path": "templates/featured.hbs", "type": "template"},
+    {"path": "templates/archive.hbs", "type": "template"},
+    {"path": "templates/partials/post-card.hbs", "type": "partial"},
+    {"path": "templates/partials/post-list.hbs", "type": "partial"}
+  ],
+  "itemSchema": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string",
+        "title": "Title"
+      },
+      "date": {
+        "type": "string",
+        "format": "date",
+        "title": "Publish Date"
+      },
+      "author": {
+        "type": "string",
+        "title": "Author"
+      },
+      "excerpt": {
+        "type": "string",
+        "title": "Excerpt",
+        "description": "Short description of the post"
+      },
+      "featured": {
+        "type": "boolean",
+        "title": "Featured Post",
+        "default": false
+      },
+      "categories": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "title": "Categories",
+        "uniqueItems": true
+      },
+      "tags": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "title": "Tags",
+        "uniqueItems": true
+      }
+    },
+    "required": ["title", "date"]
+  },
+  "layouts": {
+    "listing": {
+      "name": "Blog Listing",
+      "description": "Full blog listing with pagination",
+      "template": "listing.hbs",
+      "supportsPagination": true,
+      "display_options": {
+        "style": {
+          "name": "Display Style",
+          "default": "cards",
+          "options": {
+            "cards": {
+              "name": "Card View",
+              "description": "Posts displayed as cards with images",
+              "template": "partials/post-card.hbs"
+            },
+            "list": {
+              "name": "List View", 
+              "description": "Compact list view without images",
+              "template": "partials/post-list.hbs"
+            }
+          }
+        }
+      }
+    },
+    "featured": {
+      "name": "Featured Posts",
+      "description": "Showcase featured posts on homepage or other pages",
+      "template": "featured.hbs",
+      "maxItems": 6
+    },
+    "archive": {
+      "name": "Archive",
+      "description": "Archive listing grouped by date",
+      "template": "archive.hbs",
+      "supportsPagination": false
+    }
+  },
+  "defaultSort": {
+    "field": "date",
+    "order": "desc"
+  }
+}

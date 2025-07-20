@@ -59,11 +59,10 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         const isCollectionItem = !!parentFile?.frontmatter.collection;
         
         if (isCollectionItem) {
-          // Setup for a new collection item - use parent's item_layout or empty string
-          const itemLayout = String(parentFile?.frontmatter.collection?.item_layout || '');
+          // Setup for a new collection item - use default layout
           setFrontmatter({
             title: '',
-            layout: itemLayout,
+            layout: 'page', // Default layout for collection items
             date: new Date().toISOString().split('T')[0],
             status: 'draft',
           });

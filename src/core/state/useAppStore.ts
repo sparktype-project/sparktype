@@ -42,7 +42,10 @@ export const useAppStore = create<AppStore>()((set, get, api) => ({
     console.log('[AppStore] Initializing application state...');
     
     // Call the hydration action to load sites from storage.
-    get().initializeSites().then(() => {
+    get().initializeSites().then(async () => {
+        // Run migration to clean up any collection items in site structures
+        await get().migrateCollectionStructures();
+        
         set({ isInitialized: true });
         console.log('[AppStore] State initialized.');
     }).catch((error) => {

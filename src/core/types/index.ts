@@ -77,15 +77,81 @@ export interface DisplayOption {
   options: Record<string, DisplayOptionChoice>;
 }
 
+// ============================================================================
+// COLLECTION TYPE SYSTEM
+// ============================================================================
+
 /**
- * Represents the configuration stored in the frontmatter of a "Collection Page".
- * It stores the user's selected keys from the `display_options` defined in the layout.
+ * Represents a layout option within a collection type.
+ * e.g., 'Blog Listing', 'Featured Posts', 'Archive'
  */
-export interface CollectionConfig {
-  [key: string]: string | number | undefined;
-  sort_by?: string;
-  sort_order?: 'asc' | 'desc';
-  items_per_page?: number;
+export interface CollectionLayout {
+  name: string;
+  description?: string;
+  template: string;
+  supportsPagination?: boolean;
+  maxItems?: number;
+  display_options?: Record<string, DisplayOption>;
+}
+
+/**
+ * Defines a collection type bundle (like themes) containing schemas and templates.
+ * Collection types are discovered dynamically from the file system.
+ */
+export interface CollectionTypeManifest extends BaseAssetManifest {
+  name: string;
+  description?: string;
+  
+  // Template and partial files available in this collection type
+  files: Array<{
+    path: string;
+    type: 'template' | 'partial';
+  }>;
+  
+  // Content schema for collection items
+  itemSchema: import('@rjsf/utils').RJSFSchema;
+  itemUiSchema?: StrictUiSchema;
+  
+  // Available layouts this type provides
+  layouts: Record<string, CollectionLayout>;
+  
+  // Default settings
+  defaultSort?: {
+    field: string;
+    order: 'asc' | 'desc';
+  };
+}
+
+/**
+ * Represents a collection instance within a site.
+ * Collections are named instances of collection types with a specific content folder.
+ */
+export interface Collection {
+  id: string;
+  name: string;
+  typeId: string;
+  contentPath: string;
+  settings?: Record<string, unknown>;
+}
+
+/**
+ * Represents the layout configuration stored in frontmatter for collection layouts.
+ * Used when a page uses a collection type layout to display collection content.
+ */
+export interface LayoutConfig {
+  collectionId: string;
+  layout: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  maxItems?: number;
+  itemsPerPage?: number;
+  filterTags?: string[];
+  pagination?: {
+    enabled: boolean;
+    itemsPerPage?: number;
+  };
+  templateVariables?: Record<string, unknown>;
+  displayOptions?: Record<string, string>;
 }
 
 /**
@@ -141,7 +207,7 @@ export interface ThemeInfo {
 export interface MarkdownFrontmatter {
   title: string;
   layout: string; 
-  collection?: CollectionConfig;
+  layoutConfig?: LayoutConfig; // Collection layout configuration
   homepage?: boolean;
   [key: string]: unknown;
 }
@@ -191,6 +257,7 @@ export interface Manifest {
   structure: StructureNode[];
   layouts?: LayoutInfo[];
   themes?: ThemeInfo[];
+  collections?: Collection[];
   logo?: ImageRef;
   favicon?: ImageRef;
   settings?: {

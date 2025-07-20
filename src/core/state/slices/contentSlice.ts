@@ -4,13 +4,14 @@ import { produce } from 'immer';
 import { toast } from 'sonner';
 import { type ParsedMarkdownFile, type StructureNode, type LocalSiteData, type LayoutManifest } from '@/core/types';
 import * as localSiteFs from '@/core/services/localFileSystem.service';
-import { getLayoutManifest } from '@/core/services/config/configHelpers.service';
+import { getLayoutManifest, isCollectionTypeLayout } from '@/core/services/config/configHelpers.service';
 import {
   findAndRemoveNode,
   updatePathsRecursively,
   findNodeByPath,
   getNodeDepth,
 } from '@/core/services/fileTree.service';
+import { getCollections } from '@/core/services/collections.service';
 import { type SiteSlice } from '@/core/state/slices/siteSlice';
 import { stringifyToMarkdown, parseMarkdownString } from '@/core/libraries/markdownParser';
 
@@ -143,7 +144,13 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
     // --- NEW: Data File Initialization Logic ---
     // If we are creating a new Collection Page, check its layout for data dependencies.
     if (isNewFileInStructure && savedFile.frontmatter.collection) {
-        const layoutManifest = await getLayoutManifest(site, savedFile.frontmatter.layout);
+        // Handle collection type layouts by using fallback layout
+        let layoutPath = savedFile.frontmatter.layout;
+        if (isCollectionTypeLayout(layoutPath)) {
+            layoutPath = 'page'; // Use fallback layout for collection type layouts
+        }
+        
+        const layoutManifest = await getLayoutManifest(site, layoutPath);
         if (layoutManifest) {
             // Call the helper to create any missing data files.
             await initializeLayoutDataFiles(site, layoutManifest, savedFile);
@@ -164,42 +171,22 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
           children: [],
         };
         
-        // Check if this should be a collection item by looking for a parent collection
-        const pathParts = filePath.split('/');
-        if (pathParts.length > 2) { // e.g., "content/news/item.md" has 3 parts
-          const parentDir = pathParts.slice(0, -1).join('/'); // "content/news"
-          const parentPath = `${parentDir}.md`; // "content/news.md"
-          
-          const parentFile = site.contentFiles?.find((f: ParsedMarkdownFile) => f.path === parentPath);
-          if (parentFile?.frontmatter.collection) {
-            // This is a collection item - find parent in structure and add as child
-            const findAndAddToParent = (nodes: StructureNode[]): boolean => {
-              for (const node of nodes) {
-                if (node.path === parentPath) {
-                  if (!node.children) node.children = [];
-                  newNode.navOrder = node.children.length;
-                  node.children.push(newNode);
-                  return true;
-                }
-                if (node.children && findAndAddToParent(node.children)) {
-                  return true;
-                }
-              }
-              return false;
-            };
-            
-            if (!findAndAddToParent(draft.structure)) {
-              // Parent not found in structure, add to root as fallback
-              draft.structure.push(newNode);
-            }
-          } else {
-            // Regular page - add to root
-            draft.structure.push(newNode);
-          }
-        } else {
-          // Root level page - add to root
-          draft.structure.push(newNode);
+        // Check if this file is a collection item - if so, don't add it to the structure
+        const collections = getCollections(site.manifest);
+        const normalizedFilePath = filePath.replace(/\\/g, '/');
+        const isCollectionItem = collections.some(collection => {
+          const normalizedContentPath = collection.contentPath.replace(/\\/g, '/');
+          return normalizedFilePath.startsWith(normalizedContentPath);
+        });
+        
+        if (isCollectionItem) {
+          // This is a collection item - don't add it to the site structure
+          // Collection items are managed through the collection management interface
+          return; // Skip adding to structure entirely
         }
+        
+        // This is a regular page or collection page - add it to the structure
+        draft.structure.push(newNode);
       } else {
         const findAndUpdate = (nodes: StructureNode[]): void => {
           for (const node of nodes) {

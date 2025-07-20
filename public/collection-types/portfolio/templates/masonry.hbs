@@ -1,0 +1,42 @@
+{{!-- Portfolio Masonry Template --}}
+<div class="portfolio-masonry">
+  <div class="masonry-header">
+    <h1>{{pageTitle}}</h1>
+    {{#if page.excerpt}}
+      <p class="masonry-description">{{page.excerpt}}</p>
+    {{/if}}
+  </div>
+
+  {{#if collectionItems}}
+    <div class="masonry-grid" data-masonry='{"itemSelector": ".masonry-item", "columnWidth": ".masonry-sizer", "percentPosition": true}'>
+      <!-- Masonry grid sizer for responsive columns -->
+      <div class="masonry-sizer"></div>
+      
+      {{#each collectionItems}}
+        <div class="masonry-item">
+          {{> project-tile this}}
+        </div>
+      {{/each}}
+    </div>
+  {{else}}
+    <div class="no-masonry-projects">
+      <p>No projects found.</p>
+    </div>
+  {{/if}}
+</div>
+
+<script>
+// Initialize Masonry layout (if Masonry.js is available)
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof Masonry !== 'undefined') {
+    const grid = document.querySelector('.masonry-grid');
+    if (grid) {
+      new Masonry(grid, {
+        itemSelector: '.masonry-item',
+        columnWidth: '.masonry-sizer',
+        percentPosition: true
+      });
+    }
+  }
+});
+</script>

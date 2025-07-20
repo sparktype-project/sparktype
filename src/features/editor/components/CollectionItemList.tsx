@@ -1,14 +1,15 @@
 // src/features/editor/components/CollectionItemList.tsx
 
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom'; // Use Link from react-router-dom
+import { Link } from 'react-router-dom';
 
 // State Management
 import { useAppStore } from '@/core/state/useAppStore';
-import { type AppStore } from '@/core/state/useAppStore'; // Import the store type
+import { type AppStore } from '@/core/state/useAppStore';
 
 // Services & Config
 import { findChildNodes } from '@/core/services/fileTree.service';
+import { getCollection, getCollectionContent } from '@/core/services/collections.service';
 import { NEW_FILE_SLUG_MARKER } from '@/config/editorConfig';
 
 // UI Components & Icons
@@ -17,26 +18,54 @@ import { FileText, PlusCircle } from 'lucide-react';
 
 interface CollectionItemListProps {
   siteId: string;
-  collectionPagePath: string; // e.g., 'content/blog.md'
+  collectionPagePath?: string; // e.g., 'content/blog.md' - for backward compatibility
+  collectionId?: string; // e.g., 'blog' - new collection-based approach
 }
 
-export default function CollectionItemList({ siteId, collectionPagePath }: CollectionItemListProps) {
-  // Explicitly type the state selector for Zustand
+export default function CollectionItemList({ siteId, collectionPagePath, collectionId }: CollectionItemListProps) {
   const site = useAppStore((state: AppStore) => state.getSiteById(siteId));
 
-  // This logic to find child nodes is correct and remains unchanged
-  const collectionItems = useMemo(() => {
-    if (!site?.manifest) return [];
-    return findChildNodes(site.manifest.structure, collectionPagePath);
-  }, [site?.manifest, collectionPagePath]);
+  // Get collection config when using new approach
+  const collection = useMemo(() => {
+    if (!site || !collectionId) return null;
+    return getCollection(site.manifest, collectionId);
+  }, [site, collectionId]);
 
-  // The path for the "New Item" button is also updated to be a correct hash route
-  const newItemPath = `/sites/${siteId}/edit/content/${collectionPagePath.replace('content/', '').replace('.md', '')}/${NEW_FILE_SLUG_MARKER}`;
+  // Get collection items using the appropriate method
+  const collectionItems = useMemo(() => {
+    if (!site) return [];
+
+    if (collectionId && collection) {
+      // New approach: get items directly from collection config
+      return getCollectionContent(site, collectionId);
+    } else if (collectionPagePath) {
+      // Legacy approach: find child nodes in site structure
+      return findChildNodes(site.manifest.structure, collectionPagePath);
+    }
+    
+    return [];
+  }, [site, collectionId, collection, collectionPagePath]);
+
+  // Determine the path for the "New Item" button
+  const newItemPath = useMemo(() => {
+    if (collection) {
+      // New approach: use collection's contentPath
+      const contentPathSlug = collection.contentPath.replace('content/', '').replace(/\/$/, '');
+      return `/sites/${siteId}/edit/content/${contentPathSlug}/${NEW_FILE_SLUG_MARKER}`;
+    } else if (collectionPagePath) {
+      // Legacy approach: derive from collectionPagePath
+      return `/sites/${siteId}/edit/content/${collectionPagePath.replace('content/', '').replace('.md', '')}/${NEW_FILE_SLUG_MARKER}`;
+    }
+    return `/sites/${siteId}/edit/content/${NEW_FILE_SLUG_MARKER}`;
+  }, [collection, collectionPagePath, siteId]);
+
+  // Determine the collection name for display
+  const collectionName = collection?.name || 'Collection Items';
 
   return (
     <div className="h-full flex flex-col p-6 bg-muted/30">
       <div className="flex shrink-0 items-center justify-between mb-4 pb-4 border-b">
-        <h1 className="text-2xl font-bold">Collection Items</h1>
+        <h1 className="text-2xl font-bold">{collectionName}</h1>
         <Button asChild>
           <Link to={newItemPath}>
             <PlusCircle className="mr-2 h-4 w-4" /> New Item
