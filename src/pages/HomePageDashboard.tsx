@@ -129,8 +129,8 @@ export default function HomePageDashboard() {
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
         <div className="flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/sparktype.svg" className='size-7' />
-            <span className="text-2xl font-bold text-foreground hidden sm:inline">Sparktype</span>
+            <img src="/sparktype.svg" className='size-6' />
+            <span className="text-xl font-bold font-mono text-foreground hidden sm:inline">Sparktype</span>
           </Link>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>

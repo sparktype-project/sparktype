@@ -127,7 +127,7 @@ export default function SiteLayout() {
             title="Dashboard"
             className='lg:flex hidden flex-col items-center w-[60px] h-[60px] border-b'
           >
-            <img src="/sparktype.svg" width={32} height={32} alt="Sparktype Logo" className='m-auto'/>
+            <img src="/sparktype.svg" width={32} height={32} alt="Sparktype" className='m-auto'/>
           </Link>
           
           {navItems.map((item) => {
@@ -144,7 +144,7 @@ export default function SiteLayout() {
                     : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                 )}
               >
-                {/* --- FIX: Conditionally add the `size-6` class --- */}
+                
                 <IconComponent className={cn(item.isStandardIcon && 'size-6')} />
               </Link>
             )

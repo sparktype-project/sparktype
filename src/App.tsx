@@ -67,20 +67,16 @@ export default function App() {
     <>
       <Suspense fallback={<AppLoadingIndicator />}>
         <Routes>
-          {/* Top-level routes remain the same */}
+          
           <Route path="/" element={<MarketingHomePage />} />
-          <Route path="/sites" element={<HomePageDashboard />} />
 
-          {/* --- NEW, SIMPLIFIED SITE-SPECIFIC ROUTES --- */}
-          {/* The SiteLayout component now wraps all site-specific pages */}
+          <Route path="/sites" element={<HomePageDashboard />} />
           <Route path="/sites/:siteId" element={<SiteLayout />}>
-            {/* The index route now directly renders the viewer */}
+
           <Route path="view/*" element={<ViewSitePage />} />
             
-            {/* The edit route now directly renders the editor, with a wildcard for sub-pages */}
-            <Route path="edit/*" element={<EditContentPage />} />
+          <Route path="edit/*" element={<EditContentPage />} />
 
-            {/* The settings routes remain nested as before */}
             <Route path="settings" element={<SettingsSectionLayout />}>
               <Route index element={<SiteSettingsPage />} />
               <Route path="theme" element={<ThemeSettingsPage />} />
