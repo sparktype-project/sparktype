@@ -41,7 +41,8 @@ export default function NewPageDialog({ siteId, children, onComplete }: NewPageD
     }
   };
 
-  const handleCreatePage = async () => {
+  const handleCreatePage = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!title.trim()) {
       toast.error("Page title cannot be empty.");
       return;
@@ -93,18 +94,26 @@ export default function NewPageDialog({ siteId, children, onComplete }: NewPageD
             Give your new page a title. You can add content and change settings later.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="space-y-1">
-            <Label htmlFor="title">Page Title</Label>
-            <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., About Us" />
+        <form onSubmit={handleCreatePage}>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-1">
+              <Label htmlFor="title">Page Title</Label>
+              <Input 
+                id="title" 
+                value={title} 
+                onChange={(e) => setTitle(e.target.value)} 
+                placeholder="e.g., About Us"
+                autoFocus
+              />
+            </div>
           </div>
-        </div>
-        <DialogFooter>
-          <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-          <Button type="button" onClick={handleCreatePage} disabled={!title.trim() || isSubmitting}>
-            {isSubmitting ? 'Creating...' : <><Plus className="mr-2 h-4 w-4" /> Create Page</>}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
+            <Button type="submit" disabled={!title.trim() || isSubmitting}>
+              {isSubmitting ? 'Creating...' : <><Plus className="mr-2 h-4 w-4" /> Create Page</>}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

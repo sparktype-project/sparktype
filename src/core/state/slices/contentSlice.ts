@@ -12,7 +12,7 @@ import { getCollections } from '@/core/services/collections.service';
 import { stringifyToMarkdown } from '@/core/libraries/markdownParser';
 import { type SiteSlice } from '@/core/state/slices/siteSlice';
 
-// --- (Helper functions buildCollectionItemRefs and updateContentFilePaths remain the same as the refactored version) ---
+// Helper: Generates an up-to-date list of collection item references.
 function buildCollectionItemRefs(siteData: LocalSiteData): CollectionItemRef[] {
   const collections = getCollections(siteData.manifest);
   const newCollectionItems: CollectionItemRef[] = [];
@@ -25,6 +25,8 @@ function buildCollectionItemRefs(siteData: LocalSiteData): CollectionItemRef[] {
   }
   return newCollectionItems;
 }
+
+// Helper: Updates content file paths immutably.
 const updateContentFilePaths = (files: ParsedMarkdownFile[], pathsToMove: { oldPath: string; newPath: string }[]): ParsedMarkdownFile[] => {
   const pathMap = new Map(pathsToMove.map(p => [p.oldPath, p.newPath]));
   return files.map(file => {
@@ -36,7 +38,6 @@ const updateContentFilePaths = (files: ParsedMarkdownFile[], pathsToMove: { oldP
     return file;
   });
 };
-
 
 export interface ContentSlice {
   addOrUpdateContentFile: (siteId: string, filePath: string, rawMarkdownContent: string) => Promise<boolean>;
@@ -50,7 +51,6 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
   updateContentFileOnly: async (siteId, savedFile) => {
     await localSiteFs.saveContentFile(siteId, savedFile.path, stringifyToMarkdown(savedFile.frontmatter, savedFile.content));
 
-    // First, update the contentFiles array in the store
     set(produce((draft: SiteSlice) => {
       const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
       if (!siteToUpdate?.contentFiles) return;
@@ -60,7 +60,6 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
       else siteToUpdate.contentFiles.push(savedFile);
     }));
 
-    // Now, get the fresh site data and update the manifest atomically
     const siteData = get().getSiteById(siteId);
     if (!siteData) return;
 
@@ -76,46 +75,64 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
     if (!site) return false;
 
     const savedFile = await localSiteFs.saveContentFile(siteId, filePath, rawMarkdownContent);
+    
+    // Determine if this is a new file that needs to be added to the navigation structure.
     const isNewFileInStructure = !findNodeByPath(site.manifest.structure, filePath);
 
-    // Create the new manifest based on the current state
+    // Atomically create the new manifest with all necessary updates.
     const newManifest = produce(site.manifest, draft => {
-        const isCollectionItem = getCollections(draft).some(c => savedFile.path.startsWith(c.contentPath));
+      if (isNewFileInStructure) {
+        // Determine if this is a collection item by checking path against collection contentPaths
+        const collections = getCollections(draft);
+        const isCollectionPage = savedFile.frontmatter.collection;
+        const isCollectionItem = !isCollectionPage && collections.some(c => savedFile.path.startsWith(c.contentPath));
 
-        if (isNewFileInStructure && !isCollectionItem) {
-            const newNode: StructureNode = { type: 'page', title: savedFile.frontmatter.title, path: filePath, slug: savedFile.slug, navOrder: draft.structure.length, children: [] };
-            draft.structure.push(newNode);
-        } else if (!isNewFileInStructure) {
-            const findAndUpdate = (nodes: StructureNode[]): void => {
-                for (const node of nodes) {
-                    if (node.path === filePath) { node.title = savedFile.frontmatter.title; return; }
-                    if (node.children) findAndUpdate(node.children);
-                }
-            };
-            findAndUpdate(draft.structure);
+        // Only add to structure if it's NOT a collection item
+        // Collection items should be managed separately and not appear in navigation
+        if (!isCollectionItem) {
+          const newNode: StructureNode = {
+            type: 'page',
+            title: savedFile.frontmatter.title,
+            path: filePath,
+            slug: savedFile.slug,
+            navOrder: draft.structure.length,
+            children: []
+          };
+          draft.structure.push(newNode);
         }
-        // collectionItems will be synced within the final state update
+      } else {
+        // If it's an existing file, update its title in the structure.
+        const findAndUpdate = (nodes: StructureNode[]): void => {
+          for (const node of nodes) {
+            if (node.path === filePath) { node.title = savedFile.frontmatter.title; return; }
+            if (node.children) findAndUpdate(node.children);
+          }
+        };
+        findAndUpdate(draft.structure);
+      }
     });
 
-    // Update the manifest and content file list in separate, atomic steps
-    await get().updateManifest(siteId, newManifest);
-
+    // Update both manifest and contentFiles atomically in a single state update
     set(produce((draft: SiteSlice) => {
-        const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
-        if (!siteToUpdate) return;
-        if (!siteToUpdate.contentFiles) siteToUpdate.contentFiles = [];
+      const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
+      if (!siteToUpdate) return;
+      if (!siteToUpdate.contentFiles) siteToUpdate.contentFiles = [];
 
-        const fileIndex = siteToUpdate.contentFiles.findIndex(f => f.path === savedFile.path);
-        if (fileIndex !== -1) siteToUpdate.contentFiles[fileIndex] = savedFile;
-        else siteToUpdate.contentFiles.push(savedFile);
+      // Update the manifest structure (copy the structure from newManifest)
+      siteToUpdate.manifest.structure = newManifest.structure;
 
-        // Final sync of collectionItems after all content changes are applied
-        siteToUpdate.manifest.collectionItems = buildCollectionItemRefs(siteToUpdate as LocalSiteData);
+      // Update contentFiles array
+      const fileIndex = siteToUpdate.contentFiles.findIndex(f => f.path === savedFile.path);
+      if (fileIndex !== -1) siteToUpdate.contentFiles[fileIndex] = savedFile;
+      else siteToUpdate.contentFiles.push(savedFile);
+      
+      // Rebuild the collection item index based on the latest contentFiles.
+      siteToUpdate.manifest.collectionItems = buildCollectionItemRefs(siteToUpdate as LocalSiteData);
     }));
 
-    // Persist the final manifest which now includes updated collectionItems
+    // Persist the final manifest to disk (including updated collectionItems)
     const finalManifest = get().getSiteById(siteId)!.manifest;
-    await localSiteFs.saveManifest(siteId, finalManifest);
+    await get().updateManifest(siteId, finalManifest);
 
     return true;
   },
@@ -130,6 +147,7 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
       return;
     }
 
+    // First, update the manifest structure.
     const newManifest = produce(site.manifest, draft => {
       const filterStructure = (nodes: StructureNode[]): StructureNode[] => nodes.filter(node => {
         if (node.path === filePath) return false;
@@ -139,17 +157,21 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
       draft.structure = filterStructure(draft.structure);
     });
 
-    await localSiteFs.deleteContentFile(siteId, filePath);
-    await get().updateManifest(siteId, newManifest);
+    // Persist changes and delete the file in parallel.
+    await Promise.all([
+      localSiteFs.deleteContentFile(siteId, filePath),
+      get().updateManifest(siteId, newManifest),
+    ]);
 
+    // Update the in-memory state and sync collectionItems.
     set(produce((draft: SiteSlice) => {
       const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
       if (!siteToUpdate?.contentFiles) return;
-
       siteToUpdate.contentFiles = siteToUpdate.contentFiles.filter(f => f.path !== filePath);
       siteToUpdate.manifest.collectionItems = buildCollectionItemRefs(siteToUpdate as LocalSiteData);
     }));
     
+    // Save the final manifest with the updated collectionItems.
     const finalManifest = get().getSiteById(siteId)!.manifest;
     await localSiteFs.saveManifest(siteId, finalManifest);
 

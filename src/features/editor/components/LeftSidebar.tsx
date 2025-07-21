@@ -228,7 +228,7 @@ export default function LeftSidebar() {
         </div>
         
         <div className="flex-grow overflow-y-auto p-2" ref={setRootDroppableRef}>
-          {homepageItem && itemsToRender.length > 0 ? (
+          {itemsToRender.length > 0 ? (
             <FileTree 
               itemsToRender={itemsToRender.map(item => ({...item, collapsed: collapsedIds.has(item.path)}))}
               sortableIds={sortableIds}
@@ -236,7 +236,7 @@ export default function LeftSidebar() {
               projected={projected}
               baseEditPath={`/sites/${siteId}/edit`}
               activePath={activePathForFileTree}
-              homepagePath={homepageItem.path}
+              homepagePath={homepageItem?.path || itemsToRender[0]?.path}
               onCollapse={handleCollapse}
             />
           ) : (

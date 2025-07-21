@@ -8,7 +8,7 @@ import {
   updateCollection,
   deleteCollection,
 } from '@/core/services/collections.service';
-import type { LayoutManifest, ParsedMarkdownFile } from '@/core/types';
+import type { LayoutManifest, ParsedMarkdownFile, LayoutInfo } from '@/core/types';
 import { getAvailableLayouts } from '@/core/services/config/configHelpers.service';
 
 // UI Components
@@ -35,6 +35,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/core/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/core/components/ui/select';
 
 // Icons
 import { Trash2, Save, Loader2 } from 'lucide-react';
@@ -54,10 +61,13 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
   const [isLoading, setIsLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemLayout, setItemLayout] = useState<LayoutManifest | null>(null);
+  const [itemLayouts, setItemLayouts] = useState<LayoutInfo[]>([]);
+  const [loadingLayouts, setLoadingLayouts] = useState(false);
 
   // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [defaultItemLayout, setDefaultItemLayout] = useState('');
 
   // Store actions
   const getSiteById = useAppStore(state => state.getSiteById);
@@ -89,11 +99,32 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
     }
   }, [collection?.defaultItemLayout, siteData]);
 
+  // Load available item layouts
+  useEffect(() => {
+    if (!siteData) return;
+
+    const loadItemLayouts = async () => {
+      try {
+        setLoadingLayouts(true);
+        const layouts = await getAvailableLayouts(siteData, 'single');
+        setItemLayouts(layouts);
+      } catch (error) {
+        console.error('Failed to load item layouts:', error);
+        setItemLayouts([]);
+      } finally {
+        setLoadingLayouts(false);
+      }
+    };
+
+    loadItemLayouts();
+  }, [siteData]);
+
   // Initialize form with collection data
   useEffect(() => {
     if (collection) {
       setName(collection.name);
       setDescription((collection.settings?.description as string) || '');
+      setDefaultItemLayout(collection.defaultItemLayout);
     }
   }, [collection]);
 
@@ -101,7 +132,11 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
     if (!siteData || !collection) return;
     try {
       setIsLoading(true);
-      const updates = { name: name.trim(), settings: description ? { description: description.trim() } : undefined };
+      const updates = { 
+        name: name.trim(), 
+        defaultItemLayout: defaultItemLayout,
+        settings: description ? { description: description.trim() } : undefined 
+      };
       const updatedManifest = updateCollection(siteData.manifest, collection.id, updates);
       await updateManifest(siteId, updatedManifest);
       toast.success('Collection updated successfully');
@@ -110,7 +145,7 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
     } finally {
       setIsLoading(false);
     }
-  }, [siteData, collection, name, description, siteId, updateManifest]);
+  }, [siteData, collection, name, description, defaultItemLayout, siteId, updateManifest]);
 
   const handleDelete = useCallback(async () => {
     if (!siteData || !collection) return;
@@ -132,7 +167,9 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
     return <div className="p-4"><p className="text-sm text-muted-foreground">Collection not found</p></div>;
   }
 
-  const hasChanges = name !== collection.name || description !== ((collection.settings?.description as string) || '');
+  const hasChanges = name !== collection.name || 
+                    description !== ((collection.settings?.description as string) || '') ||
+                    defaultItemLayout !== collection.defaultItemLayout;
 
   return (
     <div className="h-full flex flex-col">
@@ -153,8 +190,23 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
                   <Label htmlFor="collection-description">Description</Label>
                   <Textarea id="collection-description" value={description} onChange={(e) => setDescription(e.target.value)} disabled={isLoading} rows={3} placeholder="Optional description..." />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="item-layout-select">Default Item Layout</Label>
+                  <Select value={defaultItemLayout} onValueChange={setDefaultItemLayout} disabled={isLoading || loadingLayouts}>
+                    <SelectTrigger id="item-layout-select">
+                      <SelectValue placeholder={loadingLayouts ? "Loading layouts..." : "Choose a layout for items..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {itemLayouts.map((layout) => (
+                        <SelectItem key={layout.id} value={layout.id}>
+                          {layout.name} {layout.description && <span className="text-muted-foreground">— {layout.description}</span>}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 {hasChanges && (
-                  <Button onClick={handleSave} disabled={isLoading || !name.trim()} className="w-full">
+                  <Button onClick={handleSave} disabled={isLoading || !name.trim() || !defaultItemLayout} className="w-full">
                     {isLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</> : <><Save className="h-4 w-4 mr-2" />Save Changes</>}
                   </Button>
                 )}
