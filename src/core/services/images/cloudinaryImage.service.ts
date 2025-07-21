@@ -35,9 +35,15 @@ class CloudinaryImageService implements ImageService {
   id = 'cloudinary';
   name = 'Upload to Cloudinary';
 
-  async upload(_file: File, siteId: string): Promise<ImageRef> {
-    const site = useAppStore.getState().getSiteById(siteId);
-    if (!site) throw new Error(`Site with ID "${siteId}" not found in state.`);
+  async upload(_file: File, siteId: string, site?: any): Promise<ImageRef> {
+    // Note: site parameter added to avoid getState() call
+    // This service should be called with site data from React components
+    if (!site) {
+      // Fallback to getState() only if site not provided (for backward compatibility)
+      const storeState = useAppStore.getState();
+      site = storeState.getSiteById(siteId);
+      if (!site) throw new Error(`Site with ID "${siteId}" not found in state.`);
+    }
 
     const cloudName = site.manifest?.settings?.cloudinary?.cloudName;
     const uploadPreset = site.secrets?.cloudinary?.uploadPreset;
