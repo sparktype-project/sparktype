@@ -1,62 +1,106 @@
-// src/components/publishing/MarkdownEditor.tsx
-
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+// src/features/editor/components/BlocknoteEditor.tsx
+import { forwardRef, useImperativeHandle, useRef } from 'react';
+import { 
+  MDXEditor, 
+  type MDXEditorMethods, 
+  headingsPlugin,
+  listsPlugin,
+  quotePlugin,
+  thematicBreakPlugin,
+  markdownShortcutPlugin,
+  linkPlugin,
+  linkDialogPlugin,
+  imagePlugin,
+  tablePlugin,
+  codeBlockPlugin,
+  toolbarPlugin,
+  UndoRedo,
+  BoldItalicUnderlineToggles,
+  Separator,
+  BlockTypeSelect,
+  CreateLink,
+  InsertImage,
+  InsertTable,
+  InsertThematicBreak,
+  ListsToggle
+} from '@mdxeditor/editor';
+import '@mdxeditor/editor/style.css';
 import { Label } from '@/core/components/ui/label';
 
-interface MarkdownEditorProps {
-  initialValue: string;
-  // onContentChange is now used primarily by the parent to trigger its own state updates
-  onContentChange: (markdown: string) => void;
+interface BlocknoteEditorProps {
+  initialContent: string; // Changed from Block[] to string for markdown
+  onContentChange: () => void; // Only needs to signal a change, not pass content
 }
 
-// The ref now needs to expose a method to get the current content
-export interface MarkdownEditorRef {
-  getMarkdown: () => string;
+// The ref will now expose a function to get the editor's markdown data.
+export interface BlocknoteEditorRef {
+  getBlocks: () => string; // Changed to return markdown string
 }
 
-const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>(
-  ({ initialValue, onContentChange }, ref) => {
-    // We'll manage the textarea's value with local state
-    const [content, setContent] = useState(initialValue);
+const BlocknoteEditor = forwardRef<BlocknoteEditorRef, BlocknoteEditorProps>(
+  ({ initialContent, onContentChange }, ref) => {
+    const editorRef = useRef<MDXEditorMethods>(null);
 
-    // If the initialValue prop changes from the parent (e.g., loading a new file),
-    // we update the local state.
-    useEffect(() => {
-      setContent(initialValue);
-    }, [initialValue]);
-
-    // Expose a function for the parent component to get the current content
+    // Expose a function for the parent component to get the current content.
     useImperativeHandle(ref, () => ({
-      getMarkdown: () => {
-        return content;
+      getBlocks: () => {
+        return editorRef.current?.getMarkdown() || '';
       },
     }));
 
-    // This handler updates both local state and informs the parent of a change
-    const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const newContent = event.target.value;
-      setContent(newContent);
-      onContentChange(newContent); // Let the parent know things have changed
-    };
-
     return (
-      <div className="space-y-2 h-full">
-      <Label htmlFor="content-body" className="text-[10px] font-medium uppercase text-gray-400">
-            Content
-          </Label>
-      <textarea
-        id="content-body"
-        value={content}
-        onChange={handleChange}
-        placeholder="Start writing your Markdown here..."
-        className="w-full h-full bg-background 
-                   text-base font-mono leading-relaxed resize-none 
-                   focus:ring-2 focus:ring-ring focus:outline-none"
-      />
+      <div className="space-y-2 h-full flex flex-col">
+        <Label htmlFor="content-body" className="text-[10px] font-medium uppercase text-gray-400 shrink-0">
+          Content
+        </Label>
+        <div className="flex-grow min-h-0 overflow-hidden border">
+          <MDXEditor
+            ref={editorRef}
+            markdown={initialContent || ''}
+            onChange={onContentChange}
+            plugins={[
+              headingsPlugin(),
+              listsPlugin(),
+              quotePlugin(),
+              thematicBreakPlugin(),
+              markdownShortcutPlugin(),
+              linkPlugin(),
+              linkDialogPlugin(),
+              imagePlugin({
+                imageUploadHandler: async () => {
+                  // Placeholder - you can implement actual image upload later
+                  return 'https://via.placeholder.com/300x200';
+                },
+              }),
+              tablePlugin(),
+              codeBlockPlugin({ defaultCodeBlockLanguage: 'js' }),
+              toolbarPlugin({
+                toolbarContents: () => (
+                  <>
+                    <UndoRedo />
+                    <Separator />
+                    <BoldItalicUnderlineToggles />
+                    <Separator />
+                    <BlockTypeSelect />
+                    <Separator />
+                    <CreateLink />
+                    <InsertImage />
+                    <Separator />
+                    <ListsToggle />
+                    <Separator />
+                    <InsertTable />
+                    <InsertThematicBreak />
+                  </>
+                )
+              })
+            ]}
+            className="h-full"
+          />
+        </div>
       </div>
     );
   }
 );
 
-MarkdownEditor.displayName = 'MarkdownEditor';
-export default MarkdownEditor;
+BlocknoteEditor.displayName = 'BlocknoteEditor';
+export default BlocknoteEditor;

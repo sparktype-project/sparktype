@@ -1,9 +1,9 @@
-// src/features/editor/components/forms/CollectionLayoutForm.tsx
+// src/features/editor/components/forms/CollectionConfigForm.tsx
 
 import { useMemo } from 'react';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getCollections } from '@/core/services/collections.service';
-import type { LayoutConfig, Collection } from '@/core/types';
+import type { LayoutConfig } from '@/core/types';
 
 // UI Components
 import { Label } from '@/core/components/ui/label';
@@ -17,7 +17,7 @@ import {
 import { Switch } from '@/core/components/ui/switch';
 import { Input } from '@/core/components/ui/input';
 
-interface CollectionLayoutFormProps {
+interface CollectionConfigFormProps {
   siteId: string;
   layoutConfig?: LayoutConfig;
   onLayoutConfigChange: (config: LayoutConfig) => void;
@@ -28,11 +28,11 @@ interface CollectionLayoutFormProps {
  * It renders when the user selects a Layout with `layoutType: 'collection'`.
  * Its state is saved to the `layoutConfig` object in the page's frontmatter.
  */
-export default function CollectionLayoutForm({
+export default function CollectionConfigForm({
   siteId,
   layoutConfig,
   onLayoutConfigChange
-}: CollectionLayoutFormProps) {
+}: CollectionConfigFormProps) {
 
   const getSiteById = useAppStore(state => state.getSiteById);
   const siteData = getSiteById(siteId);
@@ -67,7 +67,7 @@ export default function CollectionLayoutForm({
             <SelectValue placeholder="Select a collection to display..." />
           </SelectTrigger>
           <SelectContent>
-            {collections.map((collection: Collection) => (
+            {collections.map((collection) => (
               <SelectItem key={collection.id} value={collection.id}>
                 {collection.name}
               </SelectItem>

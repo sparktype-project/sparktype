@@ -1,390 +1,213 @@
 // src/core/services/collections.service.ts
 
-import type { Manifest, Collection, LocalSiteData, CollectionItemRef } from '@/core/types';
+import type { Manifest, Collection, ParsedMarkdownFile } from '@/core/types';
 
 /**
- * Validation and helper functions for collections in the manifest.
- * Ensures backward compatibility with sites that don't have collections.
+ * ============================================================================
+ * Collection Instance Management Service
+ * ============================================================================
+ * This service is responsible for all CRUD (Create, Read, Update, Delete)
+ * operations on the `collections` array within a site's `manifest.json`.
+ *
+ * It manages the user-created instances of collections (e.g., "Blog", "News")
+ * but does NOT know about the schemas or templates of their items. Its sole
+ * focus is the existence and configuration of the collection itself.
+ * ============================================================================
  */
 
+// --- READ HELPERS ---
+
 /**
- * Gets all collections from a manifest, returning empty array if none exist.
- * Provides safe access for sites created before collections were added.
+ * Safely gets all collections from a manifest, returning an empty array if none exist.
+ * @param manifest The site's manifest.
+ * @returns An array of Collection objects.
  */
 export function getCollections(manifest: Manifest): Collection[] {
   return manifest.collections || [];
 }
 
 /**
- * Finds a specific collection by ID within a manifest.
- * Returns null if the collection doesn't exist or if the site has no collections.
+ * Finds a specific collection by its ID within a manifest.
+ * @param manifest The site's manifest.
+ * @param collectionId The ID of the collection to find.
+ * @returns The Collection object or null if not found.
  */
 export function getCollection(manifest: Manifest, collectionId: string): Collection | null {
-  const collections = getCollections(manifest);
-  return collections.find(c => c.id === collectionId) || null;
-}
-
-/**
- * Checks if a manifest has any collections defined.
- * Useful for conditional UI rendering.
- */
-export function hasCollections(manifest: Manifest): boolean {
-  return Array.isArray(manifest.collections) && manifest.collections.length > 0;
-}
-
-/**
- * Validates that a collection configuration is valid.
- * Checks for required fields and valid paths.
- */
-export function validateCollection(collection: Collection): { isValid: boolean; errors: string[] } {
-  const errors: string[] = [];
-
-  if (!collection.id?.trim()) {
-    errors.push('Collection ID is required');
-  }
-
-  if (!collection.name?.trim()) {
-    errors.push('Collection name is required');
-  }
-
-  if (!collection.typeId?.trim()) {
-    errors.push('Collection type ID is required');
-  }
-
-  if (!collection.contentPath?.trim()) {
-    errors.push('Collection content path is required');
-  } else if (!collection.contentPath.startsWith('content/')) {
-    errors.push('Collection content path must start with "content/"');
-  } else if (!collection.contentPath.endsWith('/')) {
-    errors.push('Collection content path must end with "/"');
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-}
-
-/**
- * Checks if a collection ID is unique within the manifest.
- */
-export function isCollectionIdUnique(manifest: Manifest, collectionId: string, excludeId?: string): boolean {
-  const collections = getCollections(manifest);
-  return !collections.some(c => c.id === collectionId && c.id !== excludeId);
-}
-
-/**
- * Checks if a content path is already used by another collection.
- */
-export function isContentPathUnique(manifest: Manifest, contentPath: string, excludeId?: string): boolean {
-  const collections = getCollections(manifest);
-  return !collections.some(c => c.contentPath === contentPath && c.id !== excludeId);
+  return getCollections(manifest).find(c => c.id === collectionId) || null;
 }
 
 /**
  * Gets all content files that belong to a specific collection.
- * Returns empty array if collection doesn't exist or has no content.
+ * @param siteData The complete data for the site.
+ * @param collectionId The ID of the collection.
+ * @returns An array of ParsedMarkdownFile objects belonging to the collection.
  */
-export function getCollectionContent(siteData: LocalSiteData, collectionId: string): import('@/core/types').ParsedMarkdownFile[] {
+export function getCollectionContent(siteData: { manifest: Manifest; contentFiles?: ParsedMarkdownFile[] }, collectionId: string): ParsedMarkdownFile[] {
   const collection = getCollection(siteData.manifest, collectionId);
   if (!collection || !siteData.contentFiles) {
     return [];
   }
-
-  return siteData.contentFiles.filter(file => 
+  return siteData.contentFiles.filter(file =>
     file.path.startsWith(collection.contentPath)
   );
 }
 
+
+// --- VALIDATION & UTILITY HELPERS ---
+
 /**
- * Generates a unique collection ID based on the collection name.
- * Ensures the ID doesn't conflict with existing collections.
+ * Validates a collection configuration object.
+ * @param collection The collection object to validate.
+ * @returns An object indicating if the collection is valid, with an array of errors.
+ */
+export function validateCollection(collection: Collection): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  if (!collection.id?.trim()) errors.push('Collection ID is required');
+  if (!collection.name?.trim()) errors.push('Collection name is required');
+  if (!collection.contentPath?.trim()) errors.push('Collection content path is required');
+  if (!collection.defaultItemLayout?.trim()) errors.push('Default item layout is required');
+  return { isValid: errors.length === 0, errors };
+}
+
+/**
+ * Checks if a collection ID is unique within the manifest.
+ * @param manifest The site's manifest.
+ * @param collectionId The ID to check for uniqueness.
+ * @param excludeId An optional ID to exclude from the check (used when updating).
+ * @returns True if the ID is unique.
+ */
+export function isCollectionIdUnique(manifest: Manifest, collectionId: string, excludeId?: string): boolean {
+  return !getCollections(manifest).some(c => c.id === collectionId && c.id !== excludeId);
+}
+
+/**
+ * Checks if a content path is already used by another collection.
+ * @param manifest The site's manifest.
+ * @param contentPath The path to check for uniqueness.
+ * @param excludeId An optional collection ID to exclude from the check.
+ * @returns True if the path is unique.
+ */
+export function isContentPathUnique(manifest: Manifest, contentPath: string, excludeId?: string): boolean {
+  return !getCollections(manifest).some(c => c.contentPath === contentPath && c.id !== excludeId);
+}
+
+/**
+ * Generates a unique, URL-friendly ID for a new collection based on its name.
+ * @param manifest The site's manifest.
+ * @param baseName The human-readable name of the collection.
+ * @returns A unique string ID.
  */
 export function generateUniqueCollectionId(manifest: Manifest, baseName: string): string {
-  // Convert name to URL-friendly ID
-  let baseId = baseName
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-
-  if (!baseId) {
-    baseId = 'collection';
-  }
+  let baseId = baseName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  if (!baseId) baseId = 'collection';
 
   let id = baseId;
   let counter = 1;
-
   while (!isCollectionIdUnique(manifest, id)) {
     id = `${baseId}-${counter}`;
     counter++;
   }
-
   return id;
 }
 
+
+// --- WRITE (CRUD) OPERATIONS ---
+
 /**
- * Ensures manifest has collections array initialized.
- * Useful for migration and adding first collection.
+ * Ensures the `collections` array exists on the manifest.
+ * @param manifest The site's manifest.
+ * @returns A manifest object guaranteed to have a `collections` array.
  */
-export function ensureCollectionsArray(manifest: Manifest): Manifest {
+function ensureCollectionsArray(manifest: Manifest): Manifest {
   if (!Array.isArray(manifest.collections)) {
     return { ...manifest, collections: [] };
   }
   return manifest;
 }
 
-
-// ============================================================================
-// COLLECTION CRUD OPERATIONS
-// ============================================================================
-
 /**
- * Creates a new collection in the manifest.
- * Automatically generates a unique ID and validates the collection.
+ * Creates a new collection and adds it to the manifest.
+ * @param manifest The current site manifest.
+ * @param collectionData The data for the new collection, excluding the `id`.
+ * @returns An object containing the updated manifest and the newly created collection.
  */
-export function createCollection(manifest: Manifest, collection: Omit<Collection, 'id'>): { manifest: Manifest; collection: Collection } {
+export function createCollection(manifest: Manifest, collectionData: Omit<Collection, 'id'>): { manifest: Manifest; collection: Collection } {
   const updatedManifest = ensureCollectionsArray(manifest);
-  
   const newCollection: Collection = {
-    ...collection,
-    id: generateUniqueCollectionId(updatedManifest, collection.name)
+    ...collectionData,
+    id: generateUniqueCollectionId(updatedManifest, collectionData.name)
   };
-  
-  // Validate the new collection
+
   const validation = validateCollection(newCollection);
-  if (!validation.isValid) {
-    throw new Error(`Invalid collection: ${validation.errors.join(', ')}`);
-  }
-  
-  // Check for path conflicts
-  if (!isContentPathUnique(updatedManifest, newCollection.contentPath)) {
-    throw new Error(`Content path '${newCollection.contentPath}' is already used by another collection`);
-  }
-  
-  const finalManifest = {
-    ...updatedManifest,
-    collections: [...updatedManifest.collections!, newCollection]
-  };
-  
+  if (!validation.isValid) throw new Error(`Invalid collection: ${validation.errors.join(', ')}`);
+  if (!isContentPathUnique(updatedManifest, newCollection.contentPath)) throw new Error(`Content path '${newCollection.contentPath}' is already used.`);
+
+  const finalManifest = { ...updatedManifest, collections: [...updatedManifest.collections!, newCollection] };
   return { manifest: finalManifest, collection: newCollection };
 }
 
 /**
  * Updates an existing collection in the manifest.
- * Validates changes and prevents ID/path conflicts.
+ * @param manifest The current site manifest.
+ * @param collectionId The ID of the collection to update.
+ * @param updates A partial object of properties to update.
+ * @returns The updated manifest.
  */
-export function updateCollection(
-  manifest: Manifest, 
-  collectionId: string, 
-  updates: Partial<Omit<Collection, 'id'>>
-): Manifest {
+export function updateCollection(manifest: Manifest, collectionId: string, updates: Partial<Omit<Collection, 'id'>>): Manifest {
   const collections = getCollections(manifest);
-  const existingCollection = collections.find(c => c.id === collectionId);
-  
-  if (!existingCollection) {
-    throw new Error(`Collection '${collectionId}' not found`);
-  }
-  
-  const updatedCollection: Collection = {
-    ...existingCollection,
-    ...updates
-  };
-  
-  // Validate the updated collection
+  const existingIndex = collections.findIndex(c => c.id === collectionId);
+  if (existingIndex === -1) throw new Error(`Collection '${collectionId}' not found`);
+
+  const updatedCollection: Collection = { ...collections[existingIndex], ...updates };
+
   const validation = validateCollection(updatedCollection);
-  if (!validation.isValid) {
-    throw new Error(`Invalid collection update: ${validation.errors.join(', ')}`);
-  }
-  
-  // Check for path conflicts (excluding the current collection)
-  if (updates.contentPath && !isContentPathUnique(manifest, updates.contentPath, collectionId)) {
-    throw new Error(`Content path '${updates.contentPath}' is already used by another collection`);
-  }
-  
-  const updatedCollections = collections.map(c => 
-    c.id === collectionId ? updatedCollection : c
-  );
-  
+  if (!validation.isValid) throw new Error(`Invalid collection update: ${validation.errors.join(', ')}`);
+  if (updates.contentPath && !isContentPathUnique(manifest, updates.contentPath, collectionId)) throw new Error(`Content path '${updates.contentPath}' is already used.`);
+
+  const updatedCollections = [...collections];
+  updatedCollections[existingIndex] = updatedCollection;
+
   return { ...manifest, collections: updatedCollections };
 }
 
 /**
  * Deletes a collection from the manifest.
- * Provides safety checks and warnings about content that will be orphaned.
+ * @param manifest The current site manifest.
+ * @param collectionId The ID of the collection to delete.
+ * @returns An object containing the updated manifest.
  */
-export function deleteCollection(manifest: Manifest, collectionId: string): { 
-  manifest: Manifest; 
-  warnings: string[] 
-} {
+export function deleteCollection(manifest: Manifest, collectionId: string): { manifest: Manifest } {
   const collections = getCollections(manifest);
-  const collection = collections.find(c => c.id === collectionId);
-  
-  if (!collection) {
-    throw new Error(`Collection '${collectionId}' not found`);
-  }
-  
-  const warnings: string[] = [];
-  
-  // Warn about content that will be orphaned
-  const contentPath = collection.contentPath;
-  warnings.push(
-    `Content files in '${contentPath}' will no longer be associated with this collection`
-  );
-  
+  if (!collections.some(c => c.id === collectionId)) throw new Error(`Collection '${collectionId}' not found`);
+
   const updatedCollections = collections.filter(c => c.id !== collectionId);
-  
-  return {
-    manifest: { ...manifest, collections: updatedCollections },
-    warnings
-  };
-}
-
-/**
- * Reorders collections in the manifest.
- * Useful for UI management where order matters.
- */
-export function reorderCollections(manifest: Manifest, collectionIds: string[]): Manifest {
-  const collections = getCollections(manifest);
-  
-  // Validate that all provided IDs exist
-  const existingIds = new Set(collections.map(c => c.id));
-  const missingIds = collectionIds.filter(id => !existingIds.has(id));
-  if (missingIds.length > 0) {
-    throw new Error(`Collections not found: ${missingIds.join(', ')}`);
-  }
-  
-  // Validate that all existing collections are included
-  if (collectionIds.length !== collections.length) {
-    throw new Error('All collections must be included in reorder operation');
-  }
-  
-  // Reorder collections according to the provided order
-  const reorderedCollections = collectionIds.map(id => 
-    collections.find(c => c.id === id)!
-  );
-  
-  return { ...manifest, collections: reorderedCollections };
-}
-
-// ============================================================================
-// ADVANCED COLLECTION OPERATIONS
-// ============================================================================
-
-/**
- * Validates a collection against its collection type.
- * Checks that the collection type exists and is properly configured.
- */
-export async function validateCollectionWithType(collection: Collection): Promise<{isValid: boolean, errors: string[]}> {
-  const baseValidation = validateCollection(collection);
-  if (!baseValidation.isValid) {
-    return baseValidation;
-  }
-  
-  // Import here to avoid circular dependencies
-  const { getCollectionTypeManifest } = await import('./collectionTypes.service');
-  
-  // Check if collection type exists
-  const collectionType = await getCollectionTypeManifest(collection.typeId);
-  if (!collectionType) {
-    return {
-      isValid: false,
-      errors: [`Collection type '${collection.typeId}' not found or invalid`]
-    };
-  }
-  
-  return { isValid: true, errors: [] };
-}
-
-/**
- * Gets collection statistics for display in management UI.
- */
-export function getCollectionStats(siteData: LocalSiteData, collectionId: string): {
-  itemCount: number;
-  lastModified?: Date;
-  contentPath: string;
-} | null {
-  const collection = getCollection(siteData.manifest, collectionId);
-  if (!collection) {
-    return null;
-  }
-  
-  const items = getCollectionContent(siteData, collectionId);
-  
-  // Find the most recently modified item
-  let lastModified: Date | undefined;
-  for (const item of items) {
-    const itemDate = item.frontmatter.date ? new Date(item.frontmatter.date as string) : undefined;
-    if (itemDate && (!lastModified || itemDate > lastModified)) {
-      lastModified = itemDate;
-    }
-  }
-  
-  return {
-    itemCount: items.length,
-    lastModified,
-    contentPath: collection.contentPath
-  };
+  return { manifest: { ...manifest, collections: updatedCollections } };
 }
 
 /**
  * Duplicates a collection with a new name and content path.
- * Useful for creating similar collections.
+ * @param manifest The current site manifest.
+ * @param sourceCollectionId The ID of the collection to duplicate.
+ * @param newName The name for the new, duplicated collection.
+ * @param newContentPath The content path for the new collection.
+ * @returns An object containing the updated manifest and the newly duplicated collection.
  */
 export function duplicateCollection(
-  manifest: Manifest, 
-  sourceCollectionId: string, 
+  manifest: Manifest,
+  sourceCollectionId: string,
   newName: string,
-  newContentPath: string
+  newContentPath: string,
 ): { manifest: Manifest; collection: Collection } {
   const sourceCollection = getCollection(manifest, sourceCollectionId);
-  if (!sourceCollection) {
-    throw new Error(`Source collection '${sourceCollectionId}' not found`);
-  }
-  
-  const duplicatedCollection = {
+  if (!sourceCollection) throw new Error(`Source collection '${sourceCollectionId}' not found`);
+
+  // Create a new collection object, inheriting the essential `defaultItemLayout`.
+  const duplicatedCollectionData: Omit<Collection, 'id'> = {
     name: newName,
-    typeId: sourceCollection.typeId,
     contentPath: newContentPath,
+    defaultItemLayout: sourceCollection.defaultItemLayout, // Inherit the item layout
     settings: sourceCollection.settings ? { ...sourceCollection.settings } : undefined
   };
-  
-  return createCollection(manifest, duplicatedCollection);
-}
 
-/**
- * Builds collection item references for the manifest.
- * This allows collection items to be discoverable without being in the navigation structure.
- */
-export function buildCollectionItemRefs(siteData: LocalSiteData): CollectionItemRef[] {
-  const collections = getCollections(siteData.manifest);
-  const collectionItemRefs: CollectionItemRef[] = [];
-  
-  for (const collection of collections) {
-    const items = getCollectionContent(siteData, collection.id);
-    
-    for (const item of items) {
-      collectionItemRefs.push({
-        collectionId: collection.id,
-        slug: item.slug,
-        path: item.path,
-        title: item.frontmatter.title || item.slug,
-        url: `/collection/${collection.id}/${item.slug}`
-      });
-    }
-  }
-  
-  return collectionItemRefs;
+  return createCollection(manifest, duplicatedCollectionData);
 }
-
-/**
- * Updates a manifest with current collection item references.
- * Call this whenever collection items are added, removed, or modified.
- */
-export function updateManifestWithCollectionItems(manifest: Manifest, siteData: LocalSiteData): Manifest {
-  return {
-    ...manifest,
-    collectionItems: buildCollectionItemRefs(siteData)
-  };
-}
-

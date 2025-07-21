@@ -1,4 +1,4 @@
-// src/core/services/configHelpers.service.ts
+// src/core/services/config/configHelpers.service.ts
 
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 import { CORE_LAYOUTS, CORE_THEMES } from '@/config/editorConfig';
@@ -8,12 +8,8 @@ import type {
     LayoutInfo,
     ThemeInfo,
     RawFile,
-    LayoutManifest, // Now imported
+    LayoutManifest,
 } from '@/core/types';
-import { getAvailableCollectionTypes } from '../collectionTypes.service';
-
-
-
 
 /** A minimal subset of site data needed by the asset helper functions. */
 export type SiteDataForAssets = Pick<LocalSiteData, 'manifest' | 'layoutFiles' | 'themeFiles'>;
@@ -25,48 +21,30 @@ export type SiteDataForAssets = Pick<LocalSiteData, 'manifest' | 'layoutFiles' |
 /** An in-memory cache to prevent re-fetching public asset files during a session. */
 const fileContentCache = new Map<string, Promise<string | null>>();
 
-/**
- * Checks if a given theme path corresponds to a core (built-in) theme.
- * @param path The path/ID of the theme (e.g., 'default').
- */
+/** Checks if a given theme path corresponds to a core (built-in) theme. */
 export const isCoreTheme = (path: string) => CORE_THEMES.some((t: ThemeInfo) => t.path === path);
 
-/**
- * Checks if a given layout path corresponds to a core (built-in) layout.
- * @param path The path/ID of the layout (e.g., 'page', 'blog').
- */
+/** Checks if a given layout path corresponds to a core (built-in) layout. */
 export const isCoreLayout = (path: string) => CORE_LAYOUTS.some((l: LayoutInfo) => l.id === path);
 
-/**
- * A helper function to merge multiple JSON Schemas into one.
- * It combines properties and required fields from all provided schemas.
- */
+/** Merges multiple JSON Schemas into one. */
 export function mergeSchemas(...schemas: (RJSFSchema | null | undefined)[]): RJSFSchema {
     const finalSchema: RJSFSchema = { type: 'object', properties: {}, required: [] };
     for (const schema of schemas) {
-        if (schema?.properties) {
-            finalSchema.properties = { ...finalSchema.properties, ...schema.properties };
-        }
-        if (schema?.required) {
-            finalSchema.required = [...new Set([...(finalSchema.required || []), ...schema.required])];
-        }
+        if (schema?.properties) finalSchema.properties = { ...finalSchema.properties, ...schema.properties };
+        if (schema?.required) finalSchema.required = [...new Set([...(finalSchema.required || []), ...schema.required])];
     }
     return finalSchema;
 }
 
-/**
- * A helper function to merge multiple UI Schemas into one.
- */
+/** Merges multiple UI Schemas into one. */
 export function mergeUiSchemas(...schemas: (UiSchema | null | undefined)[]): UiSchema {
     let finalUiSchema: UiSchema = {};
     for (const schema of schemas) {
-        if (schema) {
-            finalUiSchema = { ...finalUiSchema, ...schema };
-        }
+        if (schema) finalUiSchema = { ...finalUiSchema, ...schema };
     }
     return finalUiSchema;
 }
-
 
 /**
  * Fetches the raw string content of a theme or layout asset.
@@ -78,30 +56,18 @@ export async function getAssetContent(siteData: SiteDataForAssets, assetType: 't
     const sourcePath = `/${assetType}s/${path}/${fileName}`;
 
     if (isCore) {
-      if (fileContentCache.has(sourcePath)) {
-        return fileContentCache.get(sourcePath)!;
-      }
-      const promise = fetch(sourcePath)
-        .then(res => res.ok ? res.text() : null)
-        .catch(() => null);
+      if (fileContentCache.has(sourcePath)) return fileContentCache.get(sourcePath)!;
+      const promise = fetch(sourcePath).then(res => res.ok ? res.text() : null).catch(() => null);
       fileContentCache.set(sourcePath, promise);
       return promise;
     } else {
-      // Logic for custom, user-uploaded layouts/themes would go here.
-      // For now, it reads from the in-memory store.
-      const fileStore: RawFile[] | undefined =
-          assetType === 'theme' ? siteData.themeFiles
-          : assetType === 'layout' ? siteData.layoutFiles
-          : undefined;
-
+      const fileStore: RawFile[] | undefined = assetType === 'theme' ? siteData.themeFiles : siteData.layoutFiles;
       const fullPath = `${assetType}s/${path}/${fileName}`;
       return fileStore?.find(f => f.path === fullPath)?.content ?? null;
     }
 }
 
-/**
- * A generic function to fetch and parse any JSON asset manifest (theme.json, layout.json).
- */
+/** A generic function to fetch and parse any JSON asset manifest (theme.json, layout.json). */
 export async function getJsonAsset<T>(siteData: SiteDataForAssets, assetType: 'theme' | 'layout', path: string, fileName: string): Promise<T | null> {
     const content = await getAssetContent(siteData, assetType, path, fileName);
     if (!content) return null;
@@ -117,150 +83,63 @@ export async function getJsonAsset<T>(siteData: SiteDataForAssets, assetType: 't
 // PUBLIC API
 // ============================================================================
 
-/**
- * Gets a list of all available themes (core and custom).
- */
-/**
- * Gets a list of all available themes (core and custom) for a site.
- * This is used to populate the theme selection dropdown in the site settings.
- * It ensures that custom themes from the site's manifest are included and
- * that there are no duplicates if a custom theme shares an ID with a core theme.
- * @param {Manifest | undefined} manifest The site's manifest, which may contain a list of custom themes.
- * @returns {ThemeInfo[]} A de-duplicated array of all available themes.
- */
+/** Gets a list of all available themes (core and custom). */
 export function getAvailableThemes(manifest?: Manifest): ThemeInfo[] {
-  // Start with a fresh copy of the core, built-in themes.
   const available = [...CORE_THEMES];
-  
-  // If a manifest is provided and it contains custom theme definitions...
   if (manifest?.themes) {
-    // Filter the custom themes to only include those that don't already exist in the core list.
-    // This prevents duplicates and ensures core themes can't be accidentally overridden by name.
-    const customThemes = manifest.themes.filter(customTheme => 
-      !available.some(coreTheme => coreTheme.path === customTheme.path)
-    );
-    // Add the unique custom themes to the list.
+    const customThemes = manifest.themes.filter(customTheme => !available.some(coreTheme => coreTheme.path === customTheme.path));
     available.push(...customThemes);
   }
-  
   return available;
 }
 
 /**
  * Fetches and processes the manifest for a specific layout.
- * This is a simple fetch-and-parse operation now, as schema merging is handled
- * by the component that needs it (e.g., FrontmatterSidebar).
- *
  * @param siteData The site's data.
- * @param layoutPath The ID of the layout to fetch (e.g., 'blog').
+ * @param layoutPath The ID of the layout to fetch (e.g., 'blog-post').
  * @returns The parsed LayoutManifest object, or null if not found.
  */
 export async function getLayoutManifest(siteData: SiteDataForAssets, layoutPath: string): Promise<LayoutManifest | null> {
     const manifest = await getJsonAsset<LayoutManifest>(siteData, 'layout', layoutPath, 'layout.json');
     if (manifest) {
-        // Set the id field from the layoutPath since it's not included in the JSON files
-        manifest.id = layoutPath;
+        manifest.id = layoutPath; // Ensure the manifest object includes its own ID
     }
     return manifest;
 }
 
 /**
  * Gets a list of the full manifest objects for all available layouts,
- * optionally filtered by a specific layout type ('page' or 'collection').
- * This is used to populate UI dropdowns for layout selection.
+ * optionally filtered by a specific layout type ('single' or 'collection').
+ * This is now the single source of truth for discovering all content blueprints.
+ *
+ * @param siteData The site's data, used to find custom layouts.
+ * @param type An optional filter to return only 'single' or 'collection' layouts.
+ * @returns A promise that resolves to an array of LayoutManifest objects.
  */
 export async function getAvailableLayouts(
   siteData: SiteDataForAssets,
   type?: LayoutManifest['layoutType']
 ): Promise<LayoutManifest[]> {
+  // 1. Get the IDs of all core layouts from the central config.
   const coreLayoutIds = CORE_LAYOUTS.map(l => l.id);
+  // 2. Get the IDs of any user-defined custom layouts from the site's manifest.
   const customLayoutIds = siteData.manifest.layouts?.map(l => l.id) || [];
+  // 3. Combine and de-duplicate the list of all known layout IDs.
   const allLayoutIds = [...new Set([...coreLayoutIds, ...customLayoutIds])];
 
+  // 4. Fetch the full manifest file for every single layout.
   const manifestPromises = allLayoutIds.map(layoutId =>
     getLayoutManifest(siteData, layoutId)
   );
 
+  // 5. Wait for all fetches to complete and filter out any that failed (were null).
   const allManifests = (await Promise.all(manifestPromises))
     .filter((m): m is LayoutManifest => m !== null);
 
+  // 6. If a type filter was provided, apply it now. Otherwise, return all layouts.
   if (type) {
     return allManifests.filter(m => m.layoutType === type);
   }
 
   return allManifests;
-}
-
-/**
- * Gets all available layout options including both regular layouts and collection type layouts.
- * Returns LayoutInfo objects that can be used in UI selectors.
- */
-export async function getAllAvailableLayoutOptions(
-  siteData: SiteDataForAssets
-): Promise<LayoutInfo[]> {
-  const layouts: LayoutInfo[] = [];
-  
-  // 1. Add regular page and collection layouts
-  const regularLayouts = await getAvailableLayouts(siteData);
-  regularLayouts.forEach(manifest => {
-    layouts.push({
-      id: manifest.id,
-      name: manifest.name,
-      type: manifest.layoutType,
-      path: manifest.id, // For regular layouts, id and path are the same
-      description: manifest.description
-    });
-  });
-  
-  // 2. Add collection type layouts dynamically
-  try {
-    const collectionTypes = await getAvailableCollectionTypes();
-    for (const {id: typeId, manifest} of collectionTypes) {
-      for (const [layoutKey, layoutDef] of Object.entries(manifest.layouts)) {
-        layouts.push({
-          id: `${typeId}.${layoutKey}`, // e.g., 'blog.listing', 'portfolio.grid'
-          name: `${layoutDef.name} (${manifest.name})`, // e.g., 'Blog Listing (Blog)'
-          type: 'collection',
-          path: `${typeId}.${layoutKey}`, // Collection type layouts use compound paths
-          description: layoutDef.description,
-          // Add metadata to distinguish collection layouts
-          collectionTypeId: typeId,
-          layoutKey: layoutKey
-        } as LayoutInfo & { collectionTypeId?: string; layoutKey?: string });
-      }
-    }
-  } catch (error) {
-    console.warn('Failed to load collection type layouts:', error);
-    // Continue without collection layouts if there's an error
-  }
-  
-  return layouts;
-}
-
-/**
- * Checks if a layout ID refers to a collection type layout.
- * Collection type layouts have the format: 'typeId.layoutKey'
- */
-export function isCollectionTypeLayout(layoutId: string): boolean {
-  return layoutId.includes('.') && !isCoreLayout(layoutId);
-}
-
-/**
- * Parses a collection type layout ID into its components.
- * Returns null if the ID is not a valid collection type layout.
- */
-export function parseCollectionTypeLayoutId(layoutId: string): {typeId: string, layoutKey: string} | null {
-  if (!isCollectionTypeLayout(layoutId)) {
-    return null;
-  }
-  
-  const parts = layoutId.split('.');
-  if (parts.length !== 2) {
-    return null;
-  }
-  
-  return {
-    typeId: parts[0],
-    layoutKey: parts[1]
-  };
 }

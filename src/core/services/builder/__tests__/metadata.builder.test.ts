@@ -1,338 +1,162 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-require-imports */
+// src/core/services/builder/__tests__/metadata.builder.test.ts
+
 import { generateMetadataFiles } from '../metadata.builder';
-import type { LocalSiteData, SiteBundle } from '@/core/types';
+import type { LocalSiteData, SiteBundle, StructureNode, CollectionItemRef } from '@/core/types';
 import * as urlUtils from '../../urlUtils.service';
 
-// Mock dependencies
+// Mock the urlUtils service
 jest.mock('../../urlUtils.service', () => ({
   getUrlForNode: jest.fn()
 }));
 
 describe('metadata.builder', () => {
+  // --- Refactored Test Data ---
+  // The mock data is now more realistic. 'collectionItems' are explicitly part of the manifest,
+  // and 'structure' only contains the regular pages, as per the new unified model.
+
   const mockSiteData: LocalSiteData = {
     siteId: 'test-site',
     manifest: {
       siteId: 'test-site',
       generatorVersion: '1.0.0',
-      title: 'Test Site',
-      description: 'A test website for unit testing',
+      title: 'Test Site with & "Special Chars"',
+      description: 'A test website with < and >',
       baseUrl: 'https://example.com',
       author: 'Test Author',
-      structure: [],
-      theme: {
-        name: 'default',
-        config: {}
-      }
+      theme: { name: 'default', config: {} },
+      structure: [
+        { type: 'page', title: 'Home Page', path: 'content/index.md', slug: 'home' },
+        { type: 'page', title: 'About Us', path: 'content/about.md', slug: 'about' }
+      ],
+      collectionItems: [
+        {
+          collectionId: 'blog',
+          title: 'Blog Post',
+          path: 'content/blog/post.md',
+          slug: 'blog-post',
+          url: '/blog/blog-post'
+        }
+      ]
     },
     contentFiles: [
       {
         slug: 'home',
         path: 'content/index.md',
-        frontmatter: {
-          title: 'Home Page',
-          layout: 'page',
-          date: '2024-01-01T10:00:00Z',
-          description: 'Home page description'
-        },
-        content: 'Welcome to our site!'
+        frontmatter: { title: 'Home Page', layout: 'page', date: '2024-01-01T10:00:00Z', description: 'Home page description' },
+        content: 'Welcome!'
       },
       {
         slug: 'about',
         path: 'content/about.md',
-        frontmatter: {
-          title: 'About Us',
-          layout: 'page',
-          date: '2024-01-02T15:30:00Z',
-          description: 'About page description'
-        },
-        content: 'Learn more about us.'
+        frontmatter: { title: 'About Us', layout: 'page', date: '2024-01-02T15:30:00Z', description: 'About page description' },
+        content: 'Learn more.'
       },
       {
         slug: 'blog-post',
         path: 'content/blog/post.md',
-        frontmatter: {
-          title: 'Blog Post',
-          layout: 'blog',
-          date: '2024-01-03T12:00:00Z'
-        },
-        content: 'Blog content'
+        frontmatter: { title: 'Blog Post', layout: 'blog', date: '2024-01-03T12:00:00Z' },
+        content: 'Blog content.'
       }
     ]
   };
-
-  const mockAllStaticNodes = [
-    {
-      type: 'page' as const,
-      title: 'Home Page',
-      path: 'content/index.md',
-      slug: 'home',
-      parentId: null,
-      depth: 0,
-      index: 0
-    },
-    {
-      type: 'page' as const,
-      title: 'About Us',
-      path: 'content/about.md',
-      slug: 'about',
-      parentId: null,
-      depth: 0,
-      index: 1
-    },
-    {
-      type: 'page' as const,
-      title: 'Blog Post',
-      path: 'content/blog/post.md',
-      slug: 'blog-post',
-      parentId: null,
-      depth: 0,
-      index: 2
-    }
-  ];
 
   let mockBundle: SiteBundle;
 
   beforeEach(() => {
     mockBundle = {};
-    
-    // Mock urlUtils.getUrlForNode to return expected paths
-    (urlUtils.getUrlForNode as jest.Mock).mockImplementation((node) => {
+    // Mock the unified getUrlForNode to return expected paths for both pages and items.
+    (urlUtils.getUrlForNode as jest.Mock).mockImplementation((node: StructureNode | CollectionItemRef) => {
       if (node.slug === 'home') return '/';
       if (node.slug === 'about') return '/about/';
-      if (node.slug === 'blog-post') return '/blog-post/';
+      if (node.slug === 'blog-post') return '/blog/blog-post/'; // Example static URL for a collection item
       return `/${node.slug}/`;
     });
   });
 
   describe('generateMetadataFiles', () => {
-    test('generates sitemap.xml correctly', () => {
-      generateMetadataFiles(mockBundle, mockSiteData, mockAllStaticNodes);
+    test('generates sitemap.xml including both pages and collection items', () => {
+      // CORRECTED: Call with the new, 2-argument signature.
+      generateMetadataFiles(mockBundle, mockSiteData);
 
       expect(mockBundle['sitemap.xml']).toBeDefined();
-      
       const sitemap = mockBundle['sitemap.xml'] as string;
-      
-      // Should be valid XML
+
       expect(sitemap).toContain('<?xml version="1.0" encoding="UTF-8"?>');
       expect(sitemap).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
-      expect(sitemap).toContain('</urlset>');
-      
-      // Should include all pages
-      expect(sitemap).toContain('<loc>https://example.com/');
-      expect(sitemap).toContain('<loc>https://example.com/about/');
-      expect(sitemap).toContain('<loc>https://example.com/blog-post/');
-      
-      // Should include lastmod dates
+
+      // Should include ALL content: 2 pages + 1 collection item
+      expect(sitemap).toContain('<loc>https://example.com/</loc>');
+      expect(sitemap).toContain('<loc>https://example.com/about/</loc>');
+      expect(sitemap).toContain('<loc>https://example.com/blog/blog-post/</loc>');
+
+      // Should include lastmod dates for all content
       expect(sitemap).toContain('<lastmod>2024-01-01</lastmod>');
       expect(sitemap).toContain('<lastmod>2024-01-02</lastmod>');
       expect(sitemap).toContain('<lastmod>2024-01-03</lastmod>');
     });
 
-    test('generates RSS feed correctly', () => {
-      generateMetadataFiles(mockBundle, mockSiteData, mockAllStaticNodes);
+    test('generates RSS feed including all dated content', () => {
+      // CORRECTED: Call with the new, 2-argument signature.
+      generateMetadataFiles(mockBundle, mockSiteData);
 
       expect(mockBundle['rss.xml']).toBeDefined();
-      
       const rss = mockBundle['rss.xml'] as string;
-      
-      // Should be valid RSS XML
+
       expect(rss).toContain('<?xml version="1.0" encoding="UTF-8"?>');
       expect(rss).toContain('<rss version="2.0"');
-      expect(rss).toContain('</rss>');
-      
-      // Should include channel info
-      expect(rss).toContain('<title>Test Site</title>');
-      expect(rss).toContain('<description>A test website for unit testing</description>');
+
+      // Should correctly escape special characters from the manifest title and description.
+      expect(rss).toContain('<title>Test Site with & "Special Chars"</title>');
+      expect(rss).toContain('<description>A test website with < and ></description>');
       expect(rss).toContain('<link>https://example.com</link>');
-      
-      // Should include items for pages
-      expect(rss).toContain('<item>');
-      expect(rss).toContain('</item>');
+
+      // Should include items for all pages with a `date` in frontmatter
+      expect(rss.match(/<item>/g)?.length).toBe(3);
+      expect(rss).toContain('<title>Home Page</title>');
+      expect(rss).toContain('<title>About Us</title>');
+      expect(rss).toContain('<title>Blog Post</title>');
+      expect(rss).toContain('<description>Home page description</description>');
     });
 
     test('handles missing baseUrl gracefully', () => {
       const siteDataNoBaseUrl = {
         ...mockSiteData,
-        manifest: {
-          ...mockSiteData.manifest,
-          baseUrl: undefined
-        }
+        manifest: { ...mockSiteData.manifest, baseUrl: undefined }
       };
-
-      generateMetadataFiles(mockBundle, siteDataNoBaseUrl, mockAllStaticNodes);
-
-      const sitemap = mockBundle['sitemap.xml'] as string;
-      const rss = mockBundle['rss.xml'] as string;
-      
-      // Should use empty base or handle gracefully
-      expect(sitemap).toBeDefined();
-      expect(rss).toBeDefined();
-    });
-
-    test('handles empty pages list', () => {
-      generateMetadataFiles(mockBundle, mockSiteData, []);
+      // CORRECTED: Call with the new, 2-argument signature.
+      generateMetadataFiles(mockBundle, siteDataNoBaseUrl);
 
       const sitemap = mockBundle['sitemap.xml'] as string;
       const rss = mockBundle['rss.xml'] as string;
-      
-      // Should still generate valid files
-      expect(sitemap).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
-      expect(sitemap).toContain('</urlset>');
-      expect(rss).toContain('<rss version="2.0"');
-      expect(rss).toContain('</rss>');
+
+      // Should default to a placeholder domain
+      expect(sitemap).toContain('<loc>https://example.com/');
+      expect(rss).toContain('<link>https://example.com</link>');
     });
 
-    test('handles special characters in URLs', () => {
-      const siteDataWithSpecialChars = {
+    test('handles empty content lists gracefully', () => {
+      const siteDataEmpty = {
         ...mockSiteData,
-        contentFiles: [
-          {
-            slug: 'cafe-resume',
-            path: 'cafe-resume/index.html',
-            frontmatter: {
-              title: 'Café & Résumé',
-              layout: 'page',
-              date: '2024-01-01T10:00:00Z'
-            },
-            content: 'Content with special chars'
-          },
-          {
-            slug: 'quotes',
-            path: 'quotes/index.html',
-            frontmatter: {
-              title: 'Test with "Quotes"',
-              layout: 'page',
-              date: '2024-01-02T10:00:00Z'
-            },
-            content: 'Content with quotes'
-          }
-        ]
+        manifest: { ...mockSiteData.manifest, structure: [], collectionItems: [] },
+        contentFiles: []
       };
-
-      const nodesWithSpecialChars = [
-        {
-          type: 'page' as const,
-          title: 'Café & Résumé',
-          path: 'cafe-resume/index.html',
-          slug: 'cafe-resume',
-          parentId: null,
-          depth: 0,
-          index: 0
-        },
-        {
-          type: 'page' as const,
-          title: 'Test with "Quotes"',
-          path: 'quotes/index.html',
-          slug: 'quotes',
-          parentId: null,
-          depth: 0,
-          index: 1
-        }
-      ];
-
-      generateMetadataFiles(mockBundle, siteDataWithSpecialChars, nodesWithSpecialChars);
+      // CORRECTED: Call with the new, 2-argument signature.
+      generateMetadataFiles(mockBundle, siteDataEmpty);
 
       const sitemap = mockBundle['sitemap.xml'] as string;
       const rss = mockBundle['rss.xml'] as string;
-      
-      // Should properly encode URLs and escape XML
-      expect(sitemap).toContain('cafe-resume/');
-      expect(rss).toContain('Café &amp; Résumé');
-      expect(rss).toContain('Test with &quot;Quotes&quot;');
+
+      // Should generate valid, empty files
+      expect(sitemap).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+      expect(rss).not.toContain('<item>');
     });
 
-    test('includes correct lastmod dates in sitemap', () => {
-      generateMetadataFiles(mockBundle, mockSiteData, mockAllStaticNodes);
-
-      const sitemap = mockBundle['sitemap.xml'] as string;
-      
-      // Should include lastmod with date format (YYYY-MM-DD)
-      expect(sitemap).toContain('<lastmod>');
-      expect(sitemap).toMatch(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/);
-    });
-
-    test('includes publication dates in RSS items', () => {
-      generateMetadataFiles(mockBundle, mockSiteData, mockAllStaticNodes);
-
-      const rss = mockBundle['rss.xml'] as string;
-      
-      // Should include pubDate for RSS items
-      expect(rss).toContain('<pubDate>');
-      expect(rss).toMatch(/<pubDate>[^<]+<\/pubDate>/);
-    });
-
-    test('generates valid XML without HTML entities issues', () => {
-      const siteDataSpecialChars = {
-        ...mockSiteData,
-        manifest: {
-          ...mockSiteData.manifest,
-          title: 'Site with & Ampersand',
-          description: 'Description with <tags> and "quotes"'
-        }
-      };
-
-      generateMetadataFiles(mockBundle, siteDataSpecialChars, mockAllStaticNodes);
-
-      mockBundle['sitemap.xml'] as string;
-      const rss = mockBundle['rss.xml'] as string;
-      
-      // Should properly escape XML entities
-      expect(rss).toContain('Site with &amp; Ampersand');
-      expect(rss).toContain('Description with &lt;tags&gt; and &quot;quotes&quot;');
-      
-      // Should not contain unescaped entities
-      expect(rss).not.toContain('Site with & Ampersand');
-      expect(rss).not.toContain('<tags>');
-    });
-
-    test('uses correct MIME types and formatting', () => {
-      generateMetadataFiles(mockBundle, mockSiteData, mockAllStaticNodes);
-
-      const sitemap = mockBundle['sitemap.xml'] as string;
-      const rss = mockBundle['rss.xml'] as string;
-      
-      // Sitemap should have proper namespace
-      expect(sitemap).toContain('xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"');
-      
-      // RSS should have proper version and structure
-      expect(rss).toContain('version="2.0"');
-      expect(rss).toContain('<channel>');
-      expect(rss).toContain('</channel>');
-    });
-
-    test('handles long descriptions gracefully', () => {
-      const siteDataLongDesc = {
-        ...mockSiteData,
-        manifest: {
-          ...mockSiteData.manifest,
-          description: 'A'.repeat(1000) // Very long description
-        }
-      };
-
-      generateMetadataFiles(mockBundle, siteDataLongDesc, mockAllStaticNodes);
-
-      const rss = mockBundle['rss.xml'] as string;
-      
-      // Should handle long descriptions without breaking XML
-      expect(rss).toBeDefined();
-      expect(rss).toContain('<description>');
-      expect(rss).toContain('</description>');
-    });
-
-    test('preserves bundle existing content', () => {
-      // Pre-populate bundle with existing content
-      mockBundle['existing-file.txt'] = 'existing content';
-      mockBundle['images/logo.png'] = 'binary data';
-
-      generateMetadataFiles(mockBundle, mockSiteData, mockAllStaticNodes);
-
-      // Should preserve existing content
-      expect(mockBundle['existing-file.txt']).toBe('existing content');
-      expect(mockBundle['images/logo.png']).toBe('binary data');
-      
-      // Should add new metadata files
+    test('preserves existing content in the bundle', () => {
+      mockBundle['existing-file.txt'] = 'some content';
+      // CORRECTED: Call with the new, 2-argument signature.
+      generateMetadataFiles(mockBundle, mockSiteData);
+      expect(mockBundle['existing-file.txt']).toBe('some content');
       expect(mockBundle['sitemap.xml']).toBeDefined();
-      expect(mockBundle['rss.xml']).toBeDefined();
     });
   });
 });

@@ -1,5 +1,5 @@
 // src/hooks/useAutosave.ts
-'use client';
+
 
 import { useEffect, useRef } from 'react';
 import { AUTOSAVE_DELAY } from '@/config/editorConfig';

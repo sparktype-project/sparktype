@@ -1,4 +1,4 @@
-'use client';
+// /src/core/hooks/useInitialiseUIStore.ts
 
 import { useUIStore } from '../../core/state/uiStore';
 import { useEffect } from 'react';

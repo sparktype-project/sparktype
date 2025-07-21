@@ -5,7 +5,7 @@ import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 
 import App from './App';
-import './globals.css'; // Import global styles
+import './globals.css';
 
 // Error Boundary to catch any rendering errors at the very top level.
 import ErrorBoundary from './core/components/ErrorBoundary'; 
@@ -16,7 +16,7 @@ import { EditorProvider } from './features/editor/contexts/EditorProvider';
 import { Buffer } from 'buffer';
 window.Buffer = Buffer;
 
-// Find the root element from your index.html
+// Find the root element from index.html
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Fatal Error: Root element with id 'root' not found in the DOM.");
@@ -32,7 +32,6 @@ ReactDOM.createRoot(rootElement).render(
       <HashRouter>
         {/*
           The ThemeProvider manages light/dark mode for the entire application.
-          It's placed here to wrap all visible components.
         */}
         <ThemeProvider
           attribute="class"

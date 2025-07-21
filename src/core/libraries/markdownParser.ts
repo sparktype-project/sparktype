@@ -1,7 +1,7 @@
 // src/core/libraries/markdownParser.ts
 import matter, { type Input } from 'gray-matter';
 import { type MarkdownFrontmatter, type ParsedMarkdownFile } from '@/core/types';
-import yaml from 'js-yaml'; // We will use this for both parsing and stringifying
+import yaml from 'js-yaml'; 
 
 /**
  * Parses a raw markdown string (which includes YAML frontmatter) into an object
@@ -11,11 +11,10 @@ import yaml from 'js-yaml'; // We will use this for both parsing and stringifyin
  * @returns An object with `frontmatter` and `content` (markdown body).
  * @throws Error if frontmatter parsing fails.
  */
+
 export function parseMarkdownString(rawMarkdown: string): { frontmatter: MarkdownFrontmatter, content: string } {
   try {
-    // --- THIS IS THE FIX ---
-    // Explicitly tell gray-matter to use js-yaml for parsing. This avoids
-    // any internal logic that might try to access the Node.js `Buffer` object.
+    
     const { data, content: bodyContent } = matter(rawMarkdown as Input, {
       engines: {
         yaml: {
@@ -24,9 +23,7 @@ export function parseMarkdownString(rawMarkdown: string): { frontmatter: Markdow
         },
       },
     });
-    // --- END OF FIX ---
     
-    // Ensure title is always a string, provide default if missing or not string
     const title = typeof data.title === 'string' ? data.title : 'Untitled';
 
     return { 
@@ -67,7 +64,7 @@ export function stringifyToMarkdown(frontmatter: MarkdownFrontmatter, content: s
     return content;
   } catch (e) {
     console.error("Error stringifying frontmatter to YAML:", e);
-    // Fallback logic remains the same...
+
     let fallbackFmString = '';
     for (const key in frontmatter) {
         if (Object.prototype.hasOwnProperty.call(frontmatter, key)) {

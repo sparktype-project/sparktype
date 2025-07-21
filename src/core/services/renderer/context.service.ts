@@ -1,4 +1,4 @@
-// src/core/services/rendering/context.service.ts
+// src/core/services/renderer/context.service.ts
 
 import Handlebars from 'handlebars';
 import type {
@@ -9,6 +9,8 @@ import type {
     Manifest,
     ImageService,
     LayoutManifest,
+    CollectionItemRef,
+    StructureNode,
 } from '@/core/types';
 import { PageType } from '@/core/types';
 import { generateNavLinks } from '@/core/services/navigationStructure.service';
@@ -20,12 +22,12 @@ import { getRelativePath } from '@/core/services/relativePaths.service';
 // Define a reusable type for the resolved image presets.
 type ResolvedImagePresets = Record<string, { url: string; width?: number; height?: number }>;
 
+// The context object passed into the main body template.
 type EnrichedPageContext = (PageResolutionResult & {
     images?: ResolvedImagePresets;
-    collectionItems?: (ParsedMarkdownFile & { images?: ResolvedImagePresets })[];
-    layoutManifest?: LayoutManifest | null; // Add layoutManifest as an optional property.
+    collectionItems?: (ParsedMarkdownFile & { images?: ResolvedImagePresets; url: string })[];
+    layoutManifest?: LayoutManifest | null;
 });
-
 
 /**
  * Asynchronously resolves all image preset URLs for a given content file.
@@ -73,11 +75,31 @@ export async function assemblePageContext(
     const { manifest } = siteData;
     const imageContext = await resolveImagePresets({ imageService, layoutManifest: pageLayoutManifest, contentFile: resolution.contentFile, options, manifest });
 
+    // When rendering a collection page, we need to process its items.
     const processedCollectionItems = resolution.collectionItems
         ? await Promise.all(resolution.collectionItems.map(async (item: ParsedMarkdownFile) => {
-            const urlSegment = getUrlForNode(item, manifest, options.isExport);
-            const currentPagePath = getUrlForNode(resolution.contentFile, manifest, options.isExport);
+            // CORRECTED: Create a lightweight `CollectionItemRef` on-the-fly to pass to the URL service.
+            // This ensures we're using the explicit data model for URL generation.
+            const collectionId = manifest.collections?.find(c => item.path.startsWith(c.contentPath))?.id || '';
+            const itemRef: CollectionItemRef = {
+                collectionId: collectionId,
+                path: item.path,
+                slug: item.slug,
+                title: item.frontmatter.title,
+                url: '' // Will be generated next
+            };
             
+            const urlSegment = getUrlForNode(itemRef, manifest, options.isExport);
+            
+            // CORRECTED: Create a `StructureNode` for the current (parent) page to get its path.
+            const currentPageNode: StructureNode = {
+              type: 'page',
+              title: resolution.contentFile.frontmatter.title,
+              path: resolution.contentFile.path,
+              slug: resolution.contentFile.slug
+            };
+            const currentPagePath = getUrlForNode(currentPageNode, manifest, options.isExport);
+
             let itemUrl: string;
             if (options.isExport) {
                 itemUrl = getRelativePath(currentPagePath, urlSegment);
@@ -85,7 +107,7 @@ export async function assemblePageContext(
                 const path = `/${urlSegment}`.replace(/\/$/, '') || '/';
                 itemUrl = `${options.siteRootPath}${path === '/' ? '' : path}`;
             }
-            
+
             return {
                 ...item,
                 url: itemUrl,
@@ -94,15 +116,12 @@ export async function assemblePageContext(
         }))
         : [];
 
-    const result = {
+    return {
         ...resolution,
         images: imageContext,
         collectionItems: processedCollectionItems,
         layoutManifest: pageLayoutManifest,
-        siteData, // Add siteData to template context for collection rendering helper
     };
-
-    return result;
 }
 
 /**
@@ -123,17 +142,33 @@ export async function assembleBaseContext(
     const logoUrl = manifest.logo ? await imageService.getDisplayUrl(manifest, manifest.logo, { height: 32 }, options.isExport) : undefined;
     const faviconUrl = manifest.favicon ? await imageService.getDisplayUrl(manifest, manifest.favicon, { width: 32, height: 32 }, options.isExport) : undefined;
     const openGraphImageUrl = pageContext.images?.og_image?.url || pageContext.images?.teaser_thumbnail?.url;
-
+    
+    // CORRECTED: Create the appropriate `StructureNode` or `CollectionItemRef` before passing to `getUrlForNode`.
+    // We check the manifest to see if the resolved content file is a known collection item.
+    const isItem = manifest.collectionItems?.some(item => item.path === resolution.contentFile.path);
+    let urlNode: StructureNode | CollectionItemRef;
+    if (isItem) {
+      const itemRef = manifest.collectionItems?.find(item => item.path === resolution.contentFile.path)!;
+      urlNode = itemRef;
+    } else {
+      urlNode = {
+        type: 'page',
+        title: resolution.contentFile.frontmatter.title,
+        path: resolution.contentFile.path,
+        slug: resolution.contentFile.slug,
+      };
+    }
+    
     return {
         manifest,
         options,
         pageContext,
-        navLinks: generateNavLinks(siteData, getUrlForNode(resolution.contentFile, manifest, true), options),
+        navLinks: generateNavLinks(siteData, getUrlForNode(urlNode, manifest, true), options),
         headContext: {
             pageTitle: resolution.pageTitle,
             manifest,
             contentFile: resolution.contentFile,
-            canonicalUrl: new URL(getUrlForNode(resolution.contentFile, manifest, false), manifest.baseUrl || 'https://example.com').href,
+            canonicalUrl: new URL(getUrlForNode(urlNode, manifest, false), manifest.baseUrl || 'https://example.com').href,
             baseUrl: options.relativeAssetPath ?? '/',
             styleOverrides: new Handlebars.SafeString(generateStyleOverrides(manifest.theme.config)),
             faviconUrl,

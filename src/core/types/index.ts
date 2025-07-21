@@ -45,15 +45,20 @@ interface DynamicRoute {
 
 export interface LayoutManifest extends BaseAssetManifest {
   id: string;
-  layoutType: 'page' | 'collection';
+  layoutType: 'single' | 'collection';
+
+  // Schema for the page using this layout
+  schema?: import('@rjsf/utils').RJSFSchema;
+  uiSchema?: StrictUiSchema;
+
+  // Schema ONLY for items if layoutType is 'collection'
   itemSchema?: import('@rjsf/utils').RJSFSchema;
   itemUiSchema?: StrictUiSchema;
+
   display_options?: Record<string, DisplayOption>;
   image_presets?: Record<string, ImagePreset>;
   data_files?: DataFileDefinition[];
   dynamic_routes?: Record<string, DynamicRoute>;
-  schema?: import('@rjsf/utils').RJSFSchema;
-  uiSchema?: StrictUiSchema;
 }
 
 /**
@@ -129,8 +134,8 @@ export interface CollectionTypeManifest extends BaseAssetManifest {
 export interface Collection {
   id: string;
   name: string;
-  typeId: string;
   contentPath: string;
+  defaultItemLayout: string;
   settings?: Record<string, unknown>;
 }
 
@@ -168,7 +173,7 @@ export interface LayoutConfig {
 export interface LayoutInfo {
   id: string;
   name:string;
-  type: 'page' | 'collection';
+  type: 'single' | 'collection';
   path: string;
   description?: string;
 }
@@ -312,8 +317,6 @@ export interface NavLinkItem {
   children?: NavLinkItem[];
 }
 
-// --- FIX: Replaced `enum` with the "object as const" pattern ---
-
 /**
  * A runtime object to provide namespacing for page types, similar to an enum.
  * e.g., `PageType.SinglePage`
@@ -361,7 +364,6 @@ interface SinglePageResolution extends BasePageResolution {
 }
 
 /**
- * --- NEW ---
  * Represents the resolved data for a dynamically generated page, like a category archive.
  * It includes the `term` (e.g., the specific category object) that this page represents.
  */

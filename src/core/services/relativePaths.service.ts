@@ -1,4 +1,4 @@
-// src/lib/pathUtils.ts
+// src/core/services/relativePaths.service.ts
 
 /**
  * Calculates the relative path from one file to another.

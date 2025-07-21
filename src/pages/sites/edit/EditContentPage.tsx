@@ -17,7 +17,7 @@ import ThreeColumnLayout from '@/core/components/layout/ThreeColumnLayout';
 import LeftSidebar from '@/features/editor/components/LeftSidebar';
 import NewPageDialog from '@/features/editor/components/NewPageDialog';
 // import CreateCollectionPageDialog from '@/features/editor/components/CreateCollectionPageDialog';
-import BlocknoteEditor, { type BlocknoteEditorRef } from '@/features/editor/components/BlocknoteEditor';
+import MarkdownEditor, { type BlocknoteEditorRef} from '@/features/editor/components/MarkdownEditor';
 import FrontmatterSidebar from '@/features/editor/components/FrontmatterSidebar';
 import PrimaryContentFields from '@/features/editor/components/PrimaryContentFields';
 import CollectionItemList from '@/features/editor/components/CollectionItemList';
@@ -75,7 +75,6 @@ function EditContentPageInternal() {
         manifest={site.manifest}
         layoutFiles={site.layoutFiles}
         themeFiles={site.themeFiles}
-        allContentFiles={allContentFiles}
         frontmatter={frontmatter}
         onFrontmatterChange={handleFrontmatterChange}
         isNewFileMode={isNewFileMode}
@@ -103,8 +102,14 @@ function EditContentPageInternal() {
     return () => { setRightAvailable(false); setRightSidebarContent(null); };
   }, [rightSidebarComponent, setRightAvailable, setRightSidebarContent]);
 
+  const currentLayout = useMemo(() => {
+    if (!frontmatter?.layout || !site?.layoutFiles) return null;
+    
+    return frontmatter.layoutConfig ? { layoutType: 'collection' } : { layoutType: 'single' };
+  }, [frontmatter, site?.layoutFiles]);
+
   // --- 3. Determine Page State for Rendering ---
-  const isCollectionPage = useMemo(() => !!frontmatter?.collection, [frontmatter]);
+  const isCollectionListingPage = currentLayout?.layoutType === 'collection';
   const isSiteEmpty = siteId && siteStructure.length === 0 && !isNewFileMode;
 
   const pageTitle = status === 'ready' && frontmatter?.title 
@@ -151,10 +156,10 @@ function EditContentPageInternal() {
                     />
                   </div>
                   <div className="mt-6 flex-grow min-h-0">
-                    {isCollectionPage ? (
-                      <CollectionItemList siteId={siteId} collectionPagePath={filePath} />
+                    {isCollectionListingPage && frontmatter.layoutConfig?.collectionId ? (
+                      <CollectionItemList siteId={siteId} collectionId={frontmatter.layoutConfig.collectionId} />
                     ) : (
-                      <BlocknoteEditor ref={editorRef} key={filePath} initialContent={initialMarkdown} onContentChange={onContentModified} />
+                      <MarkdownEditor ref={editorRef} key={filePath} initialContent={initialMarkdown} onContentChange={onContentModified} />
                     )}
                   </div>
                 </div>

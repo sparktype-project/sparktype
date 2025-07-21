@@ -1,10 +1,8 @@
 // src/features/editor/components/FrontmatterSidebar.tsx
-'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Manifest, RawFile, StructureNode, ParsedMarkdownFile, MarkdownFrontmatter, LayoutConfig } from '@/core/types';
+import type { Manifest, RawFile, MarkdownFrontmatter, LayoutConfig, Collection } from '@/core/types';
 import { getAvailableLayouts } from '@/core/services/config/configHelpers.service';
-import { isCollectionTypeLayout } from '@/core/services/config/configHelpers.service';
 import { type LayoutManifest } from '@/core/types';
 
 // UI Component Imports
@@ -14,8 +12,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Trash2 } from 'lucide-react';
 
 // Form & Sub-component Imports
-import ContentTypeSelector from '@/features/editor/components/forms/ContentTypeSelector';
-import CollectionLayoutForm from '@/features/editor/components/forms/CollectionLayoutForm';
+import LayoutSelector from '@/features/editor/components/forms/LayoutSelector';
+import CollectionConfigForm from '@/features/editor/components/forms/CollectionConfigForm';
+// CORRECTED: The import casing now exactly matches the actual filename 'PageMetaDataForm.tsx'.
 import PageMetadataForm from '@/features/editor/components/forms/PageMetaDataForm';
 import AdvancedSettingsForm from '@/features/editor/components/forms/AdvancedSettingsForm';
 
@@ -25,7 +24,6 @@ interface FrontmatterSidebarProps {
   manifest: Manifest;
   layoutFiles: RawFile[] | undefined;
   themeFiles: RawFile[] | undefined;
-  allContentFiles: ParsedMarkdownFile[];
   frontmatter: MarkdownFrontmatter;
   onFrontmatterChange: (newFrontmatter: Partial<MarkdownFrontmatter>) => void;
   isNewFileMode: boolean;
@@ -34,8 +32,13 @@ interface FrontmatterSidebarProps {
   onDelete: () => Promise<void>;
 }
 
+/**
+ * The main sidebar component for editing a page's metadata (frontmatter).
+ * It orchestrates various sub-forms based on the selected Layout and the
+ * page's role within the site structure (e.g., standard page vs. collection item).
+ */
 export default function FrontmatterSidebar({
-  siteId, filePath, manifest, layoutFiles, themeFiles, allContentFiles,
+  siteId, filePath, manifest, layoutFiles, themeFiles,
   frontmatter, onFrontmatterChange, isNewFileMode, slug, onSlugChange, onDelete,
 }: FrontmatterSidebarProps) {
 
@@ -45,149 +48,86 @@ export default function FrontmatterSidebar({
   useEffect(() => {
     async function fetchAllLayouts() {
       setIsLoading(true);
-      
       const siteDataForAssets = { manifest, layoutFiles, themeFiles };
       const layouts = await getAvailableLayouts(siteDataForAssets);
       setAllLayouts(layouts);
       setIsLoading(false);
     }
     fetchAllLayouts();
-    // This effect should only re-run if the core site assets change.
   }, [manifest, layoutFiles, themeFiles]);
 
-  const { isCollectionPage, isCollectionItem, parentFile } = useMemo(() => {
-    const isCollection = !!frontmatter.collection;
-    if (isCollection) return { isCollectionPage: true, isCollectionItem: false, parentFile: null };
-    
-    // For new files, check if the parent directory is a collection
-    if (isNewFileMode) {
-      const parentPath = `${filePath}.md`; // Convert parent dir to collection page path
-      const pFile = allContentFiles.find(f => f.path === parentPath);
-      if (pFile?.frontmatter.collection) {
-        return { isCollectionPage: false, isCollectionItem: true, parentFile: pFile };
-      }
-    } else {
-      // For existing files, check if this file is a child of a collection page by searching the structure
-      function findParentCollection(nodes: StructureNode[], targetPath: string): string | null {
-        for (const node of nodes) {
-          if (node.children) {
-            // Check if targetPath is in this node's children
-            const isChild = node.children.some(child => child.path === targetPath);
-            if (isChild) {
-              return node.path;
-            }
-            // Recursively search in children
-            const found = findParentCollection(node.children, targetPath);
-            if (found) return found;
-          }
-        }
-        return null;
-      }
-      
-      const parentPath = findParentCollection(manifest.structure, filePath);
-      if (parentPath) {
-        const pFile = allContentFiles.find(f => f.path === parentPath);
-        if (pFile?.frontmatter.collection) {
-          return { isCollectionPage: false, isCollectionItem: true, parentFile: pFile };
-        }
-      }
-    }
-    
-    return { isCollectionPage: false, isCollectionItem: false, parentFile: null };
-  }, [frontmatter.collection, manifest.structure, allContentFiles, filePath, isNewFileMode]);
+  const { isCollectionItem, parentCollection } = useMemo(() => {
+    // Determine if the current file is an item within a collection by checking its path.
+    const collections = manifest.collections || [];
+    const parent = collections.find((c: Collection) => filePath.startsWith(c.contentPath));
+    return {
+      isCollectionItem: !!parent,
+      parentCollection: parent || null,
+    };
+  }, [filePath, manifest.collections]);
 
   const currentLayoutManifest = useMemo(() => {
     if (!frontmatter.layout) return null;
     return allLayouts.find(l => l.id === frontmatter.layout) ?? null;
   }, [allLayouts, frontmatter.layout]);
 
-  const parentLayoutManifest = useMemo(() => {
-    if (!isCollectionItem || !parentFile?.frontmatter.layout) return null;
-    return allLayouts.find(l => l.id === parentFile.frontmatter.layout) ?? null;
-  }, [allLayouts, isCollectionItem, parentFile]);
+  // If this is a collection item, its schema is defined by its parent collection's default item layout.
+  const itemSchemaLayoutManifest = useMemo(() => {
+    if (!isCollectionItem || !parentCollection) return null;
+    return allLayouts.find(l => l.id === parentCollection.defaultItemLayout) ?? null;
+  }, [allLayouts, isCollectionItem, parentCollection]);
 
+  const handleLayoutChange = useCallback((newLayoutId: string) => {
+    const selectedLayout = allLayouts.find(l => l.id === newLayoutId);
+    if (!selectedLayout) return;
 
-  const handleContentTypeChange = useCallback((newLayoutId: string) => {
-    if (isCollectionTypeLayout(newLayoutId)) {
-      // For collection type layouts, set up proper layoutConfig
-      const layoutParts = newLayoutId.split('.');
-      if (layoutParts.length === 2) {
-        const [typeId, layoutKey] = layoutParts;
-        onFrontmatterChange({
-          layout: 'page', // Use page layout as base
-          layoutConfig: {
-            collectionId: typeId, // Use typeId as collectionId (assuming they match)
-            layout: newLayoutId,
-            sortBy: 'date', // Default sorting
-            pagination: {
-              enabled: false,
-              itemsPerPage: 10
-            },
-            // Other fields will be set by the CollectionLayoutForm
-          }
-        });
-      } else {
-        // Fallback for malformed collection layout
-        onFrontmatterChange({ layout: 'page' });
-      }
-    } else {
-      // For regular layouts, clear any existing layoutConfig and set the layout
-      onFrontmatterChange({ 
-        layout: newLayoutId,
-        layoutConfig: undefined // Clear collection configuration
-      });
+    // When layout changes, reset layoutConfig if the new layout is not a collection type.
+    const newFrontmatter: Partial<MarkdownFrontmatter> = { layout: newLayoutId };
+    if (selectedLayout.layoutType !== 'collection') {
+      newFrontmatter.layoutConfig = undefined;
     }
-  }, [onFrontmatterChange]);
+    onFrontmatterChange(newFrontmatter);
+  }, [onFrontmatterChange, allLayouts]);
 
   const handleLayoutConfigChange = useCallback((newConfig: LayoutConfig) => {
     onFrontmatterChange({ layoutConfig: newConfig });
   }, [onFrontmatterChange]);
 
-  const isCollectionLayout = useMemo(() => {
-    // Check if layoutConfig exists and has a collection layout
-    if (frontmatter.layoutConfig?.layout) {
-      return isCollectionTypeLayout(frontmatter.layoutConfig.layout);
-    }
-    // Fallback to checking the layout field (for backward compatibility)
-    return frontmatter.layout ? isCollectionTypeLayout(frontmatter.layout) : false;
-  }, [frontmatter.layout, frontmatter.layoutConfig]);
-
-  // FIX #2: Add a loading guard to prevent rendering with incomplete data.
-  // This ensures `currentLayoutManifest` is populated before children render.
   if (isLoading || !frontmatter) {
     return <div className="p-4 text-sm text-center text-muted-foreground">Loading settings...</div>;
   }
 
-  const defaultOpenSections = ['content-type', 'metadata', 'advanced'];
-  if (isCollectionLayout) {
-    defaultOpenSections.push('collection-settings');
+  const defaultOpenSections = ['layout', 'metadata', 'advanced'];
+  if (currentLayoutManifest?.layoutType === 'collection') {
+    defaultOpenSections.push('collection-config');
   }
 
   return (
     <div className="h-full flex flex-col">
       <div className="flex-grow overflow-y-auto">
         <Accordion type="multiple" defaultValue={defaultOpenSections} className="w-full">
-          
+
+          {/* Layout Selector - Hidden for collection items as their layout is fixed. */}
           {!isCollectionItem && (
-            <AccordionItem value="content-type">
-              <AccordionTrigger>Content Type</AccordionTrigger>
+            <AccordionItem value="layout">
+              <AccordionTrigger>Layout</AccordionTrigger>
               <AccordionContent>
-                <ContentTypeSelector
+                <LayoutSelector
                   siteId={siteId}
-                  selectedType={frontmatter.layoutConfig?.layout || frontmatter.layout || 'page'}
-                  onChange={handleContentTypeChange}
+                  selectedLayoutId={frontmatter.layout || ''}
+                  onChange={handleLayoutChange}
                 />
               </AccordionContent>
             </AccordionItem>
           )}
 
-          {isCollectionLayout && (
-            <AccordionItem value="collection-settings">
-              <AccordionTrigger>Collection Settings</AccordionTrigger>
+          {/* Collection Configuration - Shown only for pages using a 'collection' layout. */}
+          {currentLayoutManifest?.layoutType === 'collection' && (
+            <AccordionItem value="collection-config">
+              <AccordionTrigger>Collection Display</AccordionTrigger>
               <AccordionContent>
-                <CollectionLayoutForm
+                <CollectionConfigForm
                   siteId={siteId}
-                  selectedLayout={frontmatter.layout || ''}
                   layoutConfig={frontmatter.layoutConfig}
                   onLayoutConfigChange={handleLayoutConfigChange}
                 />
@@ -195,6 +135,7 @@ export default function FrontmatterSidebar({
             </AccordionItem>
           )}
 
+          {/* Metadata Form - The schema it uses depends on whether it's a page or an item. */}
           <AccordionItem value="metadata">
             <AccordionTrigger>Metadata</AccordionTrigger>
             <AccordionContent>
@@ -202,12 +143,14 @@ export default function FrontmatterSidebar({
                 siteId={siteId}
                 frontmatter={frontmatter}
                 onFrontmatterChange={onFrontmatterChange}
-                layoutManifest={isCollectionItem ? parentLayoutManifest : currentLayoutManifest}
+                // If it's an item, use the parent's item schema. Otherwise, use its own.
+                layoutManifest={isCollectionItem ? itemSchemaLayoutManifest : currentLayoutManifest}
                 isCollectionItem={isCollectionItem}
               />
             </AccordionContent>
           </AccordionItem>
 
+          {/* Advanced Settings (Slug, Delete) */}
           <AccordionItem value="advanced">
             <AccordionTrigger>Advanced</AccordionTrigger>
             <AccordionContent className="space-y-4">
@@ -221,7 +164,7 @@ export default function FrontmatterSidebar({
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="outline" className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive">
-                        <Trash2 className="h-4 w-4 mr-2" /> Delete page
+                        <Trash2 className="h-4 w-4 mr-2" /> Delete Page
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>

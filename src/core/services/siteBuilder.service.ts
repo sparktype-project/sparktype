@@ -1,7 +1,6 @@
-// src/core/services/siteBuilder.service.ts (REFACTORED)
+// src/core/services/siteBuilder.service.ts
 
 import type { LocalSiteData, SiteBundle } from '@/core/types';
-import { flattenTree } from '@/core/services/fileTree.service';
 import { getMergedThemeDataForForm } from '@/core/services/config/theme.service';
 import { bundleAllAssets } from './builder/asset.builder';
 import { bundleSourceFiles } from './builder/source.builder';
@@ -18,7 +17,7 @@ export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBund
         throw new Error("Cannot build site: content files are not loaded.");
     }
 
-    // 1. Prepare a synchronized version of the site data for a consistent build
+    // 1. Prepare a synchronized version of the site data for a consistent build.
     const { initialConfig: finalMergedConfig } = await getMergedThemeDataForForm(
         siteData.manifest.theme.name,
         siteData.manifest.theme.config
@@ -27,30 +26,20 @@ export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBund
         ...siteData,
         manifest: { ...siteData.manifest, theme: { ...siteData.manifest.theme, config: finalMergedConfig } },
     };
-    
-    // This is needed by multiple builders, so we compute it once.
-    const contentFiles = synchronizedSiteData.contentFiles || [];
-    const allStaticNodes = flattenTree(synchronizedSiteData.manifest.structure, contentFiles);
-    
-    // Filter out draft pages from the build
-    const publishedNodes = allStaticNodes.filter(node => {
-        // Default to published for backward compatibility
-        const isPublished = node.frontmatter?.published !== false;
-        return isPublished;
-    });
 
-    // 2. Generate all HTML pages (only for published content)
-    const htmlPages = await generateHtmlPages(synchronizedSiteData, publishedNodes);
+    // 2. Generate all HTML pages for every piece of content.
+    const htmlPages = await generateHtmlPages(synchronizedSiteData);
     Object.assign(bundle, htmlPages);
 
-    // 3. Bundle source files (_site directory)
+    // 3. Bundle all raw source files (Markdown, manifest, etc.) into the `_site` directory.
     await bundleSourceFiles(bundle, synchronizedSiteData);
 
-    // 4. Bundle all assets (images, themes, layouts)
+    // 4. Bundle all assets (images, themes, layouts).
     await bundleAllAssets(bundle, synchronizedSiteData);
 
-    // 5. Generate metadata files (RSS, sitemap)
-    generateMetadataFiles(bundle, synchronizedSiteData, allStaticNodes);
+    // 5. Generate metadata files (RSS, sitemap).
+    // CORRECTED: The call now correctly passes only the two required arguments.
+    generateMetadataFiles(bundle, synchronizedSiteData);
 
     return bundle;
 }
