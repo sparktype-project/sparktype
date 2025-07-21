@@ -30,7 +30,6 @@ function buildNavLinks(
         // Export logic remains the same
         href = getRelativePath(currentPagePath, urlSegment);
       } else {
-        // --- FIX: Simplified logic for hash-based routing ---
         // 1. Get the base path from options (e.g., "#/sites/123").
         // 2. The urlSegment is the page-specific part (e.g., "about" or "blog/post-1").
         // 3. Combine them into a clean absolute hash path.

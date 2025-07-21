@@ -6,7 +6,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 // Global State and UI Management
 import { useUIStore } from '@/core/state/uiStore';
 import { useAppStore } from '@/core/state/useAppStore';
-import { type AppStore } from '@/core/state/useAppStore';
 import { EditorProvider } from '@/features/editor/contexts/EditorProvider';
 
 // Services
@@ -62,133 +61,57 @@ function CollectionManagementPageInternal() {
   const navigate = useNavigate();
   const { siteId = '', collectionId = '' } = useParams<{ siteId: string; collectionId: string }>();
   
-  // Get site data
-  const site = useAppStore(useCallback((state: AppStore) => state.getSiteById(siteId), [siteId]));
-  
-  // Get collection data
-  const collection = useMemo(() => {
-    if (!site || !collectionId) return null;
-    return getCollection(site.manifest, collectionId);
-  }, [site, collectionId]);
+  const site = useAppStore(useCallback((state) => state.getSiteById(siteId), [siteId]));
+  const collection = useMemo(() => site ? getCollection(site.manifest, collectionId) : null, [site, collectionId]);
 
-  // Manage sidebars via UI Store (same pattern as EditContentPage)
-  const { 
-    leftSidebarContent, 
-    rightSidebarContent, 
-    setLeftAvailable, 
-    setRightAvailable, 
-    setLeftSidebarContent, 
-    setRightSidebarContent 
-  } = useUIStore(state => state.sidebar);
+  const { setLeftAvailable, setRightAvailable, setLeftSidebarContent, setRightSidebarContent } = useUIStore(state => state.sidebar);
 
-  // Set up left sidebar (same as EditContentPage)
   useEffect(() => {
     setLeftAvailable(true);
     setLeftSidebarContent(<LeftSidebar />);
-    return () => { 
-      setLeftAvailable(false); 
-      setLeftSidebarContent(null); 
-    };
+    return () => { setLeftAvailable(false); setLeftSidebarContent(null); };
   }, [setLeftAvailable, setLeftSidebarContent]);
 
-  // Set up right sidebar (collection settings)
   useEffect(() => {
     if (collection) {
       setRightAvailable(true);
-      setRightSidebarContent(
-        <CollectionSettingsSidebar 
-          siteId={siteId} 
-          collectionId={collectionId} 
-        />
-      );
+      setRightSidebarContent(<CollectionSettingsSidebar siteId={siteId} collectionId={collectionId} />);
     } else {
       setRightAvailable(false);
       setRightSidebarContent(null);
     }
-    return () => { 
-      setRightAvailable(false); 
-      setRightSidebarContent(null); 
-    };
+    return () => { setRightAvailable(false); setRightSidebarContent(null); };
   }, [collection, siteId, collectionId, setRightAvailable, setRightSidebarContent]);
 
-  // Loading state
-  if (!site) {
-    return <CollectionLoadingSkeleton />;
-  }
+  if (!site) return <CollectionLoadingSkeleton />;
+  if (!collection) return <CollectionNotFound siteId={siteId} collectionId={collectionId} />;
 
-  // Collection not found
-  if (!collection) {
-    return <CollectionNotFound siteId={siteId} collectionId={collectionId} />;
-  }
-
-  // Page title
   const pageTitle = `Managing: ${collection.name} | ${site.manifest.title || 'Sparktype'}`;
-
-  // Header actions
-  const headerActions = (
-    <div className="flex items-center gap-2">
-      <Button 
-        variant="ghost" 
-        size="sm"
-        onClick={() => navigate(`/sites/${siteId}/edit`)}
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Editor
-      </Button>
-    </div>
-  );
+  const headerActions = <Button variant="ghost" size="sm" onClick={() => navigate(`/sites/${siteId}/edit`)}><ArrowLeft className="h-4 w-4 mr-2" />Back to Editor</Button>;
 
   return (
     <>
       <title>{pageTitle}</title>
-      <ThreeColumnLayout
-        leftSidebar={leftSidebarContent}
-        rightSidebar={rightSidebarContent}
-        headerActions={headerActions}
-      >
-        <div className="flex h-full w-full flex-col">
-          <div className="container mx-auto flex h-full max-w-[900px] flex-col p-6">
-            {/* Collection Header */}
-            <div className="shrink-0 mb-6">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold">{collection.name}</h1>
-                <span className="text-sm bg-muted px-2 py-1 rounded">
-                  {collection.typeId}
-                </span>
-              </div>
-              {collection.settings?.description && (
-                <p className="text-muted-foreground">
-                  {collection.settings.description as string}
-                </p>
-              )}
-              <p className="text-sm text-muted-foreground mt-1">
-                {collection.contentPath}
-              </p>
+      <ThreeColumnLayout leftSidebar={<LeftSidebar />} rightSidebar={<CollectionSettingsSidebar siteId={siteId} collectionId={collectionId}/>} headerActions={headerActions}>
+        <div className="container mx-auto max-w-[900px] p-6">
+          <div className="shrink-0 mb-6">
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-3xl font-bold">{collection.name}</h1>
+              {/* CORRECTED: Removed obsolete `typeId` display */}
             </div>
-
-            {/* Collection Items */}
-            <div className="flex-grow min-h-0">
-              <CollectionItemList 
-                siteId={siteId} 
-                collectionId={collectionId}
-              />
-            </div>
+             {/* CORRECTED: Added type guard for rendering the description */}
+            {typeof collection.settings?.description === 'string' && (
+              <p className="text-muted-foreground">{collection.settings.description}</p>
+            )}
+            <p className="text-sm text-muted-foreground mt-1">{collection.contentPath}</p>
           </div>
+          <CollectionItemList siteId={siteId} collectionId={collectionId} />
         </div>
       </ThreeColumnLayout>
     </>
   );
 }
 
-/**
- * The final exported component wraps the internal logic with the necessary context provider.
- */
 export default function CollectionManagementPage() {
-  return (
-    <CollectionErrorBoundary>
-      <EditorProvider>
-        <CollectionManagementPageInternal />
-      </EditorProvider>
-    </CollectionErrorBoundary>
-  );
+  return (<CollectionErrorBoundary><EditorProvider><CollectionManagementPageInternal /></EditorProvider></CollectionErrorBoundary>);
 }

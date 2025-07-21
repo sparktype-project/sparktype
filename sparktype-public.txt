@@ -1,0 +1,1553 @@
+FILE CONCATENATION REPORT
+Root Directory: public/
+Excluded Directories: public, ios, node_modules
+File Extensions: *.ts, *.tsx, *.js, *.jsx, *.css, *.html, *.json, *.hbs
+================================================================================
+
+File: collection-types/blog/manifest.json
+{
+  "name": "Blog",
+  "version": "1.0.0",
+  "description": "Standard blog with posts, categories, and tags",
+  "files": [
+    {"path": "templates/listing.hbs", "type": "template"},
+    {"path": "templates/featured.hbs", "type": "template"},
+    {"path": "templates/archive.hbs", "type": "template"},
+    {"path": "templates/partials/post-card.hbs", "type": "partial"},
+    {"path": "templates/partials/post-list.hbs", "type": "partial"}
+  ],
+  "itemSchema": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string",
+        "title": "Title"
+      },
+      "date": {
+        "type": "string",
+        "format": "date",
+        "title": "Publish Date"
+      },
+      "author": {
+        "type": "string",
+        "title": "Author"
+      },
+      "excerpt": {
+        "type": "string",
+        "title": "Excerpt",
+        "description": "Short description of the post"
+      },
+      "featured": {
+        "type": "boolean",
+        "title": "Featured Post",
+        "default": false
+      },
+      "categories": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "title": "Categories",
+        "uniqueItems": true
+      },
+      "tags": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "title": "Tags",
+        "uniqueItems": true
+      }
+    },
+    "required": ["title", "date"]
+  },
+  "layouts": {
+    "listing": {
+      "name": "Blog Listing",
+      "description": "Full blog listing with pagination",
+      "template": "listing.hbs",
+      "supportsPagination": true,
+      "display_options": {
+        "style": {
+          "name": "Display Style",
+          "default": "cards",
+          "options": {
+            "cards": {
+              "name": "Card View",
+              "description": "Posts displayed as cards with images",
+              "template": "partials/post-card.hbs"
+            },
+            "list": {
+              "name": "List View", 
+              "description": "Compact list view without images",
+              "template": "partials/post-list.hbs"
+            }
+          }
+        }
+      }
+    },
+    "featured": {
+      "name": "Featured Posts",
+      "description": "Showcase featured posts on homepage or other pages",
+      "template": "featured.hbs",
+      "maxItems": 6
+    },
+    "archive": {
+      "name": "Archive",
+      "description": "Archive listing grouped by date",
+      "template": "archive.hbs",
+      "supportsPagination": false
+    }
+  },
+  "defaultSort": {
+    "field": "date",
+    "order": "desc"
+  }
+}
+
+================================================================================
+
+File: collection-types/blog/templates/archive.hbs
+{{!-- Blog Archive Template --}}
+<div class="blog-archive">
+  <div class="archive-header">
+    <h1>{{pageTitle}}</h1>
+    {{#if page.excerpt}}
+      <p class="archive-description">{{page.excerpt}}</p>
+    {{/if}}
+  </div>
+
+  {{#if collectionItems}}
+    {{#each (groupBy collectionItems 'frontmatter.date' 'year')}}
+      <section class="archive-year">
+        <h2 class="year-heading">{{@key}}</h2>
+        
+        {{#each (groupBy this 'frontmatter.date' 'month')}}
+          <div class="archive-month">
+            <h3 class="month-heading">{{formatDate @key format="MMMM"}}</h3>
+            
+            <ul class="archive-posts">
+              {{#each this}}
+                <li class="archive-post">
+                  <article>
+                    <time datetime="{{frontmatter.date}}" class="post-date">
+                      {{formatDate frontmatter.date format="MMM d"}}
+                    </time>
+                    
+                    <div class="post-info">
+                      <h4 class="post-title">
+                        <a href="{{getUrl this}}">{{frontmatter.title}}</a>
+                      </h4>
+                      
+                      {{#if frontmatter.excerpt}}
+                        <p class="post-excerpt">{{frontmatter.excerpt}}</p>
+                      {{/if}}
+                      
+                      {{#if frontmatter.categories}}
+                        <div class="post-categories">
+                          {{#each frontmatter.categories}}
+                            <span class="category-tag">{{this}}</span>
+                          {{/each}}
+                        </div>
+                      {{/if}}
+                    </div>
+                  </article>
+                </li>
+              {{/each}}
+            </ul>
+          </div>
+        {{/each}}
+      </section>
+    {{/each}}
+  {{else}}
+    <div class="no-archive-posts">
+      <p>No posts in the archive.</p>
+    </div>
+  {{/if}}
+</div>
+
+================================================================================
+
+File: collection-types/blog/templates/featured.hbs
+{{!-- Featured Posts Template --}}
+<section class="featured-posts">
+  <div class="featured-header">
+    <h2>{{pageTitle}}</h2>
+    {{#if page.excerpt}}
+      <p class="featured-description">{{page.excerpt}}</p>
+    {{/if}}
+  </div>
+
+  {{#if collectionItems}}
+    <div class="featured-grid">
+      {{#each collectionItems}}
+        <article class="featured-post">
+          {{#if frontmatter.featured_image}}
+            <div class="featured-image">
+              <a href="{{getUrl this}}">
+                {{image frontmatter.featured_image alt=frontmatter.title width=400 height=250 crop="fill"}}
+              </a>
+            </div>
+          {{/if}}
+          
+          <div class="featured-content">
+            <h3 class="featured-title">
+              <a href="{{getUrl this}}">{{frontmatter.title}}</a>
+            </h3>
+            
+            {{#if frontmatter.excerpt}}
+              <p class="featured-excerpt">{{frontmatter.excerpt}}</p>
+            {{/if}}
+            
+            <div class="featured-meta">
+              {{#if frontmatter.date}}
+                <time datetime="{{frontmatter.date}}">
+                  {{formatDate frontmatter.date format="MMM d, yyyy"}}
+                </time>
+              {{/if}}
+              
+              {{#if frontmatter.author}}
+                <span class="author">by {{frontmatter.author}}</span>
+              {{/if}}
+            </div>
+            
+            <a href="{{getUrl this}}" class="read-more">Read More →</a>
+          </div>
+        </article>
+      {{/each}}
+    </div>
+  {{else}}
+    <div class="no-featured-posts">
+      <p>No featured posts available.</p>
+    </div>
+  {{/if}}
+</section>
+
+================================================================================
+
+File: collection-types/blog/templates/listing.hbs
+{{!-- Blog Listing Template --}}
+<div class="blog-listing">
+  <div class="blog-header">
+    <h1>{{pageTitle}}</h1>
+    {{#if page.excerpt}}
+      <p class="blog-description">{{page.excerpt}}</p>
+    {{/if}}
+  </div>
+
+  {{#if collectionItems}}
+    <div class="posts-container {{#if displayOptions.style}}posts-{{displayOptions.style}}{{else}}posts-cards{{/if}}">
+      {{#each collectionItems}}
+        {{> blog/partials/post-card this}}
+      {{/each}}
+    </div>
+
+    {{#if pagination}}
+      <nav class="pagination" aria-label="Blog pagination">
+        <div class="pagination-info">
+          Showing {{pagination.currentPage}} of {{pagination.totalPages}} pages
+          ({{pagination.totalItems}} posts total)
+        </div>
+        
+        <div class="pagination-controls">
+          {{#if pagination.hasPrevPage}}
+            <a href="{{pagination.prevPageUrl}}" class="pagination-btn pagination-prev">
+              ← Previous
+            </a>
+          {{/if}}
+          
+          {{#if pagination.hasNextPage}}
+            <a href="{{pagination.nextPageUrl}}" class="pagination-btn pagination-next">
+              Next →
+            </a>
+          {{/if}}
+        </div>
+      </nav>
+    {{/if}}
+  {{else}}
+    <div class="no-posts">
+      <p>No blog posts found.</p>
+    </div>
+  {{/if}}
+</div>
+
+================================================================================
+
+File: collection-types/blog/templates/partials/post-list.hbs
+{{!-- Post List Partial --}}
+<article class="post-list-item">
+  <div class="post-list-content">
+    <header class="post-list-header">
+      <h3 class="post-list-title">
+        <a href="{{getUrl this}}">{{frontmatter.title}}</a>
+      </h3>
+      
+      {{#if frontmatter.featured}}
+        <span class="featured-indicator">★</span>
+      {{/if}}
+    </header>
+    
+    <div class="post-list-meta">
+      {{#if frontmatter.date}}
+        <time datetime="{{frontmatter.date}}" class="post-list-date">
+          {{formatDate frontmatter.date format="MMM d, yyyy"}}
+        </time>
+      {{/if}}
+      
+      {{#if frontmatter.author}}
+        <span class="post-list-author">{{frontmatter.author}}</span>
+      {{/if}}
+      
+      {{#if frontmatter.categories}}
+        <div class="post-list-categories">
+          {{#each frontmatter.categories}}
+            <span class="category-pill">{{this}}</span>
+          {{/each}}
+        </div>
+      {{/if}}
+    </div>
+    
+    {{#if frontmatter.excerpt}}
+      <p class="post-list-excerpt">{{frontmatter.excerpt}}</p>
+    {{/if}}
+  </div>
+  
+  {{#if frontmatter.featured_image}}
+    <div class="post-list-image">
+      <a href="{{getUrl this}}">
+        {{image frontmatter.featured_image alt=frontmatter.title width=100 height=100 crop="fill"}}
+      </a>
+    </div>
+  {{/if}}
+</article>
+
+================================================================================
+
+File: collection-types/blog/templates/partials/post-card.hbs
+{{!-- Post Card Partial --}}
+<article class="post-card">
+  {{#if frontmatter.featured_image}}
+    <div class="post-image">
+      {{image frontmatter.featured_image alt=frontmatter.title width=350 height=200 crop="fill"}}
+      {{#if frontmatter.featured}}
+        <span class="featured-badge">Featured</span>
+      {{/if}}
+    </div>
+  {{/if}}
+  
+  <div class="post-content">
+    <header class="post-header">
+      {{#if frontmatter.categories}}
+        <div class="post-categories">
+          {{#each frontmatter.categories}}
+            <span class="category">{{this}}</span>
+          {{/each}}
+        </div>
+      {{/if}}
+      
+      <h2 class="post-title">
+        <a href="{{getCollectionItemUrl this}}">{{frontmatter.title}}</a>
+      </h2>
+    </header>
+    
+    {{#if frontmatter.excerpt}}
+      <p class="post-excerpt">{{frontmatter.excerpt}}</p>
+    {{/if}}
+    
+    <footer class="post-meta">
+      <div class="post-date">
+        {{#if frontmatter.date}}
+          <time datetime="{{frontmatter.date}}">
+            {{formatDate frontmatter.date format="MMM d, yyyy"}}
+          </time>
+        {{/if}}
+      </div>
+      
+      {{#if frontmatter.author}}
+        <div class="post-author">
+          <span>by {{frontmatter.author}}</span>
+        </div>
+      {{/if}}
+      
+      {{#if frontmatter.tags}}
+        <div class="post-tags">
+          {{#each frontmatter.tags}}
+            <span class="tag">#{{this}}</span>
+          {{/each}}
+        </div>
+      {{/if}}
+    </footer>
+    
+    <a href="{{getCollectionItemUrl this}}" class="read-more">Read More</a>
+  </div>
+</article>
+
+================================================================================
+
+File: collection-types/portfolio/manifest.json
+{
+  "name": "Portfolio", 
+  "version": "1.0.0",
+  "description": "Project portfolio with galleries and client work showcase",
+  "files": [
+    {"path": "templates/grid.hbs", "type": "template"},
+    {"path": "templates/showcase.hbs", "type": "template"},
+    {"path": "templates/masonry.hbs", "type": "template"},
+    {"path": "templates/partials/project-card.hbs", "type": "partial"},
+    {"path": "templates/partials/project-tile.hbs", "type": "partial"}
+  ],
+  "itemSchema": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string",
+        "title": "Project Title"
+      },
+      "client": {
+        "type": "string",
+        "title": "Client Name"
+      },
+      "year": {
+        "type": "number",
+        "title": "Project Year",
+        "minimum": 1900,
+        "maximum": 2100
+      },
+      "featured_image": {
+        "type": "string",
+        "title": "Featured Image",
+        "description": "Main project image for listings"
+      },
+      "project_url": {
+        "type": "string",
+        "format": "uri",
+        "title": "Project URL",
+        "description": "Link to live project"
+      },
+      "github_url": {
+        "type": "string",
+        "format": "uri", 
+        "title": "GitHub URL",
+        "description": "Link to source code"
+      },
+      "gallery": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "title": "Project Gallery",
+        "description": "Additional project images"
+      },
+      "technologies": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "title": "Technologies Used",
+        "uniqueItems": true
+      },
+      "categories": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "title": "Project Categories",
+        "uniqueItems": true
+      },
+      "status": {
+        "type": "string",
+        "title": "Project Status",
+        "enum": ["completed", "in-progress", "concept"],
+        "default": "completed"
+      },
+      "featured": {
+        "type": "boolean",
+        "title": "Featured Project",
+        "default": false
+      }
+    },
+    "required": ["title"]
+  },
+  "layouts": {
+    "grid": {
+      "name": "Project Grid",
+      "description": "Grid layout showing projects as cards",
+      "template": "grid.hbs",
+      "display_options": {
+        "columns": {
+          "name": "Grid Columns",
+          "default": "three",
+          "options": {
+            "two": {
+              "name": "2 Columns",
+              "description": "Two projects per row"
+            },
+            "three": {
+              "name": "3 Columns", 
+              "description": "Three projects per row"
+            },
+            "four": {
+              "name": "4 Columns",
+              "description": "Four projects per row"
+            }
+          }
+        }
+      }
+    },
+    "showcase": {
+      "name": "Featured Showcase",
+      "description": "Large format showcase for featured projects",
+      "template": "showcase.hbs",
+      "maxItems": 3
+    },
+    "masonry": {
+      "name": "Masonry Layout",
+      "description": "Pinterest-style masonry layout",
+      "template": "masonry.hbs"
+    }
+  },
+  "defaultSort": {
+    "field": "year",
+    "order": "desc"
+  }
+}
+
+================================================================================
+
+File: collection-types/portfolio/templates/masonry.hbs
+{{!-- Portfolio Masonry Template --}}
+<div class="portfolio-masonry">
+  <div class="masonry-header">
+    <h1>{{pageTitle}}</h1>
+    {{#if page.excerpt}}
+      <p class="masonry-description">{{page.excerpt}}</p>
+    {{/if}}
+  </div>
+
+  {{#if collectionItems}}
+    <div class="masonry-grid" data-masonry='{"itemSelector": ".masonry-item", "columnWidth": ".masonry-sizer", "percentPosition": true}'>
+      <!-- Masonry grid sizer for responsive columns -->
+      <div class="masonry-sizer"></div>
+      
+      {{#each collectionItems}}
+        <div class="masonry-item">
+          {{> project-tile this}}
+        </div>
+      {{/each}}
+    </div>
+  {{else}}
+    <div class="no-masonry-projects">
+      <p>No projects found.</p>
+    </div>
+  {{/if}}
+</div>
+
+<script>
+// Initialize Masonry layout (if Masonry.js is available)
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof Masonry !== 'undefined') {
+    const grid = document.querySelector('.masonry-grid');
+    if (grid) {
+      new Masonry(grid, {
+        itemSelector: '.masonry-item',
+        columnWidth: '.masonry-sizer',
+        percentPosition: true
+      });
+    }
+  }
+});
+</script>
+
+================================================================================
+
+File: collection-types/portfolio/templates/grid.hbs
+{{!-- Portfolio Grid Template --}}
+<div class="portfolio-grid">
+  <div class="portfolio-header">
+    <h1>{{pageTitle}}</h1>
+    {{#if page.excerpt}}
+      <p class="portfolio-description">{{page.excerpt}}</p>
+    {{/if}}
+  </div>
+
+  {{#if collectionItems}}
+    <div class="projects-grid {{#if displayOptions.columns}}grid-{{displayOptions.columns}}{{else}}grid-three{{/if}}">
+      {{#each collectionItems}}
+        {{> project-card this}}
+      {{/each}}
+    </div>
+  {{else}}
+    <div class="no-projects">
+      <p>No projects found.</p>
+    </div>
+  {{/if}}
+</div>
+
+================================================================================
+
+File: collection-types/portfolio/templates/showcase.hbs
+{{!-- Portfolio Showcase Template --}}
+<section class="portfolio-showcase">
+  <div class="showcase-header">
+    <h2>{{pageTitle}}</h2>
+    {{#if page.excerpt}}
+      <p class="showcase-description">{{page.excerpt}}</p>
+    {{/if}}
+  </div>
+
+  {{#if collectionItems}}
+    <div class="showcase-projects">
+      {{#each collectionItems}}
+        <article class="showcase-project">
+          {{#if frontmatter.featured_image}}
+            <div class="showcase-image">
+              <a href="{{getUrl this}}">
+                {{image frontmatter.featured_image alt=frontmatter.title width=800 height=500 crop="fill"}}
+              </a>
+              {{#if frontmatter.featured}}
+                <span class="featured-badge">Featured</span>
+              {{/if}}
+            </div>
+          {{/if}}
+          
+          <div class="showcase-content">
+            <header class="showcase-project-header">
+              <h3 class="showcase-title">
+                <a href="{{getUrl this}}">{{frontmatter.title}}</a>
+              </h3>
+              
+              <div class="showcase-meta">
+                {{#if frontmatter.client}}
+                  <span class="client">{{frontmatter.client}}</span>
+                {{/if}}
+                {{#if frontmatter.year}}
+                  <span class="year">{{frontmatter.year}}</span>
+                {{/if}}
+              </div>
+            </header>
+            
+            {{#if content}}
+              <div class="showcase-description">
+                {{markdown (truncate content 200)}}
+              </div>
+            {{/if}}
+            
+            {{#if frontmatter.technologies}}
+              <div class="showcase-technologies">
+                <strong>Technologies:</strong>
+                {{#each frontmatter.technologies}}
+                  <span class="tech-tag">{{this}}</span>
+                {{/each}}
+              </div>
+            {{/if}}
+            
+            <div class="showcase-links">
+              <a href="{{getUrl this}}" class="view-project">View Project</a>
+              
+              {{#if frontmatter.project_url}}
+                <a href="{{frontmatter.project_url}}" class="external-link" target="_blank" rel="noopener">
+                  Live Site ↗
+                </a>
+              {{/if}}
+              
+              {{#if frontmatter.github_url}}
+                <a href="{{frontmatter.github_url}}" class="external-link" target="_blank" rel="noopener">
+                  GitHub ↗
+                </a>
+              {{/if}}
+            </div>
+          </div>
+        </article>
+      {{/each}}
+    </div>
+  {{else}}
+    <div class="no-showcase-projects">
+      <p>No featured projects available.</p>
+    </div>
+  {{/if}}
+</section>
+
+================================================================================
+
+File: collection-types/portfolio/templates/partials/project-tile.hbs
+{{!-- Project Tile Partial (for masonry layout) --}}
+<article class="project-tile">
+  {{#if frontmatter.featured_image}}
+    <div class="tile-image">
+      <a href="{{getUrl this}}">
+        {{image frontmatter.featured_image alt=frontmatter.title width=300 crop="fit"}}
+      </a>
+    </div>
+  {{/if}}
+  
+  <div class="tile-content">
+    <h4 class="tile-title">
+      <a href="{{getUrl this}}">{{frontmatter.title}}</a>
+    </h4>
+    
+    {{#if frontmatter.client}}
+      <p class="tile-client">{{frontmatter.client}}</p>
+    {{/if}}
+    
+    {{#if content}}
+      <p class="tile-excerpt">{{truncate (stripHtml content) 80}}</p>
+    {{/if}}
+    
+    <div class="tile-footer">
+      {{#if frontmatter.year}}
+        <span class="tile-year">{{frontmatter.year}}</span>
+      {{/if}}
+      
+      {{#if frontmatter.technologies}}
+        <div class="tile-tech">
+          {{#each (slice frontmatter.technologies 0 3)}}
+            <span class="mini-tech-tag">{{this}}</span>
+          {{/each}}
+          {{#if (gt frontmatter.technologies.length 3)}}
+            <span class="tech-more">+{{subtract frontmatter.technologies.length 3}}</span>
+          {{/if}}
+        </div>
+      {{/if}}
+    </div>
+  </div>
+</article>
+
+================================================================================
+
+File: collection-types/portfolio/templates/partials/project-card.hbs
+{{!-- Project Card Partial --}}
+<article class="project-card">
+  {{#if frontmatter.featured_image}}
+    <div class="project-image">
+      <a href="{{getUrl this}}">
+        {{image frontmatter.featured_image alt=frontmatter.title width=400 height=300 crop="fill"}}
+      </a>
+      
+      {{#if frontmatter.featured}}
+        <span class="featured-badge">Featured</span>
+      {{/if}}
+      
+      {{#if frontmatter.status}}
+        <span class="status-badge status-{{frontmatter.status}}">{{frontmatter.status}}</span>
+      {{/if}}
+      
+      <div class="project-overlay">
+        <div class="project-links">
+          {{#if frontmatter.project_url}}
+            <a href="{{frontmatter.project_url}}" class="overlay-link live-link" target="_blank" rel="noopener" title="View Live Site">
+              🔗
+            </a>
+          {{/if}}
+          
+          {{#if frontmatter.github_url}}
+            <a href="{{frontmatter.github_url}}" class="overlay-link github-link" target="_blank" rel="noopener" title="View Source Code">
+              📁
+            </a>
+          {{/if}}
+        </div>
+      </div>
+    </div>
+  {{/if}}
+  
+  <div class="project-content">
+    <header class="project-header">
+      <h3 class="project-title">
+        <a href="{{getUrl this}}">{{frontmatter.title}}</a>
+      </h3>
+      
+      <div class="project-meta">
+        {{#if frontmatter.client}}
+          <span class="client">{{frontmatter.client}}</span>
+        {{/if}}
+        {{#if frontmatter.year}}
+          <span class="year">{{frontmatter.year}}</span>
+        {{/if}}
+      </div>
+    </header>
+    
+    {{#if content}}
+      <p class="project-excerpt">{{truncate (stripHtml content) 120}}</p>
+    {{/if}}
+    
+    {{#if frontmatter.technologies}}
+      <div class="project-technologies">
+        {{#each frontmatter.technologies}}
+          <span class="tech-tag">{{this}}</span>
+        {{/each}}
+      </div>
+    {{/if}}
+    
+    {{#if frontmatter.categories}}
+      <div class="project-categories">
+        {{#each frontmatter.categories}}
+          <span class="category-tag">{{this}}</span>
+        {{/each}}
+      </div>
+    {{/if}}
+  </div>
+</article>
+
+================================================================================
+
+File: layouts/page/layout.json
+{
+  "name": "Standard Page",
+  "version": "1.0.0",
+  "description": "A clean, single-column layout for standard pages like 'About Us'.",
+  "layoutType": "page",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" }
+  ],
+  "schema": {
+    "title": "Page Options",
+    "type": "object",
+    "properties": {
+      "show_updated_date": {
+        "type": "boolean",
+        "title": "Show Last Updated Date",
+        "default": false
+      }
+    }
+  },
+  "image_presets": {
+    "banner": {
+      "source": "banner_image",
+      "width": 900,
+      "crop": "scale"
+    },
+    "featured": {
+      "source": "featured_image",
+      "width": 600,
+      "crop": "scale"
+    }
+  }
+}
+
+================================================================================
+
+File: layouts/page/index.hbs
+{{! layouts/page/page.hbs }}
+
+{{#if images.banner}}
+        <div class="">
+            <img src="{{images.banner.url}}"  class="banner w-100" alt="{{contentFile.frontmatter.title}} banner">
+        </div>
+    {{/if}}
+<article class="mw8 ph3 pv4 center prose">
+    {{!-- 
+      Display a wide banner image at the top of the article if it exists.
+      We use the `{{{image}}}` helper to generate the full <img> tag.
+      `crop='scale'` will resize it to fit the width without distortion.
+    --}}
+   <div class="mw7 center">
+    
+    <h1>{{contentFile.frontmatter.title}}</h1>
+
+    {{#if images.featured}}
+        <figure class="featured-image-wrapper">
+            <img src="{{images.featured.url}}" width="{{images.featured.width}}" height="{{images.featured.height}}" class="db center" alt="{{contentFile.frontmatter.title}}">
+        </figure>
+    {{/if}}
+    
+
+    <p class="f4">{{contentFile.frontmatter.description}} </p>
+    
+    {{{markdown contentFile.content}}}
+
+    </div>
+
+    {{#if contentFile.frontmatter.layoutConfig}}
+        <hr/>
+        {{{render_collection contentFile.frontmatter.layoutConfig}}}
+    {{/if}}
+</article>
+
+================================================================================
+
+File: themes/default/theme.json
+{
+  "name": "Default theme",
+  "version": "1.2.0",
+  "files": [
+    { "path": "theme.json", "type": "manifest" },
+    { "path": "base.hbs", "type": "base" },
+    { "path": "css/theme.css", "type": "stylesheet" },
+    { "path": "partials/head.hbs", "type": "partial", "name": "head" },
+    { "path": "partials/header.hbs", "type": "partial", "name": "header" },
+    { "path": "partials/footer.hbs", "type": "partial", "name": "footer" }
+  ],
+  "appearanceSchema": {
+    "title": "Theme Customization",
+    "description": "Customize the core fonts and colors of your site.",
+    "type": "object",
+    "properties": {
+      "color_background": {
+        "type": "string",
+        "title": "Page Background Color",
+        "format": "color",
+        "default": "#f8f9fa"
+      },
+      "color_text": {
+        "type": "string",
+        "title": "Body Text Color",
+        "format": "color",
+        "default": "#212529"
+      },
+      "color_headings": {
+        "type": "string",
+        "title": "Headings Color",
+        "format": "color",
+        "default": "#000000"
+      },
+      "color_primary": {
+        "type": "string",
+        "title": "Primary Accent Color",
+        "format": "color",
+        "default": "#0d6efd"
+      },
+
+      "font_headings": {
+        "type": "string",
+        "title": "Headings Font Family",
+        "description": "Choose the font family for all headlines.",
+        "enum": [
+          "var(--font-stack-serif)",
+          "var(--font-stack-sans)",
+          "var(--font-stack-mono)"
+        ],
+        "enumNames": [
+          "Serif (System)",
+          "Sans-Serif (System)",
+          "Monospace (System)"
+        ],
+        "default": "var(--font-stack-serif)"
+      },
+      
+      "font_text": {
+        "type": "string",
+        "title": "Body Text Font Family",
+        "description": "Choose the font family for all paragraphs and lists.",
+        "enum": [
+          "var(--font-stack-serif)",
+          "var(--font-stack-sans)",
+          "var(--font-stack-mono)"
+        ],
+        "enumNames": [
+          "Serif (System)",
+          "Sans-Serif (System)",
+          "Monospace (System)"
+        ],
+        "default": "var(--font-stack-sans)"
+      }
+    }
+  },
+  "themeDataSchema": {
+    "title": "Site Content",
+    "description": "Configure additional content fields for your site.",
+    "type": "object",
+    "properties": {
+      "footer_text": {
+        "type": "string",
+        "title": "Footer Text",
+        "description": "HTML content to display in the site footer.",
+        "format": "textarea",
+        "default": "<p>&copy; 2024 Your Site Name. All rights reserved.</p>"
+      },
+      "header_announcement": {
+        "type": "string", 
+        "title": "Header Announcement",
+        "description": "Optional announcement banner text.",
+        "format": "textarea",
+        "default": ""
+      }
+    }
+  }
+}
+
+================================================================================
+
+File: themes/default/base.hbs
+{{! themes/default/base.hbs }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {{!-- The head partial now receives its own scoped context --}}
+    {{> head headContext}}
+</head>
+<body class="bg-white">
+    <div x-data="{ isMobileMenuOpen: false }" class="flex flex-column min-vh-100">
+        {{> header}}
+        <main class="">
+            {{!-- The body content is pre-rendered by the render service --}}
+            {{{body}}}
+        </main>
+        {{> footer}}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</body>
+</html>
+
+================================================================================
+
+File: themes/default/css/theme.css
+/* public/themes/default/css/theme.css */
+
+/* ==========================================================================
+   1. CORE THEME DEFINITIONS & DEFAULTS
+   - This section defines the theme's building blocks (font stacks) and
+     sets the default values for all customizable CSS variables. The theme
+     engine will override these defaults with user choices.
+   ========================================================================== */
+:root {
+  /* --- FONT STACKS (Theme-Specific Resources) --- */
+  /* This theme provides three high-quality, cross-platform system font stacks. */
+  /* A different theme could import Google Fonts here instead. */
+  --font-stack-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  --font-stack-serif: Iowan Old Style, 'Apple Garamond', Baskerville, 'Times New Roman', Droid Serif, Times, 'Source Serif Pro', serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  --font-stack-mono: 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+  /* --- DEFAULT COLOR PALETTE --- */
+  /* These are the fallback values if the user hasn't made a choice. */
+  --color-background: #f8f9fa; /* Light grey */
+  --color-text: #212529;       /* Near-black for high readability */
+  --color-headings: #000000;   /* Pure black for strong headlines */
+  --color-primary: #0d6efd;    /* A standard, accessible blue for links */
+  --color-border: #dee2e6;     /* Subtle grey for borders and rules */
+
+  /* --- DEFAULT FONT ASSIGNMENTS --- */
+  /* The theme engine will generate an inline style block to override these */
+  /* with the user's choice from the theme.json 'enum' values. */
+  --font-headings: var(--font-stack-serif);
+  --font-text: var(--font-stack-sans);
+}
+
+
+/* ==========================================================================
+   2. BASE & TYPOGRAPHY STYLES
+   - These rules consume the variables, making the theme dynamic.
+   ========================================================================== */
+body {
+  font-family: var(--font-text);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  transition: background-color .2s ease-in-out, color .2s ease-in-out;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Base link styles */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: opacity .15s ease-in;
+}
+
+a:hover {
+  text-decoration: underline;
+  opacity: 0.8;
+}
+
+
+/* ==========================================================================
+   3. PROSE CONTENT STYLES (.prose)
+   - These styles target raw HTML generated from Markdown. They are scoped
+     to the `.prose` class to avoid interfering with the application's UI.
+   ========================================================================== */
+
+/* --- Headings --- */
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  font-family: var(--font-headings);
+  color: var(--color-headings);
+  font-weight: 700;
+  line-height: 1.2;
+  margin-top: 1.75em;
+  margin-bottom: 0.75em;
+}
+
+.prose h1 { 
+  font-size: 2.25rem; 
+  margin-top: 0;
+}
+.prose h2 { font-size: 1.75rem; }
+.prose h3 { font-size: 1.25rem; }
+.prose h4 { font-size: 1.1rem; }
+.prose h5, .prose h6 { font-size: 1rem; }
+
+/* --- Paragraphs and Links --- */
+.prose p {
+  margin-bottom: 1.25em;
+    font-size: 18px;
+
+}
+.prose p.f3 {
+  font-size: 1.5rem;
+}
+.prose p.f4 {
+  font-size: 1.4rem;
+}
+/* Links inside prose content get an underline on hover */
+.prose a {
+  font-weight: 500;
+}
+
+/* --- Lists (Ordered and Unordered) --- */
+.prose ul,
+.prose ol {
+  padding-left: 1.5rem;
+  margin-top: 1.25em;
+  margin-bottom: 1.25em;
+}
+.prose li {
+  margin-bottom: 0.5em;
+}
+.prose li > p { /* Handle paragraphs inside list items */
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+/* --- Blockquotes --- */
+.prose blockquote {
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+  padding: 0.75em 1.25em;
+  border-left: 4px solid var(--color-primary);
+  background-color: rgba(0,0,0,0.025);
+  font-style: italic;
+  color: #495057; /* Slightly lighter than main text */
+}
+.prose blockquote > p {
+  margin-bottom: 0;
+}
+
+/* --- Code (Inline and Blocks) --- */
+/* Inline `code` tags */
+.prose :not(pre) > code {
+  font-family: var(--font-stack-mono);
+  background-color: rgba(0,0,0,0.05);
+  color: var(--color-text);
+  padding: 0.2em 0.4em;
+  font-size: 0.875em;
+  border-radius: 4px;
+}
+
+/* Code blocks (`pre` tags) */
+.prose pre {
+  font-family: var(--font-stack-mono);
+  background-color: #212529; /* Dark background for contrast */
+  color: #f8f9fa; /* Light text on dark background */
+  padding: 1em;
+  border-radius: 6px;
+  overflow-x: auto; /* Allow horizontal scrolling for long lines */
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+  font-size: 0.9em;
+  line-height: 1.6;
+}
+.prose pre code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+  color: inherit;
+  line-height: inherit;
+}
+
+/* --- Other Elements --- */
+.prose hr {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  margin: 2.5em 0;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+  font-size: 0.9em;
+  text-align: left;
+}
+
+.prose th, .prose td {
+  border: 1px solid var(--color-border);
+  padding: 0.6em 0.8em;
+}
+
+.prose thead th {
+  font-weight: 600;
+  background-color: rgba(0,0,0,0.03);
+}
+
+.prose strong {
+  font-weight: 600;
+}
+
+.prose em {
+  font-style: italic;
+}
+
+.object-center {
+  object-position: center;
+}
+
+
+/* Banner */
+.banner {
+  height: 260px;
+  object-fit: cover;
+  overflow: hidden;
+  object-position: center;
+}
+.header-60 {
+  height: 59px;
+}
+
+================================================================================
+
+File: themes/default/partials/footer.hbs
+<footer class="border-t border-gray-200 dark:border-gray-800">
+    <div class="mw8 center pa3 pa3-ns">
+        {{#if (themeData 'footer_text')}}
+            <div class="footer-content">
+                {{{themeData 'footer_text'}}}
+            </div>
+        {{else}}
+            <p>© {{year}} {{manifest.title}}. All Rights Reserved.</p>
+        {{/if}}
+        
+    </div>
+</footer>
+
+================================================================================
+
+File: themes/default/partials/head.hbs
+{{! src/partials/head.hbs }}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{pageTitle}} | {{manifest.title}}</title>
+<link rel="canonical" href="{{canonicalUrl}}">
+
+{{!-- Description Meta Tag --}}
+{{#if contentFile.frontmatter.description}}
+    <meta name="description" content="{{contentFile.frontmatter.description}}">
+{{else if collectionNode.description}}
+    <meta name="description" content="{{collectionNode.description}}">
+{{else}}
+    <meta name="description" content="{{manifest.description}}">
+{{/if}}
+
+{{!-- Open Graph Tags (for Facebook, LinkedIn, etc.) --}}
+<meta property="og:title" content="{{pageTitle}}">
+{{#if contentFile.frontmatter.description}}
+    <meta property="og:description" content="{{contentFile.frontmatter.description}}">
+{{else}}
+    <meta property="og:description" content="{{manifest.description}}">
+{{/if}}
+<meta property="og:url" content="{{canonicalUrl}}">
+<meta property="og:site_name" content="{{manifest.title}}">
+<meta property="og:type" content="{{#if contentFile}}article{{else}}website{{/if}}">
+
+{{!-- Twitter Card Tags --}}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{pageTitle}}">
+{{#if contentFile.frontmatter.description}}
+    <meta name="twitter:description" content="{{contentFile.frontmatter.description}}">
+{{else}}
+    <meta name="twitter:description" content="{{manifest.description}}">
+{{/if}}
+
+{{#if contentFile.frontmatter.featured_image}}
+    <meta property="og:image" content="{{image_url src=contentFile.frontmatter.featured_image width=1200 height=630 crop='fill'}}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:image" content="{{image_url src=contentFile.frontmatter.featured_image width=1200 height=630 crop='fill'}}">
+{{/if}}
+
+
+{{!-- Favicon Placeholder - Users should replace these --}}
+{{#if faviconUrl}}
+    <link rel="icon" href="{{faviconUrl}}" sizes="any">
+    <link rel="apple-touch-icon" href="{{faviconUrl}}">
+{{else}}
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+{{/if}}
+
+ {{!-- STYLESHEETS --}}
+<link rel="stylesheet" href="https://unpkg.com/tachyons@4.12.0/css/tachyons.min.css"/>
+<link rel="stylesheet" href="/themes/{{manifest.theme.name}}/css/theme.css">
+
+{{!-- This is where the user's custom choices are injected as CSS variables --}}
+{{{styleOverrides}}}
+
+================================================================================
+
+File: themes/default/partials/header.hbs
+{{! themes/default/partials/header.hbs }}
+{{!
+  This header provides a responsive navigation bar using Tachyons and Alpine.js.
+  Features a slide-in offcanvas sidebar for mobile with accordion sub-navigation.
+}}
+<div x-data="{ isMobileMenuOpen: false }" @keydown.escape.window="isMobileMenuOpen = false">
+<header class="sans-serif relative" style="backdrop-filter: blur(8px);">
+    <div class="ph3 ph3-ns">
+        <div class="header-60 flex  items-center justify-between">
+            
+            {{!-- Site Logo/Title --}}
+            <div class="flex-shrink-0">
+                <a href="{{#if @root.options.isExport}}./index.html{{else}}/{{/if}}" class="link dim f4 fw7 near-black flex items-center">
+                    
+                
+                    {{#if @root.headContext.logoUrl}}
+                        <img src="{{@root.headContext.logoUrl}}" alt="{{@root.manifest.title}} logo" class="mr2 h-8 w-auto">
+                    {{else}}
+                        {{!-- Optional: You could place a default SVG logo here if you wanted --}}
+                    {{/if}}
+
+                    <span>{{@root.manifest.title}}</span>
+                </a>
+            </div>
+
+            {{!-- ================================== --}}
+            {{!-- DESKTOP NAVIGATION (hidden on mobile) --}}
+            {{!-- ================================== --}}
+            <nav class="dn db-ns">
+                <ul class="list pa0 ma0 flex items-center">
+                    {{#each @root.navLinks}}
+                        {{#if this.children.length}}
+                            <li class="mh2 relative" 
+                                x-data="{ 
+                                    open: false, 
+                                    alignRight: false,
+                                    handleClick(e) {
+                                        if (this.open) {
+                                            // Second click - navigate to page
+                                            return true; // Allow default navigation
+                                        } else {
+                                            // First click - open dropdown
+                                            e.preventDefault();
+                                            this.open = true;
+                                            this.alignRight = ($el.getBoundingClientRect().right + 160) > window.innerWidth;
+                                        }
+                                    },
+                                    handleMouseEnter() {
+                                        this.open = true;
+                                        this.alignRight = ($el.getBoundingClientRect().right + 160) > window.innerWidth;
+                                    },
+                                    handleMouseLeave() {
+                                        this.open = false;
+                                    }
+                                }" 
+                                @mouseenter="handleMouseEnter()" 
+                                @mouseleave="handleMouseLeave()"
+                                @click.away="open = false">
+                                <a href="{{this.href}}" 
+                                   @click="handleClick($event)"
+                                   class="link dim gray f6 fw5 flex items-center pv2"
+                                   :aria-expanded="open.toString()"
+                                   aria-haspopup="true">
+                                    <span>{{this.label}}</span>
+                                    <svg class="ml1 h1 w1 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </a>
+                                {{!-- Dropdown Panel --}}
+                                <div 
+                                    x-show="open" 
+                                    x-transition:enter="transition-all ease-out duration-200"
+                                    x-transition:enter-start="opacity-0 scale-95"
+                                    x-transition:enter-end="opacity-100 scale-100"
+                                    x-transition:leave="transition-all ease-in duration-150"
+                                    x-transition:leave-start="opacity-100 scale-100"
+                                    x-transition:leave-end="opacity-0 scale-95"
+                                    :class="alignRight ? 'right-0' : 'left-0'"
+                                    class="absolute mt1 w5 br2 shadow-5 bg-white z-1" 
+                                    x-cloak
+                                >
+                                    <ul class="list pa0 ma0 py1">
+                                        {{#each this.children}}
+                                            <li>
+                                                <a href="{{this.href}}" class="db link dim near-black f6 ph3 pv2 hover-bg-light-gray">{{this.label}}</a>
+                                            </li>
+                                        {{/each}}
+                                    </ul>
+                                </div>
+                            </li>
+                        {{else}}
+                            <li class="mh2">
+                                <a href="{{this.href}}" class="link dim gray f6 fw5 pv2">{{this.label}}</a>
+                            </li>
+                        {{/if}}
+                    {{/each}}
+                </ul>
+            </nav>
+
+            {{!-- ========================================= --}}
+            {{!-- MOBILE MENU BUTTON (visible only on mobile) --}}
+            {{!-- ========================================= --}}
+            <div class="db dn-ns">
+                <button 
+                    @click="isMobileMenuOpen = !isMobileMenuOpen" 
+                    type="button" 
+                    class="button-reset bg-transparent bn pa2"
+                    aria-controls="mobile-menu" 
+                    :aria-expanded="isMobileMenuOpen.toString()"
+                >
+                    <span class="sr-only">Open main menu</span>
+                    {{!-- Hamburger Icon --}}
+                    <svg x-show="!isMobileMenuOpen" class="h2 w2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg>
+                    {{!-- Close (X) Icon --}}
+                    <svg x-show="isMobileMenuOpen" x-cloak class="h2 w2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    {{!-- Header Announcement Banner --}}
+    {{#if (themeData 'header_announcement')}}
+        <div class="bg-light-blue dark:bg-dark-blue">
+            <div class="mw8 center ph3 ph4-ns pv2">
+                <div class="announcement-content f6 tc">
+                    {{{themeData 'header_announcement'}}}
+                </div>
+            </div>
+        </div>
+    {{/if}}
+</header>
+
+{{!-- ============================================= --}}
+{{!-- MOBILE MENU: Backdrop Overlay (Outside Header) --}}
+{{!-- ============================================= --}}
+<div 
+    x-show="isMobileMenuOpen" 
+    x-transition:enter="transition-opacity duration-300 ease-out"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition-opacity duration-200 ease-in"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    @click="isMobileMenuOpen = false"
+    class="fixed top-0 left-0 right-0 bottom-0 z-40"
+    style="background-color: rgba(0, 0, 0, 0.5); height: 100vh; width: 100vw;"
+    x-cloak
+></div>
+
+{{!-- ============================================= --}}
+{{!-- MOBILE MENU: Slide-in Sidebar (Outside Header) --}}
+{{!-- ============================================= --}}
+<div 
+    x-show="isMobileMenuOpen" 
+    x-transition:enter="transform transition ease-in-out duration-300 sm:duration-700"
+    x-transition:enter-start="translate-x-full"
+    x-transition:enter-end="translate-x-0"
+    x-transition:leave="transform transition ease-in-out duration-300 sm:duration-700"
+    x-transition:leave-start="translate-x-0"
+    x-transition:leave-end="translate-x-full"
+    class="fixed top-0 right-0 bottom-0 bg-white shadow-5 z-50 flex flex-column"
+    style="height: 100vh; width: 280px;"
+    id="mobile-menu"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="mobile-menu-title"
+    x-cloak
+    x-trap="isMobileMenuOpen"
+>
+    {{!-- Sidebar Header --}}
+    <div class="flex items-center justify-between pa3 bb b--light-gray">
+        <h2 id="mobile-menu-title" class="f5 fw6 ma0 near-black">Menu</h2>
+        <button 
+            @click="isMobileMenuOpen = false" 
+            type="button" 
+            class="button-reset bg-transparent bn pa2 hover-bg-light-gray br2"
+            aria-label="Close menu"
+        >
+            <svg class="h1 w1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+
+    {{!-- Sidebar Navigation --}}
+    <nav class="pa3 overflow-y-auto flex-auto">
+        <ul class="list pa0 ma0">
+            {{#each @root.navLinks}}
+                <li class="mb2">
+                    {{#if this.children.length}}
+                        {{!-- Parent Link with Accordion --}}
+                        <div x-data="{ accordionOpen: false }">
+                            <div class="flex items-center justify-between">
+                                <a href="{{this.href}}" class="link dim f5 fw5 near-black flex-auto pv2" @click="isMobileMenuOpen = false">
+                                    {{this.label}}
+                                </a>
+                                <button 
+                                    @click="accordionOpen = !accordionOpen" 
+                                    type="button"
+                                    class="button-reset bg-transparent bn pa2 ml2 hover-bg-light-gray br2"
+                                    :aria-expanded="accordionOpen.toString()"
+                                    aria-label="Toggle submenu"
+                                >
+                                    <svg 
+                                        class="h1 w1 gray transition-transform duration-200" 
+                                        :class="{ 'rotate-180': accordionOpen }" 
+                                        fill="none" 
+                                        viewBox="0 0 24 24" 
+                                        stroke="currentColor"
+                                    >
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            
+                            {{!-- Accordion Content --}}
+                            <div 
+                                x-show="accordionOpen" 
+                                x-transition:enter="transition-all ease-out duration-200"
+                                x-transition:enter-start="opacity-0 max-h-0"
+                                x-transition:enter-end="opacity-100 max-h-screen"
+                                x-transition:leave="transition-all ease-in duration-150"
+                                x-transition:leave-start="opacity-100 max-h-screen"
+                                x-transition:leave-end="opacity-0 max-h-0"
+                                class="overflow-hidden"
+                            >
+                                <ul class="list pa0 ma0 mt2 pl3 bl b--light-gray">
+                                    {{#each this.children}}
+                                        <li class="pv1">
+                                            <a 
+                                                href="{{this.href}}" 
+                                                class="link dim f6 gray hover-near-black pv1 db" 
+                                                @click="isMobileMenuOpen = false"
+                                            >
+                                                {{this.label}}
+                                            </a>
+                                        </li>
+                                    {{/each}}
+                                </ul>
+                            </div>
+                        </div>
+                    {{else}}
+                        {{!-- Simple Link --}}
+                        <a 
+                            href="{{this.href}}" 
+                            class="link dim f5 fw5 near-black pv2 db" 
+                            @click="isMobileMenuOpen = false"
+                        >
+                            {{this.label}}
+                        </a>
+                    {{/if}}
+                </li>
+            {{/each}}
+        </ul>
+    </nav>
+</div>
+</div>
+
+================================================================================
+

@@ -1,5 +1,4 @@
 // src/core/hooks/useHashNavigation.ts
-'use client';
 
 import { useState, useEffect } from 'react';
 

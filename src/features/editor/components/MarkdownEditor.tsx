@@ -1,4 +1,4 @@
-// src/features/editor/components/MarkdownEditor.tsx
+// src/features/editor/components/BlocknoteEditor.tsx
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { 
   MDXEditor, 
@@ -27,17 +27,17 @@ import {
 import '@mdxeditor/editor/style.css';
 import { Label } from '@/core/components/ui/label';
 
-interface MarkdownEditorProps {
-  initialContent: string; // Markdown string content
+interface BlocknoteEditorProps {
+  initialContent: string; // Changed from Block[] to string for markdown
   onContentChange: () => void; // Only needs to signal a change, not pass content
 }
 
 // The ref will now expose a function to get the editor's markdown data.
-export interface MarkdownEditorRef {
-  getBlocks: () => string; // Returns markdown string
+export interface BlocknoteEditorRef {
+  getBlocks: () => string; // Changed to return markdown string
 }
 
-const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>(
+const BlocknoteEditor = forwardRef<BlocknoteEditorRef, BlocknoteEditorProps>(
   ({ initialContent, onContentChange }, ref) => {
     const editorRef = useRef<MDXEditorMethods>(null);
 
@@ -102,5 +102,5 @@ const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>(
   }
 );
 
-MarkdownEditor.displayName = 'MarkdownEditor';
-export default MarkdownEditor;
+BlocknoteEditor.displayName = 'BlocknoteEditor';
+export default BlocknoteEditor;

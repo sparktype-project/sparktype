@@ -76,14 +76,11 @@ export default function App() {
 
           <Route path="view/*" element={<ViewSitePage />} />
             
-            {/* The edit route now directly renders the editor, with a wildcard for sub-pages */}
-            <Route path="edit/*" element={<EditContentPage />} />
+          <Route path="edit/*" element={<EditContentPage />} />
 
-            {/* Collection management routes */}
-            <Route path="collections/:collectionId" element={<CollectionManagementPage />} />
+          <Route path="collections/:collectionId" element={<CollectionManagementPage />} />
             
-            {/* Collection item viewing route */}
-            <Route path="collection/:collectionId/:slug" element={<ViewSitePage />} />
+          <Route path="collection/:collectionId/:slug" element={<ViewSitePage />} />
 
             <Route path="settings" element={<SettingsSectionLayout />}>
               <Route index element={<SiteSettingsPage />} />
