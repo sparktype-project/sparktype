@@ -17,7 +17,7 @@ import ThreeColumnLayout from '@/core/components/layout/ThreeColumnLayout';
 import LeftSidebar from '@/features/editor/components/LeftSidebar';
 import NewPageDialog from '@/features/editor/components/NewPageDialog';
 // import CreateCollectionPageDialog from '@/features/editor/components/CreateCollectionPageDialog';
-import BlocknoteEditor, { type BlocknoteEditorRef } from '@/features/editor/components/BlocknoteEditor';
+import MarkdownEditor, { type MarkdownEditorRef } from '@/features/editor/components/MarkdownEditor';
 import FrontmatterSidebar from '@/features/editor/components/FrontmatterSidebar';
 import PrimaryContentFields from '@/features/editor/components/PrimaryContentFields';
 import CollectionItemList from '@/features/editor/components/CollectionItemList';
@@ -45,7 +45,7 @@ function EditorLoadingSkeleton() {
  * It's wrapped by EditorProvider so it can use the useEditor() hook.
  */
 function EditContentPageInternal() {
-  const editorRef = useRef<BlocknoteEditorRef>(null);
+  const editorRef = useRef<MarkdownEditorRef>(null);
 
   // --- 1. Get Data and Identifiers ---
   const { siteId = '' } = useParams<{ siteId: string }>();
@@ -154,7 +154,7 @@ function EditContentPageInternal() {
                     {isCollectionPage ? (
                       <CollectionItemList siteId={siteId} collectionPagePath={filePath} />
                     ) : (
-                      <BlocknoteEditor ref={editorRef} key={filePath} initialContent={initialMarkdown} onContentChange={onContentModified} />
+                      <MarkdownEditor ref={editorRef} key={filePath} initialContent={initialMarkdown} onContentChange={onContentModified} />
                     )}
                   </div>
                 </div>
