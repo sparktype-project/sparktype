@@ -108,7 +108,35 @@ export default function FrontmatterSidebar({
 
 
   const handleContentTypeChange = useCallback((newLayoutId: string) => {
-    onFrontmatterChange({ layout: newLayoutId });
+    if (isCollectionTypeLayout(newLayoutId)) {
+      // For collection type layouts, set up proper layoutConfig
+      const layoutParts = newLayoutId.split('.');
+      if (layoutParts.length === 2) {
+        const [typeId, layoutKey] = layoutParts;
+        onFrontmatterChange({
+          layout: 'page', // Use page layout as base
+          layoutConfig: {
+            collectionId: typeId, // Use typeId as collectionId (assuming they match)
+            layout: newLayoutId,
+            sortBy: 'date', // Default sorting
+            pagination: {
+              enabled: false,
+              itemsPerPage: 10
+            },
+            // Other fields will be set by the CollectionLayoutForm
+          }
+        });
+      } else {
+        // Fallback for malformed collection layout
+        onFrontmatterChange({ layout: 'page' });
+      }
+    } else {
+      // For regular layouts, clear any existing layoutConfig and set the layout
+      onFrontmatterChange({ 
+        layout: newLayoutId,
+        layoutConfig: undefined // Clear collection configuration
+      });
+    }
   }, [onFrontmatterChange]);
 
   const handleLayoutConfigChange = useCallback((newConfig: LayoutConfig) => {
@@ -116,8 +144,13 @@ export default function FrontmatterSidebar({
   }, [onFrontmatterChange]);
 
   const isCollectionLayout = useMemo(() => {
+    // Check if layoutConfig exists and has a collection layout
+    if (frontmatter.layoutConfig?.layout) {
+      return isCollectionTypeLayout(frontmatter.layoutConfig.layout);
+    }
+    // Fallback to checking the layout field (for backward compatibility)
     return frontmatter.layout ? isCollectionTypeLayout(frontmatter.layout) : false;
-  }, [frontmatter.layout]);
+  }, [frontmatter.layout, frontmatter.layoutConfig]);
 
   // FIX #2: Add a loading guard to prevent rendering with incomplete data.
   // This ensures `currentLayoutManifest` is populated before children render.
@@ -141,7 +174,7 @@ export default function FrontmatterSidebar({
               <AccordionContent>
                 <ContentTypeSelector
                   siteId={siteId}
-                  selectedType={frontmatter.layout || (isCollectionPage ? 'blog' : 'page')}
+                  selectedType={frontmatter.layoutConfig?.layout || frontmatter.layout || 'page'}
                   onChange={handleContentTypeChange}
                 />
               </AccordionContent>

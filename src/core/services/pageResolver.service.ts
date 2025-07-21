@@ -12,7 +12,7 @@ import { PageType } from '@/core/types';
 import { findNodeByPath } from './fileTree.service';
 import { getUrlForNode } from './urlUtils.service';
 import { DEFAULT_PAGE_LAYOUT_PATH } from '@/config/editorConfig';
-import { getCollection, getCollections } from './collections.service';
+import { getCollection, getCollections, getCollectionContent } from './collections.service';
 import { getCollectionTypeManifest } from './collectionTypes.service';
 
 /**
@@ -92,6 +92,41 @@ export async function resolvePageContent(
     slugArray: string[],
     pageNumber: number = 1,
 ): Promise<PageResolutionResult> {
+    
+    // Check if this is a collection item request: /collection/{collectionId}/{slug}
+    if (slugArray.length === 3 && slugArray[0] === 'collection') {
+        const collectionId = slugArray[1];
+        const itemSlug = slugArray[2];
+        
+        // Get the collection
+        const collection = getCollection(siteData.manifest, collectionId);
+        if (!collection) {
+            return {
+                type: PageType.NotFound,
+                errorMessage: `Collection "${collectionId}" not found.`,
+            };
+        }
+        
+        // Find the collection item by slug
+        const collectionItems = getCollectionContent(siteData, collectionId);
+        const collectionItem = collectionItems.find(item => item.slug === itemSlug);
+        
+        if (!collectionItem) {
+            return {
+                type: PageType.NotFound,
+                errorMessage: `Collection item "${itemSlug}" not found in collection "${collectionId}".`,
+            };
+        }
+        
+        // Return the collection item as a single page
+        return {
+            type: PageType.SinglePage,
+            pageTitle: collectionItem.frontmatter.title,
+            contentFile: collectionItem,
+            layoutPath: 'page', // Use page layout for individual collection items
+        };
+    }
+    
     // Determine the homepage by finding the file with `homepage: true`.
     const homepageFile = siteData.contentFiles?.find(f => f.frontmatter.homepage === true);
     
@@ -118,9 +153,11 @@ export async function resolvePageContent(
     });
     
     if (isCollectionItem) {
+        console.warn(`[PageResolver] Attempted to access collection item directly: ${targetNodePath}`);
+        console.warn(`[PageResolver] Collections found:`, collections.map(c => ({ id: c.id, contentPath: c.contentPath })));
         return {
             type: PageType.NotFound,
-            errorMessage: `Collection items cannot be accessed directly. Path: ${targetNodePath}`,
+            errorMessage: `Collection items cannot be accessed directly. This appears to be a collection item from path: ${targetNodePath}. Collection items should be viewed through collection pages, not individually.`,
         };
     }
 

@@ -83,6 +83,9 @@ export default function App() {
 
             {/* Collection management routes */}
             <Route path="collections/:collectionId" element={<CollectionManagementPage />} />
+            
+            {/* Collection item viewing route */}
+            <Route path="collection/:collectionId/:slug" element={<ViewSitePage />} />
 
             {/* The settings routes remain nested as before */}
             <Route path="settings" element={<SettingsSectionLayout />}>

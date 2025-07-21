@@ -1,6 +1,6 @@
 // src/core/services/collections.service.ts
 
-import type { Manifest, Collection, LocalSiteData } from '@/core/types';
+import type { Manifest, Collection, LocalSiteData, CollectionItemRef } from '@/core/types';
 
 /**
  * Validation and helper functions for collections in the manifest.
@@ -133,6 +133,7 @@ export function ensureCollectionsArray(manifest: Manifest): Manifest {
   }
   return manifest;
 }
+
 
 // ============================================================================
 // COLLECTION CRUD OPERATIONS
@@ -351,61 +352,39 @@ export function duplicateCollection(
   return createCollection(manifest, duplicatedCollection);
 }
 
-// ============================================================================
-// STRUCTURE CLEANUP OPERATIONS
-// ============================================================================
-
 /**
- * Ensures a site structure is clean by removing any collection items.
- * This can be called at any time to guarantee structure integrity.
+ * Builds collection item references for the manifest.
+ * This allows collection items to be discoverable without being in the navigation structure.
  */
-export function ensureCleanSiteStructure(siteData: LocalSiteData): LocalSiteData {
-  const cleanedManifest = cleanCollectionItemsFromStructure(siteData.manifest);
-  return {
-    ...siteData,
-    manifest: cleanedManifest
-  };
+export function buildCollectionItemRefs(siteData: LocalSiteData): CollectionItemRef[] {
+  const collections = getCollections(siteData.manifest);
+  const collectionItemRefs: CollectionItemRef[] = [];
+  
+  for (const collection of collections) {
+    const items = getCollectionContent(siteData, collection.id);
+    
+    for (const item of items) {
+      collectionItemRefs.push({
+        collectionId: collection.id,
+        slug: item.slug,
+        path: item.path,
+        title: item.frontmatter.title || item.slug,
+        url: `/collection/${collection.id}/${item.slug}`
+      });
+    }
+  }
+  
+  return collectionItemRefs;
 }
 
 /**
- * Removes any collection items from the site structure.
- * Collection items should only be managed through the collection interface,
- * not appear in the main site navigation structure.
+ * Updates a manifest with current collection item references.
+ * Call this whenever collection items are added, removed, or modified.
  */
-export function cleanCollectionItemsFromStructure(manifest: Manifest): Manifest {
-  const collections = getCollections(manifest);
-  if (collections.length === 0) {
-    return manifest; // No collections, nothing to clean
-  }
-
-  // Helper function to recursively filter structure nodes
-  const filterStructureNodes = (nodes: import('@/core/types').StructureNode[]): import('@/core/types').StructureNode[] => {
-    return nodes.filter(node => {
-      // Check if this node's path is a collection item
-      // Normalize paths to ensure consistent comparison
-      const normalizedNodePath = node.path.replace(/\\/g, '/');
-      const isCollectionItem = collections.some(collection => {
-        const normalizedContentPath = collection.contentPath.replace(/\\/g, '/');
-        return normalizedNodePath.startsWith(normalizedContentPath);
-      });
-      
-      if (isCollectionItem) {
-        return false; // Remove this node from the structure
-      }
-      
-      // Recursively clean children
-      if (node.children && node.children.length > 0) {
-        node.children = filterStructureNodes(node.children);
-      }
-      
-      return true; // Keep this node
-    });
-  };
-
-  const cleanedStructure = filterStructureNodes(manifest.structure);
-  
+export function updateManifestWithCollectionItems(manifest: Manifest, siteData: LocalSiteData): Manifest {
   return {
     ...manifest,
-    structure: cleanedStructure
+    collectionItems: buildCollectionItemRefs(siteData)
   };
 }
+

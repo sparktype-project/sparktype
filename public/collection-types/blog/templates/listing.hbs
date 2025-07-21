@@ -10,7 +10,7 @@
   {{#if collectionItems}}
     <div class="posts-container {{#if displayOptions.style}}posts-{{displayOptions.style}}{{else}}posts-cards{{/if}}">
       {{#each collectionItems}}
-        {{> (lookup ../displayOptions 'style' 'post-card') this}}
+        {{> blog/partials/post-card this}}
       {{/each}}
     </div>
 

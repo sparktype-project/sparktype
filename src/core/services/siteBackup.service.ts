@@ -9,7 +9,6 @@ import type  {
 } from '@/core/types';
 import { stringifyToMarkdown, parseMarkdownString } from '@/core/libraries/markdownParser';
 import { isCoreTheme, isCoreLayout } from './config/configHelpers.service';
-import { cleanCollectionItemsFromStructure } from './collections.service';
 import * as localSiteFs from './localFileSystem.service';
 
 const SIGNUM_FOLDER = '_site';
@@ -87,11 +86,7 @@ export async function importSiteFromZip(zipFile: File): Promise<LocalSiteData & 
     
     const manifestFile = signumFolder.file('manifest.json');
     if (!manifestFile) throw new Error("Invalid backup file: manifest.json is missing.");
-    let manifest: Manifest = JSON.parse(await manifestFile.async('string'));
-    
-    // Clean any collection items from the site structure on import
-    // This ensures collection items don't appear in the main navigation
-    manifest = cleanCollectionItemsFromStructure(manifest);
+    const manifest: Manifest = JSON.parse(await manifestFile.async('string'));
 
     const secretsFile = signumFolder.file('secrets.json');
     const secrets: SiteSecrets = secretsFile ? JSON.parse(await secretsFile.async('string')) : {};

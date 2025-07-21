@@ -134,6 +134,14 @@ export interface Collection {
   settings?: Record<string, unknown>;
 }
 
+export interface CollectionItemRef {
+  collectionId: string;
+  slug: string;
+  path: string;
+  title: string;
+  url: string;
+}
+
 /**
  * Represents the layout configuration stored in frontmatter for collection layouts.
  * Used when a page uses a collection type layout to display collection content.
@@ -258,6 +266,7 @@ export interface Manifest {
   layouts?: LayoutInfo[];
   themes?: ThemeInfo[];
   collections?: Collection[];
+  collectionItems?: CollectionItemRef[];
   logo?: ImageRef;
   favicon?: ImageRef;
   settings?: {

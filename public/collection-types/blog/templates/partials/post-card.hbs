@@ -2,9 +2,7 @@
 <article class="post-card">
   {{#if frontmatter.featured_image}}
     <div class="post-image">
-      <a href="{{getUrl this}}">
-        {{image frontmatter.featured_image alt=frontmatter.title width=350 height=200 crop="fill"}}
-      </a>
+      {{image frontmatter.featured_image alt=frontmatter.title width=350 height=200 crop="fill"}}
       {{#if frontmatter.featured}}
         <span class="featured-badge">Featured</span>
       {{/if}}
@@ -22,7 +20,7 @@
       {{/if}}
       
       <h2 class="post-title">
-        <a href="{{getUrl this}}">{{frontmatter.title}}</a>
+        <a href="{{getCollectionItemUrl this}}">{{frontmatter.title}}</a>
       </h2>
     </header>
     
@@ -54,6 +52,6 @@
       {{/if}}
     </footer>
     
-    <a href="{{getUrl this}}" class="read-more">Read More</a>
+    <a href="{{getCollectionItemUrl this}}" class="read-more">Read More</a>
   </div>
 </article>

@@ -33,11 +33,15 @@ export const renderCollectionHelper: SparktypeHelper = () => ({
    *   - The last argument is the Handlebars options object.
    * @returns {Promise<Handlebars.SafeString>} The rendered HTML for the collection.
    */
-  render_collection: async function(...args: unknown[]): Promise<Handlebars.SafeString> {
+  render_collection: function(...args: unknown[]): Handlebars.SafeString {
+    console.log('[render_collection] Helper called with args:', args);
+    
     // The Handlebars options object is always the last argument.
     const options = args[args.length - 1] as HelperOptions;
     // The layoutConfig is the first argument passed from the template.
     const layoutConfig = args[0] as LayoutConfig;
+    
+    console.log('[render_collection] LayoutConfig:', layoutConfig);
 
     const root = options.data.root as RootContext;
 
@@ -80,30 +84,25 @@ export const renderCollectionHelper: SparktypeHelper = () => ({
         return new Handlebars.SafeString('<!-- Collection type mismatch -->');
       }
 
-      // Get collection type manifest and layout definition
-      const collectionTypeManifest = await getCollectionTypeManifest(typeId);
-      if (!collectionTypeManifest) {
-        console.warn(`[render_collection] Collection type "${typeId}" manifest not found.`);
-        return new Handlebars.SafeString(`<!-- Collection type "${typeId}" not found -->`);
-      }
-
-      const layoutDef = collectionTypeManifest.layouts[layoutKey];
-      if (!layoutDef) {
-        console.warn(`[render_collection] Layout "${layoutKey}" not found in collection type "${typeId}".`);
-        return new Handlebars.SafeString(`<!-- Layout "${layoutKey}" not found -->`);
-      }
-
       // Get collection items
       const collectionItems = getCollectionContent(root.siteData, layoutConfig.collectionId);
+      
+      console.log(`[render_collection] Found ${collectionItems.length} collection items for "${layoutConfig.collectionId}"`);
 
-      // Apply sorting if specified
+      // Apply basic sorting by date (descending)
       let sortedItems = [...collectionItems];
-      const sortBy = layoutConfig.sortBy || collectionTypeManifest.defaultSort?.field || 'date';
-      const sortOrder = layoutConfig.sortOrder || collectionTypeManifest.defaultSort?.order || 'desc';
+      const sortBy = layoutConfig.sortBy || 'date';
+      const sortOrder = layoutConfig.sortOrder || 'desc';
 
       sortedItems.sort((a, b) => {
         const aValue = a.frontmatter[sortBy] as string || '';
         const bValue = b.frontmatter[sortBy] as string || '';
+        
+        if (sortBy === 'date') {
+          const dateA = new Date(aValue).getTime();
+          const dateB = new Date(bValue).getTime();
+          return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+        }
         
         const comparison = aValue.localeCompare(bValue);
         return sortOrder === 'desc' ? -comparison : comparison;
@@ -112,8 +111,6 @@ export const renderCollectionHelper: SparktypeHelper = () => ({
       // Apply item limit if specified
       if (layoutConfig.maxItems && layoutConfig.maxItems > 0) {
         sortedItems = sortedItems.slice(0, layoutConfig.maxItems);
-      } else if (layoutDef.maxItems && layoutDef.maxItems > 0) {
-        sortedItems = sortedItems.slice(0, layoutDef.maxItems);
       }
 
       // Apply tag filtering if specified
@@ -124,30 +121,31 @@ export const renderCollectionHelper: SparktypeHelper = () => ({
         });
       }
 
-      // Get and compile the collection type template
-      const templatePath = `templates/${layoutDef.template}`;
-      const templateSource = await getCollectionTypeTemplate(typeId, templatePath);
+      // Use the pre-registered partial for the collection type template
+      // The template was registered as "${typeId}/listing" (from templates/listing.hbs)
+      const templatePartialName = `${typeId}/${layoutKey}`;
+      const templateSource = Handlebars.partials[templatePartialName];
       
       if (!templateSource) {
-        console.warn(`[render_collection] Template "${templatePath}" not found in collection type "${typeId}".`);
-        return new Handlebars.SafeString(`<!-- Template "${templatePath}" not found -->`);
+        console.warn(`[render_collection] Template partial "${templatePartialName}" not found in registered partials.`);
+        console.log('[render_collection] Available partials:', Object.keys(Handlebars.partials));
+        return new Handlebars.SafeString(`<!-- Template "${templatePartialName}" not found -->`);
       }
 
-      // Compile and render the template
-      const template = Handlebars.compile(templateSource);
+      // Compile and render the template synchronously
+      const template = typeof templateSource === 'function' ? templateSource : Handlebars.compile(templateSource);
       
       // Create template context
       const templateContext = {
         collection,
         collectionItems: sortedItems,
         layoutConfig,
-        layoutDef,
-        collectionTypeManifest,
         // Include the original page context for access to site data, etc.
         ...root
       };
 
-      const renderedHtml = await template(templateContext);
+      const renderedHtml = template(templateContext);
+      console.log(`[render_collection] Successfully rendered collection with ${sortedItems.length} items`);
       return new Handlebars.SafeString(renderedHtml);
 
     } catch (error) {
@@ -156,3 +154,4 @@ export const renderCollectionHelper: SparktypeHelper = () => ({
     }
   }
 });
+
