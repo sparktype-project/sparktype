@@ -49,8 +49,10 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
     set(produce(draft => { draft.loadingSites.add(siteId); }));
 
     try {
-      const manifest = await localSiteFs.getManifestById(siteId);
-      if (!manifest) throw new Error(`Failed to load manifest for siteId: ${siteId}`);
+      const rawManifest = await localSiteFs.getManifestById(siteId);
+      if (!rawManifest) throw new Error(`Failed to load manifest for siteId: ${siteId}`);
+      
+      const manifest = rawManifest;
       
       const [contentFiles, layoutFiles, themeFiles, secrets] = await Promise.all([
         localSiteFs.getSiteContentFiles(siteId),
@@ -89,7 +91,6 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
     }));
   },
 
-  // ... (addSite and deleteSiteAndState remain the same)
   addSite: async (newSiteData) => {
     await localSiteFs.saveSite(newSiteData);
     set(produce((draft: SiteSlice) => {
@@ -108,4 +109,5 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
       draft.sites = draft.sites.filter(s => s.siteId !== siteId);
     }));
   },
+
 });

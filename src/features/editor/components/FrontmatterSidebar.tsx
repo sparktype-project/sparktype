@@ -2,8 +2,9 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Manifest, RawFile, StructureNode, ParsedMarkdownFile, MarkdownFrontmatter } from '@/core/types';
+import type { Manifest, RawFile, StructureNode, ParsedMarkdownFile, MarkdownFrontmatter, LayoutConfig } from '@/core/types';
 import { getAvailableLayouts } from '@/core/services/config/configHelpers.service';
+import { isCollectionTypeLayout } from '@/core/services/config/configHelpers.service';
 import { type LayoutManifest } from '@/core/types';
 
 // UI Component Imports
@@ -14,7 +15,7 @@ import { Trash2 } from 'lucide-react';
 
 // Form & Sub-component Imports
 import ContentTypeSelector from '@/features/editor/components/forms/ContentTypeSelector';
-import CollectionSettingsForm from '@/features/editor/components/forms/CollectionSettingsForm';
+import CollectionLayoutForm from '@/features/editor/components/forms/CollectionLayoutForm';
 import PageMetadataForm from '@/features/editor/components/forms/PageMetaDataForm';
 import AdvancedSettingsForm from '@/features/editor/components/forms/AdvancedSettingsForm';
 
@@ -105,19 +106,51 @@ export default function FrontmatterSidebar({
     return allLayouts.find(l => l.id === parentFile.frontmatter.layout) ?? null;
   }, [allLayouts, isCollectionItem, parentFile]);
 
-  const availableContentTypes = useMemo(() => {
-    const requiredType = isCollectionPage ? 'collection' : 'page';
-    const filtered = allLayouts.filter(layout => layout.layoutType === requiredType);
-
-    // De-duplicate by id to prevent React key warnings
-    const unique = Array.from(new Map(filtered.map(item => [item.id, item])).values());
-    return unique;
-    
-  }, [allLayouts, isCollectionPage]);
 
   const handleContentTypeChange = useCallback((newLayoutId: string) => {
-    onFrontmatterChange({ layout: newLayoutId });
+    if (isCollectionTypeLayout(newLayoutId)) {
+      // For collection type layouts, set up proper layoutConfig
+      const layoutParts = newLayoutId.split('.');
+      if (layoutParts.length === 2) {
+        const [typeId, layoutKey] = layoutParts;
+        onFrontmatterChange({
+          layout: 'page', // Use page layout as base
+          layoutConfig: {
+            collectionId: typeId, // Use typeId as collectionId (assuming they match)
+            layout: newLayoutId,
+            sortBy: 'date', // Default sorting
+            pagination: {
+              enabled: false,
+              itemsPerPage: 10
+            },
+            // Other fields will be set by the CollectionLayoutForm
+          }
+        });
+      } else {
+        // Fallback for malformed collection layout
+        onFrontmatterChange({ layout: 'page' });
+      }
+    } else {
+      // For regular layouts, clear any existing layoutConfig and set the layout
+      onFrontmatterChange({ 
+        layout: newLayoutId,
+        layoutConfig: undefined // Clear collection configuration
+      });
+    }
   }, [onFrontmatterChange]);
+
+  const handleLayoutConfigChange = useCallback((newConfig: LayoutConfig) => {
+    onFrontmatterChange({ layoutConfig: newConfig });
+  }, [onFrontmatterChange]);
+
+  const isCollectionLayout = useMemo(() => {
+    // Check if layoutConfig exists and has a collection layout
+    if (frontmatter.layoutConfig?.layout) {
+      return isCollectionTypeLayout(frontmatter.layoutConfig.layout);
+    }
+    // Fallback to checking the layout field (for backward compatibility)
+    return frontmatter.layout ? isCollectionTypeLayout(frontmatter.layout) : false;
+  }, [frontmatter.layout, frontmatter.layoutConfig]);
 
   // FIX #2: Add a loading guard to prevent rendering with incomplete data.
   // This ensures `currentLayoutManifest` is populated before children render.
@@ -126,8 +159,8 @@ export default function FrontmatterSidebar({
   }
 
   const defaultOpenSections = ['content-type', 'metadata', 'advanced'];
-  if (isCollectionPage) {
-    defaultOpenSections.push('list-settings');
+  if (isCollectionLayout) {
+    defaultOpenSections.push('collection-settings');
   }
 
   return (
@@ -140,22 +173,23 @@ export default function FrontmatterSidebar({
               <AccordionTrigger>Content Type</AccordionTrigger>
               <AccordionContent>
                 <ContentTypeSelector
-                  availableTypes={availableContentTypes}
-                  selectedType={frontmatter.layout || (isCollectionPage ? 'blog' : 'page')}
+                  siteId={siteId}
+                  selectedType={frontmatter.layoutConfig?.layout || frontmatter.layout || 'page'}
                   onChange={handleContentTypeChange}
                 />
               </AccordionContent>
             </AccordionItem>
           )}
 
-          {isCollectionPage && (
-            <AccordionItem value="list-settings">
-              <AccordionTrigger>List Settings</AccordionTrigger>
+          {isCollectionLayout && (
+            <AccordionItem value="collection-settings">
+              <AccordionTrigger>Collection Settings</AccordionTrigger>
               <AccordionContent>
-                <CollectionSettingsForm
-                  frontmatter={frontmatter}
-                  onFrontmatterChange={onFrontmatterChange}
-                  layoutManifest={currentLayoutManifest}
+                <CollectionLayoutForm
+                  siteId={siteId}
+                  selectedLayout={frontmatter.layout || ''}
+                  layoutConfig={frontmatter.layoutConfig}
+                  onLayoutConfigChange={handleLayoutConfigChange}
                 />
               </AccordionContent>
             </AccordionItem>

@@ -2,7 +2,7 @@
 
 import Handlebars from 'handlebars';
 import type { SparktypeHelper } from './types';
-import type { ParsedMarkdownFile, CollectionConfig, LayoutManifest } from '@/core/types';
+import type { ParsedMarkdownFile, LayoutManifest } from '@/core/types';
 import type { HelperOptions } from 'handlebars';
 
 /**
@@ -52,9 +52,9 @@ export const renderItemHelper: SparktypeHelper = () => ({
 
     // --- Logic to Determine Which Teaser Template to Use ---
     const teaserOptions = root.layoutManifest.display_options.teaser;
-    const collectionConfig = root.contentFile.frontmatter.collection as CollectionConfig | undefined;
+    const layoutConfig = root.contentFile.frontmatter.layoutConfig;
 
-    const userChoiceKey = collectionConfig?.teaser as string | undefined;
+    const userChoiceKey = layoutConfig?.displayOptions?.teaser;
     const finalChoiceKey = userChoiceKey || teaserOptions.default;
     const templatePath = teaserOptions.options[finalChoiceKey]?.template;
 

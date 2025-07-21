@@ -13,7 +13,7 @@ export async function generateHtmlPages(siteData: LocalSiteData, allStaticNodes:
     const htmlPages: Record<string, string> = {};
 
     for (const node of allStaticNodes) {
-        const resolution = resolvePageContent(siteData, node.slug.split('/'));
+        const resolution = await resolvePageContent(siteData, node.slug.split('/'));
         if (resolution.type === PageType.NotFound) continue;
 
         const outputPath = getUrlForNode(node, siteData.manifest, true);

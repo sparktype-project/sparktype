@@ -32,9 +32,19 @@ export default function SiteViewer() {
   const viewRootPath = `/sites/${siteId}/view`;
 
   // --- 2. Derive the relative path from the location pathname ---
-  const currentRelativePath = location.pathname.startsWith(viewRootPath)
+  let currentRelativePath = location.pathname.startsWith(viewRootPath)
     ? location.pathname.substring(viewRootPath.length) || '/'
     : '/';
+    
+  // Handle collection item URLs: /collection/{collectionId}/{slug}
+  // Convert them to the format expected by the viewer
+  if (currentRelativePath.startsWith('/collection/')) {
+    const pathParts = currentRelativePath.split('/').filter(Boolean);
+    if (pathParts.length === 3 && pathParts[0] === 'collection') {
+      // Keep the collection path as-is for the resolver
+      currentRelativePath = currentRelativePath;
+    }
+  }
 
   // This function generates the final HTML and sets the iframe content
   const updateIframeContent = useCallback(async () => {
@@ -45,7 +55,7 @@ export default function SiteViewer() {
 
     // The slug array is derived from the relative path inside the viewer
     const slugArray = currentRelativePath.split('/').filter(Boolean);
-    const resolution = resolvePageContent(site, slugArray);
+    const resolution = await resolvePageContent(site, slugArray);
     
     if (resolution.type === PageType.NotFound) {
       setErrorMessage(resolution.errorMessage);
@@ -66,15 +76,27 @@ export default function SiteViewer() {
           document.addEventListener('click', function(e) {
             const link = e.target.closest('a');
             if (!link || !link.href) return;
+            
+            // Skip if this is already a hash link on the same page
             if (link.hash && link.pathname === window.location.pathname) return;
+            
+            // Skip if this is an external link
+            if (link.target === '_blank' || link.href.startsWith('http') && !link.href.startsWith(window.location.origin)) return;
 
-            // Check if the link is a hash-based internal link
-            const url = new URL(link.href);
-            if (url.origin === window.location.origin && url.hash) {
-              e.preventDefault();
-              const newHashPath = url.hash.substring(1); // Get path from hash (e.g., /sites/123/view/about)
-              // Post the new hash path to the parent window
-              window.parent.postMessage({ type: 'SIGNUM_NAVIGATE', path: newHashPath }, window.location.origin);
+            try {
+              // Check if the link is a hash-based internal link
+              const url = new URL(link.href, window.location.origin);
+              if (url.origin === window.location.origin && url.hash) {
+                e.preventDefault();
+                const newHashPath = url.hash.substring(1); // Get path from hash (e.g., /sites/123/view/about)
+                // Only navigate if the path is actually different
+                if (newHashPath && newHashPath !== window.location.pathname) {
+                  window.parent.postMessage({ type: 'SIGNUM_NAVIGATE', path: newHashPath }, window.location.origin);
+                }
+              }
+            } catch (urlError) {
+              // If URL parsing fails, just ignore the click
+              console.warn('Failed to parse URL:', link.href, urlError);
             }
           });
         </script>
@@ -104,9 +126,12 @@ export default function SiteViewer() {
       if (event.origin !== window.location.origin) return;
       
       const { type, path } = event.data;
-      if (type === 'SIGNUM_NAVIGATE' && path !== location.pathname) {
-        // Use navigate to update the hash URL, which will trigger a re-render
-        navigate(path);
+      if (type === 'SIGNUM_NAVIGATE' && typeof path === 'string' && path.trim() !== '') {
+        // Only navigate if the path is actually different to prevent infinite loops
+        if (path !== location.pathname) {
+          console.log('[SiteViewer] Navigating to:', path);
+          navigate(path);
+        }
       }
     };
 

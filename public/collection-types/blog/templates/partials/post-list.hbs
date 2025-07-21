@@ -1,0 +1,46 @@
+{{!-- Post List Partial --}}
+<article class="post-list-item">
+  <div class="post-list-content">
+    <header class="post-list-header">
+      <h3 class="post-list-title">
+        <a href="{{getUrl this}}">{{frontmatter.title}}</a>
+      </h3>
+      
+      {{#if frontmatter.featured}}
+        <span class="featured-indicator">★</span>
+      {{/if}}
+    </header>
+    
+    <div class="post-list-meta">
+      {{#if frontmatter.date}}
+        <time datetime="{{frontmatter.date}}" class="post-list-date">
+          {{formatDate frontmatter.date format="MMM d, yyyy"}}
+        </time>
+      {{/if}}
+      
+      {{#if frontmatter.author}}
+        <span class="post-list-author">{{frontmatter.author}}</span>
+      {{/if}}
+      
+      {{#if frontmatter.categories}}
+        <div class="post-list-categories">
+          {{#each frontmatter.categories}}
+            <span class="category-pill">{{this}}</span>
+          {{/each}}
+        </div>
+      {{/if}}
+    </div>
+    
+    {{#if frontmatter.excerpt}}
+      <p class="post-list-excerpt">{{frontmatter.excerpt}}</p>
+    {{/if}}
+  </div>
+  
+  {{#if frontmatter.featured_image}}
+    <div class="post-list-image">
+      <a href="{{getUrl this}}">
+        {{image frontmatter.featured_image alt=frontmatter.title width=100 height=100 crop="fill"}}
+      </a>
+    </div>
+  {{/if}}
+</article>

@@ -99,8 +99,8 @@ export async function assemblePageContext(
         images: imageContext,
         collectionItems: processedCollectionItems,
         layoutManifest: pageLayoutManifest,
+        siteData, // Add siteData to template context for collection rendering helper
     };
-
 
     return result;
 }

@@ -112,10 +112,10 @@ export default function SiteLayout() {
   // --- FIX: Add a property to distinguish standard icons ---
   const navItems = [
     // This item will not receive the extra size class.
-    { to: `/sites/${siteId}/view`, title: 'View Site', icon: () => <SiteIcon site={site} />, isStandardIcon: false, isActive: isViewActive },
+    { to: siteId ? `/sites/${siteId}/view` : '#', title: 'View Site', icon: () => <SiteIcon site={site} />, isStandardIcon: false, isActive: isViewActive },
     // These items will receive the `size-6` class.
-    { to: `/sites/${siteId}/edit`, title: 'Edit Content', icon: TbEdit, isStandardIcon: true, isActive: isEditorActive },
-    { to: `/sites/${siteId}/settings`, title: 'Site Settings', icon: TbSettings, isStandardIcon: true, isActive: isSettingsActive },
+    { to: siteId ? `/sites/${siteId}/edit` : '#', title: 'Edit Content', icon: TbEdit, isStandardIcon: true, isActive: isEditorActive },
+    { to: siteId ? `/sites/${siteId}/settings` : '#', title: 'Site Settings', icon: TbSettings, isStandardIcon: true, isActive: isSettingsActive },
   ];
 
   return (

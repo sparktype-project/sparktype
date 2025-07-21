@@ -7,6 +7,7 @@ import {
     getAssetContent,
     getAvailableLayouts,
 } from '@/core/services/config/configHelpers.service';
+import { getAvailableCollectionTypes, getCollectionTypeTemplate } from '@/core/services/collectionTypes.service';
 import { coreHelpers } from './helpers';
 
 let areHelpersRegistered = false;
@@ -24,7 +25,7 @@ function registerCoreHelpers(siteData: LocalSiteData): void {
 }
 
 /**
- * Pre-compiles and caches all available theme and layout partials.
+ * Pre-compiles and caches all available theme, layout, and collection type partials.
  */
 async function cacheAllTemplates(siteData: LocalSiteData): Promise<void> {
     Object.keys(Handlebars.partials).forEach(p => Handlebars.unregisterPartial(p));
@@ -32,6 +33,7 @@ async function cacheAllTemplates(siteData: LocalSiteData): Promise<void> {
     const { manifest } = siteData;
     const allLayouts = await getAvailableLayouts(siteData);
     
+    // Cache layout partials
     const layoutPromises = allLayouts.flatMap(layout =>
         (layout.files || []).map(async file => {
             const source = await getAssetContent(siteData, 'layout', layout.id, file.path);
@@ -45,6 +47,7 @@ async function cacheAllTemplates(siteData: LocalSiteData): Promise<void> {
         })
     );
 
+    // Cache theme partials
     const themeManifest = await getJsonAsset<ThemeManifest>(siteData, 'theme', manifest.theme.name, 'theme.json');
     const themePartialPromises = (themeManifest?.files || [])
         .filter(file => file.type === 'partial' && file.name)
@@ -53,7 +56,23 @@ async function cacheAllTemplates(siteData: LocalSiteData): Promise<void> {
             if (source) Handlebars.registerPartial(partial.name!, source);
         });
 
-    await Promise.all([...layoutPromises, ...themePartialPromises]);
+    // Cache collection type templates and partials
+    const collectionTypes = await getAvailableCollectionTypes();
+    const collectionTypePromises = collectionTypes.flatMap(({ id, manifest: collectionManifest }) =>
+        (collectionManifest.files || []).map(async file => {
+            const source = await getCollectionTypeTemplate(id, file.path);
+            if (source) {
+                // Register partials with collection type namespaced names
+                // e.g., "blog/partials/post-card" for use in collection templates
+                const partialName = file.type === 'partial' ? 
+                    `${id}/${file.path.replace('templates/', '').replace('.hbs', '')}` : 
+                    `${id}/${file.path.replace('templates/', '').replace('.hbs', '')}`;
+                Handlebars.registerPartial(partialName, source);
+            }
+        })
+    );
+
+    await Promise.all([...layoutPromises, ...themePartialPromises, ...collectionTypePromises]);
 }
 
 /**

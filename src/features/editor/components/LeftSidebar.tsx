@@ -11,8 +11,9 @@ import { useAppStore } from '@/core/state/useAppStore';
 import { Button } from '@/core/components/ui/button';
 import FileTree from '@/features/editor/components/FileTree';
 import NewPageDialog from '@/features/editor/components/NewPageDialog';
-import CreateCollectionPageDialog from '@/features/editor/components/CreateCollectionPageDialog';
-import { FilePlus, LayoutGrid, GripVertical, Archive } from 'lucide-react';
+import CollectionsManager from '@/features/editor/components/CollectionsManager';
+// import CreateCollectionPageDialog from '@/features/editor/components/CreateCollectionPageDialog';
+import { FilePlus, GripVertical, Archive } from 'lucide-react';
 import {
   DndContext,
   type DragEndEvent,
@@ -73,8 +74,13 @@ export default function LeftSidebar() {
     const allItems = flattenTree(site.manifest.structure, site.contentFiles);
     
     return allItems.filter(item => {
+      // Show collection pages themselves (pages with collection frontmatter)
       if (item.frontmatter?.collection) return true;
+      
+      // Show root level pages
       if (item.depth === 0) return true;
+      
+      // Check if parent is a collection page (existing logic for nested structure)
       const parentItem = allItems.find(parent => parent.path === item.parentId);
       return !parentItem?.frontmatter?.collection;
     });
@@ -208,11 +214,11 @@ export default function LeftSidebar() {
         <div className="flex shrink-0 items-center justify-between border-b px-2 py-0.5">
           <h3 className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Content</h3>
           <div className="flex items-center gap-1">
-            <CreateCollectionPageDialog siteId={siteId}>
+            {/* <CreateCollectionPageDialog siteId={siteId}>
                 <Button variant="ghost" className='size-7 p-1' title="New Collection">
                     <LayoutGrid className="h-4 w-4" />
                 </Button>
-            </CreateCollectionPageDialog>
+            </CreateCollectionPageDialog> */}
             <NewPageDialog siteId={siteId}>
                 <Button variant="ghost" className='size-7 p-1' title="New Page">
                     <FilePlus className="h-4 w-4" />
@@ -238,6 +244,11 @@ export default function LeftSidebar() {
               <p>No pages created yet. Click the buttons above to add one.</p>
             </div>
           )}
+        </div>
+
+        {/* Collections Manager */}
+        <div className="flex-shrink-0 h-80 border-t bg-background">
+          <CollectionsManager siteId={siteId} />
         </div>
 
         <div className="mt-auto shrink-0 border-t p-2 space-y-1">

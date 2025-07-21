@@ -19,6 +19,7 @@ const HomePageDashboard = lazy(() => import('./pages/HomePageDashboard')); // ap
 // Site-Specific Layouts and Pages
 const SiteLayout = lazy(() => import('./pages/sites/SiteLayout'));             // app/sites/[siteId]/layout.tsx
 const EditContentPage = lazy(() => import('./pages/sites/edit/EditContentPage'));// app/sites/[siteId]/edit/content/[[...slug]]/page.tsx
+const CollectionManagementPage = lazy(() => import('./pages/sites/collections/CollectionManagementPage')); // app/sites/[siteId]/collections/[collectionId]/page.tsx
 const SettingsSectionLayout = lazy(() => import('@/pages/sites/settings/SettingsSectionLayout')); // app/sites/[siteId]/settings/layout.tsx
 const SiteSettingsPage = lazy(() => import('@/pages/sites/settings/SiteSettingsPage'));         // app/sites/[siteId]/settings/page.tsx
 const ThemeSettingsPage = lazy(() => import('@/pages/sites/settings/ThemeSettingsPage'));       // app/sites/[siteId]/settings/theme/page.tsx
@@ -75,7 +76,14 @@ export default function App() {
 
           <Route path="view/*" element={<ViewSitePage />} />
             
-          <Route path="edit/*" element={<EditContentPage />} />
+            {/* The edit route now directly renders the editor, with a wildcard for sub-pages */}
+            <Route path="edit/*" element={<EditContentPage />} />
+
+            {/* Collection management routes */}
+            <Route path="collections/:collectionId" element={<CollectionManagementPage />} />
+            
+            {/* Collection item viewing route */}
+            <Route path="collection/:collectionId/:slug" element={<ViewSitePage />} />
 
             <Route path="settings" element={<SettingsSectionLayout />}>
               <Route index element={<SiteSettingsPage />} />

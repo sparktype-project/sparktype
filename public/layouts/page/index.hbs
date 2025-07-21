@@ -28,8 +28,8 @@
 
     </div>
 
-    {{#if collectionItems}}
+    {{#if contentFile.frontmatter.layoutConfig}}
         <hr/>
-        {{{render_collection}}}
+        {{{render_collection contentFile.frontmatter.layoutConfig}}}
     {{/if}}
 </article>

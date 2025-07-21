@@ -1,0 +1,53 @@
+{{!-- Featured Posts Template --}}
+<section class="featured-posts">
+  <div class="featured-header">
+    <h2>{{pageTitle}}</h2>
+    {{#if page.excerpt}}
+      <p class="featured-description">{{page.excerpt}}</p>
+    {{/if}}
+  </div>
+
+  {{#if collectionItems}}
+    <div class="featured-grid">
+      {{#each collectionItems}}
+        <article class="featured-post">
+          {{#if frontmatter.featured_image}}
+            <div class="featured-image">
+              <a href="{{getUrl this}}">
+                {{image frontmatter.featured_image alt=frontmatter.title width=400 height=250 crop="fill"}}
+              </a>
+            </div>
+          {{/if}}
+          
+          <div class="featured-content">
+            <h3 class="featured-title">
+              <a href="{{getUrl this}}">{{frontmatter.title}}</a>
+            </h3>
+            
+            {{#if frontmatter.excerpt}}
+              <p class="featured-excerpt">{{frontmatter.excerpt}}</p>
+            {{/if}}
+            
+            <div class="featured-meta">
+              {{#if frontmatter.date}}
+                <time datetime="{{frontmatter.date}}">
+                  {{formatDate frontmatter.date format="MMM d, yyyy"}}
+                </time>
+              {{/if}}
+              
+              {{#if frontmatter.author}}
+                <span class="author">by {{frontmatter.author}}</span>
+              {{/if}}
+            </div>
+            
+            <a href="{{getUrl this}}" class="read-more">Read More →</a>
+          </div>
+        </article>
+      {{/each}}
+    </div>
+  {{else}}
+    <div class="no-featured-posts">
+      <p>No featured posts available.</p>
+    </div>
+  {{/if}}
+</section>

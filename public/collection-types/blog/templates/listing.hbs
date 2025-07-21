@@ -1,0 +1,44 @@
+{{!-- Blog Listing Template --}}
+<div class="blog-listing">
+  <div class="blog-header">
+    <h1>{{pageTitle}}</h1>
+    {{#if page.excerpt}}
+      <p class="blog-description">{{page.excerpt}}</p>
+    {{/if}}
+  </div>
+
+  {{#if collectionItems}}
+    <div class="posts-container {{#if displayOptions.style}}posts-{{displayOptions.style}}{{else}}posts-cards{{/if}}">
+      {{#each collectionItems}}
+        {{> blog/partials/post-card this}}
+      {{/each}}
+    </div>
+
+    {{#if pagination}}
+      <nav class="pagination" aria-label="Blog pagination">
+        <div class="pagination-info">
+          Showing {{pagination.currentPage}} of {{pagination.totalPages}} pages
+          ({{pagination.totalItems}} posts total)
+        </div>
+        
+        <div class="pagination-controls">
+          {{#if pagination.hasPrevPage}}
+            <a href="{{pagination.prevPageUrl}}" class="pagination-btn pagination-prev">
+              ← Previous
+            </a>
+          {{/if}}
+          
+          {{#if pagination.hasNextPage}}
+            <a href="{{pagination.nextPageUrl}}" class="pagination-btn pagination-next">
+              Next →
+            </a>
+          {{/if}}
+        </div>
+      </nav>
+    {{/if}}
+  {{else}}
+    <div class="no-posts">
+      <p>No blog posts found.</p>
+    </div>
+  {{/if}}
+</div>

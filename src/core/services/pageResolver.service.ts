@@ -3,51 +3,56 @@
 import type {
     LocalSiteData,
     ParsedMarkdownFile,
-    CollectionConfig,
+    LayoutConfig,
     PaginationData,
     PageResolutionResult,
-    StructureNode,
+    Collection,
 } from '@/core/types';
 import { PageType } from '@/core/types';
-import { findNodeByPath, findChildNodes } from './fileTree.service';
+import { findNodeByPath } from './fileTree.service';
 import { getUrlForNode } from './urlUtils.service';
 import { DEFAULT_PAGE_LAYOUT_PATH } from '@/config/editorConfig';
+import { getCollection, getCollections, getCollectionContent } from './collections.service';
+import { getCollectionTypeManifest } from './collectionTypes.service';
 
 /**
- * Executes a declarative query for a Collection Page.
- * This pure function takes the config and site data, finds all child pages
- * in the structure, fetches their content, and returns a fully sorted array.
+ * Executes a collection query using the collection type system.
+ * This works with collection instances and collection types.
  *
- * @param {CollectionConfig} collectionConfig - The configuration object from the page's frontmatter.
- * @param {StructureNode} collectionNode - The structure node for the Collection Page itself.
+ * @param {Collection} collection - The collection instance definition.
+ * @param {LayoutConfig} layoutConfig - The layout configuration from the page's frontmatter.
  * @param {LocalSiteData} siteData - The complete data for the site.
- * @returns {ParsedMarkdownFile[]} A sorted array of all content files that are children of the collection page.
+ * @returns {Promise<ParsedMarkdownFile[]>} A sorted array of content files from the collection.
  */
-function executeCollectionQuery(
-    collectionConfig: CollectionConfig,
-    collectionNode: StructureNode,
+async function executeCollectionQuery(
+    collection: Collection,
+    layoutConfig: LayoutConfig,
     siteData: LocalSiteData,
-): ParsedMarkdownFile[] {
+): Promise<ParsedMarkdownFile[]> {
     if (!siteData.contentFiles) {
         return [];
     }
 
-    // Find all direct child nodes of the collection page in the site's structure.
-    const childNodes = findChildNodes(siteData.manifest.structure, collectionNode.path);
-    const childPaths = new Set(childNodes.map(child => child.path));
-
-    // Filter the site's content files to get only the ones that are children and are published.
+    // Get collection type for default settings
+    const collectionType = await getCollectionTypeManifest(collection.typeId);
+    
+    // Filter content files that belong to this collection
     const items = siteData.contentFiles.filter(file => {
-        // Must be a child of the collection
-        if (!childPaths.has(file.path)) return false;
+        // Must be in the collection's content path
+        if (!file.path.startsWith(collection.contentPath)) return false;
         
         // Must be published (default to true for backward compatibility)
         const isPublished = file.frontmatter.published !== false;
         return isPublished;
     });
 
-    const sortBy = collectionConfig.sort_by || 'date';
-    const sortOrder = collectionConfig.sort_order || 'desc';
+    // Determine sorting (layout config > collection type defaults > fallback)
+    const sortBy = layoutConfig.sortBy || 
+                   collectionType?.defaultSort?.field || 
+                   'date';
+    const sortOrder = layoutConfig.sortOrder || 
+                      collectionType?.defaultSort?.order || 
+                      'desc';
     const orderModifier = sortOrder === 'desc' ? -1 : 1;
 
     return [...items].sort((a, b) => {
@@ -82,11 +87,46 @@ function executeCollectionQuery(
  * @param {number} [pageNumber=1] - The current page number for pagination.
  * @returns {PageResolutionResult} An object containing all data needed to render the page or a not-found error.
  */
-export function resolvePageContent(
+export async function resolvePageContent(
     siteData: LocalSiteData,
     slugArray: string[],
     pageNumber: number = 1,
-): PageResolutionResult {
+): Promise<PageResolutionResult> {
+    
+    // Check if this is a collection item request: /collection/{collectionId}/{slug}
+    if (slugArray.length === 3 && slugArray[0] === 'collection') {
+        const collectionId = slugArray[1];
+        const itemSlug = slugArray[2];
+        
+        // Get the collection
+        const collection = getCollection(siteData.manifest, collectionId);
+        if (!collection) {
+            return {
+                type: PageType.NotFound,
+                errorMessage: `Collection "${collectionId}" not found.`,
+            };
+        }
+        
+        // Find the collection item by slug
+        const collectionItems = getCollectionContent(siteData, collectionId);
+        const collectionItem = collectionItems.find(item => item.slug === itemSlug);
+        
+        if (!collectionItem) {
+            return {
+                type: PageType.NotFound,
+                errorMessage: `Collection item "${itemSlug}" not found in collection "${collectionId}".`,
+            };
+        }
+        
+        // Return the collection item as a single page
+        return {
+            type: PageType.SinglePage,
+            pageTitle: collectionItem.frontmatter.title,
+            contentFile: collectionItem,
+            layoutPath: 'page', // Use page layout for individual collection items
+        };
+    }
+    
     // Determine the homepage by finding the file with `homepage: true`.
     const homepageFile = siteData.contentFiles?.find(f => f.frontmatter.homepage === true);
     
@@ -101,6 +141,23 @@ export function resolvePageContent(
         return {
             type: PageType.NotFound,
             errorMessage: "No homepage has been designated for this site.",
+        };
+    }
+
+    // First check if this is a collection item (which should never be in the structure)
+    const collections = getCollections(siteData.manifest);
+    const normalizedTargetPath = targetNodePath.replace(/\\/g, '/');
+    const isCollectionItem = collections.some(collection => {
+        const normalizedContentPath = collection.contentPath.replace(/\\/g, '/');
+        return normalizedTargetPath.startsWith(normalizedContentPath);
+    });
+    
+    if (isCollectionItem) {
+        console.warn(`[PageResolver] Attempted to access collection item directly: ${targetNodePath}`);
+        console.warn(`[PageResolver] Collections found:`, collections.map(c => ({ id: c.id, contentPath: c.contentPath })));
+        return {
+            type: PageType.NotFound,
+            errorMessage: `Collection items cannot be accessed directly. This appears to be a collection item from path: ${targetNodePath}. Collection items should be viewed through collection pages, not individually.`,
         };
     }
 
@@ -123,33 +180,37 @@ export function resolvePageContent(
     let collectionItems: ParsedMarkdownFile[] | undefined = undefined;
     let pagination: PaginationData | undefined = undefined;
 
-    const collectionConfig = contentFile.frontmatter.collection;
-    if (collectionConfig) {
-        const allItems = executeCollectionQuery(collectionConfig, targetNode, siteData);
-        const itemsPerPage = collectionConfig.items_per_page;
+    // Check if this page uses a collection layout with layoutConfig
+    const layoutConfig = contentFile.frontmatter.layoutConfig;
+    if (layoutConfig?.collectionId) {
+        // Get the collection instance
+        const collection = getCollection(siteData.manifest, layoutConfig.collectionId);
+        if (collection) {
+            const allItems = await executeCollectionQuery(collection, layoutConfig, siteData);
+            const itemsPerPage = layoutConfig.itemsPerPage;
 
-        if (itemsPerPage && itemsPerPage > 0) {
-            const totalItems = allItems.length;
-            const totalPages = Math.ceil(totalItems / itemsPerPage);
-            const currentPage = Math.max(1, Math.min(pageNumber, totalPages));
-            const startIndex = (currentPage - 1) * itemsPerPage;
-            collectionItems = allItems.slice(startIndex, startIndex + itemsPerPage);
+            if (itemsPerPage && itemsPerPage > 0) {
+                const totalItems = allItems.length;
+                const totalPages = Math.ceil(totalItems / itemsPerPage);
+                const currentPage = Math.max(1, Math.min(pageNumber, totalPages));
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                collectionItems = allItems.slice(startIndex, startIndex + itemsPerPage);
 
-            const pageUrlSegment = getUrlForNode(targetNode, siteData.manifest, false);
-            const baseUrl = pageUrlSegment ? `/${pageUrlSegment}` : '';
-            
-            pagination = {
-                currentPage,
-                totalPages,
-                totalItems,
-                hasPrevPage: currentPage > 1,
-                hasNextPage: currentPage < totalPages,
-                prevPageUrl: currentPage > 1 ? (currentPage === 2 ? baseUrl || '/' : `${baseUrl}/page/${currentPage - 1}`) : undefined,
-                nextPageUrl: currentPage < totalPages ? `${baseUrl}/page/${currentPage + 1}` : undefined,
-            };
-
-        } else {
-            collectionItems = allItems;
+                const pageUrlSegment = getUrlForNode(targetNode, siteData.manifest, false);
+                const baseUrl = pageUrlSegment ? `/${pageUrlSegment}` : '';
+                
+                pagination = {
+                    currentPage,
+                    totalPages,
+                    totalItems,
+                    hasPrevPage: currentPage > 1,
+                    hasNextPage: currentPage < totalPages,
+                    prevPageUrl: currentPage > 1 ? (currentPage === 2 ? baseUrl || '/' : `${baseUrl}/page/${currentPage - 1}`) : undefined,
+                    nextPageUrl: currentPage < totalPages ? `${baseUrl}/page/${currentPage + 1}` : undefined,
+                };
+            } else {
+                collectionItems = allItems;
+            }
         }
     }
 

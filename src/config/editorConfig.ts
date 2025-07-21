@@ -35,7 +35,7 @@ export const DEFAULT_PAGE_LAYOUT_PATH = 'page';
 /**
  * The default layout path used for any new collection page.
  */
-export const DEFAULT_COLLECTION_LAYOUT_PATH = 'blog';
+export const DEFAULT_COLLECTION_LAYOUT_PATH = 'page';
 
 /**
  * The master list of all built-in layouts. The system uses this
@@ -51,14 +51,6 @@ export const CORE_LAYOUTS: LayoutInfo[] = [
     description: "A clean, single-column page layout." 
   },
   
-  // --- Collection Layouts ---
-  { 
-    id: 'blog', 
-    name: 'Blog Layout', 
-    type: 'collection', // This is critical for the "Create Collection" dialog
-    path: 'blog', 
-    description: "A full-featured layout for blog posts and categories."
-  },
 ];
 
 export const CORE_THEMES: ThemeInfo[] = [
