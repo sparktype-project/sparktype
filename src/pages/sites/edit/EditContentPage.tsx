@@ -55,8 +55,8 @@ function EditContentPageInternal() {
   const allContentFiles = useMemo(() => site?.contentFiles || [], [site?.contentFiles]);
   
   const { isNewFileMode, filePath } = usePageIdentifier({ siteStructure, allContentFiles });
-  const { status, frontmatter, initialBlocks, slug, setSlug, handleFrontmatterChange, onContentModified } = useFileContent(siteId, filePath, isNewFileMode);
-  const { handleDelete } = useFilePersistence({ siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent: () => editorRef.current?.getBlocks() ?? [] });
+  const { status, frontmatter, initialMarkdown, slug, setSlug, handleFrontmatterChange, onContentModified } = useFileContent(siteId, filePath, isNewFileMode);
+  const { handleDelete } = useFilePersistence({ siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent: () => editorRef.current?.getBlocks() ?? '' });
 
   // --- 2. Manage Sidebars via UI Store ---
   const { leftSidebarContent, rightSidebarContent, setLeftAvailable, setRightAvailable, setLeftSidebarContent, setRightSidebarContent } = useUIStore(state => state.sidebar);
@@ -154,7 +154,7 @@ function EditContentPageInternal() {
                     {isCollectionPage ? (
                       <CollectionItemList siteId={siteId} collectionPagePath={filePath} />
                     ) : (
-                      <BlocknoteEditor ref={editorRef} key={filePath} initialContent={initialBlocks} onContentChange={onContentModified} />
+                      <BlocknoteEditor ref={editorRef} key={filePath} initialContent={initialMarkdown} onContentChange={onContentModified} />
                     )}
                   </div>
                 </div>

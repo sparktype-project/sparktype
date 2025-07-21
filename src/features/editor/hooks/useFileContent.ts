@@ -9,8 +9,7 @@ import { slugify } from '@/core/libraries/utils';
 import { toast } from 'sonner';
 import { type MarkdownFrontmatter } from '@/core/types';
 import { DEFAULT_PAGE_LAYOUT_PATH } from '@/config/editorConfig';
-import { type Block } from '@blocknote/core';
-import { markdownToBlocks } from '@/core/services/blocknote.service';
+// Removed Block import as we're now working directly with markdown
 
 /**
  * Manages the content state for the editor.
@@ -39,7 +38,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
   const [status, setStatus] = useState<FileStatus>('initializing');
   const [frontmatter, setFrontmatter] = useState<PageFrontmatter | null>(null);
   const [slug, setSlug] = useState('');
-  const [initialBlocks, setInitialBlocks] = useState<Block[]>([]);
+  const [initialMarkdown, setInitialMarkdown] = useState<string>('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -92,8 +91,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         setSlug(fileData.slug);
       }
       
-      const blocks = await markdownToBlocks(markdownContent);
-      setInitialBlocks(blocks);
+      setInitialMarkdown(markdownContent);
       setStatus('ready');
       setHasUnsavedChanges(false);
     };
@@ -121,5 +119,5 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
     onContentModified();
   }, [isNewFileMode, onContentModified]);
 
-  return { status, frontmatter, initialBlocks, slug, setSlug, handleFrontmatterChange, onContentModified };
+  return { status, frontmatter, initialMarkdown, slug, setSlug, handleFrontmatterChange, onContentModified };
 }

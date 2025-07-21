@@ -11,8 +11,7 @@ import { useUnloadPrompt } from './useUnloadPrompt';
 
 // Type imports
 import { type MarkdownFrontmatter } from '@/core/types';
-import { type Block } from '@blocknote/core';
-import { blocksToMarkdown } from '@/core/services/blocknote.service';
+// Removed Block import as we're now working directly with markdown
 
 interface PersistenceParams {
   siteId: string;
@@ -20,7 +19,7 @@ interface PersistenceParams {
   isNewFileMode: boolean;
   frontmatter: MarkdownFrontmatter | null;
   slug: string;
-  getEditorContent: () => Block[]; 
+  getEditorContent: () => string; 
 }
 
 export function useFilePersistence({
@@ -39,8 +38,7 @@ export function useFilePersistence({
     if (!frontmatter) throw new Error("Frontmatter not ready for saving.");
     if (!frontmatter.title.trim()) throw new Error("A title is required before saving.");
 
-    const currentBlocks = getEditorContent();
-    const markdownBody = await blocksToMarkdown(currentBlocks);
+    const markdownBody = getEditorContent();
     
     if (isNewFileMode) {
       // --- CREATION LOGIC (First Save) ---
