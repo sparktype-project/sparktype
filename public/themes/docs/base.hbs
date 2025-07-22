@@ -65,7 +65,7 @@
           }
         }
         
-        if (shouldExpand) {
+        if (shouldExpand && !this.expandedSections.includes(i.toString())) {
           this.expandedSections.push(i.toString());
           this.expandedSections.push('mobile-' + i.toString());
         }

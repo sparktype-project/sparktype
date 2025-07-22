@@ -107,7 +107,14 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
       try {
         setLoadingLayouts(true);
         const layouts = await getAvailableLayouts(siteData, 'single');
-        setItemLayouts(layouts);
+        const layoutInfos: LayoutInfo[] = layouts.map(layout => ({
+          id: layout.id,
+          name: layout.name || layout.id,
+          type: layout.layoutType,
+          path: '', // LayoutManifest doesn't have path property
+          description: layout.description
+        }));
+        setItemLayouts(layoutInfos);
       } catch (error) {
         console.error('Failed to load item layouts:', error);
         setItemLayouts([]);

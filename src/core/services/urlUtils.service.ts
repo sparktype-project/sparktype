@@ -52,7 +52,7 @@ export function getUrlForNode(
     // Check if there's a collection page with the same slug as the collection ID
     const hasConflictingCollectionPage = manifest.structure.some(page => 
       page.slug === parentCollection.id && 
-      siteData?.contentFiles?.find(f => f.path === page.path)?.frontmatter?.collection === parentCollection.id
+      (siteData?.contentFiles?.find(f => f.path === page.path)?.frontmatter as any)?.collection === parentCollection.id
     );
     
     // If there's a conflicting collection page, use optimized flat structure

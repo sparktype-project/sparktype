@@ -2,7 +2,7 @@
 
 import type { SparktypeHelper } from './types';
 import { getUrlForNode as getUrlUtil } from '@/core/services/urlUtils.service';
-import type { StructureNode, CollectionItemRef } from '@/core/types';
+import type { StructureNode } from '@/core/types';
 import type { HelperOptions } from 'handlebars';
 
 /**
@@ -73,12 +73,12 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
    */
   getCollectionItemUrl: function(this: unknown, ...args: unknown[]): string {
     const options = args.pop() as HelperOptions;
-    const item = args[0]; // Could be CollectionItemRef or ParsedMarkdownFile
+    const item = args[0] as Record<string, any>; // Type as generic object to allow property checks
     const isExport = options.data.root.options?.isExport === true;
     const siteRootPath = options.data.root.options?.siteRootPath;
 
     // Handle both CollectionItemRef and ParsedMarkdownFile objects
-    if (!item) {
+    if (!item || typeof item !== 'object') {
       console.warn('Handlebars "getCollectionItemUrl" helper called with null/undefined item.');
       return '#error-null-item';
     }
@@ -87,17 +87,18 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
 
     // If it's a CollectionItemRef (has collectionId and slug)
     if ('collectionId' in item && 'slug' in item) {
-      baseUrl = getUrlUtil(item, siteData.manifest, isExport, undefined, siteData, false);
+      baseUrl = getUrlUtil(item as StructureNode, siteData.manifest, isExport, undefined, siteData, false);
     }
     // If it's a ParsedMarkdownFile (has path and slug), convert to CollectionItemRef format
-    else if ('path' in item && 'slug' in item) {
+    else if ('path' in item && 'slug' in item && typeof item.path === 'string') {
       // Extract collection ID from the path (e.g., "content/blog/post.md" -> "blog")
       const pathParts = item.path.split('/');
       if (pathParts.length >= 3 && pathParts[0] === 'content') {
         const collectionId = pathParts[1];
-        const collectionItemRef = {
+        const collectionItemRef: StructureNode = {
+          type: 'page' as const,
           collectionId,
-          slug: item.slug,
+          slug: item.slug as string,
           path: item.path,
           title: item.frontmatter?.title || item.slug,
           url: '' // Let URL service handle this properly

@@ -27,6 +27,7 @@ type EnrichedPageContext = (PageResolutionResult & {
     images?: ResolvedImagePresets;
     collectionItems?: (ParsedMarkdownFile & { images?: ResolvedImagePresets; url: string })[];
     layoutManifest?: LayoutManifest | null;
+    options?: RenderOptions;
 });
 
 /**
