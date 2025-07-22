@@ -24,15 +24,24 @@ export async function generateHtmlPages(siteData: LocalSiteData): Promise<Record
 
     // --- Step 1: Build all regular pages from the site structure ---
     const allStructureNodes = flattenStructure(manifest.structure);
+    
     for (const node of allStructureNodes) {
+        // Check if this is the homepage
+        const nodeFile = siteData.contentFiles?.find(f => f.path === node.path);
+        const isHomepageByFrontmatter = nodeFile?.frontmatter.homepage === true;
+        const isHomepageByPosition = manifest.structure[0]?.path === node.path;
+        
         // Resolve the content for the node's slug.
-        const resolution = await resolvePageContent(siteData, node.slug.split('/'));
+        // For the homepage, use empty array instead of actual slug
+        const slugArray = (isHomepageByFrontmatter || isHomepageByPosition) ? [] : node.slug.split('/');
+        const resolution = await resolvePageContent(siteData, slugArray);
         if (resolution.type === PageType.NotFound) {
             console.warn(`[Build] Skipping page: ${node.path}. Reason: ${resolution.errorMessage}`);
             continue;
         }
 
-        const outputPath = getUrlForNode(node, manifest, true);
+        const outputPath = getUrlForNode(node, manifest, true, undefined, siteData, true);
+        
         const relativeAssetPath = '../'.repeat((outputPath.match(/\//g) || []).length);
 
         const finalHtml = await render(siteData, resolution, {
@@ -45,16 +54,19 @@ export async function generateHtmlPages(siteData: LocalSiteData): Promise<Record
 
     // --- Step 2: Build all collection items into their own pages ---
     const collectionItems = manifest.collectionItems || [];
+    
     for (const itemRef of collectionItems) {
+        
         // Resolve the content for the item's unique URL.
-        const slugArray = getUrlForNode(itemRef, manifest, false).split('/');
+        const slugArray = getUrlForNode(itemRef, manifest, false, undefined, siteData).split('/');
         const resolution = await resolvePageContent(siteData, slugArray);
         if (resolution.type === PageType.NotFound) {
             console.warn(`[Build] Skipping item: ${itemRef.path}. Reason: ${resolution.errorMessage}`);
             continue;
         }
 
-        const outputPath = getUrlForNode(itemRef, manifest, true);
+        const outputPath = getUrlForNode(itemRef, manifest, true, undefined, siteData, true);
+        
         const relativeAssetPath = '../'.repeat((outputPath.match(/\//g) || []).length);
 
         const finalHtml = await render(siteData, resolution, {

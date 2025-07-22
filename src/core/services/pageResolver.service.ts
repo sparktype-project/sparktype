@@ -44,7 +44,7 @@ export async function resolvePageContent(
 
     // Attempt to find a regular page by matching its generated URL.
     for (const node of manifest.structure) {
-        const nodeUrl = getUrlForNode(node, manifest, false);
+        const nodeUrl = getUrlForNode(node, manifest, false, undefined, siteData);
         if (nodeUrl === pathFromSlug) {
             const contentFile = contentFiles?.find(f => f.path === node.path);
             if (!contentFile) {
@@ -57,7 +57,7 @@ export async function resolvePageContent(
     // --- Step 2: If not found, resolve against collection items ---
     const collectionItems = manifest.collectionItems || [];
     for (const itemRef of collectionItems) {
-        const itemUrl = getUrlForNode(itemRef, manifest, false);
+        const itemUrl = getUrlForNode(itemRef, manifest, false, undefined, siteData);
         if (itemUrl === pathFromSlug) {
             const contentFile = contentFiles?.find(f => f.path === itemRef.path);
             if (!contentFile) {

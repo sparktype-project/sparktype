@@ -8,6 +8,7 @@ import { getActiveImageService } from '@/core/services/images/images.service';
 import { getMergedThemeDataForForm } from '@/core/services/config/theme.service';
 import { prepareRenderEnvironment } from './asset.service';
 import { assemblePageContext, assembleBaseContext } from './context.service';
+import { getCollectionContent } from '@/core/services/collections.service';
 
 /**
  * Defines the options passed to the main render function.
@@ -44,15 +45,28 @@ export async function render(
       throw new Error(`Layout manifest not found for layout: "${resolution.layoutPath}"`);
     }
 
+    // 2.5. Populate collection items for collection layout types
+    let enrichedResolution = resolution;
+    if (pageLayoutManifest.layoutType === 'collection') {
+      const layoutConfig = resolution.contentFile.frontmatter.layoutConfig;
+      if (layoutConfig && layoutConfig.collectionId) {
+        const collectionItems = getCollectionContent(synchronizedSiteData, layoutConfig.collectionId);
+        enrichedResolution = {
+          ...resolution,
+          collectionItems
+        };
+      }
+    }
+
     // 3. Assemble Data Contexts for the Templates
-    const pageContext = await assemblePageContext(synchronizedSiteData, resolution, options, imageService, pageLayoutManifest);
-    const baseContext = await assembleBaseContext(synchronizedSiteData, resolution, options, imageService, pageContext);
+    const pageContext = await assemblePageContext(synchronizedSiteData, enrichedResolution, options, imageService, pageLayoutManifest);
+    const baseContext = await assembleBaseContext(synchronizedSiteData, enrichedResolution, options, imageService, pageContext);
 
     // 4. Compile and Render the Main Body Content
     // The template path is determined by the layout type.
     const bodyTemplatePath = pageLayoutManifest.layoutType === 'collection' ? 'index.hbs' : 'index.hbs';
-    const bodyTemplateSource = await getAssetContent(synchronizedSiteData, 'layout', resolution.layoutPath, bodyTemplatePath);
-    if (!bodyTemplateSource) throw new Error(`Body template not found: layouts/${resolution.layoutPath}/${bodyTemplatePath}`);
+    const bodyTemplateSource = await getAssetContent(synchronizedSiteData, 'layout', enrichedResolution.layoutPath, bodyTemplatePath);
+    if (!bodyTemplateSource) throw new Error(`Body template not found: layouts/${enrichedResolution.layoutPath}/${bodyTemplatePath}`);
 
     const bodyHtml = await Handlebars.compile(bodyTemplateSource)(pageContext);
 

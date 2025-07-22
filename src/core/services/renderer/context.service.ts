@@ -89,7 +89,7 @@ export async function assemblePageContext(
                 url: '' // Will be generated next
             };
             
-            const urlSegment = getUrlForNode(itemRef, manifest, options.isExport);
+            const urlSegment = getUrlForNode(itemRef, manifest, options.isExport, undefined, siteData);
             
             // CORRECTED: Create a `StructureNode` for the current (parent) page to get its path.
             const currentPageNode: StructureNode = {
@@ -98,7 +98,7 @@ export async function assemblePageContext(
               path: resolution.contentFile.path,
               slug: resolution.contentFile.slug
             };
-            const currentPagePath = getUrlForNode(currentPageNode, manifest, options.isExport);
+            const currentPagePath = getUrlForNode(currentPageNode, manifest, options.isExport, undefined, siteData);
 
             let itemUrl: string;
             if (options.isExport) {
@@ -121,6 +121,7 @@ export async function assemblePageContext(
         images: imageContext,
         collectionItems: processedCollectionItems,
         layoutManifest: pageLayoutManifest,
+        options: options, // Add render options to context for helpers
     };
 }
 
@@ -163,12 +164,12 @@ export async function assembleBaseContext(
         manifest,
         options,
         pageContext,
-        navLinks: generateNavLinks(siteData, getUrlForNode(urlNode, manifest, true), options),
+        navLinks: generateNavLinks(siteData, getUrlForNode(urlNode, manifest, true, undefined, siteData), options),
         headContext: {
             pageTitle: resolution.pageTitle,
             manifest,
             contentFile: resolution.contentFile,
-            canonicalUrl: new URL(getUrlForNode(urlNode, manifest, false), manifest.baseUrl || 'https://example.com').href,
+            canonicalUrl: new URL(getUrlForNode(urlNode, manifest, false, undefined, siteData), manifest.baseUrl || 'https://example.com').href,
             baseUrl: options.relativeAssetPath ?? '/',
             styleOverrides: new Handlebars.SafeString(generateStyleOverrides(manifest.theme.config)),
             faviconUrl,

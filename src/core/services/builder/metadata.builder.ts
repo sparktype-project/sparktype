@@ -48,7 +48,7 @@ export function generateMetadataFiles(
         const file = contentFiles.find(f => f.path === currentNode.path);
         // Only include items that have a publication date in their frontmatter.
         if (file && file.frontmatter.date) {
-            const absoluteUrl = new URL(getUrlForNode(currentNode, manifest, false), siteBaseUrl).href;
+            const absoluteUrl = new URL(getUrlForNode(currentNode, manifest, false, undefined, siteData), siteBaseUrl).href;
             const description = (file.frontmatter.description || '') as string;
             const pubDate = new Date(file.frontmatter.date as string).toUTCString();
             const rssItem = `<item><title>${escapeForXml(currentNode.title)}</title><link>${escapeForXml(absoluteUrl)}</link><guid isPermaLink="true">${escapeForXml(absoluteUrl)}</guid><pubDate>${pubDate}</pubDate><description>${escapeForXml(description)}</description></item>`;
@@ -66,7 +66,7 @@ export function generateMetadataFiles(
     // --- 3. Sitemap Generation ---
     const sitemapUrls = allPageNodes.map((node) => {
         const file = contentFiles.find(f => f.path === node.path);
-        const absoluteUrl = new URL(getUrlForNode(node, manifest, false), siteBaseUrl).href;
+        const absoluteUrl = new URL(getUrlForNode(node, manifest, false, undefined, siteData), siteBaseUrl).href;
         const lastMod = (file?.frontmatter.date as string || new Date().toISOString()).split('T')[0];
         return `<url><loc>${escapeForXml(absoluteUrl)}</loc><lastmod>${lastMod}</lastmod></url>`;
     }).join('');

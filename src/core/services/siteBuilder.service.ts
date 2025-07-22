@@ -12,6 +12,7 @@ import { generateHtmlPages } from './builder/page.builder';
  * This service generates a complete, in-memory representation of a static site bundle.
  */
 export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBundle> {
+    
     const bundle: SiteBundle = {};
     if (!siteData.contentFiles) {
         throw new Error("Cannot build site: content files are not loaded.");

@@ -23,7 +23,7 @@ function buildNavLinks(
     .filter(node => node.type === 'page' && node.navOrder !== undefined)
     .sort((a, b) => (a.navOrder || 0) - (b.navOrder || 0))
     .map(node => {
-      const urlSegment = getUrlForNode(node, siteData.manifest, options.isExport);
+      const urlSegment = getUrlForNode(node, siteData.manifest, options.isExport, undefined, siteData);
       let href: string;
 
       if (options.isExport) {

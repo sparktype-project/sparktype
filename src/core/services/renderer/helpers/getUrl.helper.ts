@@ -16,7 +16,7 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
    * Users should prefer the more specific helpers below.
    */
   getUrl: function(this: unknown, ...args: unknown[]): string {
-    return getUrlUtil(args[0] as StructureNode, siteData.manifest, false);
+    return getUrlUtil(args[0] as StructureNode, siteData.manifest, false, undefined, siteData);
   },
 
   /**
@@ -32,7 +32,7 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
       console.warn('Handlebars "getPageUrl" helper called with an invalid node object.');
       return '#error-invalid-node';
     }
-    return getUrlUtil(node, siteData.manifest, isExport);
+    return getUrlUtil(node, siteData.manifest, isExport, undefined, siteData, false);
   },
 
   /**
@@ -42,15 +42,38 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
    */
   getCollectionItemUrl: function(this: unknown, ...args: unknown[]): string {
     const options = args.pop() as HelperOptions;
-    const item = args[0] as CollectionItemRef; // Expects a collection item context
+    const item = args[0]; // Could be CollectionItemRef or ParsedMarkdownFile
     const isExport = options.data.root.options?.isExport === true;
 
-    if (!item || !('collectionId' in item) || !('slug' in item)) {
-      console.warn('Handlebars "getCollectionItemUrl" helper called with an invalid item object.');
-      return '#error-invalid-item';
+    // Handle both CollectionItemRef and ParsedMarkdownFile objects
+    if (!item) {
+      console.warn('Handlebars "getCollectionItemUrl" helper called with null/undefined item.');
+      return '#error-null-item';
+    }
+
+    // If it's a CollectionItemRef (has collectionId and slug)
+    if ('collectionId' in item && 'slug' in item) {
+      return getUrlUtil(item, siteData.manifest, isExport, undefined, siteData, false);
     }
     
-    // Delegate directly to the unified URL utility.
-    return getUrlUtil(item, siteData.manifest, isExport);
+    // If it's a ParsedMarkdownFile (has path and slug), convert to CollectionItemRef format
+    if ('path' in item && 'slug' in item) {
+      // Extract collection ID from the path (e.g., "content/blog/post.md" -> "blog")
+      const pathParts = item.path.split('/');
+      if (pathParts.length >= 3 && pathParts[0] === 'content') {
+        const collectionId = pathParts[1];
+        const collectionItemRef = {
+          collectionId,
+          slug: item.slug,
+          path: item.path,
+          title: item.frontmatter?.title || item.slug,
+          url: '' // Let URL service handle this properly
+        };
+        return getUrlUtil(collectionItemRef, siteData.manifest, isExport, undefined, siteData, false);
+      }
+    }
+
+    console.warn('Handlebars "getCollectionItemUrl" helper called with an invalid item object:', item);
+    return '#error-invalid-item';
   }
 });
