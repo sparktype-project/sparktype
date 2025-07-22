@@ -3,6 +3,7 @@
 import type { LocalSiteData, PageResolutionResult } from '@/core/types';
 import { PageType } from '@/core/types';
 import { getUrlForNode } from './urlUtils.service';
+import { flattenStructure } from './fileTree.service';
 
 /**
  * Finds the correct page to render based on a URL slug path. This is the
@@ -43,7 +44,9 @@ export async function resolvePageContent(
     }
 
     // Attempt to find a regular page by matching its generated URL.
-    for (const node of manifest.structure) {
+    // Use flattened structure to include nested pages
+    const allStructureNodes = flattenStructure(manifest.structure);
+    for (const node of allStructureNodes) {
         const nodeUrl = getUrlForNode(node, manifest, false, undefined, siteData);
         if (nodeUrl === pathFromSlug) {
             const contentFile = contentFiles?.find(f => f.path === node.path);

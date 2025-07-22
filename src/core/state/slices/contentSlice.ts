@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 // Core Types and Services
 import { type ParsedMarkdownFile, type StructureNode, type LocalSiteData, type CollectionItemRef } from '@/core/types';
 import * as localSiteFs from '@/core/services/localFileSystem.service';
+import { saveContentFile } from '@/core/services/localFileSystem.service';
 import { findAndRemoveNode, updatePathsRecursively, findNodeByPath } from '@/core/services/fileTree.service';
 import { getCollections } from '@/core/services/collections.service';
 import { stringifyToMarkdown, parseMarkdownString } from '@/core/libraries/markdownParser';
@@ -38,7 +39,7 @@ const updateContentFilePaths = (files: ParsedMarkdownFile[], pathsToMove: { oldP
   return files.map(file => {
     if (pathMap.has(file.path)) {
       const newPath = pathMap.get(file.path)!;
-      const newSlug = newPath.split('/').pop()?.replace('.md', '') ?? '';
+      const newSlug = newPath.replace(/^content\//, '').replace(/\.md$/, '');
       return { ...file, path: newPath, slug: newSlug };
     }
     return file;
@@ -50,6 +51,7 @@ export interface ContentSlice {
   deleteContentFileAndState: (siteId: string, filePath: string) => Promise<void>;
   repositionNode: (siteId: string, activeNodePath: string, newParentPath: string | null, newIndex: number) => Promise<void>;
   updateContentFileOnly: (siteId: string, savedFile: ParsedMarkdownFile) => Promise<void>;
+  setAsHomepage: (siteId: string, filePath: string) => Promise<void>;
 }
 
 export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], ContentSlice> = (set, get) => ({
@@ -254,6 +256,97 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
       console.error("Failed to reposition node:", error);
       toast.error("An error occurred while updating the site structure. Reverting changes.");
       get().loadSite(siteId);
+    }
+  },
+
+  // Set a page as the site homepage
+  setAsHomepage: async (siteId: string, filePath: string) => {
+    try {
+      const site = get().getSiteById(siteId);
+      if (!site?.contentFiles) {
+        toast.error("Site data not found");
+        return;
+      }
+
+      // Find the current homepage
+      const currentHomepage = site.contentFiles.find(f => f.frontmatter.homepage === true);
+      const targetFile = site.contentFiles.find(f => f.path === filePath);
+
+      if (!targetFile) {
+        toast.error("Page not found");
+        return;
+      }
+
+      if (targetFile.frontmatter.homepage === true) {
+        toast.info("This page is already the homepage");
+        return;
+      }
+
+      // Update frontmatter for both files
+      const updates: Array<{ path: string; frontmatter: any }> = [];
+
+      // Clear current homepage
+      if (currentHomepage) {
+        const updatedCurrentFrontmatter = { ...currentHomepage.frontmatter };
+        delete updatedCurrentFrontmatter.homepage;
+        updates.push({ path: currentHomepage.path, frontmatter: updatedCurrentFrontmatter });
+      }
+
+      // Set new homepage
+      const updatedTargetFrontmatter = { ...targetFile.frontmatter, homepage: true };
+      updates.push({ path: filePath, frontmatter: updatedTargetFrontmatter });
+
+      // Apply updates and update state
+      set(produce((draft: SiteSlice) => {
+        const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
+        if (!siteToUpdate?.contentFiles) return;
+
+        // Update frontmatter in state
+        for (const update of updates) {
+          const file = siteToUpdate.contentFiles.find(f => f.path === update.path);
+          if (file) {
+            file.frontmatter = update.frontmatter;
+          }
+        }
+      }));
+
+      // Apply updates to filesystem
+      for (const update of updates) {
+        const file = site.contentFiles.find(f => f.path === update.path);
+        if (file) {
+          const updatedContent = stringifyToMarkdown(update.frontmatter, file.content);
+          await saveContentFile(siteId, update.path, updatedContent);
+        }
+      }
+
+      // Move new homepage to top of structure
+      set(produce((draft: SiteSlice) => {
+        const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
+        if (!siteToUpdate?.manifest.structure) return;
+
+        const structure = [...siteToUpdate.manifest.structure];
+        const targetNodeIndex = structure.findIndex(node => node.path === filePath);
+        
+        if (targetNodeIndex > 0) {
+          // Move homepage to top
+          const [homepageNode] = structure.splice(targetNodeIndex, 1);
+          structure.unshift(homepageNode);
+          
+          // Update structure in state
+          siteToUpdate.manifest.structure = structure;
+        }
+      }));
+
+      // Save updated manifest to filesystem
+      const finalSite = get().getSiteById(siteId);
+      if (finalSite?.manifest) {
+        await localSiteFs.saveManifest(siteId, finalSite.manifest);
+      }
+
+      toast.success("Homepage updated successfully");
+    } catch (error) {
+      console.error("Failed to set as homepage:", error);
+      toast.error("Failed to set as homepage");
     }
   },
 });

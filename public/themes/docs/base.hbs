@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {{> head}}
+</head>
+<body 
+  class="bg-white color-inherit min-vh-100"
+  style="background-color: var(--color-background); color: var(--color-text); font-family: var(--font-body);"
+  x-data="{
+    sidebarOpen: false,
+    expandedSections: [],
+    currentPath: window.location.pathname,
+    navData: [
+      {{#each navLinks}}
+        {
+          href: '{{this.href}}',
+          children: [
+            {{#each this.children}}
+              '{{this.href}}'{{#unless @last}},{{/unless}}
+            {{/each}}
+          ]
+        }{{#unless @last}},{{/unless}}
+      {{/each}}
+    ],
+    toggleSection(id) {
+      if (this.expandedSections.includes(id)) {
+        this.expandedSections = this.expandedSections.filter(item => item !== id);
+      } else {
+        this.expandedSections.push(id);
+      }
+    },
+    isActive: function(href) {
+      if (!href) return false;
+      // Handle both relative and absolute paths
+      var cleanHref = href.replace(/^\.\//, '/').replace(/\/index\.html$/, '/').replace(/\/$/, '') || '/';
+      var cleanCurrent = this.currentPath.replace(/\/$/, '') || '/';
+      return cleanHref === cleanCurrent;
+    },
+    normalizeUrl: function(url) {
+      if (!url) return '/';
+      return url.replace(/^\.\//, '/').replace(/\/index\.html$/, '/').replace(/\/$/, '') || '/';
+    },
+    autoExpandSections: function() {
+      var currentPath = this.currentPath.replace(/\/$/, '') || '/';
+      
+      for (var i = 0; i < this.navData.length; i++) {
+        var section = this.navData[i];
+        var shouldExpand = false;
+        
+        var parentHref = this.normalizeUrl(section.href);
+        
+        // Check if current page is the parent page
+        if (parentHref === currentPath) {
+          shouldExpand = true;
+        }
+        
+        // Check if current page is any child page
+        if (!shouldExpand && section.children && section.children.length > 0) {
+          for (var j = 0; j < section.children.length; j++) {
+            var normalizedChild = this.normalizeUrl(section.children[j]);
+            if (normalizedChild === currentPath) {
+              shouldExpand = true;
+              break;
+            }
+          }
+        }
+        
+        if (shouldExpand) {
+          this.expandedSections.push(i.toString());
+          this.expandedSections.push('mobile-' + i.toString());
+        }
+      }
+    }
+  }"
+  x-init="autoExpandSections()"
+>
+  {{!-- Sidebar Navigation --}}
+  {{> sidebar}}
+
+  {{!-- Main Content Area --}}
+  <div class="main-content" style="margin-left: var(--sidebar-width);">
+    {{!-- Header --}}
+    {{> header}}
+
+    {{!-- Page Content --}}
+    <main class="content pa4 pt5" style="padding-top: 5rem;">
+      {{{body}}}
+    </main>
+
+    {{!-- Footer --}}
+    {{> footer}}
+  </div>
+
+  {{!-- Mobile: Hide sidebar when clicking outside --}}
+  <div 
+    class="dn-l fixed top-0 left-0 w-100 h-100 z-1"
+    x-show="sidebarOpen"
+    @click="sidebarOpen = false"
+  ></div>
+</body>
+</html>

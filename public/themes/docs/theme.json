@@ -1,0 +1,113 @@
+{
+  "name": "Documentation",
+  "version": "1.0.0",
+  "files": [
+    { "path": "theme.json", "type": "manifest" },
+    { "path": "base.hbs", "type": "base" },
+    { "path": "css/theme.css", "type": "stylesheet" },
+    { "path": "partials/head.hbs", "type": "partial", "name": "head" },
+    { "path": "partials/header.hbs", "type": "partial", "name": "header" },
+    { "path": "partials/sidebar.hbs", "type": "partial", "name": "sidebar" },
+    { "path": "partials/footer.hbs", "type": "partial", "name": "footer" }
+  ],
+  "appearanceSchema": {
+    "title": "Theme Customization",
+    "description": "Customize the colors, fonts and layout of your documentation site.",
+    "type": "object",
+    "properties": {
+      "color_background": {
+        "type": "string",
+        "title": "Page Background Color",
+        "format": "color",
+        "default": "#ffffff"
+      },
+      "color_text": {
+        "type": "string",
+        "title": "Body Text Color",
+        "format": "color",
+        "default": "#333333"
+      },
+      "color_headings": {
+        "type": "string",
+        "title": "Headings Color",
+        "format": "color",
+        "default": "#111111"
+      },
+      "color_primary": {
+        "type": "string",
+        "title": "Primary Accent Color",
+        "format": "color",
+        "default": "#3b82f6"
+      },
+      "color_borders": {
+        "type": "string",
+        "title": "Borders Color",
+        "format": "color",
+        "default": "#e5e5e5"
+      },
+      "color_sidebar": {
+        "type": "string",
+        "title": "Sidebar Background Color",
+        "format": "color",
+        "default": "#f8f9fa"
+      },
+      "font_headings": {
+        "type": "string",
+        "title": "Headings Font Family",
+        "description": "Choose the font family for all headlines.",
+        "enum": [
+          "var(--font-stack-serif)",
+          "var(--font-stack-sans)",
+          "var(--font-stack-mono)"
+        ],
+        "enumNames": [
+          "Serif (System)",
+          "Sans-Serif (System)",
+          "Monospace (System)"
+        ],
+        "default": "var(--font-stack-sans)"
+      },
+      "font_text": {
+        "type": "string",
+        "title": "Body Text Font Family",
+        "description": "Choose the font family for all paragraphs and lists.",
+        "enum": [
+          "var(--font-stack-serif)",
+          "var(--font-stack-sans)",
+          "var(--font-stack-mono)"
+        ],
+        "enumNames": [
+          "Serif (System)",
+          "Sans-Serif (System)",
+          "Monospace (System)"
+        ],
+        "default": "var(--font-stack-sans)"
+      },
+      "sidebar_width": {
+        "type": "string",
+        "title": "Sidebar Width",
+        "description": "Choose the width of the navigation sidebar.",
+        "enum": ["narrow", "medium", "wide"],
+        "enumNames": ["Narrow (240px)", "Medium (280px)", "Wide (320px)"],
+        "default": "medium"
+      }
+    }
+  },
+  "themeDataSchema": {
+    "type": "object",
+    "properties": {
+      "header_content": {
+        "type": "string",
+        "title": "Header Content",
+        "description": "Optional HTML content for the header bar",
+        "default": ""
+      },
+      "footer_content": {
+        "type": "string",
+        "title": "Footer Content",
+        "description": "Optional HTML content for the footer",
+        "default": "© 2024 Documentation Site"
+      }
+    }
+  }
+}

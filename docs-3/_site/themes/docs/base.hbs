@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {{> head}}
+</head>
+<body 
+  class="bg-white color-inherit min-vh-100"
+  style="background-color: var(--color-background); color: var(--color-text); font-family: var(--font-body);"
+  x-data="{
+    sidebarOpen: false,
+    expandedSections: [],
+    currentPath: window.location.pathname,
+    toggleSection(id) {
+      if (this.expandedSections.includes(id)) {
+        this.expandedSections = this.expandedSections.filter(item => item !== id);
+      } else {
+        this.expandedSections.push(id);
+      }
+    },
+    isActive(href) {
+      if (!href) return false;
+      // Handle both relative and absolute paths
+      const cleanHref = href.replace(/^\.\//, '/').replace(/\/index\.html$/, '/').replace(/\/$/, '') || '/';
+      const cleanCurrent = this.currentPath.replace(/\/$/, '') || '/';
+      return cleanHref === cleanCurrent;
+    }
+  }"
+  x-init="
+    // Auto-expand sections containing the current page
+    const currentPath = window.location.pathname;
+    const navLinks = document.querySelectorAll('.nav-child');
+    navLinks.forEach((link, index) => {
+      if (link.href && window.location.href.includes(link.href)) {
+        const parentIndex = link.closest('.mb3')?.querySelector('.nav-parent')?.getAttribute('@click')?.match(/\d+/)?.[0];
+        if (parentIndex && !expandedSections.includes(parentIndex)) {
+          expandedSections.push(parentIndex);
+          expandedSections.push('mobile-' + parentIndex);
+        }
+      }
+    });
+  "
+>
+  {{!-- Sidebar Navigation --}}
+  {{> sidebar}}
+
+  {{!-- Main Content Area --}}
+  <div class="main-content" style="margin-left: var(--sidebar-width);">
+    {{!-- Header --}}
+    {{> header}}
+
+    {{!-- Page Content --}}
+    <main class="content pa4 pt5" style="padding-top: 5rem;">
+      {{{body}}}
+    </main>
+
+    {{!-- Footer --}}
+    {{> footer}}
+  </div>
+
+  {{!-- Mobile: Hide sidebar when clicking outside --}}
+  <div 
+    class="dn-l fixed top-0 left-0 w-100 h-100 z-1"
+    x-show="sidebarOpen"
+    @click="sidebarOpen = false"
+  ></div>
+</body>
+</html>

@@ -176,7 +176,7 @@ export async function saveContentFile(siteId: string, filePath: string, rawMarkd
     const contentFiles = await siteContentFilesStore.getItem<ParsedMarkdownFile[]>(siteId) ?? [];
 
     const { frontmatter, content } = parseMarkdownString(rawMarkdownContent);
-    const fileSlug = filePath.split('/').pop()?.replace(/\.md$/, '') ?? '';
+    const fileSlug = filePath.replace(/^content\//, '').replace(/\.md$/, '');
     const savedFile: ParsedMarkdownFile = { slug: fileSlug, path: filePath, frontmatter, content };
 
     const fileIndex = contentFiles.findIndex(f => f.path === filePath);
@@ -216,7 +216,7 @@ export async function moveContentFiles(siteId: string, pathsToMove: { oldPath: s
     const updatedFiles = contentFiles.map(file => {
         const moveInstruction = pathsToMove.find(p => p.oldPath === file.path);
         if (moveInstruction) {
-            const newSlug = moveInstruction.newPath.split('/').pop()?.replace('.md', '') || '';
+            const newSlug = moveInstruction.newPath.replace(/^content\//, '').replace(/\.md$/, '');
             return { ...file, path: moveInstruction.newPath, slug: newSlug };
         }
         return file;

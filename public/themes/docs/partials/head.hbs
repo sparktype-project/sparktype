@@ -1,0 +1,38 @@
+{{!-- Standard meta tags and head content --}}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{#if contentFile.frontmatter.title}}{{contentFile.frontmatter.title}} - {{/if}}{{manifest.title}}</title>
+
+{{!-- SEO Meta Tags --}}
+{{#if contentFile.frontmatter.description}}
+<meta name="description" content="{{contentFile.frontmatter.description}}">
+{{/if}}
+
+{{!-- Favicon --}}
+{{#if manifest.favicon}}
+<link rel="icon" type="image/x-icon" href="{{manifest.favicon}}">
+{{/if}}
+
+{{!-- Tachyons CSS Framework --}}
+<link rel="stylesheet" href="https://unpkg.com/tachyons@4.12.0/css/tachyons.min.css">
+
+{{!-- Alpine.js for interactivity --}}
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+{{!-- Theme CSS --}}
+<link rel="stylesheet" href="{{#if options.relativeAssetPath}}{{options.relativeAssetPath}}{{/if}}themes/docs/css/theme.css">
+
+{{!-- Theme customizations via CSS variables --}}
+<style>
+:root {
+  --color-background: {{#if appearance.color_background}}{{appearance.color_background}}{{else}}#ffffff{{/if}};
+  --color-text: {{#if appearance.color_text}}{{appearance.color_text}}{{else}}#333333{{/if}};
+  --color-headings: {{#if appearance.color_headings}}{{appearance.color_headings}}{{else}}#111111{{/if}};
+  --color-primary: {{#if appearance.color_primary}}{{appearance.color_primary}}{{else}}#3b82f6{{/if}};
+  --color-borders: {{#if appearance.color_borders}}{{appearance.color_borders}}{{else}}#e5e5e5{{/if}};
+  --color-sidebar: {{#if appearance.color_sidebar}}{{appearance.color_sidebar}}{{else}}#f8f9fa{{/if}};
+  --font-headings: {{#if appearance.font_headings}}{{appearance.font_headings}}{{else}}var(--font-stack-sans){{/if}};
+  --font-body: {{#if appearance.font_text}}{{appearance.font_text}}{{else}}var(--font-stack-sans){{/if}};
+  --sidebar-width: {{#if (eq appearance.sidebar_width 'narrow')}}240px{{else}}{{#if (eq appearance.sidebar_width 'wide')}}320px{{else}}280px{{/if}}{{/if}};
+}
+</style>

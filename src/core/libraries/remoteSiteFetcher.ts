@@ -42,7 +42,7 @@ export async function fetchRemoteSiteData(remoteSiteUrl: string): Promise<LocalS
         try {
             const rawMarkdown = await fetchRemoteFile(remoteSiteUrl, `_site/${path}`);
             const { frontmatter, content } = parseMarkdownString(rawMarkdown);
-            const slug = path.substring(path.lastIndexOf('/') + 1).replace('.md', '');
+            const slug = path.replace(/^content\//, '').replace(/\.md$/, '');
             return { slug, path, frontmatter, content };
         } catch (error) {
             console.warn(`Could not fetch or parse content file: ${path}`, error);

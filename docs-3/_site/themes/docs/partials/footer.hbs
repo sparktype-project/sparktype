@@ -1,0 +1,8 @@
+{{!-- Footer with optional content --}}
+{{#if (themeData 'footer_content')}}
+<footer class="footer bt b--black-10 pa4" style="margin-left: var(--sidebar-width);">
+  <div class="tc">
+    {{{themeData 'footer_content'}}}
+  </div>
+</footer>
+{{/if}}

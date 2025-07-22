@@ -2,14 +2,17 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Manifest, RawFile, MarkdownFrontmatter, LayoutConfig, Collection } from '@/core/types';
+import { useAppStore } from '@/core/state/useAppStore';
 import { getAvailableLayouts } from '@/core/services/config/configHelpers.service';
 import { type LayoutManifest } from '@/core/types';
 
 // UI Component Imports
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/core/components/ui/accordion";
 import { Button } from '@/core/components/ui/button';
+import { Switch } from '@/core/components/ui/switch';
+import { Label } from '@/core/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/core/components/ui/alert-dialog";
-import { Trash2 } from 'lucide-react';
+import { Trash2, Home } from 'lucide-react';
 
 // Form & Sub-component Imports
 import LayoutSelector from '@/features/editor/components/forms/LayoutSelector';
@@ -42,8 +45,29 @@ export default function FrontmatterSidebar({
   frontmatter, onFrontmatterChange, isNewFileMode, slug, onSlugChange, onDelete,
 }: FrontmatterSidebarProps) {
 
+  const setAsHomepage = useAppStore(state => state.setAsHomepage);
   const [allLayouts, setAllLayouts] = useState<LayoutManifest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Homepage state - read directly from store for reactivity
+  const currentFile = useAppStore(useCallback((state) => {
+    const site = state.getSiteById(siteId);
+    return site?.contentFiles?.find(f => f.path === filePath);
+  }, [siteId, filePath]));
+  
+  const isHomepage = currentFile?.frontmatter?.homepage === true;
+  
+  // Handle homepage toggle
+  const handleHomepageToggle = useCallback(async (checked: boolean) => {
+    if (checked && !isHomepage) {
+      try {
+        await setAsHomepage(siteId, filePath);
+      } catch (error) {
+        console.error('Failed to set as homepage:', error);
+      }
+    }
+    // Note: We don't handle unchecking because there must always be a homepage
+  }, [setAsHomepage, siteId, filePath, isHomepage]);
 
   useEffect(() => {
     async function fetchAllLayouts() {
@@ -159,6 +183,34 @@ export default function FrontmatterSidebar({
                 onSlugChange={onSlugChange}
                 isNewFileMode={isNewFileMode}
               />
+              
+              {/* Homepage Toggle */}
+              {!isNewFileMode && (
+                <div className="flex items-center justify-between py-2">
+                  <div className="space-y-0.5">
+                    <Label 
+                      htmlFor="homepage-toggle" 
+                      className="text-sm font-medium flex items-center gap-2"
+                    >
+                      <Home className="h-4 w-4" />
+                      Set as homepage
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {isHomepage 
+                        ? "This page is currently the site homepage"
+                        : "Make this page the homepage for your site"
+                      }
+                    </p>
+                  </div>
+                  <Switch
+                    id="homepage-toggle"
+                    checked={isHomepage}
+                    onCheckedChange={handleHomepageToggle}
+                    disabled={isHomepage} // Prevent unchecking current homepage
+                  />
+                </div>
+              )}
+              
               {!isNewFileMode && (
                 <div className="pt-4 border-t">
                   <AlertDialog>

@@ -88,6 +88,11 @@ export const CORE_THEMES: ThemeInfo[] = [
     name: 'Default theme',
     path: 'default'
   },
+  {
+    id: 'docs',
+    name: 'Documentation',
+    path: 'docs'
+  },
 ];
 
 /**
