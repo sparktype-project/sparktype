@@ -65,38 +65,80 @@ export default function SiteViewer() {
 
     try {
       const pureHtml = await renderWithTheme(site, resolution, {
-        // The siteRootPath is passed to the renderer so it can generate correct hash links
-        siteRootPath: `#${viewRootPath}`,
+        // Generate relative URLs like in export mode for isolated iframe routing
+        siteRootPath: '/',
         isExport: false,
       });
 
-      // The communication script is updated to post the path part of the hash URL
+      // Virtual site navigation: Handle routing within iframe but sync URL bar
       const communicationScript = `
         <script>
+          // Store all site pages for client-side navigation
+          const sitePages = new Map();
+          let currentPath = '${currentRelativePath}';
+          
+          // Function to load and render a page within the iframe
+          async function navigateToPage(relativePath) {
+            try {
+              // Normalize the path
+              const normalizedPath = relativePath === '/' ? '' : relativePath.replace(/^\\//, '');
+              
+              // Notify parent of navigation for URL bar update
+              window.parent.postMessage({ 
+                type: 'SIGNUM_NAVIGATE', 
+                path: '${viewRootPath}' + (normalizedPath ? '/' + normalizedPath : '')
+              }, '*');
+              
+              // For now, let the parent handle the actual page loading
+              // In future we could cache pages and handle navigation entirely in iframe
+              
+            } catch (error) {
+              console.error('IFRAME: Navigation error:', error);
+            }
+          }
+          
+          // Handle all link clicks
           document.addEventListener('click', function(e) {
             const link = e.target.closest('a');
             if (!link || !link.href) return;
             
-            // Skip if this is already a hash link on the same page
-            if (link.hash && link.pathname === window.location.pathname) return;
+            // Skip external links
+            if (link.target === '_blank' || 
+                (link.href.startsWith('http') && !link.href.includes(window.location.hostname))) {
+              return; // Allow default behavior for external links
+            }
             
-            // Skip if this is an external link
-            if (link.target === '_blank' || link.href.startsWith('http') && !link.href.startsWith(window.location.origin)) return;
-
-            try {
-              // Check if the link is a hash-based internal link
-              const url = new URL(link.href, window.location.origin);
-              if (url.origin === window.location.origin && url.hash) {
-                e.preventDefault();
-                const newHashPath = url.hash.substring(1); // Get path from hash (e.g., /sites/123/view/about)
-                // Only navigate if the path is actually different
-                if (newHashPath && newHashPath !== window.location.pathname) {
-                  window.parent.postMessage({ type: 'SIGNUM_NAVIGATE', path: newHashPath }, window.location.origin);
-                }
-              }
-            } catch (urlError) {
-              // If URL parsing fails, just ignore the click
-              console.warn('Failed to parse URL:', link.href, urlError);
+            // Skip anchor links on same page
+            if (link.href.includes('#') && !link.href.includes('#/sites/')) {
+              return; // Allow default behavior for anchor links
+            }
+            
+            // Prevent default navigation
+            e.preventDefault();
+            
+            // Extract relative path from href
+            let relativePath = link.getAttribute('href') || '';
+            
+            // Handle different URL formats
+            if (relativePath.startsWith('/')) {
+              // Absolute path: /about -> about
+              relativePath = relativePath.substring(1);
+            } else if (relativePath.includes('/')) {
+              // Relative path: portfolio/item-1 -> portfolio/item-1
+              // Keep as is
+            } else {
+              // Simple path: about -> about
+              // Keep as is
+            }
+            
+            // Navigate to the page
+            navigateToPage(relativePath || '/');
+          });
+          
+          // Handle browser back/forward (if implemented)
+          window.addEventListener('popstate', function(e) {
+            if (e.state && e.state.path) {
+              navigateToPage(e.state.path);
             }
           });
         </script>
