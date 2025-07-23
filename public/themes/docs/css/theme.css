@@ -76,13 +76,11 @@ a:hover {
   border-bottom: 1px solid var(--color-borders);
   display: flex;
   align-items: center;
-  padding: 0 1.5rem;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 40;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Header logo/title */
@@ -187,53 +185,10 @@ a:hover {
 }
 
 /* ==========================================================================
-   4. SIDEBAR NAVIGATION
+   4. SIDEBAR NAVIGATION (using Tachyons + minimal custom CSS)
    ========================================================================== */
 
-/* Navigation container */
-.sidebar-nav {
-  padding: 1rem;
-}
-
-/* Navigation items */
-.nav-section {
-  margin-bottom: 1.5rem;
-}
-
-.nav-parent,
-.nav-item,
-.nav-child {
-  display: flex;
-  align-items: center;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  color: var(--color-text);
-  text-decoration: none;
-  font-size: 0.9rem;
-  transition: all var(--transition-fast);
-  margin-bottom: 2px;
-}
-
-.nav-parent {
-  font-weight: 500;
-  justify-content: space-between;
-}
-
-.nav-child {
-  font-size: 0.85rem;
-  margin-left: 1rem;
-  border-left: 2px solid transparent;
-  padding-left: 1rem;
-}
-
-.nav-parent:hover,
-.nav-item:hover,
-.nav-child:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-  text-decoration: none;
-}
-
-/* Active states */
+/* Active navigation state - uses theme colors */
 .nav-active {
   background-color: var(--color-primary) !important;
   color: white !important;
@@ -241,44 +196,13 @@ a:hover {
 }
 
 .nav-active:hover {
-  text-decoration: none;
+  text-decoration: none !important;
   opacity: 0.9;
 }
 
-.nav-child.nav-active {
-  border-left-color: white;
-}
-
-/* Expandable section toggle */
-.nav-toggle {
-  background: none;
-  border: none;
-  padding: 0.25rem;
-  cursor: pointer;
-  color: inherit;
-  border-radius: 3px;
-  transition: background-color var(--transition-fast);
-}
-
-.nav-toggle:hover {
-  background-color: rgba(0, 0, 0, 0.1);
-}
-
-.nav-toggle svg {
-  width: 1rem;
-  height: 1rem;
-  transform: rotate(0deg);
-  transition: transform var(--transition-fast);
-}
-
-.nav-toggle.expanded svg {
+/* Toggle button expanded state for accordion */
+.nav-toggle-expanded svg {
   transform: rotate(90deg);
-}
-
-/* Children container */
-.nav-children {
-  overflow: hidden;
-  transition: all var(--transition-fast);
 }
 
 /* ==========================================================================
@@ -356,7 +280,7 @@ a:hover {
 }
 
 .prose h1 { 
-  font-size: 2.25rem; 
+  font-size: 2.5rem; 
   margin-top: 0;
   border-bottom: 1px solid var(--color-borders);
   padding-bottom: 0.5rem;

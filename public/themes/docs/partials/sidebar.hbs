@@ -15,28 +15,28 @@
   </button>
 
   {{!-- Navigation tree --}}
-  <div class="sidebar-nav">
+  <div class="pa3">
     {{#each navLinks}}
       {{#if this.children}}
         {{!-- Parent item with children --}}
-        <div class="nav-section">
-          <div class="nav-parent">
+        <div class="mb2">
+          <div class="flex items-center justify-between pa1 br2 hover-bg-black-05">
             <a 
               href="{{this.href}}" 
+              class="flex-auto link color-inherit no-underline b f5"
               :class="isActive('{{this.href}}') ? 'nav-active' : ''"
               @click="sidebarOpen = false"
-              style="flex: 1;"
             >
               {{this.label}}
             </a>
             <button
-              class="nav-toggle"
-              :class="expandedSections.includes('{{@index}}') ? 'expanded' : ''"
+              class="bn bg-transparent pointer br2 hover-bg-black-10 transition-transform"
+              :class="expandedSections.includes('{{@index}}') ? 'nav-toggle-expanded' : ''"
               @click="toggleSection('{{@index}}')"
               type="button"
               aria-label="Toggle {{this.label}} submenu"
             >
-              <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+              <svg class="w1 h1" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 111.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
               </svg>
             </button>
@@ -44,7 +44,7 @@
           
           {{!-- Children --}}
           <div 
-            class="nav-children"
+            class="ml2 bl bw2 b--transparent"
             x-show="expandedSections.includes('{{@index}}')"
             x-transition:enter="transition ease-out duration-200"
             x-transition:enter-start="opacity-0 -translate-y-1"
@@ -52,11 +52,12 @@
             x-transition:leave="transition ease-in duration-150"
             x-transition:leave-start="opacity-100 translate-y-0"
             x-transition:leave-end="opacity-0 -translate-y-1"
+            style="border-color: var(--color-borders);"
           >
             {{#each this.children}}
             <a 
               href="{{this.href}}" 
-              class="nav-child"
+              class="db pv1 pl2 link color-inherit no-underline hover-bg-black-05 br2 f5 mb1"
               :class="isActive('{{this.href}}') ? 'nav-active' : ''"
               @click="sidebarOpen = false"
             >
@@ -67,10 +68,10 @@
         </div>
       {{else}}
         {{!-- Single item without children --}}
-        <div class="nav-section">
+        <div class="mb2">
           <a 
             href="{{this.href}}" 
-            class="nav-item"
+            class="db pa1 b link color-inherit no-underline hover-bg-black-05 br2 f5"
             :class="isActive('{{this.href}}') ? 'nav-active' : ''"
             @click="sidebarOpen = false"
           >

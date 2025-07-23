@@ -82,12 +82,12 @@
       return false;
     },
     
-    // Auto-expand sections based on current page
+    // Auto-expand all sections by default
     autoExpandSections: function() {
       // Clear existing expanded sections first
       this.expandedSections = [];
       
-      // Go through each navigation section
+      // Go through each navigation section and expand all that have children
       for (var i = 0; i < this.navData.length; i++) {
         var section = this.navData[i];
         
@@ -96,14 +96,12 @@
           continue;
         }
         
-        // Check if we should expand this section
-        if (this.isInSection(section.href, section.children)) {
-          var sectionId = i.toString();
-          
-          // Add to expanded sections (both desktop and mobile versions)
-          this.expandedSections.push(sectionId);
-          this.expandedSections.push('mobile-' + sectionId);
-        }
+        // Expand all sections with children by default
+        var sectionId = i.toString();
+        
+        // Add to expanded sections (both desktop and mobile versions)
+        this.expandedSections.push(sectionId);
+        this.expandedSections.push('mobile-' + sectionId);
       }
     }
   }"
