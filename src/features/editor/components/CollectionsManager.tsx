@@ -15,7 +15,7 @@ import { Input } from '@/core/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/core/components/ui/alert-dialog';
 
-import { Plus, Search, MoreHorizontal, Trash2, Edit, FolderOpen } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, Trash2, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CollectionsManagerProps {

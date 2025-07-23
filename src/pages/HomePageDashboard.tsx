@@ -123,86 +123,88 @@ export default function HomePageDashboard() {
 
   return (
     <>
-       <title>My sites - Sparktype</title>
+       <title>My sites | Sparktype</title>
       
-      {/* The JSX is identical, but Next's <Link> is replaced with react-router-dom's <Link> */}
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
         <div className="flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/sparktype.svg" className='size-6' />
+            <img src="/sparktype.svg" className='size-8' />
             <span className="text-xl font-bold font-mono text-foreground hidden sm:inline">Sparktype</span>
           </Link>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
-              <Upload className="mr-2 h-4 w-4" /> {isImporting ? 'Importing...' : 'Import site'}
+            <Button variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
+              <Upload className="h-4 w-4" /> {isImporting ? 'Importing...' : 'Import site'}
             </Button>
-            <Button onClick={() => setIsCreateModalOpen(true)}>
-              <FilePlus2 className="mr-2 h-4 w-4" /> Create new site
+            <Button variant="outline" onClick={() => setIsCreateModalOpen(true)}>
+              <FilePlus2 className="h-4 w-4" /> Create new site
             </Button>
           </div>
         </div>
       </header>
       
-      <main className="p-4">
-        <h1 className="text-3xl font-bold text-foreground mb-8">My sites</h1>
+      <main className="p-4 max-w-5xl mx-auto ">
+        <h1 className="text-4xl text-foreground my-8 font-serif">My sites</h1>
         {validSites.length === 0 ? (
           <div className="text-center py-10 border-2 border-dashed border-muted rounded-lg">
             <h2 className="text-xl font-semibold text-muted-foreground mb-2">No sites yet</h2>
             <p className="text-muted-foreground mb-4">Click create new site or import a site to get started.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             {validSites.map((site: LocalSiteData) => (
-              <div key={site.siteId} className="bg-card border rounded-lg p-6 shadow-sm hover:shadow-lg transition-shadow flex flex-col justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-card-foreground mb-2 truncate" title={site.manifest.title}>
-                    {site.manifest.title || "Untitled Site"}
-                  </h2>
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2" title={site.manifest.description}>
-                    {site.manifest.description || 'No description provided.'}
-                  </p>
+              <Link to={`/sites/${site.siteId}/view`} target="_blank" rel="noopener noreferrer" className='hover:cursor-pointer'>
+                <div key={site.siteId} className="hover:cursor-pointer bg-card border-b flex flex-row justify-between pb-6">
+                  <div className=''>
+                    <h2 className="text-2xl cursor-pointer font-bold text-card-foreground mb-2 truncate hover:underline" title={site.manifest.title}>
+                      {site.manifest.title || "Untitled Site"}
+                    </h2>
+                    <p className="text-sm text-muted-foreground line-clamp-2" title={site.manifest.description}>
+                      {site.manifest.description || 'No description provided.'}
+                    </p>
+                  </div>
+                  <div className=" flex flex-wrap justify-end gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/sites/${site.siteId}/edit`}><Edit3 className="mr-2 h-4 w-4" /> Edit</Link>
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm"><MoreVertical className="h-4 w-4" /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {/*
+                          The "View Live Preview" link now correctly navigates to the hash-based route.
+                          `target="_blank"` will open a new browser tab with the hash URL, which works perfectly.
+                        */}
+                        <DropdownMenuItem asChild>
+                          <Link to={`/sites/${site.siteId}/view`} target="_blank" rel="noopener noreferrer">
+                            <Eye className="mr-2 h-4 w-4" /> View site
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleExportBackup(site.siteId)}><Archive className="mr-2 h-4 w-4" /> Export backup</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem onSelect={(e: Event) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete site
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                              <AlertDialogDescription>This action will permanently delete "{site.manifest.title}" and cannot be undone.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteSite(site.siteId, site.manifest.title)} className="bg-destructive hover:bg-destructive/90">Yes, delete site</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
-                <div className="mt-4 flex flex-wrap justify-end gap-2">
-                  <Button variant="default" size="sm" asChild>
-                    <Link to={`/sites/${site.siteId}/edit`}><Edit3 className="mr-2 h-4 w-4" /> Edit</Link>
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon"><MoreVertical className="h-4 w-4" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {/*
-                        The "View Live Preview" link now correctly navigates to the hash-based route.
-                        `target="_blank"` will open a new browser tab with the hash URL, which works perfectly.
-                      */}
-                      <DropdownMenuItem asChild>
-                        <Link to={`/sites/${site.siteId}/view`} target="_blank" rel="noopener noreferrer">
-                          <Eye className="mr-2 h-4 w-4" /> View site
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleExportBackup(site.siteId)}><Archive className="mr-2 h-4 w-4" /> Export backup</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <DropdownMenuItem onSelect={(e: Event) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete site
-                          </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>This action will permanently delete "{site.manifest.title}" and cannot be undone.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteSite(site.siteId, site.manifest.title)} className="bg-destructive hover:bg-destructive/90">Yes, delete site</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
+              </Link>
+
             ))}
           </div>
         )}
