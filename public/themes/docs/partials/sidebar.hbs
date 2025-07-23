@@ -1,45 +1,42 @@
-{{!-- Left sidebar navigation --}}
+{{!-- Documentation Sidebar Navigation --}}
 <nav 
-  class="sidebar fixed left-0 top-0 vh-100 overflow-y-auto z-3 dn db-l"
-  style="width: var(--sidebar-width); background-color: var(--color-sidebar); margin-top:60px;"
+  class="sidebar"
+  :class="sidebarOpen ? 'mobile-open' : ''"
 >
-  {{!-- Site title/logo --}}
-  <div class="pa3">
-    <h1 class="ma0 f4 fw6">
-      <a href="{{#if options.isExport}}./{{else}}/{{/if}}" class="link color-inherit no-underline">
-        {{manifest.title}}
-      </a>
-    </h1>
-  </div>
+  {{!-- Close button for mobile --}}
+  <button 
+    class="sidebar-close"
+    @click="sidebarOpen = false"
+    aria-label="Close navigation"
+  >
+    <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+      <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+    </svg>
+  </button>
 
   {{!-- Navigation tree --}}
-  <div class="ph3 pv2">
+  <div class="pa3">
     {{#each navLinks}}
       {{#if this.children}}
         {{!-- Parent item with children --}}
-        <div class="mb3">
-          <div 
-            class="nav-parent flex items-center justify-between pa2 hover-bg-black-05 br2"
-          >
+        <div class="mb2">
+          <div class="flex items-center justify-between pa1 br2 hover-bg-black-05">
             <a 
               href="{{this.href}}" 
-              class="flex-auto link color-inherit no-underline fw5"
+              class="flex-auto link color-inherit no-underline b f5"
               :class="isActive('{{this.href}}') ? 'nav-active' : ''"
+              @click="sidebarOpen = false"
             >
               {{this.label}}
             </a>
             <button
+              class="bn bg-transparent pointer br2 hover-bg-black-10 transition-transform"
+              :class="expandedSections.includes('{{@index}}') ? 'nav-toggle-expanded' : ''"
               @click="toggleSection('{{@index}}')"
-              class="pa1 bn bg-transparent pointer hover-bg-black-10 br2"
               type="button"
-              aria-label="Toggle submenu"
+              aria-label="Toggle {{this.label}} submenu"
             >
-              <svg 
-                class="w1 h1 transition-transform"
-                :class="expandedSections.includes('{{@index}}') ? 'rotate-90' : ''"
-                fill="currentColor" 
-                viewBox="0 0 20 20"
-              >
+              <svg class="w1 h1" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 111.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
               </svg>
             </button>
@@ -47,17 +44,22 @@
           
           {{!-- Children --}}
           <div 
-            class="nav-children ml3 mt2"
+            class="ml2 bl bw2 b--transparent"
             x-show="expandedSections.includes('{{@index}}')"
             x-transition:enter="transition ease-out duration-200"
-            x-transition:enter-start="opacity-0 transform -translate-y-1"
-            x-transition:enter-end="opacity-100 transform translate-y-0"
+            x-transition:enter-start="opacity-0 -translate-y-1"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 -translate-y-1"
+            style="border-color: var(--color-borders);"
           >
             {{#each this.children}}
             <a 
               href="{{this.href}}" 
-              class="nav-child db pa2 pl3 link color-inherit no-underline hover-bg-black-05 br2"
+              class="db pv1 pl2 link color-inherit no-underline hover-bg-black-05 br2 f5 mb1"
               :class="isActive('{{this.href}}') ? 'nav-active' : ''"
+              @click="sidebarOpen = false"
             >
               {{this.label}}
             </a>
@@ -69,8 +71,9 @@
         <div class="mb2">
           <a 
             href="{{this.href}}" 
-            class="nav-item db pa2 link color-inherit no-underline hover-bg-black-05 br2 fw5"
+            class="db pa1 b link color-inherit no-underline hover-bg-black-05 br2 f5"
             :class="isActive('{{this.href}}') ? 'nav-active' : ''"
+            @click="sidebarOpen = false"
           >
             {{this.label}}
           </a>
@@ -80,114 +83,16 @@
   </div>
 </nav>
 
-{{!-- Mobile sidebar overlay --}}
+{{!-- Mobile backdrop --}}
 <div 
-  class="sidebar-mobile fixed left-0 top-0 vh-100 w-100 z-4 dn-l"
+  class="mobile-backdrop"
+  :class="sidebarOpen ? 'active' : ''"
   x-show="sidebarOpen"
+  @click="sidebarOpen = false"
   x-transition:enter="transition ease-out duration-300"
   x-transition:enter-start="opacity-0"
   x-transition:enter-end="opacity-100"
->
-  {{!-- Backdrop --}}
-  <div 
-    class="absolute top-0 left-0 w-100 h-100 bg-black-50"
-    @click="sidebarOpen = false"
-  ></div>
-  
-  {{!-- Mobile sidebar content --}}
-  <nav 
-    class="absolute left-0 top-0 vh-100 overflow-y-auto"
-    style="width: var(--sidebar-width); background-color: var(--color-sidebar);"
-    x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="transform -translate-x-100"
-    x-transition:enter-end="transform translate-x-0"
-  >
-    {{!-- Site title/logo with close button --}}
-    <div class="pa4 bb b--black-10 flex items-center justify-between">
-      <h1 class="ma0 f4 fw6">
-        <a href="{{#if options.isExport}}./{{else}}/{{/if}}" class="link color-inherit no-underline">
-          {{manifest.title}}
-        </a>
-      </h1>
-      <button 
-        class="pa2 bn bg-transparent pointer"
-        @click="sidebarOpen = false"
-        aria-label="Close navigation"
-      >
-        <svg class="w1 h1" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-        </svg>
-      </button>
-    </div>
-
-    {{!-- Navigation tree (same as desktop) --}}
-    <div class="pa3">
-      {{#each navLinks}}
-        {{#if this.children}}
-          {{!-- Parent item with children --}}
-          <div class="mb3">
-            <div 
-              class="nav-parent flex items-center justify-between pa2 hover-bg-black-05 br2"
-            >
-              <a 
-                href="{{this.href}}" 
-                class="flex-auto link color-inherit no-underline fw5"
-                :class="isActive('{{this.href}}') ? 'nav-active' : ''"
-                @click="sidebarOpen = false"
-              >
-                {{this.label}}
-              </a>
-              <button
-                @click="toggleSection('mobile-{{@index}}')"
-                class="pa1 bn bg-transparent pointer hover-bg-black-10 br2"
-                type="button"
-                aria-label="Toggle submenu"
-              >
-                <svg 
-                  class="w1 h1 transition-transform"
-                  :class="expandedSections.includes('mobile-{{@index}}') ? 'rotate-90' : ''"
-                  fill="currentColor" 
-                  viewBox="0 0 20 20"
-                >
-                  <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 111.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
-                </svg>
-              </button>
-            </div>
-            
-            {{!-- Children --}}
-            <div 
-              class="nav-children ml3 mt2"
-              x-show="expandedSections.includes('mobile-{{@index}}')"
-              x-transition:enter="transition ease-out duration-200"
-              x-transition:enter-start="opacity-0 transform -translate-y-1"
-              x-transition:enter-end="opacity-100 transform translate-y-0"
-            >
-              {{#each this.children}}
-              <a 
-                href="{{this.href}}" 
-                class="nav-child db pa2 pl3 link color-inherit no-underline hover-bg-black-05 br2"
-                :class="isActive('{{this.href}}') ? 'nav-active' : ''"
-                @click="sidebarOpen = false"
-              >
-                {{this.label}}
-              </a>
-              {{/each}}
-            </div>
-          </div>
-        {{else}}
-          {{!-- Single item without children --}}
-          <div class="mb2">
-            <a 
-              href="{{this.href}}" 
-              class="nav-item db pa2 link color-inherit no-underline hover-bg-black-05 br2 fw5"
-              :class="isActive('{{this.href}}') ? 'nav-active' : ''"
-              @click="sidebarOpen = false"
-            >
-              {{this.label}}
-            </a>
-          </div>
-        {{/if}}
-      {{/each}}
-    </div>
-  </nav>
-</div>
+  x-transition:leave="transition ease-in duration-200"
+  x-transition:leave-start="opacity-100"
+  x-transition:leave-end="opacity-0"
+></div>

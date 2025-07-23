@@ -1,226 +1,194 @@
 /* Documentation Theme Styles */
-/* Using Tachyons utility classes with custom CSS variables */
+/* Modern Documentation Theme inspired by Starlight, MkDocs, and Docsify */
 
 /* ==========================================================================
    1. CORE THEME DEFINITIONS & DEFAULTS
-   - This section defines the theme's building blocks (font stacks) and
-     sets the default values for all customizable CSS variables. The theme
-     engine will override these defaults with user choices.
+   - CSS variables that will be overridden by the theme system
    ========================================================================== */
 :root {
   /* --- FONT STACKS (Theme-Specific Resources) --- */
-  /* This theme provides three high-quality, cross-platform system font stacks. */
-  /* A different theme could import Google Fonts here instead. */
   --font-stack-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
   --font-stack-serif: Iowan Old Style, 'Apple Garamond', Baskerville, 'Times New Roman', Droid Serif, Times, 'Source Serif Pro', serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
   --font-stack-mono: 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 
   /* --- DEFAULT COLOR PALETTE --- */
-  /* These are the fallback values if the user hasn't made a choice. */
-  --color-background: #f8f9fa; /* Light grey */
-  --color-text: #212529;       /* Near-black for high readability */
-  --color-headings: #000000;   /* Pure black for strong headlines */
-  --color-primary: #0d6efd;    /* A standard, accessible blue for links */
-  --color-border: #dee2e6;     /* Subtle grey for borders and rules */
+  /* These match the theme.json manifest exactly */
+  --color-background: #ffffff;
+  --color-text: #333333;
+  --color-headings: #111111;
+  --color-primary: #3b82f6;
+  --color-borders: #e5e5e5;
+  --color-sidebar: #f8f9fa;
 
   /* --- DEFAULT FONT ASSIGNMENTS --- */
-  /* The theme engine will generate an inline style block to override these */
-  /* with the user's choice from the theme.json 'enum' values. */
-  --font-headings: var(--font-stack-serif);
+  --font-headings: var(--font-stack-sans);
   --font-text: var(--font-stack-sans);
+  
+  /* --- LAYOUT VARIABLES --- */
+  --sidebar-width: 280px; /* Default medium width - overridden by styleOverrides */
+  --header-height: 60px;
+  --content-max-width: 1200px;
+  
+  /* --- TRANSITIONS --- */
+  --transition-fast: 0.15s ease;
+  --transition-medium: 0.3s ease;
 }
 
 /* ==========================================================================
-   2. BASE & TYPOGRAPHY STYLES
-   - These rules consume the variables, making the theme dynamic.
+   2. BASE & RESET STYLES
    ========================================================================== */
+* {
+  box-sizing: border-box;
+}
+
 body {
   font-family: var(--font-text);
   background-color: var(--color-background);
   color: var(--color-text);
-  transition: background-color .2s ease-in-out, color .2s ease-in-out;
-  line-height: 1.7;
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 /* Base link styles */
 a {
   color: var(--color-primary);
   text-decoration: none;
-  transition: opacity .15s ease-in;
+  transition: opacity var(--transition-fast);
 }
 
 a:hover {
+  opacity: 0.8;
   text-decoration: underline;
+}
+
+/* ==========================================================================
+   3. LAYOUT STRUCTURE
+   ========================================================================== */
+
+/* Header - Full width across the top */
+.header {
+  height: var(--header-height);
+  background-color: var(--color-background);
+  border-bottom: 1px solid var(--color-borders);
+  display: flex;
+  align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+}
+
+/* Header logo/title */
+.header-logo {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-headings);
+  text-decoration: none;
+  margin-left: 0.5rem;
+}
+
+.header-logo:hover {
+  text-decoration: none;
   opacity: 0.8;
 }
 
+/* Sidebar - Fixed below header */
+.sidebar {
+  position: fixed;
+  top: var(--header-height);
+  left: 0;
+  width: var(--sidebar-width);
+  height: calc(100vh - var(--header-height));
+  background-color: var(--color-sidebar);
+  border-right: 1px solid var(--color-borders);
+  overflow-y: auto;
+  z-index: 30;
+  transform: translateX(0);
+  transition: transform var(--transition-medium);
+}
+
+/* Hide sidebar on mobile by default */
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    top: 0;
+    height: 100vh;
+  }
+}
+
+/* Main content area */
+.main-content {
+  margin-left: var(--sidebar-width);
+  margin-top: var(--header-height);
+  min-height: calc(100vh - var(--header-height));
+  display: flex;
+  flex-direction: column;
+  transition: margin-left var(--transition-medium);
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+  }
+}
+
+/* Mobile menu button */
+.mobile-menu-button {
+  display: none;
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: var(--color-text);
+  border-radius: 4px;
+  transition: background-color var(--transition-fast);
+}
+
+.mobile-menu-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Content area */
+.content {
+  flex: 1;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: 2rem;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 1rem;
+  }
+}
+
+/* Footer */
+.footer {
+  border-top: 1px solid var(--color-borders);
+  background-color: var(--color-sidebar);
+  padding: 1.5rem;
+  margin-top: auto;
+}
 
 /* ==========================================================================
-   3. PROSE CONTENT STYLES (.prose)
-   - These styles target raw HTML generated from Markdown. They are scoped
-     to the `.prose` class to avoid interfering with the application's UI.
+   4. SIDEBAR NAVIGATION (using Tachyons + minimal custom CSS)
    ========================================================================== */
 
-/* --- Headings --- */
-.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
-  font-family: var(--font-headings);
-  color: var(--color-headings);
-  font-weight: 700;
-  line-height: 1.2;
-  margin-top: 1.75em;
-  margin-bottom: 0.75em;
-}
-
-.prose h1 { 
-  font-size: 2.25rem; 
-  margin-top: 0;
-}
-.prose h2 { font-size: 1.75rem; }
-.prose h3 { font-size: 1.25rem; }
-.prose h4 { font-size: 1.1rem; }
-.prose h5, .prose h6 { font-size: 1rem; }
-
-/* --- Paragraphs and Links --- */
-.prose p {
-  margin-bottom: 1.25em;
-    font-size: 18px;
-
-}
-.prose p.f3 {
-  font-size: 1.5rem;
-}
-.prose p.f4 {
-  font-size: 1.4rem;
-}
-/* Links inside prose content get an underline on hover */
-.prose a {
-  font-weight: 500;
-}
-
-/* --- Lists (Ordered and Unordered) --- */
-.prose ul,
-.prose ol {
-  padding-left: 1.5rem;
-  margin-top: 1.25em;
-  margin-bottom: 1.25em;
-}
-.prose li {
-  margin-bottom: 0.5em;
-}
-.prose li > p { /* Handle paragraphs inside list items */
-  margin-top: 0.75em;
-  margin-bottom: 0.75em;
-}
-
-/* --- Blockquotes --- */
-.prose blockquote {
-  margin-left: 0;
-  margin-right: 0;
-  margin-top: 1.5em;
-  margin-bottom: 1.5em;
-  padding: 0.75em 1.25em;
-  border-left: 4px solid var(--color-primary);
-  background-color: rgba(0,0,0,0.025);
-  font-style: italic;
-  color: #495057; /* Slightly lighter than main text */
-}
-.prose blockquote > p {
-  margin-bottom: 0;
-}
-
-/* --- Code (Inline and Blocks) --- */
-/* Inline `code` tags */
-.prose :not(pre) > code {
-  font-family: var(--font-stack-mono);
-  background-color: rgba(0,0,0,0.05);
-  color: var(--color-text);
-  padding: 0.2em 0.4em;
-  font-size: 0.875em;
-  border-radius: 4px;
-}
-
-/* Code blocks (`pre` tags) */
-.prose pre {
-  font-family: var(--font-stack-mono);
-  background-color: #212529; /* Dark background for contrast */
-  color: #f8f9fa; /* Light text on dark background */
-  padding: 1em;
-  border-radius: 6px;
-  overflow-x: auto; /* Allow horizontal scrolling for long lines */
-  margin-top: 1.5em;
-  margin-bottom: 1.5em;
-  font-size: 0.9em;
-  line-height: 1.6;
-}
-.prose pre code {
-  padding: 0;
-  background: none;
-  font-size: inherit;
-  color: inherit;
-  line-height: inherit;
-}
-
-/* --- Other Elements --- */
-.prose hr {
-  border: 0;
-  border-top: 1px solid var(--color-border);
-  margin: 2.5em 0;
-}
-
-.prose table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1.5em;
-  margin-bottom: 1.5em;
-  font-size: 0.9em;
-  text-align: left;
-}
-
-.prose th, .prose td {
-  border: 1px solid var(--color-border);
-  padding: 0.6em 0.8em;
-}
-
-.prose thead th {
-  font-weight: 600;
-  background-color: rgba(0,0,0,0.03);
-}
-
-.prose strong {
-  font-weight: 600;
-}
-
-.prose em {
-  font-style: italic;
-}
-
-.object-center {
-  object-position: center;
-}
-
-/* Sidebar Styles */
-.sidebar {
-  border-right: 1px solid var(--color-borders);
-}
-
-.sidebar h1 a {
-  color: var(--color-headings);
-}
-
-.sidebar h1 a:hover {
-  text-decoration: none;
-}
-
-/* Navigation Styles */
-.nav-parent,
-.nav-item,
-.nav-child {
-  transition: background-color 0.15s ease;
-  border-radius: 4px;
-}
-
+/* Active navigation state - uses theme colors */
 .nav-active {
   background-color: var(--color-primary) !important;
   color: white !important;
@@ -228,87 +196,308 @@ a:hover {
 }
 
 .nav-active:hover {
-  text-decoration: none;
+  text-decoration: none !important;
+  opacity: 0.9;
 }
 
-.nav-children {
-  border-left: 2px solid var(--color-borders);
-}
-
-/* Header Styles */
-.header {
-  border-bottom: 1px solid var(--color-borders);
-  height: 60px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-/* Main Content Styles */
-.main-content {
-  min-height: 100vh;
-}
-
-.content {
-  max-width: 800px;
-}
-
-/* Footer Styles */
-.footer {
-  border-top: 1px solid var(--color-borders);
-  background-color: var(--color-sidebar);
-}
-
-
-/* Responsive Design */
-@media (max-width: 30em) {
-  .main-content {
-    margin-left: 0 !important;
-  }
-  
-  .header,
-  .footer {
-    margin-left: 0 !important;
-  }
-  
-  .content {
-    padding: 1rem;
-    padding-top: 4rem;
-  }
-}
-
-/* Transitions and Animations */
-.transition-transform {
-  transition: transform 0.2s ease;
-}
-
-.rotate-90 {
+/* Toggle button expanded state for accordion */
+.nav-toggle-expanded svg {
   transform: rotate(90deg);
 }
 
-/* Utility Classes */
-.color-inherit {
-  color: inherit;
-}
+/* ==========================================================================
+   5. MOBILE DRAWER
+   ========================================================================== */
 
-.no-underline {
-  text-decoration: none;
-}
-
-.no-underline:hover {
-  text-decoration: none;
-}
-
-/* Z-index Management */
-.z-1 { z-index: 1; }
-.z-2 { z-index: 2; }
-.z-3 { z-index: 3; }
-.z-4 { z-index: 4; }
-
-/* Background Colors */
-.bg-black-50 {
+/* Mobile backdrop */
+.mobile-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
+  z-index: 25;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-medium), visibility var(--transition-medium);
 }
 
-/* Additional Hover States */
-.hover-bg-black-05:hover {
+.mobile-backdrop.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Show sidebar on mobile when open */
+@media (max-width: 768px) {
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+}
+
+/* Close button in mobile sidebar */
+.sidebar-close {
+  display: none;
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: var(--color-text);
+  border-radius: 4px;
+  transition: background-color var(--transition-fast);
+}
+
+.sidebar-close:hover {
   background-color: rgba(0, 0, 0, 0.05);
 }
+
+@media (max-width: 768px) {
+  .sidebar-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ==========================================================================
+   6. PROSE CONTENT STYLES
+   ========================================================================== */
+
+.prose {
+  line-height: 1.7;
+}
+
+/* Headings */
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  font-family: var(--font-headings);
+  color: var(--color-headings);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 2rem 0 1rem 0;
+}
+
+.prose h1 { 
+  font-size: 2.5rem; 
+  margin-top: 0;
+  border-bottom: 1px solid var(--color-borders);
+  padding-bottom: 0.5rem;
+}
+.prose h2 { 
+  font-size: 1.75rem;
+  border-bottom: 1px solid var(--color-borders);
+  padding-bottom: 0.25rem;
+}
+.prose h3 { font-size: 1.375rem; }
+.prose h4 { font-size: 1.125rem; }
+.prose h5, .prose h6 { font-size: 1rem; }
+
+/* Paragraphs and text */
+.prose p {
+  margin-bottom: 1.25rem;
+  font-size: 1rem;
+}
+
+.prose a {
+  font-weight: 500;
+  color: var(--color-primary);
+}
+
+/* Lists */
+.prose ul,
+.prose ol {
+  padding-left: 1.5rem;
+  margin: 1rem 0;
+}
+
+.prose li {
+  margin-bottom: 0.5rem;
+}
+
+/* Blockquotes */
+.prose blockquote {
+  margin: 1.5rem 0;
+  padding: 1rem 1.5rem;
+  border-left: 4px solid var(--color-primary);
+  background-color: rgba(59, 130, 246, 0.05);
+  font-style: italic;
+}
+
+.prose blockquote p {
+  margin: 0;
+}
+
+/* Code */
+.prose :not(pre) > code {
+  font-family: var(--font-stack-mono);
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--color-text);
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+
+.prose pre {
+  font-family: var(--font-stack-mono);
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  padding: 1.5rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.prose pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Tables */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.9rem;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid var(--color-borders);
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.prose th {
+  background-color: var(--color-sidebar);
+  font-weight: 600;
+}
+
+/* Images */
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 1rem 0;
+}
+
+/* HR */
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--color-borders);
+  margin: 2rem 0;
+}
+
+/* ==========================================================================
+   7. UTILITY CLASSES
+   ========================================================================== */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Alpine.js transitions */
+.slide-enter {
+  transform: translateX(-100%);
+}
+
+.slide-enter-to {
+  transform: translateX(0);
+}
+
+.slide-leave {
+  transform: translateX(0);
+}
+
+.slide-leave-to {
+  transform: translateX(-100%);
+}
+
+.fade-enter {
+  opacity: 0;
+}
+
+.fade-enter-to {
+  opacity: 1;
+}
+
+.fade-leave {
+  opacity: 1;
+}
+
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* ==========================================================================
+   8. RESPONSIVE DESIGN
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+  .content {
+    max-width: none;
+    margin: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .prose h1 {
+    font-size: 1.875rem;
+  }
+  
+  .prose h2 {
+    font-size: 1.5rem;
+  }
+  
+  .prose h3 {
+    font-size: 1.25rem;
+  }
+  
+  .prose table {
+    font-size: 0.8rem;
+  }
+  
+  .prose th,
+  .prose td {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding: 1rem 0.75rem;
+  }
+  
+  .prose pre {
+    padding: 1rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* ==========================================================================
+   9. TACHYONS OVERRIDES & EXTENSIONS
+   ========================================================================== */
+
+/* Additional color utilities using theme variables */
+.color-primary { color: var(--color-primary); }
+.color-text { color: var(--color-text); }
+.color-headings { color: var(--color-headings); }
+.bg-sidebar { background-color: var(--color-sidebar); }
+.border-theme { border-color: var(--color-borders); }
+
+/* Theme-aware hover states */
+.hover-bg-theme:hover { background-color: rgba(0, 0, 0, 0.05); }
+.hover-color-primary:hover { color: var(--color-primary); }

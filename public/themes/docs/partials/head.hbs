@@ -52,7 +52,10 @@
 
  {{!-- STYLESHEETS --}}
 <link rel="stylesheet" href="https://unpkg.com/tachyons@4.12.0/css/tachyons.min.css"/>
-<link rel="stylesheet" href="/themes/{{manifest.theme.name}}/css/theme.css">
+<link rel="stylesheet" href="{{#if @root.options.isExport}}{{@root.options.relativeAssetPath}}_site/themes/{{manifest.theme.name}}/css/theme.css{{else}}/themes/{{manifest.theme.name}}/css/theme.css{{/if}}">
+
+{{!-- Alpine.js for interactivity --}}
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
 {{!-- This is where the user's custom choices are injected as CSS variables --}}
 {{{styleOverrides}}}

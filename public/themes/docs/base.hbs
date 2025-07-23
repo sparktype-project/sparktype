@@ -1,11 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  {{> head}}
+  {{> head headContext}}
 </head>
 <body 
-  class="bg-white color-inherit min-vh-100"
-  style="background-color: var(--color-background); color: var(--color-text); font-family: var(--font-body);"
   x-data="{
     sidebarOpen: false,
     expandedSections: [],
@@ -29,46 +27,81 @@
         this.expandedSections.push(id);
       }
     },
-    isActive: function(href) {
-      if (!href) return false;
-      // Handle both relative and absolute paths
-      var cleanHref = href.replace(/^\.\//, '/').replace(/\/index\.html$/, '/').replace(/\/$/, '') || '/';
-      var cleanCurrent = this.currentPath.replace(/\/$/, '') || '/';
-      return cleanHref === cleanCurrent;
-    },
+    // Normalize URL for consistent comparison
     normalizeUrl: function(url) {
       if (!url) return '/';
-      return url.replace(/^\.\//, '/').replace(/\/index\.html$/, '/').replace(/\/$/, '') || '/';
-    },
-    autoExpandSections: function() {
-      var currentPath = this.currentPath.replace(/\/$/, '') || '/';
       
-      for (var i = 0; i < this.navData.length; i++) {
-        var section = this.navData[i];
-        var shouldExpand = false;
-        
-        var parentHref = this.normalizeUrl(section.href);
-        
-        // Check if current page is the parent page
-        if (parentHref === currentPath) {
-          shouldExpand = true;
-        }
-        
-        // Check if current page is any child page
-        if (!shouldExpand && section.children && section.children.length > 0) {
-          for (var j = 0; j < section.children.length; j++) {
-            var normalizedChild = this.normalizeUrl(section.children[j]);
-            if (normalizedChild === currentPath) {
-              shouldExpand = true;
-              break;
-            }
+      // Remove leading './' and convert to absolute path
+      var cleaned = url.replace(/^\.\//, '/');
+      
+      // Remove index.html and trailing slashes, but keep root as '/'
+      cleaned = cleaned.replace(/\/index\.html$/, '/');
+      cleaned = cleaned.replace(/\/$/, '') || '/';
+      
+      return cleaned;
+    },
+    
+    // Check if a navigation href is active (matches current page)
+    isActive: function(href) {
+      if (!href) return false;
+      var cleanHref = this.normalizeUrl(href);
+      var cleanCurrent = this.normalizeUrl(this.currentPath);
+      return cleanHref === cleanCurrent;
+    },
+    
+    // Check if current path is within a section (exact match or child)
+    isInSection: function(sectionHref, children) {
+      var currentNormalized = this.normalizeUrl(this.currentPath);
+      var sectionNormalized = this.normalizeUrl(sectionHref);
+      
+      // Check if we're on the section page itself
+      if (currentNormalized === sectionNormalized) {
+        return true;
+      }
+      
+      // Check if we're on any child page
+      if (children && children.length > 0) {
+        for (var i = 0; i < children.length; i++) {
+          var childNormalized = this.normalizeUrl(children[i]);
+          if (currentNormalized === childNormalized) {
+            return true;
+          }
+          
+          // Also check if current path starts with child path (for nested children)
+          if (currentNormalized.startsWith(childNormalized + '/')) {
+            return true;
           }
         }
+      }
+      
+      // Check if current path starts with section path (for nested sections)
+      if (sectionNormalized !== '/' && currentNormalized.startsWith(sectionNormalized + '/')) {
+        return true;
+      }
+      
+      return false;
+    },
+    
+    // Auto-expand all sections by default
+    autoExpandSections: function() {
+      // Clear existing expanded sections first
+      this.expandedSections = [];
+      
+      // Go through each navigation section and expand all that have children
+      for (var i = 0; i < this.navData.length; i++) {
+        var section = this.navData[i];
         
-        if (shouldExpand && !this.expandedSections.includes(i.toString())) {
-          this.expandedSections.push(i.toString());
-          this.expandedSections.push('mobile-' + i.toString());
+        // Skip sections without children (no accordion needed)
+        if (!section.children || section.children.length === 0) {
+          continue;
         }
+        
+        // Expand all sections with children by default
+        var sectionId = i.toString();
+        
+        // Add to expanded sections (both desktop and mobile versions)
+        this.expandedSections.push(sectionId);
+        this.expandedSections.push('mobile-' + sectionId);
       }
     }
   }"
@@ -80,25 +113,19 @@
   {{> sidebar}}
 
   {{!-- Main Content Area --}}
-  <div class="main-content" style="margin-left: var(--sidebar-width);">
-    
+  <div class="main-content">
+    {{!-- Header --}}
+    {{> header}}
 
     {{!-- Page Content --}}
-    <main class="content pa4 pt5" style="padding-top: 5rem;">
-      {{{body}}}
+    <main class="content">
+      <div class="prose">
+        {{{body}}}
+      </div>
     </main>
 
     {{!-- Footer --}}
     {{> footer}}
   </div>
-
-  {{!-- Mobile: Hide sidebar when clicking outside --}}
-  <div 
-    class="dn-l fixed top-0 left-0 w-100 h-100 z-1"
-    x-show="sidebarOpen"
-    @click="sidebarOpen = false"
-  ></div>
-      <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-
 </body>
 </html>
