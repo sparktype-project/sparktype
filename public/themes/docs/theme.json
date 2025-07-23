@@ -65,7 +65,7 @@
           "Sans-Serif (System)",
           "Monospace (System)"
         ],
-        "default": "var(--font-stack-sans)"
+        "default": "var(--font-stack-serif)"
       },
       "font_text": {
         "type": "string",
@@ -100,12 +100,14 @@
         "type": "string",
         "title": "Header Content",
         "description": "Optional HTML content for the header bar",
+        "format": "textarea",
         "default": ""
       },
       "footer_content": {
         "type": "string",
         "title": "Footer Content",
         "description": "Optional HTML content for the footer",
+        "format": "textarea",
         "default": "© 2024 Documentation Site"
       }
     }

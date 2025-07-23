@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/core/state/useAppStore';
-// CORRECTED: Removed obsolete 'getCollectionStats' import.
 import { getCollections, deleteCollection } from '@/core/services/collections.service';
 import type { Collection, ParsedMarkdownFile } from '@/core/types';
 import CreateCollectionDialog from './CreateCollectionDialog';
@@ -16,7 +15,6 @@ import { Input } from '@/core/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/core/components/ui/alert-dialog';
 
-// Icons
 import { Plus, Search, MoreHorizontal, Trash2, Edit, FolderOpen } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -44,7 +42,6 @@ export default function CollectionsManager({ siteId }: CollectionsManagerProps) 
     const filter = searchFilter.toLowerCase();
     return collections.filter(collection =>
       collection.name.toLowerCase().includes(filter) ||
-      // CORRECTED: Search by the more useful `defaultItemLayout` instead of the obsolete `typeId`.
       collection.defaultItemLayout.toLowerCase().includes(filter)
     );
   }, [collections, searchFilter]);
@@ -84,7 +81,7 @@ export default function CollectionsManager({ siteId }: CollectionsManagerProps) 
   return (
     <CollectionErrorBoundary fallback={CollectionErrorFallback}>
       <div className="flex h-full flex-col">
-        <div className="flex shrink-0 items-center justify-between border-b px-2 py-2">
+        <div className="flex shrink-0 items-center justify-between border-b px-2 py-0.5">
           <h3 className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Collections</h3>
           <Button variant="ghost" size="sm" className="size-7 p-1" onClick={() => setIsCreateDialogOpen(true)} title="Create Collection">
             <Plus className="h-4 w-4" />
@@ -100,14 +97,12 @@ export default function CollectionsManager({ siteId }: CollectionsManagerProps) 
         )}
         <div className="flex-1 overflow-y-auto">
           {filteredCollections.length === 0 ? (
-            <div className="p-4 text-center">
+            <div className="p-4">
               {collections.length === 0 ? (
                 <div className="space-y-3">
                   <div className="text-muted-foreground">
-                    <FolderOpen className="mx-auto h-8 w-8 mb-2 opacity-50" />
-                    <p className="text-sm">No collections yet</p>
+                    <p className="text-xs">No collections yet. Click the plus button above to create one.</p>
                   </div>
-                  <Button size="sm" onClick={() => setIsCreateDialogOpen(true)} className="w-full"><Plus className="h-4 w-4 mr-2" />Create Collection</Button>
                 </div>
               ) : (
                 <div className="text-muted-foreground"><p className="text-sm">No collections match</p></div>

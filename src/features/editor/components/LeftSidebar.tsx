@@ -227,7 +227,7 @@ export default function LeftSidebar() {
           </div>
         </div>
         
-        <div className="flex-grow overflow-y-auto p-2" ref={setRootDroppableRef}>
+        <div className=" overflow-y-auto p-2 min-h-40" ref={setRootDroppableRef}>
           {itemsToRender.length > 0 ? (
             <FileTree 
               itemsToRender={itemsToRender.map(item => ({...item, collapsed: collapsedIds.has(item.path)}))}
@@ -240,14 +240,14 @@ export default function LeftSidebar() {
               onCollapse={handleCollapse}
             />
           ) : (
-            <div className="px-2 py-4 text-xs text-center text-muted-foreground italic">
-              <p>No pages created yet. Click the buttons above to add one.</p>
+            <div className="px-2 py-2 text-xs text-muted-foreground">
+              <p>No pages created yet. Click the button above to add one.</p>
             </div>
           )}
         </div>
 
         {/* Collections Manager */}
-        <div className="flex-shrink-0 h-80 border-t bg-background">
+        <div className=" border-t bg-background">
           <CollectionsManager siteId={siteId} />
         </div>
 
