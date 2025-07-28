@@ -1,18 +1,25 @@
 // src/core/services/config/configHelpers.service.ts
 
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
-import { CORE_LAYOUTS, CORE_THEMES } from '@/config/editorConfig';
+import { CORE_LAYOUTS, CORE_THEMES, CORE_BLOCKS } from '@/config/editorConfig';
+import * as assetStorage from '../assetStorage.service';
+
 import type {
-    LocalSiteData,
     Manifest,
     LayoutInfo,
     ThemeInfo,
-    RawFile,
     LayoutManifest,
+    BlockInfo,
 } from '@/core/types';
 
-/** A minimal subset of site data needed by the asset helper functions. */
-export type SiteDataForAssets = Pick<LocalSiteData, 'manifest' | 'layoutFiles' | 'themeFiles'>;
+/**
+ * A minimal context object needed by asset helper functions.
+ * Decouples the service from the full LocalSiteData structure.
+ */
+export type SiteDataForAssets = {
+  siteId: string;
+  manifest?: Manifest;
+};
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -26,6 +33,9 @@ export const isCoreTheme = (path: string) => CORE_THEMES.some((t: ThemeInfo) => 
 
 /** Checks if a given layout path corresponds to a core (built-in) layout. */
 export const isCoreLayout = (path: string) => CORE_LAYOUTS.some((l: LayoutInfo) => l.id === path);
+
+/** Checks if a given block path corresponds to a core (built-in) block. */
+export const isCoreBlock = (path: string) => CORE_BLOCKS.some((b: BlockInfo) => b.path === path);
 
 /** Merges multiple JSON Schemas into one. */
 export function mergeSchemas(...schemas: (RJSFSchema | null | undefined)[]): RJSFSchema {
@@ -47,40 +57,83 @@ export function mergeUiSchemas(...schemas: (UiSchema | null | undefined)[]): UiS
 }
 
 /**
- * Fetches the raw string content of a theme or layout asset.
- * It intelligently fetches from either the `/public` directory (for core assets)
- * or the `LocalSiteData` object (for user-provided custom assets), with caching.
+ * Fetches the raw string content of any asset (theme, layout, or block).
+ * It intelligently delegates loading to the appropriate source: public assets for core types,
+ * and the dedicated assetStorage service for all custom, site-specific types.
+ *
+ * @param context A context object containing the siteId.
+ * @param assetType The type of asset to load ('theme', 'layout', or 'block').
+ * @param assetPath The unique path/ID of the asset (e.g., "default", "blog-post", "my_callout").
+ * @param fileName The name of the file to load from within the asset's bundle (e.g., "theme.json").
+ * @returns A promise that resolves to the file's string content, or null if not found.
  */
-export async function getAssetContent(siteData: SiteDataForAssets, assetType: 'theme' | 'layout', path: string, fileName: string): Promise<string | null> {
-    const isCore = assetType === 'theme' ? isCoreTheme(path) : isCoreLayout(path);
-    const sourcePath = `/${assetType}s/${path}/${fileName}`;
+export async function getAssetContent(
+  context: { siteId: string },
+  assetType: 'theme' | 'layout' | 'block',
+  assetPath: string,
+  fileName: string
+): Promise<string | null> {
+    const isCore =
+        assetType === 'theme' ? isCoreTheme(assetPath) :
+        assetType === 'layout' ? isCoreLayout(assetPath) :
+        isCoreBlock(assetPath);
+
+    const fullPublicPath = `/${assetType}s/${assetPath}/${fileName}`;
 
     if (isCore) {
-      if (fileContentCache.has(sourcePath)) return fileContentCache.get(sourcePath)!;
-      const promise = fetch(sourcePath).then(res => res.ok ? res.text() : null).catch(() => null);
-      fileContentCache.set(sourcePath, promise);
-      return promise;
+        // Core assets are always fetched from the public directory.
+        if (fileContentCache.has(fullPublicPath)) {
+            return fileContentCache.get(fullPublicPath)!;
+        }
+        const promise = fetch(fullPublicPath)
+            .then(res => (res.ok ? res.text() : null))
+            .catch(() => null);
+        fileContentCache.set(fullPublicPath, promise);
+        return promise;
     } else {
-      const fileStore: RawFile[] | undefined = assetType === 'theme' ? siteData.themeFiles : siteData.layoutFiles;
-      const fullPath = `${assetType}s/${path}/${fileName}`;
-      return fileStore?.find(f => f.path === fullPath)?.content ?? null;
+        // Custom assets are fetched from the dedicated assetStorage service.
+        switch (assetType) {
+            // Note: When custom themes/layouts are implemented, their loaders will be added here.
+            // case 'theme':
+            //   return assetStorage.getCustomThemeFileContent(context.siteId, assetPath, fileName);
+            // case 'layout':
+            //   return assetStorage.getCustomLayoutFileContent(context.siteId, assetPath, fileName);
+            case 'block':
+                return assetStorage.getCustomBlockFileContent(context.siteId, assetPath, fileName);
+            default:
+                console.warn(`Unknown custom asset type requested: ${assetType}`);
+                return null;
+        }
     }
 }
 
-/** A generic function to fetch and parse any JSON asset manifest (theme.json, layout.json). */
-export async function getJsonAsset<T>(siteData: SiteDataForAssets, assetType: 'theme' | 'layout', path: string, fileName: string): Promise<T | null> {
-    const content = await getAssetContent(siteData, assetType, path, fileName);
+/**
+ * A generic function to fetch and parse any JSON asset manifest (theme.json, layout.json, block.json).
+ *
+ * @param context A context object containing the siteId.
+ * @param assetType The type of asset whose manifest is being loaded.
+ * @param assetPath The unique path/ID of the asset.
+ * @param fileName The name of the manifest file (e.g., "layout.json").
+ * @returns A promise that resolves to the parsed JSON object, or null on failure.
+ */
+export async function getJsonAsset<T>(
+    context: { siteId: string },
+    assetType: 'theme' | 'layout' | 'block',
+    assetPath: string,
+    fileName: string
+): Promise<T | null> {
+    const content = await getAssetContent(context, assetType, assetPath, fileName);
     if (!content) return null;
     try {
-      return JSON.parse(content) as T;
+        return JSON.parse(content) as T;
     } catch (e) {
-      console.error(`Failed to parse JSON from ${assetType}/${path}/${fileName}:`, e);
-      return null;
+        console.error(`Failed to parse JSON from ${assetType}/${assetPath}/${fileName}:`, e);
+        return null;
     }
 }
 
 // ============================================================================
-// PUBLIC API
+// PUBLIC API (UNCHANGED LOGIC, UPDATED SIGNATURES)
 // ============================================================================
 
 /** Gets a list of all available themes (core and custom). */
@@ -95,12 +148,12 @@ export function getAvailableThemes(manifest?: Manifest): ThemeInfo[] {
 
 /**
  * Fetches and processes the manifest for a specific layout.
- * @param siteData The site's data.
+ * @param context The site context, containing siteId and the manifest.
  * @param layoutPath The ID of the layout to fetch (e.g., 'blog-post').
  * @returns The parsed LayoutManifest object, or null if not found.
  */
-export async function getLayoutManifest(siteData: SiteDataForAssets, layoutPath: string): Promise<LayoutManifest | null> {
-    const manifest = await getJsonAsset<LayoutManifest>(siteData, 'layout', layoutPath, 'layout.json');
+export async function getLayoutManifest(context: SiteDataForAssets, layoutPath: string): Promise<LayoutManifest | null> {
+    const manifest = await getJsonAsset<LayoutManifest>(context, 'layout', layoutPath, 'layout.json');
     if (manifest) {
         manifest.id = layoutPath; // Ensure the manifest object includes its own ID
     }
@@ -110,33 +163,28 @@ export async function getLayoutManifest(siteData: SiteDataForAssets, layoutPath:
 /**
  * Gets a list of the full manifest objects for all available layouts,
  * optionally filtered by a specific layout type ('single' or 'collection').
- * This is now the single source of truth for discovering all content blueprints.
  *
- * @param siteData The site's data, used to find custom layouts.
+ * @param context The site context, used to find custom layouts registered in the manifest.
  * @param type An optional filter to return only 'single' or 'collection' layouts.
  * @returns A promise that resolves to an array of LayoutManifest objects.
  */
 export async function getAvailableLayouts(
-  siteData: SiteDataForAssets,
+  context: SiteDataForAssets,
   type?: LayoutManifest['layoutType']
 ): Promise<LayoutManifest[]> {
-  // 1. Get the IDs of all core layouts from the central config.
+  if (!context.manifest) return [];
+
   const coreLayoutIds = CORE_LAYOUTS.map(l => l.id);
-  // 2. Get the IDs of any user-defined custom layouts from the site's manifest.
-  const customLayoutIds = siteData.manifest.layouts?.map(l => l.id) || [];
-  // 3. Combine and de-duplicate the list of all known layout IDs.
+  const customLayoutIds = context.manifest.layouts?.map(l => l.id) || [];
   const allLayoutIds = [...new Set([...coreLayoutIds, ...customLayoutIds])];
 
-  // 4. Fetch the full manifest file for every single layout.
   const manifestPromises = allLayoutIds.map(layoutId =>
-    getLayoutManifest(siteData, layoutId)
+    getLayoutManifest(context, layoutId)
   );
 
-  // 5. Wait for all fetches to complete and filter out any that failed (were null).
   const allManifests = (await Promise.all(manifestPromises))
     .filter((m): m is LayoutManifest => m !== null);
 
-  // 6. If a type filter was provided, apply it now. Otherwise, return all layouts.
   if (type) {
     return allManifests.filter(m => m.layoutType === type);
   }

@@ -1,5 +1,4 @@
 // src/features/editor/components/FileTree.tsx
-'use client';
 
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import FileTreeNode from './FileTreeNode';

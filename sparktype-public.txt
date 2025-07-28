@@ -1,792 +1,7 @@
 FILE CONCATENATION REPORT
 Root Directory: public/
-Excluded Directories: public, ios, node_modules
+Excluded Directories: public, node_modules, ios
 File Extensions: *.ts, *.tsx, *.js, *.jsx, *.css, *.html, *.json, *.hbs
-================================================================================
-
-File: collection-types/blog/manifest.json
-{
-  "name": "Blog",
-  "version": "1.0.0",
-  "description": "Standard blog with posts, categories, and tags",
-  "files": [
-    {"path": "templates/listing.hbs", "type": "template"},
-    {"path": "templates/featured.hbs", "type": "template"},
-    {"path": "templates/archive.hbs", "type": "template"},
-    {"path": "templates/partials/post-card.hbs", "type": "partial"},
-    {"path": "templates/partials/post-list.hbs", "type": "partial"}
-  ],
-  "itemSchema": {
-    "type": "object",
-    "properties": {
-      "title": {
-        "type": "string",
-        "title": "Title"
-      },
-      "date": {
-        "type": "string",
-        "format": "date",
-        "title": "Publish Date"
-      },
-      "author": {
-        "type": "string",
-        "title": "Author"
-      },
-      "excerpt": {
-        "type": "string",
-        "title": "Excerpt",
-        "description": "Short description of the post"
-      },
-      "featured": {
-        "type": "boolean",
-        "title": "Featured Post",
-        "default": false
-      },
-      "categories": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "title": "Categories",
-        "uniqueItems": true
-      },
-      "tags": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "title": "Tags",
-        "uniqueItems": true
-      }
-    },
-    "required": ["title", "date"]
-  },
-  "layouts": {
-    "listing": {
-      "name": "Blog Listing",
-      "description": "Full blog listing with pagination",
-      "template": "listing.hbs",
-      "supportsPagination": true,
-      "display_options": {
-        "style": {
-          "name": "Display Style",
-          "default": "cards",
-          "options": {
-            "cards": {
-              "name": "Card View",
-              "description": "Posts displayed as cards with images",
-              "template": "partials/post-card.hbs"
-            },
-            "list": {
-              "name": "List View", 
-              "description": "Compact list view without images",
-              "template": "partials/post-list.hbs"
-            }
-          }
-        }
-      }
-    },
-    "featured": {
-      "name": "Featured Posts",
-      "description": "Showcase featured posts on homepage or other pages",
-      "template": "featured.hbs",
-      "maxItems": 6
-    },
-    "archive": {
-      "name": "Archive",
-      "description": "Archive listing grouped by date",
-      "template": "archive.hbs",
-      "supportsPagination": false
-    }
-  },
-  "defaultSort": {
-    "field": "date",
-    "order": "desc"
-  }
-}
-
-================================================================================
-
-File: collection-types/blog/templates/archive.hbs
-{{!-- Blog Archive Template --}}
-<div class="blog-archive">
-  <div class="archive-header">
-    <h1>{{pageTitle}}</h1>
-    {{#if page.excerpt}}
-      <p class="archive-description">{{page.excerpt}}</p>
-    {{/if}}
-  </div>
-
-  {{#if collectionItems}}
-    {{#each (groupBy collectionItems 'frontmatter.date' 'year')}}
-      <section class="archive-year">
-        <h2 class="year-heading">{{@key}}</h2>
-        
-        {{#each (groupBy this 'frontmatter.date' 'month')}}
-          <div class="archive-month">
-            <h3 class="month-heading">{{formatDate @key format="MMMM"}}</h3>
-            
-            <ul class="archive-posts">
-              {{#each this}}
-                <li class="archive-post">
-                  <article>
-                    <time datetime="{{frontmatter.date}}" class="post-date">
-                      {{formatDate frontmatter.date format="MMM d"}}
-                    </time>
-                    
-                    <div class="post-info">
-                      <h4 class="post-title">
-                        <a href="{{getUrl this}}">{{frontmatter.title}}</a>
-                      </h4>
-                      
-                      {{#if frontmatter.excerpt}}
-                        <p class="post-excerpt">{{frontmatter.excerpt}}</p>
-                      {{/if}}
-                      
-                      {{#if frontmatter.categories}}
-                        <div class="post-categories">
-                          {{#each frontmatter.categories}}
-                            <span class="category-tag">{{this}}</span>
-                          {{/each}}
-                        </div>
-                      {{/if}}
-                    </div>
-                  </article>
-                </li>
-              {{/each}}
-            </ul>
-          </div>
-        {{/each}}
-      </section>
-    {{/each}}
-  {{else}}
-    <div class="no-archive-posts">
-      <p>No posts in the archive.</p>
-    </div>
-  {{/if}}
-</div>
-
-================================================================================
-
-File: collection-types/blog/templates/featured.hbs
-{{!-- Featured Posts Template --}}
-<section class="featured-posts">
-  <div class="featured-header">
-    <h2>{{pageTitle}}</h2>
-    {{#if page.excerpt}}
-      <p class="featured-description">{{page.excerpt}}</p>
-    {{/if}}
-  </div>
-
-  {{#if collectionItems}}
-    <div class="featured-grid">
-      {{#each collectionItems}}
-        <article class="featured-post">
-          {{#if frontmatter.featured_image}}
-            <div class="featured-image">
-              <a href="{{getUrl this}}">
-                {{image frontmatter.featured_image alt=frontmatter.title width=400 height=250 crop="fill"}}
-              </a>
-            </div>
-          {{/if}}
-          
-          <div class="featured-content">
-            <h3 class="featured-title">
-              <a href="{{getUrl this}}">{{frontmatter.title}}</a>
-            </h3>
-            
-            {{#if frontmatter.excerpt}}
-              <p class="featured-excerpt">{{frontmatter.excerpt}}</p>
-            {{/if}}
-            
-            <div class="featured-meta">
-              {{#if frontmatter.date}}
-                <time datetime="{{frontmatter.date}}">
-                  {{formatDate frontmatter.date format="MMM d, yyyy"}}
-                </time>
-              {{/if}}
-              
-              {{#if frontmatter.author}}
-                <span class="author">by {{frontmatter.author}}</span>
-              {{/if}}
-            </div>
-            
-            <a href="{{getUrl this}}" class="read-more">Read More →</a>
-          </div>
-        </article>
-      {{/each}}
-    </div>
-  {{else}}
-    <div class="no-featured-posts">
-      <p>No featured posts available.</p>
-    </div>
-  {{/if}}
-</section>
-
-================================================================================
-
-File: collection-types/blog/templates/listing.hbs
-{{!-- Blog Listing Template --}}
-<div class="blog-listing">
-  <div class="blog-header">
-    <h1>{{pageTitle}}</h1>
-    {{#if page.excerpt}}
-      <p class="blog-description">{{page.excerpt}}</p>
-    {{/if}}
-  </div>
-
-  {{#if collectionItems}}
-    <div class="posts-container {{#if displayOptions.style}}posts-{{displayOptions.style}}{{else}}posts-cards{{/if}}">
-      {{#each collectionItems}}
-        {{> blog/partials/post-card this}}
-      {{/each}}
-    </div>
-
-    {{#if pagination}}
-      <nav class="pagination" aria-label="Blog pagination">
-        <div class="pagination-info">
-          Showing {{pagination.currentPage}} of {{pagination.totalPages}} pages
-          ({{pagination.totalItems}} posts total)
-        </div>
-        
-        <div class="pagination-controls">
-          {{#if pagination.hasPrevPage}}
-            <a href="{{pagination.prevPageUrl}}" class="pagination-btn pagination-prev">
-              ← Previous
-            </a>
-          {{/if}}
-          
-          {{#if pagination.hasNextPage}}
-            <a href="{{pagination.nextPageUrl}}" class="pagination-btn pagination-next">
-              Next →
-            </a>
-          {{/if}}
-        </div>
-      </nav>
-    {{/if}}
-  {{else}}
-    <div class="no-posts">
-      <p>No blog posts found.</p>
-    </div>
-  {{/if}}
-</div>
-
-================================================================================
-
-File: collection-types/blog/templates/partials/post-list.hbs
-{{!-- Post List Partial --}}
-<article class="post-list-item">
-  <div class="post-list-content">
-    <header class="post-list-header">
-      <h3 class="post-list-title">
-        <a href="{{getUrl this}}">{{frontmatter.title}}</a>
-      </h3>
-      
-      {{#if frontmatter.featured}}
-        <span class="featured-indicator">★</span>
-      {{/if}}
-    </header>
-    
-    <div class="post-list-meta">
-      {{#if frontmatter.date}}
-        <time datetime="{{frontmatter.date}}" class="post-list-date">
-          {{formatDate frontmatter.date format="MMM d, yyyy"}}
-        </time>
-      {{/if}}
-      
-      {{#if frontmatter.author}}
-        <span class="post-list-author">{{frontmatter.author}}</span>
-      {{/if}}
-      
-      {{#if frontmatter.categories}}
-        <div class="post-list-categories">
-          {{#each frontmatter.categories}}
-            <span class="category-pill">{{this}}</span>
-          {{/each}}
-        </div>
-      {{/if}}
-    </div>
-    
-    {{#if frontmatter.excerpt}}
-      <p class="post-list-excerpt">{{frontmatter.excerpt}}</p>
-    {{/if}}
-  </div>
-  
-  {{#if frontmatter.featured_image}}
-    <div class="post-list-image">
-      <a href="{{getUrl this}}">
-        {{image frontmatter.featured_image alt=frontmatter.title width=100 height=100 crop="fill"}}
-      </a>
-    </div>
-  {{/if}}
-</article>
-
-================================================================================
-
-File: collection-types/blog/templates/partials/post-card.hbs
-{{!-- Post Card Partial --}}
-<article class="post-card">
-  {{#if frontmatter.featured_image}}
-    <div class="post-image">
-      {{image frontmatter.featured_image alt=frontmatter.title width=350 height=200 crop="fill"}}
-      {{#if frontmatter.featured}}
-        <span class="featured-badge">Featured</span>
-      {{/if}}
-    </div>
-  {{/if}}
-  
-  <div class="post-content">
-    <header class="post-header">
-      {{#if frontmatter.categories}}
-        <div class="post-categories">
-          {{#each frontmatter.categories}}
-            <span class="category">{{this}}</span>
-          {{/each}}
-        </div>
-      {{/if}}
-      
-      <h2 class="post-title">
-        <a href="{{getCollectionItemUrl this}}">{{frontmatter.title}}</a>
-      </h2>
-    </header>
-    
-    {{#if frontmatter.excerpt}}
-      <p class="post-excerpt">{{frontmatter.excerpt}}</p>
-    {{/if}}
-    
-    <footer class="post-meta">
-      <div class="post-date">
-        {{#if frontmatter.date}}
-          <time datetime="{{frontmatter.date}}">
-            {{formatDate frontmatter.date format="MMM d, yyyy"}}
-          </time>
-        {{/if}}
-      </div>
-      
-      {{#if frontmatter.author}}
-        <div class="post-author">
-          <span>by {{frontmatter.author}}</span>
-        </div>
-      {{/if}}
-      
-      {{#if frontmatter.tags}}
-        <div class="post-tags">
-          {{#each frontmatter.tags}}
-            <span class="tag">#{{this}}</span>
-          {{/each}}
-        </div>
-      {{/if}}
-    </footer>
-    
-    <a href="{{getCollectionItemUrl this}}" class="read-more">Read More</a>
-  </div>
-</article>
-
-================================================================================
-
-File: collection-types/portfolio/manifest.json
-{
-  "name": "Portfolio", 
-  "version": "1.0.0",
-  "description": "Project portfolio with galleries and client work showcase",
-  "files": [
-    {"path": "templates/grid.hbs", "type": "template"},
-    {"path": "templates/showcase.hbs", "type": "template"},
-    {"path": "templates/masonry.hbs", "type": "template"},
-    {"path": "templates/partials/project-card.hbs", "type": "partial"},
-    {"path": "templates/partials/project-tile.hbs", "type": "partial"}
-  ],
-  "itemSchema": {
-    "type": "object",
-    "properties": {
-      "title": {
-        "type": "string",
-        "title": "Project Title"
-      },
-      "client": {
-        "type": "string",
-        "title": "Client Name"
-      },
-      "year": {
-        "type": "number",
-        "title": "Project Year",
-        "minimum": 1900,
-        "maximum": 2100
-      },
-      "featured_image": {
-        "type": "string",
-        "title": "Featured Image",
-        "description": "Main project image for listings"
-      },
-      "project_url": {
-        "type": "string",
-        "format": "uri",
-        "title": "Project URL",
-        "description": "Link to live project"
-      },
-      "github_url": {
-        "type": "string",
-        "format": "uri", 
-        "title": "GitHub URL",
-        "description": "Link to source code"
-      },
-      "gallery": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "title": "Project Gallery",
-        "description": "Additional project images"
-      },
-      "technologies": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "title": "Technologies Used",
-        "uniqueItems": true
-      },
-      "categories": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "title": "Project Categories",
-        "uniqueItems": true
-      },
-      "status": {
-        "type": "string",
-        "title": "Project Status",
-        "enum": ["completed", "in-progress", "concept"],
-        "default": "completed"
-      },
-      "featured": {
-        "type": "boolean",
-        "title": "Featured Project",
-        "default": false
-      }
-    },
-    "required": ["title"]
-  },
-  "layouts": {
-    "grid": {
-      "name": "Project Grid",
-      "description": "Grid layout showing projects as cards",
-      "template": "grid.hbs",
-      "display_options": {
-        "columns": {
-          "name": "Grid Columns",
-          "default": "three",
-          "options": {
-            "two": {
-              "name": "2 Columns",
-              "description": "Two projects per row"
-            },
-            "three": {
-              "name": "3 Columns", 
-              "description": "Three projects per row"
-            },
-            "four": {
-              "name": "4 Columns",
-              "description": "Four projects per row"
-            }
-          }
-        }
-      }
-    },
-    "showcase": {
-      "name": "Featured Showcase",
-      "description": "Large format showcase for featured projects",
-      "template": "showcase.hbs",
-      "maxItems": 3
-    },
-    "masonry": {
-      "name": "Masonry Layout",
-      "description": "Pinterest-style masonry layout",
-      "template": "masonry.hbs"
-    }
-  },
-  "defaultSort": {
-    "field": "year",
-    "order": "desc"
-  }
-}
-
-================================================================================
-
-File: collection-types/portfolio/templates/masonry.hbs
-{{!-- Portfolio Masonry Template --}}
-<div class="portfolio-masonry">
-  <div class="masonry-header">
-    <h1>{{pageTitle}}</h1>
-    {{#if page.excerpt}}
-      <p class="masonry-description">{{page.excerpt}}</p>
-    {{/if}}
-  </div>
-
-  {{#if collectionItems}}
-    <div class="masonry-grid" data-masonry='{"itemSelector": ".masonry-item", "columnWidth": ".masonry-sizer", "percentPosition": true}'>
-      <!-- Masonry grid sizer for responsive columns -->
-      <div class="masonry-sizer"></div>
-      
-      {{#each collectionItems}}
-        <div class="masonry-item">
-          {{> project-tile this}}
-        </div>
-      {{/each}}
-    </div>
-  {{else}}
-    <div class="no-masonry-projects">
-      <p>No projects found.</p>
-    </div>
-  {{/if}}
-</div>
-
-<script>
-// Initialize Masonry layout (if Masonry.js is available)
-document.addEventListener('DOMContentLoaded', function() {
-  if (typeof Masonry !== 'undefined') {
-    const grid = document.querySelector('.masonry-grid');
-    if (grid) {
-      new Masonry(grid, {
-        itemSelector: '.masonry-item',
-        columnWidth: '.masonry-sizer',
-        percentPosition: true
-      });
-    }
-  }
-});
-</script>
-
-================================================================================
-
-File: collection-types/portfolio/templates/grid.hbs
-{{!-- Portfolio Grid Template --}}
-<div class="portfolio-grid">
-  <div class="portfolio-header">
-    <h1>{{pageTitle}}</h1>
-    {{#if page.excerpt}}
-      <p class="portfolio-description">{{page.excerpt}}</p>
-    {{/if}}
-  </div>
-
-  {{#if collectionItems}}
-    <div class="projects-grid {{#if displayOptions.columns}}grid-{{displayOptions.columns}}{{else}}grid-three{{/if}}">
-      {{#each collectionItems}}
-        {{> project-card this}}
-      {{/each}}
-    </div>
-  {{else}}
-    <div class="no-projects">
-      <p>No projects found.</p>
-    </div>
-  {{/if}}
-</div>
-
-================================================================================
-
-File: collection-types/portfolio/templates/showcase.hbs
-{{!-- Portfolio Showcase Template --}}
-<section class="portfolio-showcase">
-  <div class="showcase-header">
-    <h2>{{pageTitle}}</h2>
-    {{#if page.excerpt}}
-      <p class="showcase-description">{{page.excerpt}}</p>
-    {{/if}}
-  </div>
-
-  {{#if collectionItems}}
-    <div class="showcase-projects">
-      {{#each collectionItems}}
-        <article class="showcase-project">
-          {{#if frontmatter.featured_image}}
-            <div class="showcase-image">
-              <a href="{{getUrl this}}">
-                {{image frontmatter.featured_image alt=frontmatter.title width=800 height=500 crop="fill"}}
-              </a>
-              {{#if frontmatter.featured}}
-                <span class="featured-badge">Featured</span>
-              {{/if}}
-            </div>
-          {{/if}}
-          
-          <div class="showcase-content">
-            <header class="showcase-project-header">
-              <h3 class="showcase-title">
-                <a href="{{getUrl this}}">{{frontmatter.title}}</a>
-              </h3>
-              
-              <div class="showcase-meta">
-                {{#if frontmatter.client}}
-                  <span class="client">{{frontmatter.client}}</span>
-                {{/if}}
-                {{#if frontmatter.year}}
-                  <span class="year">{{frontmatter.year}}</span>
-                {{/if}}
-              </div>
-            </header>
-            
-            {{#if content}}
-              <div class="showcase-description">
-                {{markdown (truncate content 200)}}
-              </div>
-            {{/if}}
-            
-            {{#if frontmatter.technologies}}
-              <div class="showcase-technologies">
-                <strong>Technologies:</strong>
-                {{#each frontmatter.technologies}}
-                  <span class="tech-tag">{{this}}</span>
-                {{/each}}
-              </div>
-            {{/if}}
-            
-            <div class="showcase-links">
-              <a href="{{getUrl this}}" class="view-project">View Project</a>
-              
-              {{#if frontmatter.project_url}}
-                <a href="{{frontmatter.project_url}}" class="external-link" target="_blank" rel="noopener">
-                  Live Site ↗
-                </a>
-              {{/if}}
-              
-              {{#if frontmatter.github_url}}
-                <a href="{{frontmatter.github_url}}" class="external-link" target="_blank" rel="noopener">
-                  GitHub ↗
-                </a>
-              {{/if}}
-            </div>
-          </div>
-        </article>
-      {{/each}}
-    </div>
-  {{else}}
-    <div class="no-showcase-projects">
-      <p>No featured projects available.</p>
-    </div>
-  {{/if}}
-</section>
-
-================================================================================
-
-File: collection-types/portfolio/templates/partials/project-tile.hbs
-{{!-- Project Tile Partial (for masonry layout) --}}
-<article class="project-tile">
-  {{#if frontmatter.featured_image}}
-    <div class="tile-image">
-      <a href="{{getUrl this}}">
-        {{image frontmatter.featured_image alt=frontmatter.title width=300 crop="fit"}}
-      </a>
-    </div>
-  {{/if}}
-  
-  <div class="tile-content">
-    <h4 class="tile-title">
-      <a href="{{getUrl this}}">{{frontmatter.title}}</a>
-    </h4>
-    
-    {{#if frontmatter.client}}
-      <p class="tile-client">{{frontmatter.client}}</p>
-    {{/if}}
-    
-    {{#if content}}
-      <p class="tile-excerpt">{{truncate (stripHtml content) 80}}</p>
-    {{/if}}
-    
-    <div class="tile-footer">
-      {{#if frontmatter.year}}
-        <span class="tile-year">{{frontmatter.year}}</span>
-      {{/if}}
-      
-      {{#if frontmatter.technologies}}
-        <div class="tile-tech">
-          {{#each (slice frontmatter.technologies 0 3)}}
-            <span class="mini-tech-tag">{{this}}</span>
-          {{/each}}
-          {{#if (gt frontmatter.technologies.length 3)}}
-            <span class="tech-more">+{{subtract frontmatter.technologies.length 3}}</span>
-          {{/if}}
-        </div>
-      {{/if}}
-    </div>
-  </div>
-</article>
-
-================================================================================
-
-File: collection-types/portfolio/templates/partials/project-card.hbs
-{{!-- Project Card Partial --}}
-<article class="project-card">
-  {{#if frontmatter.featured_image}}
-    <div class="project-image">
-      <a href="{{getUrl this}}">
-        {{image frontmatter.featured_image alt=frontmatter.title width=400 height=300 crop="fill"}}
-      </a>
-      
-      {{#if frontmatter.featured}}
-        <span class="featured-badge">Featured</span>
-      {{/if}}
-      
-      {{#if frontmatter.status}}
-        <span class="status-badge status-{{frontmatter.status}}">{{frontmatter.status}}</span>
-      {{/if}}
-      
-      <div class="project-overlay">
-        <div class="project-links">
-          {{#if frontmatter.project_url}}
-            <a href="{{frontmatter.project_url}}" class="overlay-link live-link" target="_blank" rel="noopener" title="View Live Site">
-              🔗
-            </a>
-          {{/if}}
-          
-          {{#if frontmatter.github_url}}
-            <a href="{{frontmatter.github_url}}" class="overlay-link github-link" target="_blank" rel="noopener" title="View Source Code">
-              📁
-            </a>
-          {{/if}}
-        </div>
-      </div>
-    </div>
-  {{/if}}
-  
-  <div class="project-content">
-    <header class="project-header">
-      <h3 class="project-title">
-        <a href="{{getUrl this}}">{{frontmatter.title}}</a>
-      </h3>
-      
-      <div class="project-meta">
-        {{#if frontmatter.client}}
-          <span class="client">{{frontmatter.client}}</span>
-        {{/if}}
-        {{#if frontmatter.year}}
-          <span class="year">{{frontmatter.year}}</span>
-        {{/if}}
-      </div>
-    </header>
-    
-    {{#if content}}
-      <p class="project-excerpt">{{truncate (stripHtml content) 120}}</p>
-    {{/if}}
-    
-    {{#if frontmatter.technologies}}
-      <div class="project-technologies">
-        {{#each frontmatter.technologies}}
-          <span class="tech-tag">{{this}}</span>
-        {{/each}}
-      </div>
-    {{/if}}
-    
-    {{#if frontmatter.categories}}
-      <div class="project-categories">
-        {{#each frontmatter.categories}}
-          <span class="category-tag">{{this}}</span>
-        {{/each}}
-      </div>
-    {{/if}}
-  </div>
-</article>
-
 ================================================================================
 
 File: layouts/page/layout.json
@@ -861,6 +76,417 @@ File: layouts/page/index.hbs
         <hr/>
         {{{render_collection contentFile.frontmatter.layoutConfig}}}
     {{/if}}
+</article>
+
+================================================================================
+
+File: layouts/blog-listing/layout.json
+{
+  "name": "Blog Listing",
+  "version": "1.0.0",
+  "description": "Displays a paginated list of items from a 'Blog' collection.",
+  "layoutType": "collection",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" },
+    { "path": "partials/post-card.hbs", "type": "partial" }
+  ],
+  "schema": {
+    "title": "Blog Listing Options",
+    "type": "object",
+    "properties": {
+      "listing_title": {
+        "type": "string",
+        "title": "Custom Page Title",
+        "description": "Override the default page title for this listing."
+      },
+      "listing_intro": {
+        "type": "string",
+        "title": "Introductory Text",
+        "description": "A paragraph of text to display above the list of posts."
+      }
+    }
+  },
+  "uiSchema": {
+    "listing_intro": {
+      "ui:widget": "textarea"
+    }
+  },
+  "itemSchema": {
+    "title": "Blog Post",
+    "description": "This layout displays items that conform to the 'Blog Post' schema.",
+    "type": "object",
+    "properties": {
+      "title": { "type": "string" },
+      "date": { "type": "string", "format": "date" },
+      "author": { "type": "string" },
+      "excerpt": { "type": "string" },
+      "tags": { "type": "array", "items": { "type": "string" } },
+      "featured_image": { "type": "string" }
+    }
+  }
+}
+
+================================================================================
+
+File: layouts/blog-listing/index.hbs
+{{!
+  Template for the blog listing page.
+  It receives `collectionItems` and `pagination` data from the page resolver.
+}}
+<div class="mw8 ph3 pv4 center">
+    <header class="page-header mb4 tc">
+        {{! Use the custom listing title if it exists, otherwise fall back to the page's main title }}
+        <h1 class="f2 lh-title">{{contentFile.frontmatter.listing_title}}</h1>
+        {{#if contentFile.frontmatter.listing_intro}}
+            <p class="f5 mid-gray measure-wide center">{{contentFile.frontmatter.listing_intro}}</p>
+        {{/if}}
+    </header>
+
+    {{#if collectionItems}}
+        <div class="post-grid grid gap4">
+            {{! Loop through each item provided by the page resolver }}
+            {{#each collectionItems}}
+                {{! Render a partial for each item. This keeps the code clean. }}
+                {{! The partial name is namespaced to this layout: 'blog-listing/...' }}
+                {{> blog-listing/partials/post-card this}}
+            {{/each}}
+        </div>
+
+        {{! Render the pagination controls if pagination data is available }}
+        {{#if pagination}}
+            <div class="pagination-controls mt5">
+                {{{pager pagination}}}
+            </div>
+        {{/if}}
+    {{else}}
+        <div class="tc pv5">
+            <p class="mid-gray">No blog posts have been published yet.</p>
+        </div>
+    {{/if}}
+</div>
+
+<style>
+.post-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+</style>
+
+================================================================================
+
+File: layouts/blog-listing/partials/post-card.hbs
+{{!
+  Partial for a single blog post card.
+  'this' refers to one item from the `collectionItems` array.
+}}
+<article class="post-card flex flex-column br2 ba b--black-10">
+    {{#if this.frontmatter.featured_image}}
+        <a href="{{getCollectionItemUrl this}}" class="db aspect-ratio aspect-ratio--16x9">
+            {{{image src=this.frontmatter.featured_image alt=this.frontmatter.title class="aspect-ratio--object"}}}
+        </a>
+    {{/if}}
+
+    <div class="pa3 flex-auto flex flex-column">
+        <h3 class="f4 lh-title mv0">
+            <a href="{{getCollectionItemUrl this}}" class="link black hover-blue">{{this.frontmatter.title}}</a>
+        </h3>
+        <p class="f6 mid-gray mv2">
+            {{formatDate this.frontmatter.date}}
+        </p>
+        {{#if this.frontmatter.excerpt}}
+            <p class="f6 lh-copy mt2 mb3 flex-auto">
+                {{this.frontmatter.excerpt}}
+            </p>
+        {{/if}}
+        <a href="{{getCollectionItemUrl this}}" class="link blue f6 fw6 mt-auto">Read More →</a>
+    </div>
+</article>
+
+================================================================================
+
+File: layouts/blog-post/layout.json
+{
+  "name": "Blog Post",
+  "version": "1.0.0",
+  "description": "The standard layout for an individual blog post article.",
+  "layoutType": "single",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" }
+  ],
+  "schema": {
+    "title": "Blog Post Fields",
+    "type": "object",
+    "properties": {
+      "author": {
+        "type": "string",
+        "title": "Author Name"
+      },
+      "excerpt": {
+        "type": "string",
+        "title": "Excerpt",
+        "description": "A short summary of the post, used in listings and social media previews."
+      },
+      "tags": {
+        "type": "array",
+        "title": "Tags",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "uiSchema": {
+    "excerpt": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 4
+      }
+    }
+  }
+}
+
+================================================================================
+
+File: layouts/blog-post/index.hbs
+{{! 
+  Template for a single blog post.
+  It receives the full `pageContext` object, which includes `contentFile`.
+}}
+<article class="mw8 ph3 pv4 center prose">
+    <div class="mw7 center">
+        {{! Display the banner image if one is set in the frontmatter }}
+        {{#if images.banner}}
+            <div class="banner-image mb4">
+                <img src="{{images.banner.url}}" class="w-100" alt="{{contentFile.frontmatter.title}} banner">
+            </div>
+        {{/if}}
+
+        {{! Post Header: Title and Metadata }}
+        <header class="post-header">
+            <h1 class="f1 lh-title mb2">{{contentFile.frontmatter.title}}</h1>
+            <div class="post-meta f6 mid-gray mb4">
+                {{#if contentFile.frontmatter.date}}
+                    <time datetime="{{contentFile.frontmatter.date}}">
+                        Published on {{formatDate contentFile.frontmatter.date}}
+                    </time>
+                {{/if}}
+                {{#if contentFile.frontmatter.author}}
+                    <span class="mh2">|</span>
+                    <span>By {{contentFile.frontmatter.author}}</span>
+                {{/if}}
+            </div>
+        </header>
+
+        {{! The main content of the post, rendered from Markdown }}
+        <section class="post-content">
+            {{{markdown contentFile.content}}}
+        </section>
+
+        {{! Display tags at the bottom of the post }}
+        {{#if contentFile.frontmatter.tags}}
+            <footer class="post-footer mt5 bt b--black-10 pt3">
+                <p class="f6 fw6">Tagged In:</p>
+                <div class="tags-list">
+                    {{#each contentFile.frontmatter.tags}}
+                        <span class="dib bg-light-gray br2 pa2 mr2 mb2 f7">{{this}}</span>
+                    {{/each}}
+                </div>
+            </footer>
+        {{/if}}
+    </div>
+</article>
+
+================================================================================
+
+File: layouts/portfolio-project/layout.json
+{
+  "name": "Portfolio Project",
+  "version": "1.0.0",
+  "description": "The layout for a single, detailed portfolio project page.",
+  "layoutType": "single",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" }
+  ],
+  "schema": {
+    "title": "Portfolio Project Fields",
+    "type": "object",
+    "properties": {
+      "client": {
+        "type": "string",
+        "title": "Client Name"
+      },
+      "project_url": {
+        "type": "string",
+        "format": "uri",
+        "title": "Live Project URL"
+      },
+      "technologies": {
+        "type": "array",
+        "title": "Technologies Used",
+        "items": { "type": "string" }
+      },
+      "gallery": {
+        "type": "array",
+        "title": "Image Gallery",
+        "items": {
+          "type": "string",
+          "title": "Gallery Image"
+        }
+      }
+    }
+  },
+  "uiSchema": {
+    "gallery": {
+      "items": {
+        "ui:widget": "imageUploader"
+      }
+    }
+  }
+}
+
+================================================================================
+
+File: layouts/portfolio-project/index.hbs
+<article class="mw8 ph3 pv4 center">
+    <div class="project-details">
+        {{! Project Header }}
+        <header class="mb4">
+            <h1 class="f1 lh-title mb1">{{contentFile.frontmatter.title}}</h1>
+            {{#if contentFile.frontmatter.client}}
+                <h2 class="f4 fw4 mid-gray mt0">Client: {{contentFile.frontmatter.client}}</h2>
+            {{/if}}
+        </header>
+
+        {{! Featured Image }}
+        {{#if images.featured}}
+            <figure class="featured-image-wrapper mv4">
+                <img src="{{images.featured.url}}" class="db center mw-100" alt="{{contentFile.frontmatter.title}}">
+            </figure>
+        {{/if}}
+
+        {{! Main Project Description }}
+        <div class="prose">
+            {{{markdown contentFile.content}}}
+        </div>
+
+        {{! Project Metadata Sidebar }}
+        <aside class="mt5">
+            {{#if contentFile.frontmatter.project_url}}
+                <a href="{{contentFile.frontmatter.project_url}}" target="_blank" rel="noopener" class="db link br2 bg-blue white tc pa3 f5 fw6 mb3">
+                    View Live Project
+                </a>
+            {{/if}}
+
+            {{#if contentFile.frontmatter.technologies}}
+                <div class="ba b--black-10 br2 pa3">
+                    <h4 class="f6 fw6 mt0 mb3">Technologies Used</h4>
+                    <ul class="list pa0 ma0">
+                        {{#each contentFile.frontmatter.technologies}}
+                            <li class="dib mr2 mb2"><span class="f7 br-pill bg-light-gray pa2">{{this}}</span></li>
+                        {{/each}}
+                    </ul>
+                </div>
+            {{/if}}
+        </aside>
+
+        {{! Image Gallery Section }}
+        {{#if contentFile.frontmatter.gallery}}
+            <section class="gallery mt5">
+                <h3 class="f3">Project Gallery</h3>
+                <div class="gallery-grid grid gap3">
+                    {{#each contentFile.frontmatter.gallery}}
+                        <div class="gallery-item">
+                            {{{image src=this alt="Project gallery image"}}}
+                        </div>
+                    {{/each}}
+                </div>
+            </section>
+        {{/if}}
+    </div>
+</article>
+
+<style>
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+</style>
+
+================================================================================
+
+File: layouts/portfolio-grid/layout.json
+{
+  "name": "Portfolio Grid",
+  "version": "1.0.0",
+  "description": "Displays a visual grid of items from a 'Portfolio' collection.",
+  "layoutType": "collection",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" },
+    { "path": "partials/project-card.hbs", "type": "partial" }
+  ],
+  "itemSchema": {
+    "title": "Portfolio Project",
+    "description": "This layout displays items that conform to the 'Portfolio Project' schema.",
+    "type": "object",
+    "properties": {
+      "title": { "type": "string" },
+      "client": { "type": "string" },
+      "featured_image": { "type": "string" }
+    }
+  }
+}
+
+================================================================================
+
+File: layouts/portfolio-grid/index.hbs
+<div class="mw9 ph3 pv4 center">
+    <header class="page-header mb4 tc">
+        <h1 class="f2 lh-title">{{contentFile.frontmatter.title}}</h1>
+    </header>
+
+    {{#if collectionItems}}
+        <div class="project-grid grid gap4">
+            {{#each collectionItems}}
+                {{> portfolio-grid/partials/project-card this}}
+            {{/each}}
+        </div>
+    {{else}}
+        <div class="tc pv5">
+            <p class="mid-gray">No portfolio projects have been added yet.</p>
+        </div>
+    {{/if}}
+</div>
+
+<style>
+.project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+</style>
+
+================================================================================
+
+File: layouts/portfolio-grid/partials/project-card.hbs
+<article class="project-card br2 ba b--black-10 overflow-hidden">
+    {{#if this.frontmatter.featured_image}}
+        <a href="{{getCollectionItemUrl this}}" class="db aspect-ratio aspect-ratio--4x3">
+            {{{image src=this.frontmatter.featured_image alt=this.frontmatter.title class="aspect-ratio--object"}}}
+        </a>
+    {{/if}}
+    <div class="pa3">
+        <h3 class="f5 lh-title mv0">
+            <a href="{{getCollectionItemUrl this}}" class="link black hover-blue">{{this.frontmatter.title}}</a>
+        </h3>
+        {{#if this.frontmatter.client}}
+            <p class="f6 mid-gray mv1">
+                {{this.frontmatter.client}}
+            </p>
+        {{/if}}
+    </div>
 </article>
 
 ================================================================================
@@ -1548,6 +1174,975 @@ File: themes/default/partials/header.hbs
     </nav>
 </div>
 </div>
+
+================================================================================
+
+File: themes/docs/theme.json
+{
+  "name": "Documentation",
+  "version": "1.0.0",
+  "files": [
+    { "path": "theme.json", "type": "manifest" },
+    { "path": "base.hbs", "type": "base" },
+    { "path": "css/theme.css", "type": "stylesheet" },
+    { "path": "partials/head.hbs", "type": "partial", "name": "head" },
+    { "path": "partials/header.hbs", "type": "partial", "name": "header" },
+    { "path": "partials/sidebar.hbs", "type": "partial", "name": "sidebar" },
+    { "path": "partials/footer.hbs", "type": "partial", "name": "footer" }
+  ],
+  "appearanceSchema": {
+    "title": "Theme Customization",
+    "description": "Customize the colors, fonts and layout of your documentation site.",
+    "type": "object",
+    "properties": {
+      "color_background": {
+        "type": "string",
+        "title": "Page Background Color",
+        "format": "color",
+        "default": "#ffffff"
+      },
+      "color_text": {
+        "type": "string",
+        "title": "Body Text Color",
+        "format": "color",
+        "default": "#333333"
+      },
+      "color_headings": {
+        "type": "string",
+        "title": "Headings Color",
+        "format": "color",
+        "default": "#111111"
+      },
+      "color_primary": {
+        "type": "string",
+        "title": "Primary Accent Color",
+        "format": "color",
+        "default": "#3b82f6"
+      },
+      "color_borders": {
+        "type": "string",
+        "title": "Borders Color",
+        "format": "color",
+        "default": "#e5e5e5"
+      },
+      "color_sidebar": {
+        "type": "string",
+        "title": "Sidebar Background Color",
+        "format": "color",
+        "default": "#fff"
+      },
+      "font_headings": {
+        "type": "string",
+        "title": "Headings Font Family",
+        "description": "Choose the font family for all headlines.",
+        "enum": [
+          "var(--font-stack-serif)",
+          "var(--font-stack-sans)",
+          "var(--font-stack-mono)"
+        ],
+        "enumNames": [
+          "Serif (System)",
+          "Sans-Serif (System)",
+          "Monospace (System)"
+        ],
+        "default": "var(--font-stack-serif)"
+      },
+      "font_text": {
+        "type": "string",
+        "title": "Body Text Font Family",
+        "description": "Choose the font family for all paragraphs and lists.",
+        "enum": [
+          "var(--font-stack-serif)",
+          "var(--font-stack-sans)",
+          "var(--font-stack-mono)"
+        ],
+        "enumNames": [
+          "Serif (System)",
+          "Sans-Serif (System)",
+          "Monospace (System)"
+        ],
+        "default": "var(--font-stack-sans)"
+      },
+      "sidebar_width": {
+        "type": "string",
+        "title": "Sidebar Width",
+        "description": "Choose the width of the navigation sidebar.",
+        "enum": ["240px", "280px", "320px"],
+        "enumNames": ["Narrow (240px)", "Medium (280px)", "Wide (320px)"],
+        "default": "280px"
+      }
+    }
+  },
+  "themeDataSchema": {
+    "type": "object",
+    "properties": {
+      "header_content": {
+        "type": "string",
+        "title": "Header Content",
+        "description": "Optional HTML content for the header bar",
+        "format": "textarea",
+        "default": ""
+      },
+      "footer_content": {
+        "type": "string",
+        "title": "Footer Content",
+        "description": "Optional HTML content for the footer",
+        "format": "textarea",
+        "default": "© 2024 Documentation Site"
+      }
+    }
+  }
+}
+
+================================================================================
+
+File: themes/docs/base.hbs
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {{> head headContext}}
+</head>
+<body 
+  x-data="{
+    sidebarOpen: false,
+    expandedSections: [],
+    currentPath: window.location.pathname,
+    navData: [
+      {{#each navLinks}}
+        {
+          href: '{{this.href}}',
+          children: [
+            {{#each this.children}}
+              '{{this.href}}'{{#unless @last}},{{/unless}}
+            {{/each}}
+          ]
+        }{{#unless @last}},{{/unless}}
+      {{/each}}
+    ],
+    toggleSection(id) {
+      if (this.expandedSections.includes(id)) {
+        this.expandedSections = this.expandedSections.filter(item => item !== id);
+      } else {
+        this.expandedSections.push(id);
+      }
+    },
+    // Normalize URL for consistent comparison
+    normalizeUrl: function(url) {
+      if (!url) return '/';
+      
+      // Remove leading './' and convert to absolute path
+      var cleaned = url.replace(/^\.\//, '/');
+      
+      // Remove index.html and trailing slashes, but keep root as '/'
+      cleaned = cleaned.replace(/\/index\.html$/, '/');
+      cleaned = cleaned.replace(/\/$/, '') || '/';
+      
+      return cleaned;
+    },
+    
+    // Check if a navigation href is active (matches current page)
+    isActive: function(href) {
+      if (!href) return false;
+      var cleanHref = this.normalizeUrl(href);
+      var cleanCurrent = this.normalizeUrl(this.currentPath);
+      return cleanHref === cleanCurrent;
+    },
+    
+    // Check if current path is within a section (exact match or child)
+    isInSection: function(sectionHref, children) {
+      var currentNormalized = this.normalizeUrl(this.currentPath);
+      var sectionNormalized = this.normalizeUrl(sectionHref);
+      
+      // Check if we're on the section page itself
+      if (currentNormalized === sectionNormalized) {
+        return true;
+      }
+      
+      // Check if we're on any child page
+      if (children && children.length > 0) {
+        for (var i = 0; i < children.length; i++) {
+          var childNormalized = this.normalizeUrl(children[i]);
+          if (currentNormalized === childNormalized) {
+            return true;
+          }
+          
+          // Also check if current path starts with child path (for nested children)
+          if (currentNormalized.startsWith(childNormalized + '/')) {
+            return true;
+          }
+        }
+      }
+      
+      // Check if current path starts with section path (for nested sections)
+      if (sectionNormalized !== '/' && currentNormalized.startsWith(sectionNormalized + '/')) {
+        return true;
+      }
+      
+      return false;
+    },
+    
+    // Auto-expand all sections by default
+    autoExpandSections: function() {
+      // Clear existing expanded sections first
+      this.expandedSections = [];
+      
+      // Go through each navigation section and expand all that have children
+      for (var i = 0; i < this.navData.length; i++) {
+        var section = this.navData[i];
+        
+        // Skip sections without children (no accordion needed)
+        if (!section.children || section.children.length === 0) {
+          continue;
+        }
+        
+        // Expand all sections with children by default
+        var sectionId = i.toString();
+        
+        // Add to expanded sections (both desktop and mobile versions)
+        this.expandedSections.push(sectionId);
+        this.expandedSections.push('mobile-' + sectionId);
+      }
+    }
+  }"
+  x-init="autoExpandSections()"
+>
+{{!-- Header --}}
+    {{> header}}
+  {{!-- Sidebar Navigation --}}
+  {{> sidebar}}
+
+  {{!-- Main Content Area --}}
+  <div class="main-content">
+    {{!-- Header --}}
+    {{> header}}
+
+    {{!-- Page Content --}}
+    <main class="content">
+      <div class="prose">
+        {{{body}}}
+      </div>
+    </main>
+
+    {{!-- Footer --}}
+    {{> footer}}
+  </div>
+</body>
+</html>
+
+================================================================================
+
+File: themes/docs/css/theme.css
+/* Documentation Theme Styles */
+/* Modern Documentation Theme inspired by Starlight, MkDocs, and Docsify */
+
+/* ==========================================================================
+   1. CORE THEME DEFINITIONS & DEFAULTS
+   - CSS variables that will be overridden by the theme system
+   ========================================================================== */
+:root {
+  /* --- FONT STACKS (Theme-Specific Resources) --- */
+  --font-stack-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  --font-stack-serif: Iowan Old Style, 'Apple Garamond', Baskerville, 'Times New Roman', Droid Serif, Times, 'Source Serif Pro', serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  --font-stack-mono: 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+  /* --- DEFAULT COLOR PALETTE --- */
+  /* These match the theme.json manifest exactly */
+  --color-background: #ffffff;
+  --color-text: #333333;
+  --color-headings: #111111;
+  --color-primary: #3b82f6;
+  --color-borders: #e5e5e5;
+  --color-sidebar: #f8f9fa;
+
+  /* --- DEFAULT FONT ASSIGNMENTS --- */
+  --font-headings: var(--font-stack-sans);
+  --font-text: var(--font-stack-sans);
+  
+  /* --- LAYOUT VARIABLES --- */
+  --sidebar-width: 280px; /* Default medium width - overridden by styleOverrides */
+  --header-height: 60px;
+  --content-max-width: 1200px;
+  
+  /* --- TRANSITIONS --- */
+  --transition-fast: 0.15s ease;
+  --transition-medium: 0.3s ease;
+}
+
+/* ==========================================================================
+   2. BASE & RESET STYLES
+   ========================================================================== */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-text);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+/* Base link styles */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: opacity var(--transition-fast);
+}
+
+a:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   3. LAYOUT STRUCTURE
+   ========================================================================== */
+
+/* Header - Full width across the top */
+.header {
+  height: var(--header-height);
+  background-color: var(--color-background);
+  border-bottom: 1px solid var(--color-borders);
+  display: flex;
+  align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+}
+
+/* Header logo/title */
+.header-logo {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-headings);
+  text-decoration: none;
+  margin-left: 0.5rem;
+}
+
+.header-logo:hover {
+  text-decoration: none;
+  opacity: 0.8;
+}
+
+/* Sidebar - Fixed below header */
+.sidebar {
+  position: fixed;
+  top: var(--header-height);
+  left: 0;
+  width: var(--sidebar-width);
+  height: calc(100vh - var(--header-height));
+  background-color: var(--color-sidebar);
+  border-right: 1px solid var(--color-borders);
+  overflow-y: auto;
+  z-index: 30;
+  transform: translateX(0);
+  transition: transform var(--transition-medium);
+}
+
+/* Hide sidebar on mobile by default */
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    top: 0;
+    height: 100vh;
+  }
+}
+
+/* Main content area */
+.main-content {
+  margin-left: var(--sidebar-width);
+  margin-top: var(--header-height);
+  min-height: calc(100vh - var(--header-height));
+  display: flex;
+  flex-direction: column;
+  transition: margin-left var(--transition-medium);
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+  }
+}
+
+/* Mobile menu button */
+.mobile-menu-button {
+  display: none;
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: var(--color-text);
+  border-radius: 4px;
+  transition: background-color var(--transition-fast);
+}
+
+.mobile-menu-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Content area */
+.content {
+  flex: 1;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: 2rem;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 1rem;
+  }
+}
+
+/* Footer */
+.footer {
+  border-top: 1px solid var(--color-borders);
+  background-color: var(--color-sidebar);
+  padding: 1.5rem;
+  margin-top: auto;
+}
+
+/* ==========================================================================
+   4. SIDEBAR NAVIGATION (using Tachyons + minimal custom CSS)
+   ========================================================================== */
+
+/* Active navigation state - uses theme colors */
+.nav-active {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+  font-weight: 500;
+}
+
+.nav-active:hover {
+  text-decoration: none !important;
+  opacity: 0.9;
+}
+
+/* Toggle button expanded state for accordion */
+.nav-toggle-expanded svg {
+  transform: rotate(90deg);
+}
+
+/* ==========================================================================
+   5. MOBILE DRAWER
+   ========================================================================== */
+
+/* Mobile backdrop */
+.mobile-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 25;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-medium), visibility var(--transition-medium);
+}
+
+.mobile-backdrop.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Show sidebar on mobile when open */
+@media (max-width: 768px) {
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+}
+
+/* Close button in mobile sidebar */
+.sidebar-close {
+  display: none;
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: var(--color-text);
+  border-radius: 4px;
+  transition: background-color var(--transition-fast);
+}
+
+.sidebar-close:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+@media (max-width: 768px) {
+  .sidebar-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ==========================================================================
+   6. PROSE CONTENT STYLES
+   ========================================================================== */
+
+.prose {
+  line-height: 1.7;
+}
+
+/* Headings */
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  font-family: var(--font-headings);
+  color: var(--color-headings);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 2rem 0 1rem 0;
+}
+
+.prose h1 { 
+  font-size: 2.5rem; 
+  margin-top: 0;
+  border-bottom: 1px solid var(--color-borders);
+  padding-bottom: 0.5rem;
+}
+.prose h2 { 
+  font-size: 1.75rem;
+  border-bottom: 1px solid var(--color-borders);
+  padding-bottom: 0.25rem;
+}
+.prose h3 { font-size: 1.375rem; }
+.prose h4 { font-size: 1.125rem; }
+.prose h5, .prose h6 { font-size: 1rem; }
+
+/* Paragraphs and text */
+.prose p {
+  margin-bottom: 1.25rem;
+  font-size: 1rem;
+}
+
+.prose a {
+  font-weight: 500;
+  color: var(--color-primary);
+}
+
+/* Lists */
+.prose ul,
+.prose ol {
+  padding-left: 1.5rem;
+  margin: 1rem 0;
+}
+
+.prose li {
+  margin-bottom: 0.5rem;
+}
+
+/* Blockquotes */
+.prose blockquote {
+  margin: 1.5rem 0;
+  padding: 1rem 1.5rem;
+  border-left: 4px solid var(--color-primary);
+  background-color: rgba(59, 130, 246, 0.05);
+  font-style: italic;
+}
+
+.prose blockquote p {
+  margin: 0;
+}
+
+/* Code */
+.prose :not(pre) > code {
+  font-family: var(--font-stack-mono);
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--color-text);
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+
+.prose pre {
+  font-family: var(--font-stack-mono);
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  padding: 1.5rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.prose pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Tables */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.9rem;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid var(--color-borders);
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.prose th {
+  background-color: var(--color-sidebar);
+  font-weight: 600;
+}
+
+/* Images */
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 1rem 0;
+}
+
+/* HR */
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--color-borders);
+  margin: 2rem 0;
+}
+
+/* ==========================================================================
+   7. UTILITY CLASSES
+   ========================================================================== */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Alpine.js transitions */
+.slide-enter {
+  transform: translateX(-100%);
+}
+
+.slide-enter-to {
+  transform: translateX(0);
+}
+
+.slide-leave {
+  transform: translateX(0);
+}
+
+.slide-leave-to {
+  transform: translateX(-100%);
+}
+
+.fade-enter {
+  opacity: 0;
+}
+
+.fade-enter-to {
+  opacity: 1;
+}
+
+.fade-leave {
+  opacity: 1;
+}
+
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* ==========================================================================
+   8. RESPONSIVE DESIGN
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+  .content {
+    max-width: none;
+    margin: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .prose h1 {
+    font-size: 1.875rem;
+  }
+  
+  .prose h2 {
+    font-size: 1.5rem;
+  }
+  
+  .prose h3 {
+    font-size: 1.25rem;
+  }
+  
+  .prose table {
+    font-size: 0.8rem;
+  }
+  
+  .prose th,
+  .prose td {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding: 1rem 0.75rem;
+  }
+  
+  .prose pre {
+    padding: 1rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* ==========================================================================
+   9. TACHYONS OVERRIDES & EXTENSIONS
+   ========================================================================== */
+
+/* Additional color utilities using theme variables */
+.color-primary { color: var(--color-primary); }
+.color-text { color: var(--color-text); }
+.color-headings { color: var(--color-headings); }
+.bg-sidebar { background-color: var(--color-sidebar); }
+.border-theme { border-color: var(--color-borders); }
+
+/* Theme-aware hover states */
+.hover-bg-theme:hover { background-color: rgba(0, 0, 0, 0.05); }
+.hover-color-primary:hover { color: var(--color-primary); }
+
+================================================================================
+
+File: themes/docs/partials/footer.hbs
+{{!-- Footer with optional content --}}
+{{#if (themeData 'footer_content')}}
+<footer class="footer">
+  <div style="text-align: center;">
+    {{{themeData 'footer_content'}}}
+  </div>
+</footer>
+{{/if}}
+
+================================================================================
+
+File: themes/docs/partials/head.hbs
+{{! src/partials/head.hbs }}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{pageTitle}} | {{manifest.title}}</title>
+<link rel="canonical" href="{{canonicalUrl}}">
+
+{{!-- Description Meta Tag --}}
+{{#if contentFile.frontmatter.description}}
+    <meta name="description" content="{{contentFile.frontmatter.description}}">
+{{else if collectionNode.description}}
+    <meta name="description" content="{{collectionNode.description}}">
+{{else}}
+    <meta name="description" content="{{manifest.description}}">
+{{/if}}
+
+{{!-- Open Graph Tags (for Facebook, LinkedIn, etc.) --}}
+<meta property="og:title" content="{{pageTitle}}">
+{{#if contentFile.frontmatter.description}}
+    <meta property="og:description" content="{{contentFile.frontmatter.description}}">
+{{else}}
+    <meta property="og:description" content="{{manifest.description}}">
+{{/if}}
+<meta property="og:url" content="{{canonicalUrl}}">
+<meta property="og:site_name" content="{{manifest.title}}">
+<meta property="og:type" content="{{#if contentFile}}article{{else}}website{{/if}}">
+
+{{!-- Twitter Card Tags --}}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{pageTitle}}">
+{{#if contentFile.frontmatter.description}}
+    <meta name="twitter:description" content="{{contentFile.frontmatter.description}}">
+{{else}}
+    <meta name="twitter:description" content="{{manifest.description}}">
+{{/if}}
+
+{{#if contentFile.frontmatter.featured_image}}
+    <meta property="og:image" content="{{image_url src=contentFile.frontmatter.featured_image width=1200 height=630 crop='fill'}}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:image" content="{{image_url src=contentFile.frontmatter.featured_image width=1200 height=630 crop='fill'}}">
+{{/if}}
+
+
+{{!-- Favicon Placeholder - Users should replace these --}}
+{{#if faviconUrl}}
+    <link rel="icon" href="{{faviconUrl}}" sizes="any">
+    <link rel="apple-touch-icon" href="{{faviconUrl}}">
+{{else}}
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+{{/if}}
+
+ {{!-- STYLESHEETS --}}
+<link rel="stylesheet" href="https://unpkg.com/tachyons@4.12.0/css/tachyons.min.css"/>
+<link rel="stylesheet" href="{{#if @root.options.isExport}}{{@root.options.relativeAssetPath}}_site/themes/{{manifest.theme.name}}/css/theme.css{{else}}/themes/{{manifest.theme.name}}/css/theme.css{{/if}}">
+
+{{!-- Alpine.js for interactivity --}}
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+{{!-- This is where the user's custom choices are injected as CSS variables --}}
+{{{styleOverrides}}}
+
+================================================================================
+
+File: themes/docs/partials/header.hbs
+{{!-- Header bar with logo and mobile menu --}}
+<header class="header ph3">
+  {{!-- Mobile menu button --}}
+  <button 
+    class="mobile-menu-button"
+    @click="sidebarOpen = !sidebarOpen"
+    aria-label="Toggle navigation"
+  >
+    <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+      <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+    </svg>
+  </button>
+
+  {{!-- Site logo/title --}}
+  <a href="{{#if options.isExport}}./{{else}}/{{/if}}" class="header-logo">
+    {{manifest.title}}
+  </a>
+
+  {{!-- Header content --}}
+  {{#if (themeData 'header_content')}}
+  <div style="flex: 1; margin-left: 1.5rem;">
+    {{{themeData 'header_content'}}}
+  </div>
+  {{/if}}
+</header>
+
+================================================================================
+
+File: themes/docs/partials/sidebar.hbs
+{{!-- Documentation Sidebar Navigation --}}
+<nav 
+  class="sidebar"
+  :class="sidebarOpen ? 'mobile-open' : ''"
+>
+  {{!-- Close button for mobile --}}
+  <button 
+    class="sidebar-close"
+    @click="sidebarOpen = false"
+    aria-label="Close navigation"
+  >
+    <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+      <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+    </svg>
+  </button>
+
+  {{!-- Navigation tree --}}
+  <div class="pa3">
+    {{#each navLinks}}
+      {{#if this.children}}
+        {{!-- Parent item with children --}}
+        <div class="mb2">
+          <div class="flex items-center justify-between pa1 br2 hover-bg-black-05">
+            <a 
+              href="{{this.href}}" 
+              class="flex-auto link color-inherit no-underline b f5"
+              :class="isActive('{{this.href}}') ? 'nav-active' : ''"
+              @click="sidebarOpen = false"
+            >
+              {{this.label}}
+            </a>
+            <button
+              class="bn bg-transparent pointer br2 hover-bg-black-10 transition-transform"
+              :class="expandedSections.includes('{{@index}}') ? 'nav-toggle-expanded' : ''"
+              @click="toggleSection('{{@index}}')"
+              type="button"
+              aria-label="Toggle {{this.label}} submenu"
+            >
+              <svg class="w1 h1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 111.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+              </svg>
+            </button>
+          </div>
+          
+          {{!-- Children --}}
+          <div 
+            class="ml2 bl bw2 b--transparent"
+            x-show="expandedSections.includes('{{@index}}')"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 -translate-y-1"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 -translate-y-1"
+            style="border-color: var(--color-borders);"
+          >
+            {{#each this.children}}
+            <a 
+              href="{{this.href}}" 
+              class="db pv1 pl2 link color-inherit no-underline hover-bg-black-05 br2 f5 mb1"
+              :class="isActive('{{this.href}}') ? 'nav-active' : ''"
+              @click="sidebarOpen = false"
+            >
+              {{this.label}}
+            </a>
+            {{/each}}
+          </div>
+        </div>
+      {{else}}
+        {{!-- Single item without children --}}
+        <div class="mb2">
+          <a 
+            href="{{this.href}}" 
+            class="db pa1 b link color-inherit no-underline hover-bg-black-05 br2 f5"
+            :class="isActive('{{this.href}}') ? 'nav-active' : ''"
+            @click="sidebarOpen = false"
+          >
+            {{this.label}}
+          </a>
+        </div>
+      {{/if}}
+    {{/each}}
+  </div>
+</nav>
+
+{{!-- Mobile backdrop --}}
+<div 
+  class="mobile-backdrop"
+  :class="sidebarOpen ? 'active' : ''"
+  x-show="sidebarOpen"
+  @click="sidebarOpen = false"
+  x-transition:enter="transition ease-out duration-300"
+  x-transition:enter-start="opacity-0"
+  x-transition:enter-end="opacity-100"
+  x-transition:leave="transition ease-in duration-200"
+  x-transition:leave-start="opacity-100"
+  x-transition:leave-end="opacity-0"
+></div>
 
 ================================================================================
 

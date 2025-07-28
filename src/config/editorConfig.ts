@@ -1,5 +1,5 @@
 // src/config/editorConfig.ts
-import type { ThemeInfo, LayoutInfo } from '@/core/types';
+import type { ThemeInfo, LayoutInfo, BlockInfo } from '@/core/types';
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 
 /**
@@ -24,12 +24,7 @@ export const AUTOSAVE_DELAY = 2500;
 export const DEFAULT_PAGE_LAYOUT_PATH = 'page';
 
 /**
- * ============================================================================
- * UNIFIED LAYOUT DEFINITIONS
- * ============================================================================
- * This is now the single source of truth for all built-in content blueprints.
- * There is no longer a separate "Collection Types" system. Instead, Layouts
- * are distinguished by their `type` property:
+ * Layout definitions
  *
  * - `type: 'single'`: A blueprint for a single piece of content (e.g., a blog post).
  * - `type: 'collection'`: A blueprint for a page that displays a list of other
@@ -80,7 +75,7 @@ export const CORE_LAYOUTS: LayoutInfo[] = [
 ];
 
 /**
- * The master list of all built-in themes. This remains unchanged.
+ * The master list of all built-in themes. 
  */
 export const CORE_THEMES: ThemeInfo[] = [
   {
@@ -93,6 +88,31 @@ export const CORE_THEMES: ThemeInfo[] = [
     name: 'Documentation',
     path: 'docs'
   },
+];
+/**
+ * The master list of all built-in blocks. 
+ */
+export const CORE_BLOCKS: BlockInfo[] = [
+  { 
+    name: 'Rich text',
+    id: 'core:rich_text', 
+    path: 'rich_text' 
+  },
+  { 
+    name: 'Image',
+    id: 'core:image', 
+    path: 'image' 
+  },
+  { 
+    name: 'Collection view',
+    id: 'core:collection_view', 
+    path: 'collection_view' 
+  },
+  { 
+    name: 'Container',
+    id: 'core:container', 
+    path: 'container' 
+  }
 ];
 
 /**

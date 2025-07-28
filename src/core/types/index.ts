@@ -1,7 +1,7 @@
 // src/core/types/index.ts
 
 export type StrictUiSchema = import('@rjsf/utils').UiSchema & { 'ui:groups'?: { title: string; fields: string[] }[] };
-export type AssetFileType = 'manifest' | 'base' | 'template' | 'partial' | 'stylesheet' | 'script' | 'asset';
+export type AssetFileType = 'manifest' | 'base' | 'template' | 'partial' | 'stylesheet' | 'script' | 'asset' | 'editor-preview';
 
 export interface AssetFile {
   path: string;
@@ -178,6 +178,23 @@ export interface LayoutInfo {
   description?: string;
 }
 
+/**
+ * Represents metadata for a block asset in the file system.
+ */
+
+export interface BlockInfo {
+  id: string;
+  name: string;   
+  path: string;
+  description?: string; 
+}
+
+export interface BlockManifest extends BaseAssetManifest {
+  id: string; 
+  schema?: import('@rjsf/utils').RJSFSchema;
+  uiSchema?: StrictUiSchema;
+}
+
 // ============================================================================
 // CORE DATA STRUCTURES
 // ============================================================================
@@ -270,6 +287,7 @@ export interface Manifest {
   structure: StructureNode[];
   layouts?: LayoutInfo[];
   themes?: ThemeInfo[];
+  blocks?: BlockInfo[];
   collections?: Collection[];
   collectionItems?: CollectionItemRef[];
   logo?: ImageRef;
