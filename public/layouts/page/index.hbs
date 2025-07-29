@@ -24,7 +24,12 @@
 
     <p class="f4">{{contentFile.frontmatter.description}} </p>
     
-    {{{markdown contentFile.content}}}
+    {{!-- Render blocks if present, otherwise render markdown content --}}
+    {{#if blocks}}
+        {{{render_blocks blocks}}}
+    {{else}}
+        {{{markdown contentFile.content}}}
+    {{/if}}
 
     </div>
 

@@ -17,7 +17,11 @@
 
         {{! Main Project Description }}
         <div class="prose">
-            {{{markdown contentFile.content}}}
+            {{#if blocks}}
+                {{{render_blocks blocks}}}
+            {{else}}
+                {{{markdown contentFile.content}}}
+            {{/if}}
         </div>
 
         {{! Project Metadata Sidebar }}

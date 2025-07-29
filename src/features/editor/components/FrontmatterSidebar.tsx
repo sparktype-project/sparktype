@@ -72,7 +72,7 @@ export default function FrontmatterSidebar({
   useEffect(() => {
     async function fetchAllLayouts() {
       setIsLoading(true);
-      const siteDataForAssets = { manifest, layoutFiles, themeFiles };
+      const siteDataForAssets = { siteId, manifest, layoutFiles, themeFiles };
       const layouts = await getAvailableLayouts(siteDataForAssets);
       setAllLayouts(layouts);
       setIsLoading(false);

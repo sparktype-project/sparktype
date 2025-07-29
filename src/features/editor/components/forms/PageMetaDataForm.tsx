@@ -8,8 +8,7 @@ import { BASE_SCHEMA } from '@/config/editorConfig';
 
 // Reusable components for form rendering
 import SchemaDrivenForm from '@/core/components/SchemaDrivenForm';
-import ImageUploadWidget from '@/features/editor/components/ImageUploadWidget';
-import SwitchWidget from '@/features/editor/components/SwitchWidget';
+import { ImageUploadWidget, SwitchWidget } from '@/features/editor/components/widgets';
 
 /**
  * Defines the props for the PageMetadataForm component.

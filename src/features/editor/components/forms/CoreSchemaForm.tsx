@@ -5,8 +5,7 @@ import type { MarkdownFrontmatter } from '@/core/types';
 import SchemaDrivenForm from '@/core/components/SchemaDrivenForm';
 import { BASE_SCHEMA } from '@/config/editorConfig';
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
-import ImageUploadWidget from '../ImageUploadWidget';
-import SwitchWidget from '../SwitchWidget';
+import { ImageUploadWidget, SwitchWidget } from '../widgets';
 
 interface CoreSchemaFormProps {
   siteId: string;

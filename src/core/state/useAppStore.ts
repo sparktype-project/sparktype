@@ -4,6 +4,7 @@ import { enableMapSet } from 'immer';
 import { type SiteSlice, createSiteSlice } from './slices/siteSlice';
 import { type ContentSlice, createContentSlice } from './slices/contentSlice';
 import { type SecretsSlice, createSecretsSlice } from './slices/secretsSlice';
+import { type BlockSlice, createBlockSlice } from './slices/blockSlice';
 
 // Enable Immer for Map and Set support, which is good practice with Zustand.
 enableMapSet();
@@ -12,7 +13,7 @@ enableMapSet();
  * The full, combined type for the application's global store.
  * It's an intersection of all slice types plus root-level state.
  */
-export type AppStore = SiteSlice & ContentSlice & SecretsSlice & {
+export type AppStore = SiteSlice & ContentSlice & SecretsSlice & BlockSlice & {
   isInitialized: boolean;
   initialize: () => void;
   activeSiteId: string | null;
@@ -68,4 +69,5 @@ export const useAppStore = create<AppStore>()((set, get, api) => ({
   ...createSiteSlice(set, get, api as StoreApi<AppStore>),
   ...createContentSlice(set, get, api as StoreApi<AppStore>),
   ...createSecretsSlice(set, get, api as StoreApi<AppStore>),
+  ...createBlockSlice(set, get, api as StoreApi<AppStore>),
 }));

@@ -27,9 +27,13 @@
             </div>
         </header>
 
-        {{! The main content of the post, rendered from Markdown }}
+        {{! The main content of the post, rendered from Markdown or Blocks }}
         <section class="post-content">
-            {{{markdown contentFile.content}}}
+            {{#if blocks}}
+                {{{render_blocks blocks}}}
+            {{else}}
+                {{{markdown contentFile.content}}}
+            {{/if}}
         </section>
 
         {{! Display tags at the bottom of the post }}

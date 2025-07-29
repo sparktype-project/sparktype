@@ -4,8 +4,7 @@
 // Imports are identical to PageLayoutSchemaForm
 import type { MarkdownFrontmatter, LayoutManifest } from '@/core/types';
 import SchemaDrivenForm from '@/core/components/SchemaDrivenForm';
-import ImageUploadWidget from '../ImageUploadWidget';
-import SwitchWidget from '../SwitchWidget';
+import { ImageUploadWidget, SwitchWidget } from '../widgets';
 
 interface CollectionLayoutSchemaFormProps {
   siteId: string;

@@ -10,8 +10,7 @@ import { toast } from 'sonner';
 import { useUnloadPrompt } from './useUnloadPrompt';
 
 // Type imports
-import { type MarkdownFrontmatter } from '@/core/types';
-// Removed Block import as we're now working directly with markdown
+import { type MarkdownFrontmatter, type Block } from '@/core/types';
 
 interface PersistenceParams {
   siteId: string;
@@ -19,11 +18,13 @@ interface PersistenceParams {
   isNewFileMode: boolean;
   frontmatter: MarkdownFrontmatter | null;
   slug: string;
-  getEditorContent: () => string; 
+  getEditorContent: () => string;
+  getBlocks?: () => Block[];
+  hasBlocks?: boolean;
 }
 
 export function useFilePersistence({
-  siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent,
+  siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent, getBlocks, hasBlocks = false,
 }: PersistenceParams) {
   // Use the navigate hook from react-router-dom
   const navigate = useNavigate(); 
@@ -38,7 +39,17 @@ export function useFilePersistence({
     if (!frontmatter) throw new Error("Frontmatter not ready for saving.");
     if (!frontmatter.title.trim()) throw new Error("A title is required before saving.");
 
-    const markdownBody = getEditorContent();
+    // Determine content based on editor mode
+    let rawMarkdown: string;
+    if (hasBlocks && getBlocks) {
+      // Block mode: serialize blocks to markdown
+      const blocks = getBlocks();
+      rawMarkdown = stringifyToMarkdown(frontmatter, '', blocks);
+    } else {
+      // Markdown mode: use editor content
+      const markdownBody = getEditorContent();
+      rawMarkdown = stringifyToMarkdown(frontmatter, markdownBody);
+    }
     
     if (isNewFileMode) {
       // --- CREATION LOGIC (First Save) ---
@@ -51,7 +62,6 @@ export function useFilePersistence({
         throw new Error(`A page with the path "${slug}" already exists.`);
       }
 
-      const rawMarkdown = stringifyToMarkdown(frontmatter, markdownBody);
       await addOrUpdateContentFile(siteId, finalPath, rawMarkdown);
 
       const newEditPath = finalPath.replace(/^content\//, '').replace(/\.md$/, '');
@@ -62,10 +72,9 @@ export function useFilePersistence({
 
     } else {
       // --- UPDATE LOGIC (Subsequent Saves) ---
-      const rawMarkdown = stringifyToMarkdown(frontmatter, markdownBody);
       await addOrUpdateContentFile(siteId, filePath, rawMarkdown);
     }
-  }, [siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent, addOrUpdateContentFile, getSiteById, navigate]); // Add navigate to dependency array
+  }, [siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent, getBlocks, hasBlocks, addOrUpdateContentFile, getSiteById, navigate]);
 
   const handleDelete = useCallback(async () => {
     if (isNewFileMode || !frontmatter) return;

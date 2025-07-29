@@ -9,8 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/core/components/ui/accordion";
-import ImageUploadWidget from './ImageUploadWidget';
-import SwitchWidget from './SwitchWidget';
+import { ImageUploadWidget, SwitchWidget } from './widgets';
 
 interface Group {
   title: string;

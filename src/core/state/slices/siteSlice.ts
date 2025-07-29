@@ -74,6 +74,18 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
           draft.sites.push({ siteId, ...loadedData });
         }
       }));
+
+      // Load block manifests for this site
+      // Note: We access get() again because the state may have changed above
+      const appStore = get() as any; // Cast to access other slice methods
+      if (appStore.loadBlockManifests) {
+        try {
+          await appStore.loadBlockManifests(siteId, manifest);
+        } catch (error) {
+          console.warn(`[SiteSlice] Failed to load block manifests for ${siteId}:`, error);
+          // Don't fail the entire site load for block manifests
+        }
+      }
     } catch (error) {
       toast.error(`Could not load site data for ID: ${siteId}`);
       console.error(`[AppStore.loadSite] Error during load for ${siteId}:`, error);

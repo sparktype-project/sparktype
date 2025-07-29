@@ -11,7 +11,7 @@ import type {
   FormContextType
  } from '@rjsf/utils';
 import { Label } from '@/core/components/ui/label';
-import SwitchWidget from '@/features/editor/components/SwitchWidget';
+import { editorWidgets } from '@/features/editor/components/widgets';
 
 
 // --- Props Definition ---
@@ -98,9 +98,9 @@ export default function SchemaDrivenForm<T>({
 
   const safeFormData = formData || {};
   
-  // Always include essential widgets, with user widgets taking precedence
+  // Always include essential widgets from our registry, with user widgets taking precedence
   const mergedWidgets = {
-    switch: SwitchWidget,
+    ...editorWidgets,
     ...widgets,
   };
 

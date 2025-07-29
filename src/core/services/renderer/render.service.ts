@@ -68,7 +68,19 @@ export async function render(
     const bodyTemplateSource = await getAssetContent(synchronizedSiteData, 'layout', enrichedResolution.layoutPath, bodyTemplatePath);
     if (!bodyTemplateSource) throw new Error(`Body template not found: layouts/${enrichedResolution.layoutPath}/${bodyTemplatePath}`);
 
-    const bodyHtml = await Handlebars.compile(bodyTemplateSource)(pageContext);
+    // Handle blocks in page content if present
+    let bodyHtml: string;
+    if (enrichedResolution.contentFile.hasBlocks && enrichedResolution.contentFile.blocks) {
+        // If the page has blocks, render them instead of markdown content
+        const blockContext = {
+            ...pageContext,
+            blocks: enrichedResolution.contentFile.blocks
+        };
+        bodyHtml = await Handlebars.compile(bodyTemplateSource)(blockContext);
+    } else {
+        // Standard markdown content rendering
+        bodyHtml = await Handlebars.compile(bodyTemplateSource)(pageContext);
+    }
 
     // 5. Compile and Render the Final Page Shell (base.hbs)
     const baseTemplateSource = await getAssetContent(synchronizedSiteData, 'theme', synchronizedSiteData.manifest.theme.name, 'base.hbs');

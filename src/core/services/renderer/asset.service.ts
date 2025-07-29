@@ -3,6 +3,7 @@
 import Handlebars from 'handlebars';
 import type { LocalSiteData, ThemeManifest, LayoutManifest, AssetFile } from '@/core/types';
 import { getJsonAsset, getAssetContent, getAvailableLayouts } from '@/core/services/config/configHelpers.service';
+import { getAvailableBlocks } from '@/core/services/block.service';
 import { coreHelpers } from './helpers';
 
 let areHelpersRegistered = false;
@@ -18,9 +19,9 @@ function registerCoreHelpers(siteData: LocalSiteData): void {
 }
 
 /**
- * Pre-compiles and registers all available theme and layout partials with Handlebars.
- * This function is now simpler and more robust, as it no longer needs to deal with a
- * separate "Collection Type" system. It treats all layouts equally.
+ * Pre-compiles and registers all available theme, layout, and block templates with Handlebars.
+ * This function registers partials from themes, layouts, and blocks to make them available
+ * during rendering.
  *
  * @param siteData The full site data, used to discover all available assets.
  */
@@ -55,8 +56,24 @@ async function cacheAllTemplates(siteData: LocalSiteData): Promise<void> {
             }
         });
 
-    // 4. Wait for all file reading and registration to complete.
-    await Promise.all([...layoutPromises, ...themePartialPromises]);
+    // 4. Register block templates.
+    const availableBlocks = getAvailableBlocks(manifest);
+    const blockTemplatePromises = availableBlocks.map(async (blockInfo) => {
+        try {
+            const templateContent = await getAssetContent(siteData, 'block', blockInfo.path, 'template.hbs');
+            if (templateContent) {
+                // Register block templates with a namespace to prevent collisions
+                // e.g., 'block:rich_text', 'block:container'
+                const templateName = `block:${blockInfo.id}`;
+                Handlebars.registerPartial(templateName, templateContent);
+            }
+        } catch (error) {
+            console.warn(`Failed to load template for block ${blockInfo.id}:`, error);
+        }
+    });
+
+    // 5. Wait for all file reading and registration to complete.
+    await Promise.all([...layoutPromises, ...themePartialPromises, ...blockTemplatePromises]);
 }
 
 /** Generates an inline <style> block from the theme configuration. */

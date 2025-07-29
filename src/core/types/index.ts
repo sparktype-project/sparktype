@@ -189,8 +189,32 @@ export interface BlockInfo {
   description?: string; 
 }
 
+/**
+ * Represents a block instance in the editor with content, configuration, and nested regions.
+ */
+export interface Block {
+  id: string;      // Unique instance ID, e.g., "a3b8z_1p"
+  type: string;    // Manifest ID, e.g., "core:two_column"
+  content: Record<string, unknown>; // Data corresponding to contentSchema
+  config: Record<string, unknown>;  // Data corresponding to configSchema
+  regions: Record<string, Block[]>; // Key is region name, value is nested blocks
+}
+
 export interface BlockManifest extends BaseAssetManifest {
   id: string; 
+  
+  // Content fields - data that is part of the block itself (e.g., text, images)
+  contentSchema?: import('@rjsf/utils').RJSFSchema;
+  contentUiSchema?: StrictUiSchema;
+  
+  // Config fields - settings that control block behavior (e.g., layout options, data sources)
+  configSchema?: import('@rjsf/utils').RJSFSchema;
+  configUiSchema?: StrictUiSchema;
+  
+  // Named droppable areas where other blocks can be nested
+  regions?: string[];
+  
+  // Legacy schema support (deprecated - use contentSchema instead)
   schema?: import('@rjsf/utils').RJSFSchema;
   uiSchema?: StrictUiSchema;
 }
@@ -250,6 +274,8 @@ export interface ParsedMarkdownFile {
   path: string;
   frontmatter: MarkdownFrontmatter;
   content: string;
+  hasBlocks?: boolean;
+  blocks?: Block[];
 }
 
 /**

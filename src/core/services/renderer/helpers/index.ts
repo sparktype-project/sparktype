@@ -16,6 +16,8 @@ import { renderLayoutHelper } from './renderLayout.helper';
 import { renderItemHelper } from './renderItem.helper';
 import { renderCollectionHelper } from './renderCollection.helper';
 import { themeDataHelper, rawThemeDataHelper } from './themeData.helper';
+import { renderBlocksHelper } from './render_blocks.helper';
+import { collectionViewHelper } from './collectionView.helper';
 
 export const coreHelpers: SparktypeHelper[] = [
   queryHelper,
@@ -33,5 +35,7 @@ export const coreHelpers: SparktypeHelper[] = [
   imageUrlHelper,
   renderLayoutHelper,
   themeDataHelper,
-  rawThemeDataHelper
+  rawThemeDataHelper,
+  renderBlocksHelper,
+  collectionViewHelper
 ];

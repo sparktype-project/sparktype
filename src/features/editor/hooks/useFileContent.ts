@@ -7,9 +7,9 @@ import { useAppStore } from '@/core/state/useAppStore';
 import { useEditor } from '@/features/editor/contexts/useEditor';
 import { slugify } from '@/core/libraries/utils';
 import { toast } from 'sonner';
-import { type MarkdownFrontmatter } from '@/core/types';
+import { type MarkdownFrontmatter, type Block } from '@/core/types';
 import { DEFAULT_PAGE_LAYOUT_PATH } from '@/config/editorConfig';
-// Removed Block import as we're now working directly with markdown
+import { parseMarkdownString } from '@/core/libraries/markdownParser';
 
 /**
  * Manages the content state for the editor.
@@ -39,6 +39,8 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
   const [frontmatter, setFrontmatter] = useState<PageFrontmatter | null>(null);
   const [slug, setSlug] = useState('');
   const [initialMarkdown, setInitialMarkdown] = useState<string>('');
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [hasBlocks, setHasBlocks] = useState<boolean>(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -90,6 +92,22 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         markdownContent = fileData.content;
         setSlug(fileData.slug);
       }
+
+      // Parse content to detect blocks
+      try {
+        const parseResult = parseMarkdownString(`---\n---\n${markdownContent}`);
+        if (parseResult.blocks && parseResult.blocks.length > 0) {
+          setBlocks(parseResult.blocks);
+          setHasBlocks(true);
+        } else {
+          setBlocks([]);
+          setHasBlocks(false);
+        }
+      } catch (error) {
+        console.warn('Failed to parse blocks, treating as regular markdown:', error);
+        setBlocks([]);
+        setHasBlocks(false);
+      }
       
       setInitialMarkdown(markdownContent);
       setStatus('ready');
@@ -119,5 +137,15 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
     onContentModified();
   }, [isNewFileMode, onContentModified]);
 
-  return { status, frontmatter, initialMarkdown, slug, setSlug, handleFrontmatterChange, onContentModified };
+  return { 
+    status, 
+    frontmatter, 
+    initialMarkdown, 
+    blocks, 
+    hasBlocks, 
+    slug, 
+    setSlug, 
+    handleFrontmatterChange, 
+    onContentModified 
+  };
 }

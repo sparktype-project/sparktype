@@ -1,6 +1,6 @@
 // src/pages/sites/edit/EditContentPage.tsx
 
-import { useMemo, useEffect, useRef, useCallback } from 'react';
+import { useMemo, useEffect, useRef, useCallback, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
 // Global State and UI Management
@@ -8,7 +8,8 @@ import { useUIStore } from '@/core/state/uiStore';
 import { useAppStore } from '@/core/state/useAppStore';
 import { type AppStore } from '@/core/state/useAppStore';
 import { EditorProvider } from '@/features/editor/contexts/EditorProvider';
-import { type MarkdownFrontmatter } from '@/core/types';
+import { type MarkdownFrontmatter, type Block } from '@/core/types';
+import { markdownToBlocks, blocksToMarkdown } from '@/features/editor/utils/blockUtils';
 
 // UI Components
 import { Button } from '@/core/components/ui/button';
@@ -18,6 +19,7 @@ import LeftSidebar from '@/features/editor/components/LeftSidebar';
 import NewPageDialog from '@/features/editor/components/NewPageDialog';
 // import CreateCollectionPageDialog from '@/features/editor/components/CreateCollectionPageDialog';
 import MarkdownEditor, { type BlocknoteEditorRef} from '@/features/editor/components/MarkdownEditor';
+import { BlockEditor } from '@/features/editor/components/blocks';
 import FrontmatterSidebar from '@/features/editor/components/FrontmatterSidebar';
 import PrimaryContentFields from '@/features/editor/components/PrimaryContentFields';
 import CollectionItemList from '@/features/editor/components/CollectionItemList';
@@ -46,6 +48,8 @@ function EditorLoadingSkeleton() {
  */
 function EditContentPageInternal() {
   const editorRef = useRef<BlocknoteEditorRef>(null);
+  const [currentBlocks, setCurrentBlocks] = useState<Block[]>([]);
+  const [editorMode] = useState<'blocks' | 'markdown'>('blocks');
 
   // --- 1. Get Data and Identifiers ---
   const { siteId = '' } = useParams<{ siteId: string }>();
@@ -55,8 +59,35 @@ function EditContentPageInternal() {
   const allContentFiles = useMemo(() => site?.contentFiles || [], [site?.contentFiles]);
   
   const { isNewFileMode, filePath } = usePageIdentifier({ siteStructure, allContentFiles });
-  const { status, frontmatter, initialMarkdown, slug, setSlug, handleFrontmatterChange, onContentModified } = useFileContent(siteId, filePath, isNewFileMode);
-  const { handleDelete } = useFilePersistence({ siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent: () => editorRef.current?.getBlocks() ?? '' });
+  const { status, frontmatter, initialMarkdown, blocks, slug, setSlug, handleFrontmatterChange, onContentModified } = useFileContent(siteId, filePath, isNewFileMode);
+  const { handleDelete } = useFilePersistence({ 
+    siteId, 
+    filePath, 
+    isNewFileMode, 
+    frontmatter, 
+    slug, 
+    getEditorContent: () => editorMode === 'markdown' ? (editorRef.current?.getBlocks() ?? '') : blocksToMarkdown(currentBlocks),
+    getBlocks: () => currentBlocks,
+    hasBlocks: editorMode === 'blocks'
+  });
+
+  // Initialize blocks from content or create default block
+  useEffect(() => {
+    if (status === 'ready') {
+      if (editorMode === 'blocks') {
+        if (blocks && blocks.length > 0) {
+          // Use existing blocks
+          setCurrentBlocks(blocks);
+        } else if (initialMarkdown) {
+          // Convert markdown to blocks
+          setCurrentBlocks(markdownToBlocks(initialMarkdown));
+        } else {
+          // Create default empty rich text block
+          setCurrentBlocks(markdownToBlocks(''));
+        }
+      }
+    }
+  }, [status, blocks, initialMarkdown, editorMode]);
 
   // --- 2. Manage Sidebars via UI Store ---
   const { leftSidebarContent, rightSidebarContent, setLeftAvailable, setRightAvailable, setLeftSidebarContent, setRightSidebarContent } = useUIStore(state => state.sidebar);
@@ -143,7 +174,7 @@ function EditContentPageInternal() {
             }
             return (
               <div className='flex h-full w-full flex-col'>
-                <div className='container mx-auto flex h-full max-w-[900px] flex-col p-6'>
+                <div className='container mx-auto flex h-full max-w-[900px] flex-col py-6'>
                   <div className="shrink-0">
                     <PrimaryContentFields 
                       frontmatter={{ 
@@ -158,6 +189,15 @@ function EditContentPageInternal() {
                   <div className="mt-6 flex-grow min-h-0">
                     {isCollectionListingPage && frontmatter.layoutConfig?.collectionId ? (
                       <CollectionItemList siteId={siteId} collectionId={frontmatter.layoutConfig.collectionId} />
+                    ) : editorMode === 'blocks' ? (
+                      <BlockEditor 
+                        siteId={siteId}
+                        blocks={currentBlocks}
+                        onBlocksChange={(newBlocks) => {
+                          setCurrentBlocks(newBlocks);
+                          onContentModified();
+                        }}
+                      />
                     ) : (
                       <MarkdownEditor ref={editorRef} key={filePath} initialContent={initialMarkdown} onContentChange={onContentModified} />
                     )}
