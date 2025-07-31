@@ -1,5 +1,50 @@
 /* src/packages/sparkblock/styles/sparkblock.css */
 
+/* === CUSTOM BLOCK STYLES === */
+.sparkblock-collection-view,
+.sparkblock-container {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 16px;
+  margin: 8px 0;
+  background: #f8f9fa;
+}
+
+.sparkblock-collection-view-header,
+.sparkblock-container-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sparkblock-collection-view-title,
+.sparkblock-container-title {
+  font-weight: 600;
+  color: #333;
+}
+
+.sparkblock-collection-view-meta,
+.sparkblock-container-meta {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.sparkblock-container-regions {
+  font-size: 12px;
+  color: #666;
+}
+
+.sparkblock-icon {
+  font-size: 16px;
+}
+
+.sparkblock-placeholder {
+  color: #999;
+  font-style: italic;
+}
+
 /* === ROOT STYLES === */
 .sparkblock-editor {
   position: relative;

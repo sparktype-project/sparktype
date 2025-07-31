@@ -29,6 +29,9 @@ export interface BlockDefinition {
   // Field schema for the block content
   fields?: Record<string, BlockField>;
   
+  // Configuration schema for the block settings
+  config?: Record<string, BlockField>;
+  
   // Region definitions for container blocks
   regions?: Record<string, BlockRegion>;
   

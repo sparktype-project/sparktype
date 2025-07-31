@@ -427,5 +427,72 @@ export const DEFAULT_BLOCKS: Record<string, BlockManifest> = {
     template: {
       handlebars: 'blocks/core/container.hbs'
     }
+  },
+
+  'core:collection_view': {
+    id: 'core:collection_view',
+    name: 'Collection View',
+    category: 'Layout',
+    description: 'Display a dynamic list of content from a collection',
+    icon: 'List',
+    keywords: ['collection', 'list', 'posts', 'items', 'blog'],
+    fields: {
+      title: {
+        type: 'text',
+        label: 'Section Title',
+        required: false,
+        default: ''
+      }
+    },
+    config: {
+      collectionId: {
+        type: 'select',
+        label: 'Collection',
+        required: true,
+        default: ''
+      },
+      layout: {
+        type: 'select',
+        label: 'Layout Style',
+        required: false,
+        default: 'list',
+        options: ['list', 'grid', 'cards']
+      },
+      maxItems: {
+        type: 'number',
+        label: 'Maximum Items',
+        required: false,
+        default: 10
+      },
+      sortBy: {
+        type: 'select',
+        label: 'Sort By',
+        required: false,
+        default: 'date',
+        options: ['date', 'title', 'order']
+      },
+      sortOrder: {
+        type: 'select',
+        label: 'Sort Order',
+        required: false,
+        default: 'desc',
+        options: ['desc', 'asc']
+      }
+    },
+    directive: {
+      name: 'collection_view',
+      type: 'leaf',
+      attributes: ['title', 'collectionId', 'layout', 'maxItems', 'sortBy', 'sortOrder']
+    },
+    behavior: {
+      insertable: true,
+      searchable: true,
+      duplicatable: true,
+      deletable: true,
+      moveable: true
+    },
+    template: {
+      handlebars: 'blocks/core/collection_view.hbs'
+    }
   }
 };

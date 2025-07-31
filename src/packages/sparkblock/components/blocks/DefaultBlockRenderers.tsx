@@ -264,6 +264,62 @@ export function DividerBlock(): React.JSX.Element {
   );
 }
 
+export function CollectionViewBlock({ block }: BlockComponentProps) {
+  const title = (block.content.title as string) || '';
+  const collectionId = (block.content.collectionId as string) || '';
+  const layout = (block.content.layout as string) || 'list';
+  const maxItems = (block.content.maxItems as number) || 10;
+
+  return (
+    <div className="sparkblock-collection-view">
+      <div className="sparkblock-collection-view-header">
+        <span className="sparkblock-icon">📋</span>
+        <span className="sparkblock-collection-view-title">
+          {title || 'Collection View'}
+        </span>
+      </div>
+      <div className="sparkblock-collection-view-details">
+        <div className="sparkblock-collection-view-meta">
+          {collectionId ? (
+            <span>Collection: {collectionId}</span>
+          ) : (
+            <span className="sparkblock-placeholder">No collection selected</span>
+          )}
+          <span> • Layout: {layout}</span>
+          <span> • Max items: {maxItems}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ContainerBlock({ block }: BlockComponentProps) {
+  const layout = (block.content.layout as string) || 'single';
+  const gap = (block.content.gap as string) || 'medium';
+
+  return (
+    <div className="sparkblock-container">
+      <div className="sparkblock-container-header">
+        <span className="sparkblock-icon">📦</span>
+        <span className="sparkblock-container-title">Container</span>
+      </div>
+      <div className="sparkblock-container-details">
+        <div className="sparkblock-container-meta">
+          <span>Layout: {layout}</span>
+          <span> • Gap: {gap}</span>
+        </div>
+        <div className="sparkblock-container-regions">
+          {block.regions && Object.keys(block.regions).length > 0 ? (
+            <div>Regions: {Object.keys(block.regions).join(', ')}</div>
+          ) : (
+            <div className="sparkblock-placeholder">No content regions</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function UnknownBlock({ block }: BlockComponentProps) {
   return (
     <div className="sparkblock-unknown">
@@ -290,5 +346,7 @@ export const DefaultBlockRenderers: Record<string, React.ComponentType<BlockComp
   ordered_list: props => <ListBlock {...props} block={{...props.block, content: {...props.block.content, ordered: true}}} />,
   image: ImageBlock,
   divider: DividerBlock,
+  collection_view: CollectionViewBlock,
+  container: ContainerBlock,
   unknown: UnknownBlock,
 };

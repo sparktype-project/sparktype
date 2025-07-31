@@ -398,6 +398,9 @@ export class SparktypeBlockAdapter implements SparkBlockAdapter<string> {
         // Map fields
         fields: manifest.fields ? this.mapLegacyFields(manifest.fields) : undefined,
         
+        // Map config
+        config: manifest.config ? this.mapLegacyFields(manifest.config) : undefined,
+        
         // Map regions
         regions: manifest.regions ? this.mapLegacyRegions(manifest.regions) : undefined,
         

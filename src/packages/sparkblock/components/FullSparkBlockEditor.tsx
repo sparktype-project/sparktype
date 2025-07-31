@@ -7,6 +7,8 @@ import type {
   SparkBlockAdapter,
 } from '../types';
 import { DefaultBlockRenderers } from './blocks/DefaultBlockRenderers';
+import SchemaDrivenForm from '@/core/components/SchemaDrivenForm';
+import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 import '../styles/sparkblock.css';
 
 export interface FullSparkBlockEditorProps {
@@ -32,6 +34,86 @@ const BLOCK_ICONS: Record<string, string> = {
   container: '📦',
   collection_view: '📋',
 };
+
+// Convert block manifest fields to JSON Schema
+function blockManifestToJsonSchema(manifest: any, adapter?: SparkBlockAdapter<string> | null): { schema: RJSFSchema; uiSchema: UiSchema } {
+  const schema: RJSFSchema = {
+    type: 'object',
+    properties: {},
+    required: []
+  };
+  
+  const uiSchema: UiSchema = {};
+
+  // Convert fields
+  if (manifest.fields) {
+    for (const [fieldName, fieldConfig] of Object.entries(manifest.fields)) {
+      const field = fieldConfig as any;
+      
+      schema.properties![fieldName] = {
+        type: field.type === 'text' || field.type === 'select' ? 'string' : field.type,
+        title: field.label || fieldName,
+        default: field.default
+      };
+      
+      if (field.required) {
+        (schema.required as string[]).push(fieldName);
+      }
+
+      if (field.options) {
+        schema.properties![fieldName].enum = field.options;
+        schema.properties![fieldName].enumNames = field.options;
+      }
+    }
+  }
+
+  // Convert config fields  
+  if (manifest.config) {
+    for (const [configName, configField] of Object.entries(manifest.config)) {
+      const field = configField as any;
+      
+      schema.properties![configName] = {
+        type: field.type === 'text' || field.type === 'select' ? 'string' : field.type,
+        title: field.label || configName,
+        default: field.default
+      };
+      
+      if (field.required) {
+        (schema.required as string[]).push(configName);
+      }
+
+      if (field.options) {
+        schema.properties![configName].enum = field.options;
+        schema.properties![configName].enumNames = field.options;
+      } else if (configName === 'collectionId' && adapter) {
+        // Dynamic collection options
+        try {
+          const siteManifest = (adapter as any).getManifest?.();
+          if (siteManifest?.collections) {
+            const collections = siteManifest.collections || [];
+            const collectionOptions = collections.map((c: any) => c.id);
+            const collectionNames = collections.map((c: any) => `${c.name} (${c.id})`);
+            
+            if (collectionOptions.length > 0) {
+              schema.properties![configName].enum = collectionOptions;
+              schema.properties![configName].enumNames = collectionNames;
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to load collection options:', error);
+        }
+      }
+    }
+  }
+
+  return { schema, uiSchema };
+}
+
+// Check if a block type is a custom block (needs form UI)
+function isCustomBlock(blockType: string): boolean {
+  const customBlockTypes = ['core:image', 'core:container', 'core:collection_view'];
+  return customBlockTypes.includes(blockType);
+}
 
 /**
  * Full-featured SparkBlock editor with seamless typing experience,
@@ -403,6 +485,7 @@ export function FullSparkBlockEditor({
                     onDelete={() => deleteBlock(block.id)}
                     onBlur={handleBlockBlur}
                     onCreateBelow={(blockType) => createBlock(blockType, block.id, 'after')}
+                    adapter={adapter}
                   />
                 ))}
               </SortableContext>
@@ -508,6 +591,7 @@ interface SimpleBlockRendererProps {
   onDelete: () => void;
   onBlur: () => void;
   onCreateBelow: (blockType: string) => void;
+  adapter: SparkBlockAdapter<string> | null;
 }
 
 function SimpleBlockRenderer({
@@ -520,9 +604,11 @@ function SimpleBlockRenderer({
   onDelete,
   onBlur,
   onCreateBelow,
+  adapter,
 }: SimpleBlockRendererProps) {
   const [showControls, setShowControls] = useState(false);
   const [localContent, setLocalContent] = useState('');
+  const [blockDefinition, setBlockDefinition] = useState<any>(null);
   
   // Convert block content to markdown for editing
   const getEditingContent = useCallback(() => {
@@ -549,6 +635,25 @@ function SimpleBlockRenderer({
         return (block.content.text as string) || '';
     }
   }, [block]);
+
+  // Load block definition for custom blocks
+  useEffect(() => {
+    const loadBlockDefinition = async () => {
+      if (isCustomBlock(block.type) && adapter) {
+        try {
+          const blockDef = await adapter.getBlockDefinition(block.type);
+          setBlockDefinition(blockDef);
+        } catch (error) {
+          console.error('Failed to load block definition:', error);
+          setBlockDefinition(null);
+        }
+      } else {
+        setBlockDefinition(null);
+      }
+    };
+
+    loadBlockDefinition();
+  }, [block.type, adapter]);
 
   useEffect(() => {
     if (isEditing) {
@@ -607,6 +712,84 @@ function SimpleBlockRenderer({
   // Get the appropriate renderer from DefaultBlockRenderers
   const renderContent = useCallback(() => {
     if (isEditing) {
+      // Check if this is a custom block that needs a form
+      if (isCustomBlock(block.type) && blockDefinition) {
+        const { schema, uiSchema } = blockManifestToJsonSchema(blockDefinition, adapter);
+        
+        return (
+          <div style={{ padding: '12px', border: '1px solid #e0e0e0', borderRadius: '6px', background: '#fafafa' }}>
+            <div style={{ marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#666' }}>
+              {blockDefinition.name} Settings
+            </div>
+            <SchemaDrivenForm
+              schema={schema}
+              uiSchema={uiSchema}
+              formData={{
+                // Merge content and config for custom blocks
+                ...block.content,
+                ...(block.config || {})
+              }}
+              onFormChange={(data) => {
+                // Split data back into content and config based on manifest
+                const contentFields = Object.keys(blockDefinition.fields || {});
+                const configFields = Object.keys(blockDefinition.config || {});
+                
+                const newContent: Record<string, any> = {};
+                const newConfig: Record<string, any> = {};
+                
+                Object.entries(data).forEach(([key, value]) => {
+                  if (contentFields.includes(key)) {
+                    newContent[key] = value;
+                  } else if (configFields.includes(key)) {
+                    newConfig[key] = value;
+                  }
+                });
+                
+                // Update block content and generate directive markdown
+                const allAttributes = Object.entries(data)
+                  .filter(([_, value]) => value !== undefined && value !== '')
+                  .map(([key, value]) => `${key}="${value}"`)
+                  .join(' ');
+                const directive = `::${block.type.replace('core:', '')}${allAttributes ? `{${allAttributes}}` : ''}`;
+                onMarkdownUpdate(directive);
+              }}
+              liveValidate={true}
+            />
+            <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={onBlur}
+                style={{
+                  padding: '6px 12px',
+                  background: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}
+              >
+                Done
+              </button>
+              <button 
+                onClick={onBlur}
+                style={{
+                  padding: '6px 12px',
+                  background: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        );
+      }
+      
+      // Fallback to textarea for standard blocks
       return (
         <textarea
           value={localContent}
@@ -676,7 +859,7 @@ function SimpleBlockRenderer({
     const RendererComponent = DefaultBlockRenderers[blockTypeKey] || DefaultBlockRenderers.unknown;
     
     return <RendererComponent block={block} context={mockContext} />;
-  }, [isEditing, localContent, block, isSelected, readonly, onClick, onMarkdownUpdate, handleSave, handleKeyDown]);
+  }, [isEditing, localContent, block, isSelected, readonly, onClick, onMarkdownUpdate, handleSave, handleKeyDown, blockDefinition]);
 
   return (
     <div
