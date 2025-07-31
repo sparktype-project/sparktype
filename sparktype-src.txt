@@ -1,6 +1,6 @@
 FILE CONCATENATION REPORT
 Root Directory: src/
-Excluded Directories: public, node_modules, ios
+Excluded Directories: node_modules, ios, public
 File Extensions: *.ts, *.tsx, *.js, *.jsx, *.css, *.html, *.json, *.hbs
 ================================================================================
 
@@ -302,7 +302,7 @@ File: core/types/index.ts
 // src/core/types/index.ts
 
 export type StrictUiSchema = import('@rjsf/utils').UiSchema & { 'ui:groups'?: { title: string; fields: string[] }[] };
-export type AssetFileType = 'manifest' | 'base' | 'template' | 'partial' | 'stylesheet' | 'script' | 'asset';
+export type AssetFileType = 'manifest' | 'base' | 'template' | 'partial' | 'stylesheet' | 'script' | 'asset' | 'editor-preview';
 
 export interface AssetFile {
   path: string;
@@ -479,6 +479,47 @@ export interface LayoutInfo {
   description?: string;
 }
 
+/**
+ * Represents metadata for a block asset in the file system.
+ */
+
+export interface BlockInfo {
+  id: string;
+  name: string;   
+  path: string;
+  description?: string; 
+}
+
+/**
+ * Represents a block instance in the editor with content, configuration, and nested regions.
+ */
+export interface Block {
+  id: string;      // Unique instance ID, e.g., "a3b8z_1p"
+  type: string;    // Manifest ID, e.g., "core:two_column"
+  content: Record<string, unknown>; // Data corresponding to contentSchema
+  config: Record<string, unknown>;  // Data corresponding to configSchema
+  regions: Record<string, Block[]>; // Key is region name, value is nested blocks
+}
+
+export interface BlockManifest extends BaseAssetManifest {
+  id: string; 
+  
+  // Content fields - data that is part of the block itself (e.g., text, images)
+  contentSchema?: import('@rjsf/utils').RJSFSchema;
+  contentUiSchema?: StrictUiSchema;
+  
+  // Config fields - settings that control block behavior (e.g., layout options, data sources)
+  configSchema?: import('@rjsf/utils').RJSFSchema;
+  configUiSchema?: StrictUiSchema;
+  
+  // Named droppable areas where other blocks can be nested
+  regions?: string[];
+  
+  // Legacy schema support (deprecated - use contentSchema instead)
+  schema?: import('@rjsf/utils').RJSFSchema;
+  uiSchema?: StrictUiSchema;
+}
+
 // ============================================================================
 // CORE DATA STRUCTURES
 // ============================================================================
@@ -534,6 +575,8 @@ export interface ParsedMarkdownFile {
   path: string;
   frontmatter: MarkdownFrontmatter;
   content: string;
+  hasBlocks?: boolean;
+  blocks?: Block[];
 }
 
 /**
@@ -571,6 +614,7 @@ export interface Manifest {
   structure: StructureNode[];
   layouts?: LayoutInfo[];
   themes?: ThemeInfo[];
+  blocks?: BlockInfo[];
   collections?: Collection[];
   collectionItems?: CollectionItemRef[];
   logo?: ImageRef;
@@ -745,19 +789,31 @@ export interface SiteBundle {
 File: core/libraries/markdownParser.ts
 // src/core/libraries/markdownParser.ts
 import matter, { type Input } from 'gray-matter';
-import { type MarkdownFrontmatter, type ParsedMarkdownFile } from '@/core/types';
-import yaml from 'js-yaml'; 
+import { type MarkdownFrontmatter, type ParsedMarkdownFile, type Block } from '@/core/types';
+import yaml from 'js-yaml';
+import { parseMarkdownToBlocks, serializeBlocksToMarkdown } from '@/core/services/blockParser.service'; 
+
+/**
+ * Extended result type that includes blocks when they are present in the content
+ */
+export interface ParsedMarkdownResult {
+  frontmatter: MarkdownFrontmatter;
+  content: string;
+  blocks?: Block[];
+  hasBlocks?: boolean;
+}
 
 /**
  * Parses a raw markdown string (which includes YAML frontmatter) into an object
  * containing the frontmatter (as an object) and the markdown body content.
+ * If the content contains block definitions, they will be parsed into a blocks array.
  *
  * @param rawMarkdown The complete markdown string with frontmatter.
- * @returns An object with `frontmatter` and `content` (markdown body).
- * @throws Error if frontmatter parsing fails.
+ * @returns An object with `frontmatter`, `content` (markdown body), and optionally `blocks`.
+ * @throws Error if frontmatter or block parsing fails.
  */
 
-export function parseMarkdownString(rawMarkdown: string): { frontmatter: MarkdownFrontmatter, content: string } {
+export function parseMarkdownString(rawMarkdown: string): ParsedMarkdownResult {
   try {
     
     const { data, content: bodyContent } = matter(rawMarkdown as Input, {
@@ -770,11 +826,31 @@ export function parseMarkdownString(rawMarkdown: string): { frontmatter: Markdow
     });
     
     const title = typeof data.title === 'string' ? data.title : 'Untitled';
+    const trimmedContent = bodyContent.trim();
 
-    return { 
+    // Check if the content contains block definitions
+    const hasBlocks = trimmedContent.includes('```block:');
+    
+    const result: ParsedMarkdownResult = { 
       frontmatter: { ...data, title } as MarkdownFrontmatter,
-      content: bodyContent.trim() 
+      content: trimmedContent
     };
+
+    // Parse blocks if they exist in the content
+    if (hasBlocks) {
+      try {
+        result.blocks = parseMarkdownToBlocks(trimmedContent);
+        result.hasBlocks = true;
+      } catch (blockError) {
+        console.warn("Failed to parse blocks, treating as regular markdown:", blockError);
+        // Continue without blocks if parsing fails
+        result.hasBlocks = false;
+      }
+    } else {
+      result.hasBlocks = false;
+    }
+
+    return result;
   } catch (e) {
     console.error("Error parsing markdown string with gray-matter:", e);
     throw new Error("Invalid YAML frontmatter format. Please check for syntax errors (e.g., unclosed quotes, incorrect indentation).");
@@ -782,15 +858,20 @@ export function parseMarkdownString(rawMarkdown: string): { frontmatter: Markdow
 }
 
 /**
- * Converts a frontmatter object and a markdown body content string back into
- * a single string formatted as YAML frontmatter followed by the markdown content.
+ * Converts a frontmatter object and content back into a markdown string.
+ * Supports both traditional markdown content and block-based content.
  * Uses js-yaml for robust YAML serialization.
  *
  * @param frontmatter The frontmatter object.
- * @param content The markdown body content.
- * @returns A string combining serialized YAML frontmatter and markdown content.
+ * @param content The markdown body content (used if blocks is not provided).
+ * @param blocks Optional array of blocks to serialize instead of content.
+ * @returns A string combining serialized YAML frontmatter and content/blocks.
  */
-export function stringifyToMarkdown(frontmatter: MarkdownFrontmatter, content: string): string {
+export function stringifyToMarkdown(
+  frontmatter: MarkdownFrontmatter, 
+  content: string, 
+  blocks?: Block[]
+): string {
   try {
     const cleanedFrontmatter: Partial<MarkdownFrontmatter> = {};
     for (const key in frontmatter) {
@@ -803,12 +884,22 @@ export function stringifyToMarkdown(frontmatter: MarkdownFrontmatter, content: s
       ? yaml.dump(cleanedFrontmatter, { skipInvalid: true, indent: 2 })
       : '';
 
+    // Use blocks if provided, otherwise use content
+    const bodyContent = blocks && blocks.length > 0 
+      ? serializeBlocksToMarkdown(blocks)
+      : content;
+
     if (fmString) {
-        return `---\n${fmString}---\n\n${content}`;
+        return `---\n${fmString}---\n\n${bodyContent}`;
     }
-    return content;
+    return bodyContent;
   } catch (e) {
     console.error("Error stringifying frontmatter to YAML:", e);
+
+    // Fallback handling for YAML errors - use blocks if provided
+    const bodyContent = blocks && blocks.length > 0 
+      ? serializeBlocksToMarkdown(blocks)
+      : content;
 
     let fallbackFmString = '';
     for (const key in frontmatter) {
@@ -817,24 +908,39 @@ export function stringifyToMarkdown(frontmatter: MarkdownFrontmatter, content: s
         }
     }
     if (fallbackFmString) {
-        return `---\n${fallbackFmString}---\n\n${content}`;
+        return `---\n${fallbackFmString}---\n\n${bodyContent}`;
     }
-    return content;
+    return bodyContent;
   }
 }
 
 /**
- * Parses a raw markdown string. This function is a utility wrapper.
+ * Extended ParsedMarkdownFile type that includes blocks
  */
-export function parseAndRenderMarkdown(slug: string, path: string, rawMarkdownContent: string): ParsedMarkdownFile {
-  const { frontmatter, content } = parseMarkdownString(rawMarkdownContent);
+export interface ExtendedParsedMarkdownFile extends ParsedMarkdownFile {
+  blocks?: Block[];
+}
+
+/**
+ * Parses a raw markdown string into a complete file object.
+ * This function is a utility wrapper that maintains compatibility with existing code.
+ */
+export function parseAndRenderMarkdown(slug: string, path: string, rawMarkdownContent: string): ExtendedParsedMarkdownFile {
+  const { frontmatter, content, blocks } = parseMarkdownString(rawMarkdownContent);
   
-  return {
+  const result: ExtendedParsedMarkdownFile = {
     slug,
     path,
     frontmatter,
     content,
   };
+
+  // Include blocks if they were parsed
+  if (blocks && blocks.length > 0) {
+    result.blocks = blocks;
+  }
+
+  return result;
 }
 
 ================================================================================
@@ -1011,9 +1117,9 @@ export async function fetchRemoteSiteData(remoteSiteUrl: string): Promise<LocalS
     const contentFilesPromises = contentFilePaths.map(async (path) => {
         try {
             const rawMarkdown = await fetchRemoteFile(remoteSiteUrl, `_site/${path}`);
-            const { frontmatter, content } = parseMarkdownString(rawMarkdown);
+            const { frontmatter, content, blocks, hasBlocks } = parseMarkdownString(rawMarkdown);
             const slug = path.replace(/^content\//, '').replace(/\.md$/, '');
-            return { slug, path, frontmatter, content };
+            return { slug, path, frontmatter, content, blocks, hasBlocks };
         } catch (error) {
             console.warn(`Could not fetch or parse content file: ${path}`, error);
             return null; // Return null on failure for this specific file
@@ -2361,6 +2467,7 @@ import { enableMapSet } from 'immer';
 import { type SiteSlice, createSiteSlice } from './slices/siteSlice';
 import { type ContentSlice, createContentSlice } from './slices/contentSlice';
 import { type SecretsSlice, createSecretsSlice } from './slices/secretsSlice';
+import { type BlockSlice, createBlockSlice } from './slices/blockSlice';
 
 // Enable Immer for Map and Set support, which is good practice with Zustand.
 enableMapSet();
@@ -2369,7 +2476,7 @@ enableMapSet();
  * The full, combined type for the application's global store.
  * It's an intersection of all slice types plus root-level state.
  */
-export type AppStore = SiteSlice & ContentSlice & SecretsSlice & {
+export type AppStore = SiteSlice & ContentSlice & SecretsSlice & BlockSlice & {
   isInitialized: boolean;
   initialize: () => void;
   activeSiteId: string | null;
@@ -2425,7 +2532,125 @@ export const useAppStore = create<AppStore>()((set, get, api) => ({
   ...createSiteSlice(set, get, api as StoreApi<AppStore>),
   ...createContentSlice(set, get, api as StoreApi<AppStore>),
   ...createSecretsSlice(set, get, api as StoreApi<AppStore>),
+  ...createBlockSlice(set, get, api as StoreApi<AppStore>),
 }));
+
+================================================================================
+
+File: core/state/slices/blockSlice.ts
+// src/core/state/slices/blockSlice.ts
+
+import { type StateCreator } from 'zustand';
+import { type BlockManifest, type Manifest } from '@/core/types';
+import { getAvailableBlocks, loadBlockManifest } from '@/core/services/block.service';
+
+export interface BlockSlice {
+  // State
+  blockManifests: Map<string, BlockManifest>;
+  isLoadingBlockManifests: boolean;
+  blockManifestsError: string | null;
+  
+  // Actions
+  loadBlockManifests: (siteId: string, siteManifest: Manifest) => Promise<void>;
+  clearBlockManifests: () => void;
+  getBlockManifest: (blockType: string) => BlockManifest | undefined;
+}
+
+export const createBlockSlice: StateCreator<
+  BlockSlice,
+  [],
+  [],
+  BlockSlice
+> = (set, get) => ({
+  // --- State ---
+  blockManifests: new Map<string, BlockManifest>(),
+  isLoadingBlockManifests: false,
+  blockManifestsError: null,
+
+  // --- Actions ---
+
+  /**
+   * Loads all available block manifests for the current site into the store.
+   * This is called when a site is loaded or when the block directory changes.
+   * 
+   * @param siteId The ID of the site to load block manifests for
+   * @param siteManifest The site manifest containing theme and layout info
+   */
+  loadBlockManifests: async (siteId: string, siteManifest: Manifest) => {
+    const currentState = get();
+    
+    // Prevent duplicate loading
+    if (currentState.isLoadingBlockManifests) {
+      return;
+    }
+
+    set({ 
+      isLoadingBlockManifests: true, 
+      blockManifestsError: null 
+    });
+
+    try {
+      // Get list of available blocks for this site
+      const availableBlocks = getAvailableBlocks(siteManifest);
+      const manifestMap = new Map<string, BlockManifest>();
+
+      // Load all block manifests in parallel
+      const manifestPromises = availableBlocks.map(async (blockInfo) => {
+        try {
+          const manifest = await loadBlockManifest(blockInfo, siteId);
+          if (manifest) {
+            manifestMap.set(blockInfo.id, manifest);
+          }
+        } catch (error) {
+          console.warn(`Failed to load manifest for block ${blockInfo.id}:`, error);
+          // Don't fail the entire load for one block
+        }
+      });
+
+      await Promise.all(manifestPromises);
+
+      set({ 
+        blockManifests: manifestMap,
+        isLoadingBlockManifests: false,
+        blockManifestsError: null
+      });
+
+      console.log(`[BlockSlice] Loaded ${manifestMap.size} block manifests for site ${siteId}`);
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error loading block manifests';
+      
+      set({ 
+        isLoadingBlockManifests: false,
+        blockManifestsError: errorMessage
+      });
+
+      console.error('[BlockSlice] Failed to load block manifests:', error);
+    }
+  },
+
+  /**
+   * Clears all cached block manifests. 
+   * Useful when switching sites or when block directory changes.
+   */
+  clearBlockManifests: () => {
+    set({ 
+      blockManifests: new Map<string, BlockManifest>(),
+      blockManifestsError: null
+    });
+  },
+
+  /**
+   * Gets a specific block manifest from the cache.
+   * Returns undefined if the manifest is not loaded.
+   * 
+   * @param blockType The type/ID of the block to get the manifest for
+   * @returns The block manifest or undefined if not found
+   */
+  getBlockManifest: (blockType: string) => {
+    return get().blockManifests.get(blockType);
+  },
+});
 
 ================================================================================
 
@@ -2862,6 +3087,18 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
           draft.sites.push({ siteId, ...loadedData });
         }
       }));
+
+      // Load block manifests for this site
+      // Note: We access get() again because the state may have changed above
+      const appStore = get() as any; // Cast to access other slice methods
+      if (appStore.loadBlockManifests) {
+        try {
+          await appStore.loadBlockManifests(siteId, manifest);
+        } catch (error) {
+          console.warn(`[SiteSlice] Failed to load block manifests for ${siteId}:`, error);
+          // Don't fail the entire site load for block manifests
+        }
+      }
     } catch (error) {
       toast.error(`Could not load site data for ID: ${siteId}`);
       console.error(`[AppStore.loadSite] Error during load for ${siteId}:`, error);
@@ -3300,7 +3537,7 @@ import type {
   FormContextType
  } from '@rjsf/utils';
 import { Label } from '@/core/components/ui/label';
-import SwitchWidget from '@/features/editor/components/SwitchWidget';
+import { editorWidgets } from '@/features/editor/components/widgets';
 
 
 // --- Props Definition ---
@@ -3387,9 +3624,9 @@ export default function SchemaDrivenForm<T>({
 
   const safeFormData = formData || {};
   
-  // Always include essential widgets, with user widgets taking precedence
+  // Always include essential widgets from our registry, with user widgets taking precedence
   const mergedWidgets = {
-    switch: SwitchWidget,
+    ...editorWidgets,
     ...widgets,
   };
 
@@ -4189,6 +4426,104 @@ export { Button, buttonVariants }
 
 ================================================================================
 
+File: core/components/ui/collapsible.tsx
+// src/core/components/ui/collapsible.tsx
+
+import * as React from "react";
+
+interface CollapsibleProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  children: React.ReactNode;
+}
+
+interface CollapsibleTriggerProps {
+  asChild?: boolean;
+  children: React.ReactNode;
+}
+
+interface CollapsibleContentProps {
+  children: React.ReactNode;
+}
+
+const CollapsibleContext = React.createContext<{
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}>({
+  open: false,
+  onOpenChange: () => {},
+});
+
+const Collapsible = React.forwardRef<HTMLDivElement, CollapsibleProps>(
+  ({ open = false, onOpenChange, children, ...props }, ref) => {
+    const [internalOpen, setInternalOpen] = React.useState(open);
+    
+    const isControlled = onOpenChange !== undefined;
+    const isOpen = isControlled ? open : internalOpen;
+    
+    const handleOpenChange = React.useCallback((newOpen: boolean) => {
+      if (isControlled) {
+        onOpenChange(newOpen);
+      } else {
+        setInternalOpen(newOpen);
+      }
+    }, [isControlled, onOpenChange]);
+
+    return (
+      <CollapsibleContext.Provider value={{ open: isOpen, onOpenChange: handleOpenChange }}>
+        <div ref={ref} {...props}>
+          {children}
+        </div>
+      </CollapsibleContext.Provider>
+    );
+  }
+);
+Collapsible.displayName = "Collapsible";
+
+const CollapsibleTrigger = React.forwardRef<HTMLButtonElement, CollapsibleTriggerProps>(
+  ({ asChild = false, children, ...props }, ref) => {
+    const { open, onOpenChange } = React.useContext(CollapsibleContext);
+    
+    const handleClick = () => {
+      onOpenChange(!open);
+    };
+
+    if (asChild && React.isValidElement(children)) {
+      return React.cloneElement(children as React.ReactElement<any>, {
+        ...props,
+        ref,
+        onClick: handleClick,
+      });
+    }
+
+    return (
+      <button ref={ref} onClick={handleClick} {...props}>
+        {children}
+      </button>
+    );
+  }
+);
+CollapsibleTrigger.displayName = "CollapsibleTrigger";
+
+const CollapsibleContent = React.forwardRef<HTMLDivElement, CollapsibleContentProps>(
+  ({ children, ...props }, ref) => {
+    const { open } = React.useContext(CollapsibleContext);
+    
+    if (!open) return null;
+
+    return (
+      <div ref={ref} {...props}>
+        {children}
+      </div>
+    );
+  }
+);
+CollapsibleContent.displayName = "CollapsibleContent";
+
+export { Collapsible, CollapsibleTrigger, CollapsibleContent };
+
+================================================================================
+
 File: core/components/ui/dropdown-menu.tsx
 "use client"
 
@@ -4863,6 +5198,389 @@ export function useHashNavigation() {
 
 ================================================================================
 
+File: core/services/blockParser.service.ts
+// src/core/services/blockParser.service.ts
+
+import yaml from 'js-yaml';
+import { nanoid } from 'nanoid';
+import { type Block } from '@/core/types';
+
+/**
+ * Represents a parsed block section from markdown before tree construction
+ */
+interface BlockSection {
+  type: string;
+  content?: Record<string, unknown>;
+  config?: Record<string, unknown>;
+  regions?: string[];
+  id?: string;
+  _regionBlocks?: Record<string, Block[]>; // Store actual nested blocks from new parser
+}
+
+/**
+ * Parses a markdown string containing block definitions into a Block[] array.
+ * Follows the same error handling patterns as existing markdownParser.ts
+ * 
+ * Expected format:
+ * ```block:container
+ * type: core:two_column
+ * config:
+ *   layout: "equal"
+ * ```
+ * 
+ * ```block:content
+ * type: core:rich_text
+ * content:
+ *   text: "Hello world"
+ * ```
+ * 
+ * ```block:end
+ * ```
+ * 
+ * @param markdownContent The markdown content containing block definitions
+ * @returns Array of parsed Block objects
+ * @throws Error if block parsing fails
+ */
+export function parseMarkdownToBlocks(markdownContent: string): Block[] {
+  try {
+    if (!markdownContent.trim()) {
+      return [];
+    }
+
+    const blockSections = extractBlockSections(markdownContent);
+    return buildBlockTree(blockSections);
+  } catch (e) {
+    console.error("Error parsing markdown blocks:", e);
+    throw new Error("Invalid block format. Please check for syntax errors in block definitions.");
+  }
+}
+
+/**
+ * Converts a Block[] array back into markdown format.
+ * Follows the same patterns as stringifyToMarkdown in markdownParser.ts
+ * 
+ * @param blocks Array of Block objects to serialize
+ * @returns Markdown string with block definitions
+ */
+export function serializeBlocksToMarkdown(blocks: Block[]): string {
+  try {
+    if (!blocks || blocks.length === 0) {
+      return '';
+    }
+
+    return blocks.map(block => serializeBlock(block, 0)).join('\n\n');
+  } catch (e) {
+    console.error("Error serializing blocks to markdown:", e);
+    throw new Error("Failed to serialize blocks to markdown format.");
+  }
+}
+
+/**
+ * Extracts and parses blocks with nested region support.
+ * Handles the format created by serializeBlock including region markers.
+ */
+function extractBlockSections(content: string): BlockSection[] {
+  // Parse the content to extract blocks with their nested structure
+  const parsedBlocks = parseBlocksWithRegions(content);
+  
+  // Convert Block[] back to BlockSection[] format for compatibility
+  return parsedBlocks.map(block => ({
+    id: block.id,
+    type: block.type,
+    content: block.content,
+    config: block.config,
+    regions: Object.keys(block.regions),
+    _regionBlocks: block.regions // Store actual nested blocks
+  }));
+}
+
+/**
+ * Parses blocks with full region support, returning proper Block objects
+ */
+function parseBlocksWithRegions(content: string): Block[] {
+  const blocks: Block[] = [];
+  let pos = 0;
+  
+  while (pos < content.length) {
+    // Find next block start
+    const blockStart = content.indexOf('```block:', pos);
+    if (blockStart === -1) break;
+    
+    // Determine block type
+    const blockTypeMatch = content.slice(blockStart).match(/```block:(container|content)/);
+    if (!blockTypeMatch) {
+      pos = blockStart + 1;
+      continue;
+    }
+    
+    const blockType = blockTypeMatch[1];
+    
+    if (blockType === 'container') {
+      // Parse container block with regions
+      const result = parseContainerBlock(content, blockStart);
+      if (result.block) {
+        blocks.push(result.block);
+      }
+      pos = result.nextPos;
+    } else {
+      // Parse simple content block
+      const result = parseContentBlock(content, blockStart);
+      if (result.block) {
+        blocks.push(result.block);
+      }
+      pos = result.nextPos;
+    }
+  }
+  
+  return blocks;
+}
+
+/**
+ * Parses a container block with its regions and nested blocks
+ */
+function parseContainerBlock(content: string, startPos: number): { block: Block | null; nextPos: number } {
+  // Find the block definition end
+  const defStart = content.indexOf('\n', startPos) + 1;
+  const defEnd = content.indexOf('```', defStart);
+  if (defEnd === -1) return { block: null, nextPos: startPos + 1 };
+  
+  // Parse the block definition YAML
+  const yamlContent = content.slice(defStart, defEnd).trim();
+  let blockDef: any;
+  try {
+    blockDef = yaml.load(yamlContent);
+  } catch (e) {
+    console.error("Error parsing container block YAML:", e);
+    return { block: null, nextPos: defEnd + 3 };
+  }
+  
+  if (!blockDef?.type) {
+    return { block: null, nextPos: defEnd + 3 };
+  }
+  
+  // Create the base block
+  const block: Block = {
+    id: blockDef.id || nanoid(8),
+    type: blockDef.type,
+    content: blockDef.content || {},
+    config: blockDef.config || {},
+    regions: {}
+  };
+  
+  // Find the block end marker
+  let searchPos = defEnd + 3;
+  const endMarker = '```block:end```';
+  const blockEnd = content.indexOf(endMarker, searchPos);
+  if (blockEnd === -1) {
+    return { block, nextPos: content.length };
+  }
+  
+  // Parse regions between definition and end marker
+  const regionContent = content.slice(searchPos, blockEnd);
+  parseRegions(regionContent, block);
+  
+  return { block, nextPos: blockEnd + endMarker.length };
+}
+
+/**
+ * Parses regions within a container block
+ */
+function parseRegions(content: string, containerBlock: Block): void {
+  const regionRegex = /---region:([^-]+)---/g;
+  const regionMatches: Array<{ name: string; start: number; end: number }> = [];
+  let match;
+  
+  // First, find all region markers
+  while ((match = regionRegex.exec(content)) !== null) {
+    regionMatches.push({
+      name: match[1],
+      start: match.index + match[0].length,
+      end: content.length // Will be updated below
+    });
+  }
+  
+  // Update end positions based on next region start
+  for (let i = 0; i < regionMatches.length; i++) {
+    if (i + 1 < regionMatches.length) {
+      // Find the start of the next region marker
+      const nextRegionMarkerStart = content.indexOf(`---region:${regionMatches[i + 1].name}---`, regionMatches[i].start);
+      regionMatches[i].end = nextRegionMarkerStart;
+    }
+  }
+  
+  // Parse blocks for each region
+  for (const region of regionMatches) {
+    const regionContent = content.slice(region.start, region.end).trim();
+    const regionBlocks = parseBlocksWithRegions(regionContent);
+    containerBlock.regions[region.name] = regionBlocks;
+  }
+}
+
+/**
+ * Parses a simple content block
+ */
+function parseContentBlock(content: string, startPos: number): { block: Block | null; nextPos: number } {
+  const defStart = content.indexOf('\n', startPos) + 1;
+  const defEnd = content.indexOf('```', defStart);
+  if (defEnd === -1) return { block: null, nextPos: startPos + 1 };
+  
+  const yamlContent = content.slice(defStart, defEnd).trim();
+  let blockDef: any;
+  try {
+    blockDef = yaml.load(yamlContent);
+  } catch (e) {
+    console.error("Error parsing content block YAML:", e);
+    return { block: null, nextPos: defEnd + 3 };
+  }
+  
+  if (!blockDef?.type) {
+    return { block: null, nextPos: defEnd + 3 };
+  }
+  
+  const block: Block = {
+    id: blockDef.id || nanoid(8),
+    type: blockDef.type,
+    content: blockDef.content || {},
+    config: blockDef.config || {},
+    regions: {}
+  };
+  
+  return { block, nextPos: defEnd + 3 };
+}
+
+/**
+ * Builds a nested Block tree from BlockSection array.
+ * Now handles the new parsing structure with _regionBlocks.
+ */
+function buildBlockTree(sections: BlockSection[]): Block[] {
+  const blocks: Block[] = [];
+
+  for (const section of sections) {
+    const block: Block = {
+      id: section.id || nanoid(8),
+      type: section.type,
+      content: section.content || {},
+      config: section.config || {},
+      regions: {}
+    };
+
+    // If this section has _regionBlocks (from new parser), use them
+    if (section._regionBlocks) {
+      block.regions = section._regionBlocks;
+    }
+
+    blocks.push(block);
+  }
+
+  return blocks;
+}
+
+/**
+ * Serializes a single block to markdown format.
+ * Recursive to handle nested regions.
+ */
+function serializeBlock(block: Block, depth: number): string {
+  const hasRegions = Object.keys(block.regions).length > 0;
+  const blockType = hasRegions ? 'container' : 'content';
+  
+  // Build the block definition object
+  const blockDef: any = {
+    type: block.type,
+    id: block.id
+  };
+
+  // Add content if it has any properties
+  if (Object.keys(block.content).length > 0) {
+    blockDef.content = block.content;
+  }
+
+  // Add config if it has any properties
+  if (Object.keys(block.config).length > 0) {
+    blockDef.config = block.config;
+  }
+
+  try {
+    const yamlString = yaml.dump(blockDef, { 
+      skipInvalid: true, 
+      indent: 2,
+      lineWidth: -1 // Prevent line wrapping
+    });
+
+    let result = `\`\`\`block:${blockType}\n${yamlString}\`\`\``;
+
+    // Handle regions for container blocks
+    if (hasRegions) {
+      const regionContent = Object.entries(block.regions)
+        .map(([regionName, regionBlocks]) => {
+          if (regionBlocks.length === 0) return '';
+          
+          const regionBlocksMarkdown = regionBlocks
+            .map(nestedBlock => serializeBlock(nestedBlock, depth + 1))
+            .join('\n\n');
+          
+          return `\n\n---region:${regionName}---\n\n${regionBlocksMarkdown}`;
+        })
+        .filter(Boolean)
+        .join('');
+
+      result += regionContent + '\n\n```block:end\n```';
+    }
+
+    return result;
+  } catch (yamlError) {
+    console.error("Error serializing block to YAML:", yamlError);
+    throw new Error(`Failed to serialize block ${block.id}: ${yamlError}`);
+  }
+}
+
+/**
+ * Helper function to validate block structure.
+ * Follows validation patterns from existing services.
+ */
+export function validateBlockStructure(blocks: Block[]): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  for (const block of blocks) {
+    if (!block.id) {
+      errors.push(`Block missing required 'id' field`);
+    }
+    
+    if (!block.type) {
+      errors.push(`Block ${block.id} missing required 'type' field`);
+    }
+
+    if (typeof block.content !== 'object' || block.content === null) {
+      errors.push(`Block ${block.id} has invalid 'content' field`);
+    }
+
+    if (typeof block.config !== 'object' || block.config === null) {
+      errors.push(`Block ${block.id} has invalid 'config' field`);
+    }
+
+    if (typeof block.regions !== 'object' || block.regions === null) {
+      errors.push(`Block ${block.id} has invalid 'regions' field`);
+    }
+
+    // Recursively validate nested blocks
+    for (const [regionName, nestedBlocks] of Object.entries(block.regions)) {
+      if (!Array.isArray(nestedBlocks)) {
+        errors.push(`Block ${block.id} region '${regionName}' is not an array`);
+        continue;
+      }
+
+      const nestedValidation = validateBlockStructure(nestedBlocks);
+      errors.push(...nestedValidation.errors);
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+================================================================================
+
 File: core/services/siteExporter.service.ts
 // src/core/services/siteExporter.service.ts (REFACTORED)
 
@@ -5408,9 +6126,9 @@ export async function saveManifest(siteId: string, manifest: Manifest): Promise<
 export async function saveContentFile(siteId: string, filePath: string, rawMarkdownContent: string): Promise<ParsedMarkdownFile> {
     const contentFiles = await siteContentFilesStore.getItem<ParsedMarkdownFile[]>(siteId) ?? [];
 
-    const { frontmatter, content } = parseMarkdownString(rawMarkdownContent);
+    const { frontmatter, content, blocks, hasBlocks } = parseMarkdownString(rawMarkdownContent);
     const fileSlug = filePath.replace(/^content\//, '').replace(/\.md$/, '');
-    const savedFile: ParsedMarkdownFile = { slug: fileSlug, path: filePath, frontmatter, content };
+    const savedFile: ParsedMarkdownFile = { slug: fileSlug, path: filePath, frontmatter, content, blocks, hasBlocks };
 
     const fileIndex = contentFiles.findIndex(f => f.path === filePath);
     if (fileIndex > -1) {
@@ -5536,6 +6254,83 @@ export async function getDataFileContent(siteId: string, dataFilePath: string): 
  */
 export async function getAllDataFiles(siteId: string): Promise<Record<string, string>> {
     return (await siteDataFilesStore.getItem<Record<string, string>>(siteId)) || {};
+}
+
+================================================================================
+
+File: core/services/assetStorage.service.ts
+// src/core/services/assetStorage.service.ts
+
+import localforage from 'localforage';
+
+// --- Store Definitions ---
+// Each custom asset type gets its own dedicated store for clarity and performance.
+
+const customThemeStore = localforage.createInstance({ name: 'SparktypeDB', storeName: 'customThemeFiles' });
+const customLayoutStore = localforage.createInstance({ name: 'SparktypeDB', storeName: 'customLayoutFiles' });
+const customBlockStore = localforage.createInstance({ name: 'SparktypeDB', storeName: 'customBlockFiles' });
+
+/**
+ * Represents the storage structure for a single asset bundle.
+ * The key is the asset's path (e.g., "my_callout"), and the value is a
+ * record of file paths to their content.
+ */
+type AssetBundle = Record<string, string | Blob>;
+
+// ============================================================================
+// BLOCK STORAGE
+// ============================================================================
+
+/**
+ * Saves all files for a single custom block bundle to its dedicated store.
+ *
+ * @param siteId The ID of the site the custom block belongs to.
+ * @param blockPath The unique path/directory name for the block (e.g., "my_callout_block").
+ * @param files A record mapping file paths within the bundle to their content.
+ */
+export async function saveCustomBlockBundle(siteId: string, blockPath: string, files: AssetBundle): Promise<void> {
+  const siteStorage = await customBlockStore.getItem<Record<string, AssetBundle>>(siteId) || {};
+  siteStorage[blockPath] = files;
+  await customBlockStore.setItem(siteId, siteStorage);
+}
+
+/**
+ * Retrieves the raw text content of a single file from a custom block bundle.
+ *
+ * @param siteId The ID of the site.
+ * @param blockPath The path/directory of the custom block.
+ * @param filePath The path of the file to retrieve from within the block's bundle.
+ * @returns A promise that resolves to the file's string content, or null if not found.
+ */
+export async function getCustomBlockFileContent(siteId: string, blockPath: string, filePath: string): Promise<string | null> {
+  const siteStorage = await customBlockStore.getItem<Record<string, AssetBundle>>(siteId);
+  const fileContent = siteStorage?.[blockPath]?.[filePath];
+
+  if (typeof fileContent === 'string') return fileContent;
+  if (fileContent instanceof Blob) return fileContent.text();
+  return null;
+}
+
+/**
+ * Retrieves all custom block files for a given site. Used by the site export service.
+ *
+ * @param siteId The ID of the site.
+ * @returns A promise that resolves to a record of all custom blocks and their files.
+ */
+export async function getAllCustomBlockFiles(siteId: string): Promise<Record<string, AssetBundle>> {
+  return (await customBlockStore.getItem<Record<string, AssetBundle>>(siteId)) || {};
+}
+
+// ============================================================================
+// CLEANUP (Called when a site is deleted)
+// ============================================================================
+
+export async function deleteCustomAssetsForSite(siteId: string): Promise<void> {
+  await Promise.all([
+    customThemeStore.removeItem(siteId),
+    customLayoutStore.removeItem(siteId),
+    customBlockStore.removeItem(siteId),
+  ]);
 }
 
 ================================================================================
@@ -6069,6 +6864,94 @@ export async function saveSiteSecretsToDb(siteId: string, secrets: SiteSecrets):
  */
 export async function deleteSiteSecretsFromDb(siteId: string): Promise<void> {
   await siteSecretsStore.removeItem(siteId);
+}
+
+================================================================================
+
+File: core/services/block.service.ts
+// src/core/services/block.service.ts
+
+// src/core/services/block.service.ts
+
+import { CORE_BLOCKS } from '@/config/editorConfig';
+import {
+  type BlockInfo,
+  type BlockManifest,
+  type Manifest,
+} from '@/core/types';
+import * as configHelpers from './config/configHelpers.service'; // This dependency is now correct
+
+const blockManifestCache = new Map<string, BlockManifest>();
+
+/**
+ * Service for managing the block registry, loading definitions, and caching them.
+ */
+
+export function getAvailableBlocks(manifest: Manifest): BlockInfo[] {
+  const available = [...CORE_BLOCKS];
+  const registeredIds = new Set(available.map(b => b.id));
+
+  if (manifest.blocks) {
+    const customBlocks = manifest.blocks.filter(
+      (customBlock) => !registeredIds.has(customBlock.id)
+    );
+    available.push(...customBlocks);
+  }
+  return available;
+}
+
+export async function loadBlockManifest(
+  blockInfo: BlockInfo,
+  siteId: string
+): Promise<BlockManifest | null> {
+  if (blockManifestCache.has(blockInfo.id)) {
+    return blockManifestCache.get(blockInfo.id)!;
+  }
+
+  // This call now correctly delegates to the refactored helper,
+  // which knows how to load from either public assets or the new assetStorage service.
+  const manifest = await configHelpers.getJsonAsset<BlockManifest>(
+    { siteId },
+    'block',
+    blockInfo.path,
+    'block.json'
+  );
+
+  if (manifest) {
+    blockManifestCache.set(blockInfo.id, manifest);
+  }
+  return manifest;
+}
+
+/**
+ * A utility function to load any asset file (e.g., a Handlebars template)
+ * from a block's bundle, correctly routing between core and custom block locations.
+ *
+ * @param blockInfo The metadata for the block.
+ * @param siteId The ID of the site.
+ * @param filePath The path of the asset to load from within the block's bundle (e.g., "template.hbs").
+ * @returns A promise that resolves to the file's string content, or null if not found.
+ */
+export async function loadBlockAssetContent(
+  blockInfo: BlockInfo,
+  siteId: string,
+  filePath: string
+): Promise<string | null> {
+  // This function simply delegates to the now-generic config helper.
+  return configHelpers.getAssetContent(
+    { siteId },
+    'block',
+    blockInfo.path,
+    filePath
+  );
+}
+
+/**
+ * Clears the in-memory cache of block manifests.
+ * This can be useful during development or if a hot-reload mechanism is implemented.
+ */
+export function clearBlockManifestCache(): void {
+  blockManifestCache.clear();
 }
 
 ================================================================================
@@ -6785,6 +7668,7 @@ import { getMergedThemeDataForForm } from '@/core/services/config/theme.service'
 import { prepareRenderEnvironment } from './asset.service';
 import { assemblePageContext, assembleBaseContext } from './context.service';
 import { getCollectionContent } from '@/core/services/collections.service';
+import { preRenderBlocks } from './helpers/render_blocks.helper';
 
 /**
  * Defines the options passed to the main render function.
@@ -6844,7 +7728,22 @@ export async function render(
     const bodyTemplateSource = await getAssetContent(synchronizedSiteData, 'layout', enrichedResolution.layoutPath, bodyTemplatePath);
     if (!bodyTemplateSource) throw new Error(`Body template not found: layouts/${enrichedResolution.layoutPath}/${bodyTemplatePath}`);
 
-    const bodyHtml = await Handlebars.compile(bodyTemplateSource)(pageContext);
+    // Handle blocks in page content if present
+    let bodyHtml: string;
+    if (enrichedResolution.contentFile.hasBlocks && enrichedResolution.contentFile.blocks) {
+        // Pre-render blocks to avoid Promise issues in templates
+        const renderedBlocksHtml = await preRenderBlocks(enrichedResolution.contentFile.blocks, synchronizedSiteData);
+        
+        // If the page has blocks, render them instead of markdown content
+        const blockContext = {
+            ...pageContext,
+            blocks: renderedBlocksHtml // Pass pre-rendered HTML instead of block objects
+        };
+        bodyHtml = await Handlebars.compile(bodyTemplateSource)(blockContext);
+    } else {
+        // Standard markdown content rendering
+        bodyHtml = await Handlebars.compile(bodyTemplateSource)(pageContext);
+    }
 
     // 5. Compile and Render the Final Page Shell (base.hbs)
     const baseTemplateSource = await getAssetContent(synchronizedSiteData, 'theme', synchronizedSiteData.manifest.theme.name, 'base.hbs');
@@ -6883,6 +7782,7 @@ type ResolvedImagePresets = Record<string, { url: string; width?: number; height
 
 // The context object passed into the main body template.
 type EnrichedPageContext = (PageResolutionResult & {
+    siteData?: LocalSiteData;
     images?: ResolvedImagePresets;
     collectionItems?: (ParsedMarkdownFile & { images?: ResolvedImagePresets; url: string })[];
     layoutManifest?: LayoutManifest | null;
@@ -6978,6 +7878,7 @@ export async function assemblePageContext(
 
     return {
         ...resolution,
+        siteData,
         images: imageContext,
         collectionItems: processedCollectionItems,
         layoutManifest: pageLayoutManifest,
@@ -7021,6 +7922,7 @@ export async function assembleBaseContext(
     }
     
     return {
+        siteData,
         manifest,
         options,
         pageContext,
@@ -7047,6 +7949,7 @@ File: core/services/renderer/asset.service.ts
 import Handlebars from 'handlebars';
 import type { LocalSiteData, ThemeManifest, LayoutManifest, AssetFile } from '@/core/types';
 import { getJsonAsset, getAssetContent, getAvailableLayouts } from '@/core/services/config/configHelpers.service';
+import { getAvailableBlocks } from '@/core/services/block.service';
 import { coreHelpers } from './helpers';
 
 let areHelpersRegistered = false;
@@ -7062,9 +7965,9 @@ function registerCoreHelpers(siteData: LocalSiteData): void {
 }
 
 /**
- * Pre-compiles and registers all available theme and layout partials with Handlebars.
- * This function is now simpler and more robust, as it no longer needs to deal with a
- * separate "Collection Type" system. It treats all layouts equally.
+ * Pre-compiles and registers all available theme, layout, and block templates with Handlebars.
+ * This function registers partials from themes, layouts, and blocks to make them available
+ * during rendering.
  *
  * @param siteData The full site data, used to discover all available assets.
  */
@@ -7099,8 +8002,24 @@ async function cacheAllTemplates(siteData: LocalSiteData): Promise<void> {
             }
         });
 
-    // 4. Wait for all file reading and registration to complete.
-    await Promise.all([...layoutPromises, ...themePartialPromises]);
+    // 4. Register block templates.
+    const availableBlocks = getAvailableBlocks(manifest);
+    const blockTemplatePromises = availableBlocks.map(async (blockInfo) => {
+        try {
+            const templateContent = await getAssetContent(siteData, 'block', blockInfo.path, 'template.hbs');
+            if (templateContent) {
+                // Register block templates with a namespace to prevent collisions
+                // e.g., 'block:rich_text', 'block:container'
+                const templateName = `block:${blockInfo.id}`;
+                Handlebars.registerPartial(templateName, templateContent);
+            }
+        } catch (error) {
+            console.warn(`Failed to load template for block ${blockInfo.id}:`, error);
+        }
+    });
+
+    // 5. Wait for all file reading and registration to complete.
+    await Promise.all([...layoutPromises, ...themePartialPromises, ...blockTemplatePromises]);
 }
 
 /** Generates an inline <style> block from the theme configuration. */
@@ -7189,6 +8108,166 @@ export const imageUrlHelper: SparktypeHelper = (siteData: LocalSiteData) => ({
     }
   }
 });
+
+================================================================================
+
+File: core/services/renderer/helpers/render_blocks.helper.ts
+// src/core/services/renderer/helpers/render_blocks.helper.ts
+
+import Handlebars from 'handlebars';
+import type { SparktypeHelper } from './types';
+import type { Block, LocalSiteData, BlockInfo } from '@/core/types';
+import type { HelperOptions } from 'handlebars';
+import { getAvailableBlocks, loadBlockManifest } from '@/core/services/block.service';
+import { getAssetContent } from '@/core/services/config/configHelpers.service';
+
+/**
+ * Defines the expected shape of the root context object passed by the theme engine.
+ */
+interface RootContext {
+  siteData: LocalSiteData;
+}
+
+/**
+ * A Handlebars helper factory for creating the `render_blocks` helper.
+ * This helper recursively renders an array of blocks using their templates.
+ */
+export const renderBlocksHelper: SparktypeHelper = (_siteData: LocalSiteData) => ({
+  /**
+   * Renders an array of blocks recursively.
+   * NOTE: This helper expects blocks to be pre-rendered and available as HTML strings.
+   *
+   * @example
+   * {{{render_blocks this.regions.column_1}}}
+   * {{{render_blocks blocks}}}
+   *
+   * @param {...unknown[]} args - The arguments passed from the template. Expected:
+   *   - args[0]: Array of Block objects or pre-rendered HTML string
+   *   - The last argument is the Handlebars options object.
+   * @returns {Handlebars.SafeString} The rendered HTML for all blocks.
+   */
+  render_blocks: function(...args: unknown[]): Handlebars.SafeString {
+    const blocksData = args[0];
+
+    // --- Guard Clauses for Robustness ---
+    if (!blocksData) {
+      console.warn('[render_blocks] Helper was called without valid blocks data.');
+      return new Handlebars.SafeString('<!-- No blocks to render -->');
+    }
+
+    // Check if blocksData is already a pre-rendered HTML string
+    if (typeof blocksData === 'string') {
+      return new Handlebars.SafeString(blocksData);
+    }
+
+    // If it's an empty array, return empty string
+    if (Array.isArray(blocksData) && blocksData.length === 0) {
+      return new Handlebars.SafeString('');
+    }
+
+    // If blocks are not pre-rendered, show error message
+    console.warn('[render_blocks] Blocks should be pre-rendered before template execution.');
+    return new Handlebars.SafeString('<!-- Blocks not pre-rendered -->');
+  }
+});
+
+/**
+ * Pre-renders an array of blocks into HTML string.
+ * This function should be called before template execution.
+ */
+export async function preRenderBlocks(
+  blocks: Block[],
+  siteData: LocalSiteData
+): Promise<string> {
+  if (!blocks || blocks.length === 0) {
+    return '';
+  }
+
+  try {
+    // Get available blocks for this site
+    const availableBlocks = getAvailableBlocks(siteData.manifest);
+    
+    // Render each block
+    const renderedBlocks = await Promise.all(
+      blocks.map(async (block) => {
+        try {
+          return await renderSingleBlock(block, availableBlocks, siteData);
+        } catch (error) {
+          console.error(`[preRenderBlocks] Error rendering block ${block.id}:`, error);
+          return `<!-- Error rendering block ${block.id}: ${(error as Error).message} -->`;
+        }
+      })
+    );
+
+    return renderedBlocks.join('\n');
+  } catch (error) {
+    console.error('[preRenderBlocks] Error rendering blocks:', error);
+    return `<!-- Error rendering blocks: ${(error as Error).message} -->`;
+  }
+}
+
+/**
+ * Renders a single block by loading its template and executing it.
+ */
+async function renderSingleBlock(
+  block: Block, 
+  availableBlocks: BlockInfo[], 
+  siteData: LocalSiteData
+): Promise<string> {
+  // Find the block info
+  const blockInfo = availableBlocks.find(b => b.id === block.type);
+  if (!blockInfo) {
+    console.warn(`[render_blocks] Block type "${block.type}" not found in available blocks.`);
+    return `<!-- Block type "${block.type}" not available -->`;
+  }
+
+  try {
+    // Load the block manifest
+    const manifest = await loadBlockManifest(blockInfo, siteData.siteId);
+    if (!manifest) {
+      console.warn(`[render_blocks] Could not load manifest for block "${block.type}".`);
+      return `<!-- Block manifest "${block.type}" not found -->`;
+    }
+
+    // Load the block template
+    const templateContent = await getAssetContent(siteData, 'block', blockInfo.path, 'template.hbs');
+    if (!templateContent) {
+      console.warn(`[render_blocks] Template not found for block "${block.type}".`);
+      return `<!-- Template not found for block "${block.type}" -->`;
+    }
+
+    // Compile the template
+    const template = Handlebars.compile(templateContent);
+
+    // Pre-render any nested regions for container blocks
+    const processedRegions: Record<string, string> = {};
+    if (block.regions) {
+      for (const [regionName, regionBlocks] of Object.entries(block.regions)) {
+        if (Array.isArray(regionBlocks) && regionBlocks.length > 0) {
+          processedRegions[regionName] = await preRenderBlocks(regionBlocks, siteData);
+        } else {
+          processedRegions[regionName] = '';
+        }
+      }
+    }
+
+    // Prepare the context for the template
+    // The block gets the full block object as context, plus access to siteData
+    const blockContext = {
+      ...block, // id, type, content, config
+      regions: processedRegions, // Pre-rendered regions as HTML strings
+      siteData: siteData, // For helpers that need site data
+    };
+
+    // Render the template
+    const renderedHtml = await template(blockContext);
+    return renderedHtml;
+
+  } catch (error) {
+    console.error(`[render_blocks] Error loading or rendering block "${block.type}":`, error);
+    return `<!-- Error rendering block "${block.type}": ${(error as Error).message} -->`;
+  }
+}
 
 ================================================================================
 
@@ -7451,6 +8530,159 @@ export const markdownHelper: SparktypeHelper = () => ({
     return new Handlebars.SafeString(unsafeHtml);
   }
 });
+
+================================================================================
+
+File: core/services/renderer/helpers/collectionView.helper.ts
+// src/core/services/renderer/helpers/collectionView.helper.ts
+
+import type { SparktypeHelper } from './types';
+import type { LocalSiteData, ParsedMarkdownFile } from '@/core/types';
+import { getCollectionContent } from '@/core/services/collections.service';
+
+/**
+ * Configuration object for the collectionView helper.
+ * This matches the configSchema from our core:collection_view block.
+ */
+interface CollectionViewConfig {
+  collectionId: string;
+  layout?: string;
+  maxItems?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+/**
+ * A Handlebars helper factory for creating the `collectionView` helper.
+ * This helper is used by the core:collection_view block to render dynamic content.
+ */
+export const collectionViewHelper: SparktypeHelper = () => ({
+  /**
+   * Renders a filtered and sorted collection of content items.
+   * Used by blocks to display dynamic content like "latest posts" or "featured projects".
+   *
+   * @example
+   * {{#each (collectionView this.config @root.siteData)}}
+   *   <article>
+   *     <h3><a href="{{this.url}}">{{this.frontmatter.title}}</a></h3>
+   *     <p>{{this.frontmatter.description}}</p>
+   *   </article>
+   * {{/each}}
+   *
+   * @param {...unknown[]} args - The arguments passed from the template. Expected:
+   *   - args[0]: CollectionViewConfig object with collectionId, layout, etc.
+   *   - args[1]: siteData object from root context
+   *   - The last argument is the Handlebars options object.
+   * @returns {string} JSON string representation of content items for the template to iterate over.
+   */
+  collectionView: function(...args: unknown[]): string {
+    // const _options = args[args.length - 1] as HelperOptions; // unused but required for signature
+    const config = args[0] as CollectionViewConfig;
+    const siteData = args[1] as LocalSiteData;
+
+    // --- Guard Clauses for Robustness ---
+    if (!config || !config.collectionId) {
+      console.warn('[collectionView] Helper was called without a valid collectionId in config.');
+      return '[]';
+    }
+
+    if (!siteData) {
+      console.warn('[collectionView] Helper was called without siteData.');
+      return '[]';
+    }
+
+    try {
+      // Get the raw collection items
+      let items = getCollectionContent(siteData, config.collectionId);
+
+      if (!items || items.length === 0) {
+        console.warn(`[collectionView] No items found for collection "${config.collectionId}".`);
+        return '[]';
+      }
+
+      // Apply sorting
+      if (config.sortBy) {
+        items = applySorting(items, config.sortBy, config.sortOrder || 'desc');
+      }
+
+      // Apply max items limit
+      if (config.maxItems && config.maxItems > 0) {
+        items = items.slice(0, config.maxItems);
+      }
+
+      // Add computed properties for template use
+      items = items.map(item => ({
+        ...item,
+        // Add URL for linking
+        url: `/${item.path.replace(/^content\//, '').replace(/\.md$/, '')}`,
+        // Add any other computed properties here
+      }));
+
+      return JSON.stringify(items);
+
+    } catch (error) {
+      console.error('[collectionView] Error processing collection:', error);
+      return '[]';
+    }
+  }
+});
+
+/**
+ * Applies sorting to collection items based on the specified field and order.
+ */
+function applySorting(
+  items: ParsedMarkdownFile[], 
+  sortBy: string, 
+  sortOrder: 'asc' | 'desc'
+): ParsedMarkdownFile[] {
+  return [...items].sort((a, b) => {
+    let aValue: unknown;
+    let bValue: unknown;
+
+    // Get values to compare
+    switch (sortBy) {
+      case 'date':
+        aValue = a.frontmatter.date;
+        bValue = b.frontmatter.date;
+        break;
+      case 'title':
+        aValue = a.frontmatter.title;
+        bValue = b.frontmatter.title;
+        break;
+      case 'order':
+        // Custom order field for manual sorting
+        aValue = (a.frontmatter as any).order || 999999;
+        bValue = (b.frontmatter as any).order || 999999;
+        break;
+      default:
+        // Try to get the field from frontmatter
+        aValue = (a.frontmatter as any)[sortBy];
+        bValue = (b.frontmatter as any)[sortBy];
+        break;
+    }
+
+    // Handle undefined/null values
+    if (aValue === undefined || aValue === null) aValue = '';
+    if (bValue === undefined || bValue === null) bValue = '';
+
+    // Compare values
+    let comparison = 0;
+    
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      comparison = aValue.localeCompare(bValue);
+    } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+      comparison = aValue - bValue;
+    } else if (aValue instanceof Date && bValue instanceof Date) {
+      comparison = aValue.getTime() - bValue.getTime();
+    } else {
+      // Convert to strings for comparison
+      comparison = String(aValue).localeCompare(String(bValue));
+    }
+
+    // Apply sort order
+    return sortOrder === 'desc' ? -comparison : comparison;
+  });
+}
 
 ================================================================================
 
@@ -7898,6 +9130,82 @@ export const pagerHelper: SparktypeHelper = () => ({
 
 ================================================================================
 
+File: core/services/renderer/helpers/asyncResolver.ts
+// src/core/services/renderer/helpers/asyncResolver.ts
+
+/**
+ * Utility to resolve async helpers in Handlebars templates.
+ * This function recursively processes rendered HTML to find and resolve any Promise objects
+ * that may have been returned by async helpers.
+ */
+
+import Handlebars from 'handlebars';
+
+/**
+ * Resolves all promises in a Handlebars template by repeatedly rendering
+ * until no more promises are found.
+ */
+export async function resolveAsyncTemplate(
+  templateSource: string,
+  context: any,
+  maxIterations: number = 10
+): Promise<string> {
+  let currentHtml = '';
+  let iteration = 0;
+  
+  // Compile the template once
+  const template = Handlebars.compile(templateSource);
+  
+  // Keep rendering until no more promises are found or max iterations reached
+  while (iteration < maxIterations) {
+    iteration++;
+    
+    // Render the template
+    const rendered = await template(context);
+    currentHtml = typeof rendered === 'string' ? rendered : rendered.toString();
+    
+    // Check if the rendered HTML contains any promise-like strings
+    if (!currentHtml.includes('[object Promise]')) {
+      // No more promises, we're done
+      break;
+    }
+    
+    // If we still have promises after max iterations, log a warning
+    if (iteration >= maxIterations) {
+      console.warn(`[asyncResolver] Max iterations (${maxIterations}) reached while resolving async helpers. Some promises may not have resolved.`);
+      break;
+    }
+  }
+  
+  return currentHtml;
+}
+
+/**
+ * Alternative approach: Pre-resolve all async helpers in the context
+ * before passing to Handlebars.
+ */
+export async function resolveAsyncContext(context: any): Promise<any> {
+  if (!context || typeof context !== 'object') {
+    return context;
+  }
+  
+  const resolved: any = Array.isArray(context) ? [] : {};
+  
+  for (const [key, value] of Object.entries(context)) {
+    if (value instanceof Promise) {
+      resolved[key] = await value;
+    } else if (value && typeof value === 'object') {
+      resolved[key] = await resolveAsyncContext(value);
+    } else {
+      resolved[key] = value;
+    }
+  }
+  
+  return resolved;
+}
+
+================================================================================
+
 File: core/services/renderer/helpers/assign.helper.ts
 // src/core/services/theme-engine/helpers/assign.helper.ts
 import type { SparktypeHelper } from './types';
@@ -7968,6 +9276,8 @@ import { renderLayoutHelper } from './renderLayout.helper';
 import { renderItemHelper } from './renderItem.helper';
 import { renderCollectionHelper } from './renderCollection.helper';
 import { themeDataHelper, rawThemeDataHelper } from './themeData.helper';
+import { renderBlocksHelper } from './render_blocks.helper';
+import { collectionViewHelper } from './collectionView.helper';
 
 export const coreHelpers: SparktypeHelper[] = [
   queryHelper,
@@ -7985,7 +9295,9 @@ export const coreHelpers: SparktypeHelper[] = [
   imageUrlHelper,
   renderLayoutHelper,
   themeDataHelper,
-  rawThemeDataHelper
+  rawThemeDataHelper,
+  renderBlocksHelper,
+  collectionViewHelper
 ];
 
 ================================================================================
@@ -9575,18 +10887,25 @@ File: core/services/config/configHelpers.service.ts
 // src/core/services/config/configHelpers.service.ts
 
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
-import { CORE_LAYOUTS, CORE_THEMES } from '@/config/editorConfig';
+import { CORE_LAYOUTS, CORE_THEMES, CORE_BLOCKS } from '@/config/editorConfig';
+import * as assetStorage from '../assetStorage.service';
+
 import type {
-    LocalSiteData,
     Manifest,
     LayoutInfo,
     ThemeInfo,
-    RawFile,
     LayoutManifest,
+    BlockInfo,
 } from '@/core/types';
 
-/** A minimal subset of site data needed by the asset helper functions. */
-export type SiteDataForAssets = Pick<LocalSiteData, 'manifest' | 'layoutFiles' | 'themeFiles'>;
+/**
+ * A minimal context object needed by asset helper functions.
+ * Decouples the service from the full LocalSiteData structure.
+ */
+export type SiteDataForAssets = {
+  siteId: string;
+  manifest?: Manifest;
+};
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -9600,6 +10919,9 @@ export const isCoreTheme = (path: string) => CORE_THEMES.some((t: ThemeInfo) => 
 
 /** Checks if a given layout path corresponds to a core (built-in) layout. */
 export const isCoreLayout = (path: string) => CORE_LAYOUTS.some((l: LayoutInfo) => l.id === path);
+
+/** Checks if a given block path corresponds to a core (built-in) block. */
+export const isCoreBlock = (path: string) => CORE_BLOCKS.some((b: BlockInfo) => b.path === path);
 
 /** Merges multiple JSON Schemas into one. */
 export function mergeSchemas(...schemas: (RJSFSchema | null | undefined)[]): RJSFSchema {
@@ -9621,40 +10943,83 @@ export function mergeUiSchemas(...schemas: (UiSchema | null | undefined)[]): UiS
 }
 
 /**
- * Fetches the raw string content of a theme or layout asset.
- * It intelligently fetches from either the `/public` directory (for core assets)
- * or the `LocalSiteData` object (for user-provided custom assets), with caching.
+ * Fetches the raw string content of any asset (theme, layout, or block).
+ * It intelligently delegates loading to the appropriate source: public assets for core types,
+ * and the dedicated assetStorage service for all custom, site-specific types.
+ *
+ * @param context A context object containing the siteId.
+ * @param assetType The type of asset to load ('theme', 'layout', or 'block').
+ * @param assetPath The unique path/ID of the asset (e.g., "default", "blog-post", "my_callout").
+ * @param fileName The name of the file to load from within the asset's bundle (e.g., "theme.json").
+ * @returns A promise that resolves to the file's string content, or null if not found.
  */
-export async function getAssetContent(siteData: SiteDataForAssets, assetType: 'theme' | 'layout', path: string, fileName: string): Promise<string | null> {
-    const isCore = assetType === 'theme' ? isCoreTheme(path) : isCoreLayout(path);
-    const sourcePath = `/${assetType}s/${path}/${fileName}`;
+export async function getAssetContent(
+  context: { siteId: string },
+  assetType: 'theme' | 'layout' | 'block',
+  assetPath: string,
+  fileName: string
+): Promise<string | null> {
+    const isCore =
+        assetType === 'theme' ? isCoreTheme(assetPath) :
+        assetType === 'layout' ? isCoreLayout(assetPath) :
+        isCoreBlock(assetPath);
+
+    const fullPublicPath = `/${assetType}s/${assetPath}/${fileName}`;
 
     if (isCore) {
-      if (fileContentCache.has(sourcePath)) return fileContentCache.get(sourcePath)!;
-      const promise = fetch(sourcePath).then(res => res.ok ? res.text() : null).catch(() => null);
-      fileContentCache.set(sourcePath, promise);
-      return promise;
+        // Core assets are always fetched from the public directory.
+        if (fileContentCache.has(fullPublicPath)) {
+            return fileContentCache.get(fullPublicPath)!;
+        }
+        const promise = fetch(fullPublicPath)
+            .then(res => (res.ok ? res.text() : null))
+            .catch(() => null);
+        fileContentCache.set(fullPublicPath, promise);
+        return promise;
     } else {
-      const fileStore: RawFile[] | undefined = assetType === 'theme' ? siteData.themeFiles : siteData.layoutFiles;
-      const fullPath = `${assetType}s/${path}/${fileName}`;
-      return fileStore?.find(f => f.path === fullPath)?.content ?? null;
+        // Custom assets are fetched from the dedicated assetStorage service.
+        switch (assetType) {
+            // Note: When custom themes/layouts are implemented, their loaders will be added here.
+            // case 'theme':
+            //   return assetStorage.getCustomThemeFileContent(context.siteId, assetPath, fileName);
+            // case 'layout':
+            //   return assetStorage.getCustomLayoutFileContent(context.siteId, assetPath, fileName);
+            case 'block':
+                return assetStorage.getCustomBlockFileContent(context.siteId, assetPath, fileName);
+            default:
+                console.warn(`Unknown custom asset type requested: ${assetType}`);
+                return null;
+        }
     }
 }
 
-/** A generic function to fetch and parse any JSON asset manifest (theme.json, layout.json). */
-export async function getJsonAsset<T>(siteData: SiteDataForAssets, assetType: 'theme' | 'layout', path: string, fileName: string): Promise<T | null> {
-    const content = await getAssetContent(siteData, assetType, path, fileName);
+/**
+ * A generic function to fetch and parse any JSON asset manifest (theme.json, layout.json, block.json).
+ *
+ * @param context A context object containing the siteId.
+ * @param assetType The type of asset whose manifest is being loaded.
+ * @param assetPath The unique path/ID of the asset.
+ * @param fileName The name of the manifest file (e.g., "layout.json").
+ * @returns A promise that resolves to the parsed JSON object, or null on failure.
+ */
+export async function getJsonAsset<T>(
+    context: { siteId: string },
+    assetType: 'theme' | 'layout' | 'block',
+    assetPath: string,
+    fileName: string
+): Promise<T | null> {
+    const content = await getAssetContent(context, assetType, assetPath, fileName);
     if (!content) return null;
     try {
-      return JSON.parse(content) as T;
+        return JSON.parse(content) as T;
     } catch (e) {
-      console.error(`Failed to parse JSON from ${assetType}/${path}/${fileName}:`, e);
-      return null;
+        console.error(`Failed to parse JSON from ${assetType}/${assetPath}/${fileName}:`, e);
+        return null;
     }
 }
 
 // ============================================================================
-// PUBLIC API
+// PUBLIC API (UNCHANGED LOGIC, UPDATED SIGNATURES)
 // ============================================================================
 
 /** Gets a list of all available themes (core and custom). */
@@ -9669,12 +11034,12 @@ export function getAvailableThemes(manifest?: Manifest): ThemeInfo[] {
 
 /**
  * Fetches and processes the manifest for a specific layout.
- * @param siteData The site's data.
+ * @param context The site context, containing siteId and the manifest.
  * @param layoutPath The ID of the layout to fetch (e.g., 'blog-post').
  * @returns The parsed LayoutManifest object, or null if not found.
  */
-export async function getLayoutManifest(siteData: SiteDataForAssets, layoutPath: string): Promise<LayoutManifest | null> {
-    const manifest = await getJsonAsset<LayoutManifest>(siteData, 'layout', layoutPath, 'layout.json');
+export async function getLayoutManifest(context: SiteDataForAssets, layoutPath: string): Promise<LayoutManifest | null> {
+    const manifest = await getJsonAsset<LayoutManifest>(context, 'layout', layoutPath, 'layout.json');
     if (manifest) {
         manifest.id = layoutPath; // Ensure the manifest object includes its own ID
     }
@@ -9684,33 +11049,28 @@ export async function getLayoutManifest(siteData: SiteDataForAssets, layoutPath:
 /**
  * Gets a list of the full manifest objects for all available layouts,
  * optionally filtered by a specific layout type ('single' or 'collection').
- * This is now the single source of truth for discovering all content blueprints.
  *
- * @param siteData The site's data, used to find custom layouts.
+ * @param context The site context, used to find custom layouts registered in the manifest.
  * @param type An optional filter to return only 'single' or 'collection' layouts.
  * @returns A promise that resolves to an array of LayoutManifest objects.
  */
 export async function getAvailableLayouts(
-  siteData: SiteDataForAssets,
+  context: SiteDataForAssets,
   type?: LayoutManifest['layoutType']
 ): Promise<LayoutManifest[]> {
-  // 1. Get the IDs of all core layouts from the central config.
+  if (!context.manifest) return [];
+
   const coreLayoutIds = CORE_LAYOUTS.map(l => l.id);
-  // 2. Get the IDs of any user-defined custom layouts from the site's manifest.
-  const customLayoutIds = siteData.manifest.layouts?.map(l => l.id) || [];
-  // 3. Combine and de-duplicate the list of all known layout IDs.
+  const customLayoutIds = context.manifest.layouts?.map(l => l.id) || [];
   const allLayoutIds = [...new Set([...coreLayoutIds, ...customLayoutIds])];
 
-  // 4. Fetch the full manifest file for every single layout.
   const manifestPromises = allLayoutIds.map(layoutId =>
-    getLayoutManifest(siteData, layoutId)
+    getLayoutManifest(context, layoutId)
   );
 
-  // 5. Wait for all fetches to complete and filter out any that failed (were null).
   const allManifests = (await Promise.all(manifestPromises))
     .filter((m): m is LayoutManifest => m !== null);
 
-  // 6. If a type filter was provided, apply it now. Otherwise, return all layouts.
   if (type) {
     return allManifests.filter(m => m.layoutType === type);
   }
@@ -11928,6 +13288,183 @@ describe('localImage.service', () => {
 
       // Verify URL creation but not revocation (as that happens outside our control)
       expect(mockCreateObjectURL).toHaveBeenCalled();
+    });
+  });
+});
+
+================================================================================
+
+File: core/services/__tests__/blockParser.service.test.ts
+// src/core/services/__tests__/blockParser.service.test.ts
+
+import { parseMarkdownToBlocks, serializeBlocksToMarkdown, validateBlockStructure } from '../blockParser.service';
+import { type Block } from '@/core/types';
+
+describe('blockParser.service', () => {
+  describe('parseMarkdownToBlocks', () => {
+    it('should parse simple content block', () => {
+      const markdown = `
+\`\`\`block:content
+type: core:rich_text
+content:
+  text: "Hello world"
+\`\`\`
+      `;
+
+      const blocks = parseMarkdownToBlocks(markdown);
+      
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].type).toBe('core:rich_text');
+      expect(blocks[0].content.text).toBe('Hello world');
+      expect(blocks[0].config).toEqual({});
+      expect(blocks[0].regions).toEqual({});
+    });
+
+    it('should parse container block with config', () => {
+      const markdown = `
+\`\`\`block:container
+type: core:two_column
+config:
+  layout: "equal"
+\`\`\`
+
+\`\`\`block:content
+type: core:rich_text
+content:
+  text: "Column content"
+\`\`\`
+
+\`\`\`block:end
+\`\`\`
+      `;
+
+      const blocks = parseMarkdownToBlocks(markdown);
+      
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].type).toBe('core:two_column');
+      expect(blocks[0].config.layout).toBe('equal');
+      expect(blocks[1].type).toBe('core:rich_text');
+    });
+
+    it('should return empty array for empty content', () => {
+      const blocks = parseMarkdownToBlocks('');
+      expect(blocks).toEqual([]);
+    });
+
+    it('should handle malformed YAML gracefully', () => {
+      const markdown = `
+\`\`\`block:content
+type: core:rich_text
+content:
+  text: "unclosed quote
+\`\`\`
+      `;
+
+      expect(() => parseMarkdownToBlocks(markdown)).toThrow();
+    });
+  });
+
+  describe('serializeBlocksToMarkdown', () => {
+    it('should serialize simple content block', () => {
+      const blocks: Block[] = [{
+        id: 'test-1',
+        type: 'core:rich_text',
+        content: { text: 'Hello world' },
+        config: {},
+        regions: {}
+      }];
+
+      const result = serializeBlocksToMarkdown(blocks);
+      
+      expect(result).toContain('```block:content');
+      expect(result).toContain('type: core:rich_text');
+      expect(result).toContain('text: Hello world');
+    });
+
+    it('should serialize container block with regions', () => {
+      const blocks: Block[] = [{
+        id: 'container-1',
+        type: 'core:two_column',
+        content: {},
+        config: { layout: 'equal' },
+        regions: {
+          column_1: [{
+            id: 'nested-1',
+            type: 'core:rich_text',
+            content: { text: 'Column 1 content' },
+            config: {},
+            regions: {}
+          }]
+        }
+      }];
+
+      const result = serializeBlocksToMarkdown(blocks);
+      
+      expect(result).toContain('```block:container');
+      expect(result).toContain('layout: equal');
+      expect(result).toContain('---region:column_1---');
+      expect(result).toContain('```block:end');
+    });
+
+    it('should return empty string for empty blocks array', () => {
+      const result = serializeBlocksToMarkdown([]);
+      expect(result).toBe('');
+    });
+  });
+
+  describe('validateBlockStructure', () => {
+    it('should validate correct block structure', () => {
+      const blocks: Block[] = [{
+        id: 'valid-block',
+        type: 'core:rich_text',
+        content: { text: 'Valid content' },
+        config: {},
+        regions: {}
+      }];
+
+      const validation = validateBlockStructure(blocks);
+      
+      expect(validation.isValid).toBe(true);
+      expect(validation.errors).toEqual([]);
+    });
+
+    it('should detect missing required fields', () => {
+      const blocks: Block[] = [{
+        id: '',
+        type: '',
+        content: { text: 'Content' },
+        config: {},
+        regions: {}
+      }];
+
+      const validation = validateBlockStructure(blocks);
+      
+      expect(validation.isValid).toBe(false);
+      expect(validation.errors).toContain('Block missing required \'id\' field');
+      expect(validation.errors).toContain('Block  missing required \'type\' field');
+    });
+
+    it('should validate nested blocks recursively', () => {
+      const blocks: Block[] = [{
+        id: 'container',
+        type: 'core:container',
+        content: {},
+        config: {},
+        regions: {
+          main: [{
+            id: '', // Invalid nested block
+            type: 'core:rich_text',
+            content: { text: 'Nested content' },
+            config: {},
+            regions: {}
+          }]
+        }
+      }];
+
+      const validation = validateBlockStructure(blocks);
+      
+      expect(validation.isValid).toBe(false);
+      expect(validation.errors).toContain('Block missing required \'id\' field');
     });
   });
 });
@@ -15215,7 +16752,7 @@ describe('asset.builder', () => {
 
 File: config/editorConfig.ts
 // src/config/editorConfig.ts
-import type { ThemeInfo, LayoutInfo } from '@/core/types';
+import type { ThemeInfo, LayoutInfo, BlockInfo } from '@/core/types';
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 
 /**
@@ -15240,12 +16777,7 @@ export const AUTOSAVE_DELAY = 2500;
 export const DEFAULT_PAGE_LAYOUT_PATH = 'page';
 
 /**
- * ============================================================================
- * UNIFIED LAYOUT DEFINITIONS
- * ============================================================================
- * This is now the single source of truth for all built-in content blueprints.
- * There is no longer a separate "Collection Types" system. Instead, Layouts
- * are distinguished by their `type` property:
+ * Layout definitions
  *
  * - `type: 'single'`: A blueprint for a single piece of content (e.g., a blog post).
  * - `type: 'collection'`: A blueprint for a page that displays a list of other
@@ -15296,7 +16828,7 @@ export const CORE_LAYOUTS: LayoutInfo[] = [
 ];
 
 /**
- * The master list of all built-in themes. This remains unchanged.
+ * The master list of all built-in themes. 
  */
 export const CORE_THEMES: ThemeInfo[] = [
   {
@@ -15309,6 +16841,31 @@ export const CORE_THEMES: ThemeInfo[] = [
     name: 'Documentation',
     path: 'docs'
   },
+];
+/**
+ * The master list of all built-in blocks. 
+ */
+export const CORE_BLOCKS: BlockInfo[] = [
+  { 
+    name: 'Rich text',
+    id: 'core:rich_text', 
+    path: 'rich_text' 
+  },
+  { 
+    name: 'Image',
+    id: 'core:image', 
+    path: 'image' 
+  },
+  { 
+    name: 'Collection view',
+    id: 'core:collection_view', 
+    path: 'collection_view' 
+  },
+  { 
+    name: 'Container',
+    id: 'core:container', 
+    path: 'container' 
+  }
 ];
 
 /**
@@ -16108,6 +17665,159 @@ export const EditorContext = createContext<EditorContextType | undefined>(undefi
 
 ================================================================================
 
+File: features/editor/utils/blockUtils.ts
+// src/features/editor/utils/blockUtils.ts
+
+import { nanoid } from 'nanoid';
+import type { Block } from '@/core/types';
+
+/**
+ * Creates a new rich text block with the given content
+ */
+export function createRichTextBlock(content: string = ''): Block {
+  return {
+    id: nanoid(),
+    type: 'core:rich_text',
+    content: {
+      text: content
+    },
+    config: {},
+    regions: {}
+  };
+}
+
+/**
+ * Creates a new image block
+ */
+export function createImageBlock(imageRef?: string, caption?: string): Block {
+  return {
+    id: nanoid(),
+    type: 'core:image',
+    content: {
+      imageRef: imageRef || '',
+      caption: caption || ''
+    },
+    config: {
+      alignment: 'center',
+      size: 'medium'
+    },
+    regions: {}
+  };
+}
+
+/**
+ * Creates a new container block with two columns
+ */
+export function createContainerBlock(): Block {
+  return {
+    id: nanoid(),
+    type: 'core:container',
+    content: {},
+    config: {
+      layout: 'equal',
+      gap: 'medium',
+      verticalAlign: 'top'
+    },
+    regions: {
+      column_1: [],
+      column_2: []
+    }
+  };
+}
+
+/**
+ * Creates a new collection view block
+ */
+export function createCollectionViewBlock(collectionId?: string): Block {
+  return {
+    id: nanoid(),
+    type: 'core:collection_view',
+    content: {
+      title: ''
+    },
+    config: {
+      collectionId: collectionId || '',
+      layout: 'grid',
+      maxItems: 6,
+      sortBy: 'date',
+      sortOrder: 'desc'
+    },
+    regions: {}
+  };
+}
+
+/**
+ * Converts markdown content to a single rich text block
+ */
+export function markdownToBlocks(markdownContent: string): Block[] {
+  if (!markdownContent.trim()) {
+    return [createRichTextBlock()];
+  }
+  
+  return [createRichTextBlock(markdownContent)];
+}
+
+/**
+ * Converts blocks back to markdown (for compatibility)
+ */
+export function blocksToMarkdown(blocks: Block[]): string {
+  // For now, just extract text from rich text blocks
+  // This could be enhanced to handle other block types
+  return blocks
+    .filter(block => block.type === 'core:rich_text')
+    .map(block => block.content.text || '')
+    .join('\n\n');
+}
+
+/**
+ * Block type definitions for the add menu
+ */
+export interface BlockType {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: 'text' | 'media' | 'layout' | 'dynamic';
+  createBlock: () => Block;
+}
+
+export const BLOCK_TYPES: BlockType[] = [
+  {
+    id: 'core:rich_text',
+    name: 'Rich Text',
+    description: 'Add text with formatting',
+    icon: '📝',
+    category: 'text',
+    createBlock: () => createRichTextBlock()
+  },
+  {
+    id: 'core:image',
+    name: 'Image',
+    description: 'Upload or embed an image',
+    icon: '🖼️',
+    category: 'media',
+    createBlock: () => createImageBlock()
+  },
+  {
+    id: 'core:container',
+    name: 'Two Columns',
+    description: 'Create a two-column layout',
+    icon: '📊',
+    category: 'layout',
+    createBlock: () => createContainerBlock()
+  },
+  {
+    id: 'core:collection_view',
+    name: 'Collection',
+    description: 'Display a collection of content',
+    icon: '📚',
+    category: 'dynamic',
+    createBlock: () => createCollectionViewBlock()
+  }
+];
+
+================================================================================
+
 File: features/editor/components/MarkdownEditor.tsx
 // src/features/editor/components/BlocknoteEditor.tsx
 import { forwardRef, useImperativeHandle, useRef } from 'react';
@@ -16352,139 +18062,6 @@ export default function EditorHeader({ actions }: EditorHeaderProps) {
         )}
       </div>
     </header>
-  );
-}
-
-================================================================================
-
-File: features/editor/components/ImageUploadWidget.tsx
-// src/features/editor/components/ImageUploadWidget.tsx
-
-import { useEffect, useState } from 'react';
-import type { WidgetProps } from '@rjsf/utils';
-import { useAppStore } from '@/core/state/useAppStore';
-import { getActiveImageService } from '@/core/services/images/images.service';
-import { Button } from '@/core/components/ui/button';
-import { Label } from '@/core/components/ui/label';
-import { UploadCloud, XCircle } from 'lucide-react';
-import { toast } from 'sonner';
-import { MEMORY_CONFIG } from '@/config/editorConfig';
-
-export default function ImageUploadWidget(props: WidgetProps) {
-  const { id, label, value: imageRef, onChange, formContext } = props;
-  const siteId = formContext.siteId as string;
-
-  const site = useAppStore(state => state.getSiteById(siteId));
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-
-  useEffect(() => {
-    let objectUrl: string | null = null;
-    const generatePreview = async () => {
-      if (imageRef && site?.manifest) {
-        try {
-          const service = getActiveImageService(site.manifest);
-          const url = await service.getDisplayUrl(site.manifest, imageRef, { width: 256, crop: 'fit' }, false);
-          setPreviewUrl(url);
-          if (url.startsWith('blob:')) {
-            objectUrl = url;
-          }
-        } catch (error) {
-          console.error(`Could not generate preview for ${label}:`, error);
-          setPreviewUrl(null);
-        }
-      } else {
-        setPreviewUrl(null);
-      }
-    };
-    generatePreview();
-    
-    return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [imageRef, site, label]);
-
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !site?.manifest) return;
-
-    const isSvg = file.type === 'image/svg+xml';
-    if (!MEMORY_CONFIG.SUPPORTED_IMAGE_TYPES.includes(file.type as typeof MEMORY_CONFIG.SUPPORTED_IMAGE_TYPES[number])) {
-      toast.error(`Unsupported file type.`);
-      return;
-    }
-    const maxSize = isSvg ? MEMORY_CONFIG.MAX_SVG_SIZE : MEMORY_CONFIG.MAX_UPLOAD_SIZE;
-    if (file.size > maxSize) {
-      const maxSizeFormatted = (maxSize / 1024 / (isSvg ? 1 : 1024)).toFixed(1);
-      const unit = isSvg ? 'KB' : 'MB';
-      toast.error(`Image is too large. Max size is ${maxSizeFormatted}${unit}.`);
-      return;
-    }
-    
-    setIsUploading(true);
-    try {
-      const service = getActiveImageService(site.manifest);
-      const newRef = await service.upload(file, siteId);
-      onChange(newRef);
-      toast.success(`${label} uploaded successfully.`);
-    } catch (error) {
-      console.error(`Upload failed for ${label}:`, error);
-      const errorMsg = error instanceof Error ? error.message : 'Upload failed. Please try again.';
-      toast.error(errorMsg);
-    } finally {
-      setIsUploading(false);
-      event.target.value = '';
-    }
-  };
-
-  const handleRemove = () => {
-    onChange(undefined);
-  };
-
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      
-      {previewUrl ? (
-        <div className="relative w-full aspect-video bg-muted rounded-md overflow-hidden">
-          <img src={previewUrl} alt={`${label} preview`} className="absolute inset-0 w-full h-full object-contain" />
-          <Button 
-            size="icon" 
-            variant="destructive" 
-            className="absolute top-2 right-2 h-7 w-7"
-            onClick={handleRemove}
-            aria-label={`Remove ${label}`}
-          >
-            <XCircle className="h-4 w-4" />
-          </Button>
-        </div>
-      ) : (
-        <label
-          htmlFor={id}
-          className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted/80"
-        >
-          <div className="flex flex-col items-center justify-center pt-5 pb-6">
-            <UploadCloud className="w-8 h-8 mb-2 text-muted-foreground" />
-            <p className="mb-1 text-sm text-muted-foreground">
-              <span className="font-semibold">Click to upload</span> or drag and drop
-            </p>
-            <p className="text-xs text-muted-foreground">PNG, JPG, or WEBP (Max 5MB)</p>
-          </div>
-          <input 
-            id={id} 
-            type="file" 
-            className="hidden" 
-            onChange={handleFileSelect}
-            accept={MEMORY_CONFIG.SUPPORTED_EXTENSIONS.join(',')}
-            disabled={isUploading}
-          />
-        </label>
-      )}
-
-      {isUploading && <p className="text-sm text-muted-foreground">Uploading...</p>}
-    </div>
   );
 }
 
@@ -16796,33 +18373,8 @@ export default function NewPageDialog({ siteId, children, onComplete }: NewPageD
 
 ================================================================================
 
-File: features/editor/components/SwitchWidget.tsx
-import type { WidgetProps } from '@rjsf/utils';
-import { Switch } from '@/core/components/ui/switch';
-import { Label } from '@/core/components/ui/label';
-
-export default function SwitchWidget(props: WidgetProps) {
-  const { id, value, onChange, label, schema } = props;
-  
-  return (
-    <div className="flex items-center space-x-2">
-      <Switch
-        id={id}
-        checked={Boolean(value)}
-        onCheckedChange={(checked) => onChange(checked)}
-      />
-      <Label htmlFor={id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-        {label || schema.title}
-      </Label>
-    </div>
-  );
-}
-
-================================================================================
-
 File: features/editor/components/FileTree.tsx
 // src/features/editor/components/FileTree.tsx
-'use client';
 
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import FileTreeNode from './FileTreeNode';
@@ -17039,116 +18591,6 @@ export default function FileTreeNode({
     </li>
   );
 }
-
-================================================================================
-
-File: features/editor/components/DataSourceSelectWidget.tsx
-// src/features/editor/components/DataSourceSelectWidget.tsx
-'use client';
-
-import { useEffect, useState, useMemo } from 'react';
-import { getAvailableLayouts } from '@/core/services/config/configHelpers.service';
-import type { WidgetProps } from '@rjsf/utils';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/core/components/ui/select";
-import { Label } from '@/core/components/ui/label';
-import type { LocalSiteData, StructureNode, LayoutManifest } from '@/core/types';
-
-interface SelectOption {
-  label: string;
-  value: string;
-}
-
-interface DataSourceSelectWidgetProps extends WidgetProps {
-    formContext?: {
-        site?: LocalSiteData;
-    };
-}
-
-const DataSourceSelectWidget = ({ id, label, options, value, onChange, required, formContext }: DataSourceSelectWidgetProps) => {
-  const { uiSchema } = options;
-  const site = formContext?.site;
-
-  const dataSource = uiSchema?.['ui:dataSource'] as string;
-  const layoutTypeFilter = uiSchema?.['ui:layoutType'] as string | undefined;
-
-  const [items, setItems] = useState<SelectOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchItems = async () => {
-      // Add a more robust guard clause
-      if (!site || !site.manifest || !site.contentFiles) {
-        setItems([]);
-        setIsLoading(false);
-        return;
-      }
-      setIsLoading(true);
-
-      let fetchedItems: SelectOption[] = [];
-
-      try {
-        switch (dataSource) {
-          case 'collections':
-            // 1. Find all content files that ARE collection pages.
-            const collectionFilePaths = new Set(
-              site.contentFiles
-                .filter(f => !!f.frontmatter.collection)
-                .map(f => f.path)
-            );
-            // 2. Filter the structure nodes to only include those whose paths are in our set.
-            fetchedItems = site.manifest.structure
-              .filter((n: StructureNode) => collectionFilePaths.has(n.path))
-              .map((c: StructureNode) => ({ label: c.title, value: c.slug }));
-            break;
-
-          case 'layouts':
-            const allLayouts: LayoutManifest[] = await getAvailableLayouts(site);
-            fetchedItems = allLayouts
-              .filter(l => !layoutTypeFilter || l.layoutType === layoutTypeFilter)
-              .map(l => ({ label: l.name, value: l.id })); // Use id for value
-            break;
-
-          default:
-            fetchedItems = [];
-        }
-        setItems(fetchedItems);
-      } catch (error) {
-        console.error(`Failed to fetch data source "${dataSource}":`, error);
-        setItems([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchItems();
-  }, [site, dataSource, layoutTypeFilter]);
-
-  const placeholder = useMemo(() => {
-    if (isLoading) return `Loading ${dataSource || 'options'}...`;
-    if (dataSource) return `Select a ${dataSource.replace(/s$/, '')}...`;
-    return 'Select an option...';
-  }, [isLoading, dataSource]);
-
-  return (
-    <div className="space-y-1">
-      <Label htmlFor={id}>{label}{required ? '*' : ''}</Label>
-      <Select value={value} onValueChange={onChange} disabled={isLoading}>
-        <SelectTrigger id={id} className="mt-1">
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {items.map(item => (
-            <SelectItem key={item.value} value={item.value}>
-              {item.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-};
-
-export default DataSourceSelectWidget;
 
 ================================================================================
 
@@ -18076,7 +19518,7 @@ export default function FrontmatterSidebar({
   useEffect(() => {
     async function fetchAllLayouts() {
       setIsLoading(true);
-      const siteDataForAssets = { manifest, layoutFiles, themeFiles };
+      const siteDataForAssets = { siteId, manifest, layoutFiles, themeFiles };
       const layouts = await getAvailableLayouts(siteDataForAssets);
       setAllLayouts(layouts);
       setIsLoading(false);
@@ -18383,8 +19825,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/core/components/ui/accordion";
-import ImageUploadWidget from './ImageUploadWidget';
-import SwitchWidget from './SwitchWidget';
+import { ImageUploadWidget, SwitchWidget } from './widgets';
 
 interface Group {
   title: string;
@@ -18862,6 +20303,1013 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
 
 ================================================================================
 
+File: features/editor/components/blocks/index.ts
+// src/features/editor/components/blocks/index.ts
+
+export { default as BlockEditor } from './BlockEditor';
+export { default as BlockWrapper } from './BlockWrapper';
+export { default as AddBlockMenu } from './AddBlockMenu';
+
+================================================================================
+
+File: features/editor/components/blocks/BlockWrapper.tsx
+// src/features/editor/components/blocks/BlockWrapper.tsx
+
+import { useState, useMemo } from 'react';
+import { useSortable } from '@dnd-kit/sortable';
+import { useDroppable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import { 
+  GripVertical, 
+  Settings, 
+  Trash2, 
+  ChevronDown,
+  ChevronRight
+} from 'lucide-react';
+import { Button } from '@/core/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/core/components/ui/dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/core/components/ui/collapsible';
+import SchemaDrivenForm from '@/core/components/SchemaDrivenForm';
+import { type Block, type BlockManifest } from '@/core/types';
+import { useAppStore } from '@/core/state/useAppStore';
+import AddBlockMenu from './AddBlockMenu';
+
+// Droppable Region Component
+function DroppableRegion({ 
+  blockId, 
+  regionName, 
+  children, 
+  isEmpty,
+  regionBlocks = []
+}: { 
+  blockId: string; 
+  regionName: string; 
+  children: React.ReactNode;
+  isEmpty: boolean;
+  regionBlocks?: any[];
+}) {
+  // Use the length of existing blocks as the drop index (append to end)
+  const dropIndex = regionBlocks.length;
+  const { isOver, setNodeRef } = useDroppable({
+    id: `region:${blockId}:${regionName}:${dropIndex}`
+  });
+
+  return (
+    <div 
+      ref={setNodeRef}
+      className={`region-content min-h-[100px] border-2 border-dashed rounded-lg p-3 transition-colors ${
+        isOver ? 'border-blue-500 bg-blue-50' : 'border-muted'
+      } ${isEmpty ? 'bg-gray-50/50' : 'bg-white'}`}
+      data-region={regionName}
+    >
+      {isEmpty ? (
+        <div className="flex items-center justify-center h-24 text-muted-foreground text-sm">
+          Drop blocks here
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface BlockWrapperProps {
+  siteId: string;
+  block: Block;
+  manifest?: BlockManifest;
+  onChange: (blockId: string, newBlockData: Partial<Block>) => void;
+  onDelete: (blockId: string) => void;
+  depth?: number; // For nested blocks
+  isDragging?: boolean; // For drag overlay styling
+}
+
+/**
+ * BlockWrapper is the main editing interface for individual blocks.
+ * It handles:
+ * - Drag and drop functionality
+ * - Content editing (inline forms)
+ * - Config editing (settings modal)
+ * - Region management (nested blocks)
+ * - Block controls (delete, settings)
+ */
+export default function BlockWrapper({
+  siteId,
+  block,
+  manifest,
+  onChange,
+  onDelete,
+  depth = 0,
+  isDragging = false
+}: BlockWrapperProps) {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isContentCollapsed, setIsContentCollapsed] = useState(false);
+
+  // Set up drag and drop
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: isSortableDragging,
+  } = useSortable({ id: block.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  // Handle content changes
+  const handleContentChange = (newContent: Record<string, unknown>) => {
+    onChange(block.id, { content: newContent });
+  };
+
+  // Handle config changes
+  const handleConfigChange = (newConfig: Record<string, unknown>) => {
+    onChange(block.id, { config: newConfig });
+    setIsSettingsOpen(false);
+  };
+
+  // Handle nested block changes
+  const handleNestedBlockChange = (regionName: string, regionBlocks: Block[]) => {
+    const newRegions = { ...block.regions, [regionName]: regionBlocks };
+    onChange(block.id, { regions: newRegions });
+  };
+
+  // Handle nested block addition
+  const handleNestedBlockAdd = (regionName: string, newBlockManifest: BlockManifest) => {
+    const newBlock: Block = {
+      id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: newBlockManifest.id,
+      content: newBlockManifest.contentSchema?.properties 
+        ? Object.entries(newBlockManifest.contentSchema.properties).reduce((acc, [key, prop]) => {
+            if (typeof prop === 'object' && 'default' in prop) {
+              acc[key] = prop.default;
+            }
+            return acc;
+          }, {} as Record<string, unknown>)
+        : {},
+      config: newBlockManifest.configSchema?.properties
+        ? Object.entries(newBlockManifest.configSchema.properties).reduce((acc, [key, prop]) => {
+            if (typeof prop === 'object' && 'default' in prop) {
+              acc[key] = prop.default;
+            }
+            return acc;
+          }, {} as Record<string, unknown>)
+        : {},
+      regions: newBlockManifest.regions
+        ? newBlockManifest.regions.reduce((acc, regionName) => {
+            acc[regionName] = [];
+            return acc;
+          }, {} as Record<string, Block[]>)
+        : {},
+    };
+
+    const currentRegionBlocks = block.regions[regionName] || [];
+    handleNestedBlockChange(regionName, [...currentRegionBlocks, newBlock]);
+  };
+
+  // Handle nested block deletion
+  const handleNestedBlockDelete = (regionName: string, blockId: string) => {
+    const currentRegionBlocks = block.regions[regionName] || [];
+    const updatedBlocks = currentRegionBlocks.filter(b => b.id !== blockId);
+    handleNestedBlockChange(regionName, updatedBlocks);
+  };
+
+  // Determine if block has content fields
+  const hasContentFields = useMemo(() => {
+    return manifest?.contentSchema?.properties && 
+           Object.keys(manifest.contentSchema.properties).length > 0;
+  }, [manifest]);
+
+  // Determine if block has config fields
+  const hasConfigFields = useMemo(() => {
+    return manifest?.configSchema?.properties && 
+           Object.keys(manifest.configSchema.properties).length > 0;
+  }, [manifest]);
+
+  // Determine if block has regions
+  const hasRegions = useMemo(() => {
+    return manifest?.regions && manifest.regions.length > 0;
+  }, [manifest]);
+
+  // Get block display name
+  const blockDisplayName = manifest?.name || block.type;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`
+        block-wrapper relative group border rounded-lg bg-background
+        ${isDragging || isSortableDragging ? 'opacity-50' : ''}
+        ${depth > 0 ? 'ml-4 border-dashed' : 'border-solid'}
+        hover:border-primary/50 transition-colors
+      `}
+    >
+      {/* Block Header */}
+      <div className="flex items-center justify-between p-3 border-b bg-muted/30">
+        <div className="flex items-center gap-2">
+          {/* Drag Handle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="w-4 h-4" />
+          </Button>
+
+          {/* Block Type */}
+          <span className="text-sm font-medium text-muted-foreground">
+            {blockDisplayName}
+          </span>
+
+          {/* Content Collapse Toggle (if has content) */}
+          {hasContentFields && (
+            <Collapsible open={!isContentCollapsed} onOpenChange={setIsContentCollapsed}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  {isContentCollapsed ? 
+                    <ChevronRight className="w-4 h-4" /> : 
+                    <ChevronDown className="w-4 h-4" />
+                  }
+                </Button>
+              </CollapsibleTrigger>
+            </Collapsible>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          {/* Settings Button (if has config) */}
+          {hasConfigFields && (
+            <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{blockDisplayName} Settings</DialogTitle>
+                </DialogHeader>
+                <SchemaDrivenForm
+                  schema={manifest?.configSchema!}
+                  uiSchema={manifest?.configUiSchema}
+                  formData={block.config}
+                  onFormChange={handleConfigChange as (data: object) => void}
+                  formContext={{ siteId }}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {/* Delete Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(block.id)}
+            className="text-destructive hover:text-destructive/80 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Block Content Editor */}
+      {hasContentFields && (
+        <Collapsible open={!isContentCollapsed}>
+          <CollapsibleContent>
+            <div className="p-4 border-b">
+              <SchemaDrivenForm
+                schema={manifest?.contentSchema!}
+                uiSchema={manifest?.contentUiSchema}
+                formData={block.content}
+                onFormChange={handleContentChange as (data: object) => void}
+                liveValidate={true}
+                formContext={{ siteId }}
+              />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* Regions (for container blocks) */}
+      {hasRegions && (
+        <div className="p-4">
+          {block.type === 'core:container' ? (
+            <div className="grid grid-cols-2 gap-4">
+              {manifest?.regions!.map((regionName) => (
+                <div key={regionName} className="region">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-muted-foreground capitalize">
+                      {regionName.replace('_', ' ')}
+                    </h4>
+                    <AddBlockMenu
+                      siteId={siteId}
+                      onBlockAdd={(blockManifest) => handleNestedBlockAdd(regionName, blockManifest)}
+                    />
+                  </div>
+              
+              <DroppableRegion
+                blockId={block.id}
+                regionName={regionName}
+                isEmpty={block.regions[regionName]?.length === 0}
+                regionBlocks={block.regions[regionName] || []}
+              >
+                {block.regions[regionName]?.length === 0 ? null : (
+                  <>
+                    {block.regions[regionName]?.map((nestedBlock) => {
+                      const getBlockManifest = useAppStore.getState().getBlockManifest;
+                      return (
+                        <BlockWrapper
+                          key={nestedBlock.id}
+                          siteId={siteId}
+                          block={nestedBlock}
+                          manifest={getBlockManifest(nestedBlock.type)}
+                          onChange={(blockId, changes) => handleNestedBlockChange(regionName, 
+                            block.regions[regionName].map(b => 
+                              b.id === blockId ? { ...b, ...changes } : b
+                            )
+                          )}
+                          onDelete={(blockId) => handleNestedBlockDelete(regionName, blockId)}
+                          depth={depth + 1}
+                        />
+                      );
+                    })}
+                  </>
+                )}
+              </DroppableRegion>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {manifest?.regions!.map((regionName) => (
+                <div key={regionName} className="region">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-muted-foreground capitalize">
+                      {regionName.replace('_', ' ')}
+                    </h4>
+                    <AddBlockMenu
+                      siteId={siteId}
+                      onBlockAdd={(blockManifest) => handleNestedBlockAdd(regionName, blockManifest)}
+                    />
+                  </div>
+                  
+                  <DroppableRegion
+                    blockId={block.id}
+                    regionName={regionName}
+                    isEmpty={block.regions[regionName]?.length === 0}
+                    regionBlocks={block.regions[regionName] || []}
+                  >
+                    {block.regions[regionName]?.length === 0 ? null : (
+                      <>
+                        {block.regions[regionName]?.map((nestedBlock) => {
+                          const getBlockManifest = useAppStore.getState().getBlockManifest;
+                          return (
+                            <BlockWrapper
+                              key={nestedBlock.id}
+                              siteId={siteId}
+                              block={nestedBlock}
+                              manifest={getBlockManifest(nestedBlock.type)}
+                              onChange={(blockId, changes) => handleNestedBlockChange(regionName, 
+                                block.regions[regionName].map(b => 
+                                  b.id === blockId ? { ...b, ...changes } : b
+                                )
+                              )}
+                              onDelete={(blockId) => handleNestedBlockDelete(regionName, blockId)}
+                              depth={depth + 1}
+                            />
+                          );
+                        })}
+                      </>
+                    )}
+                  </DroppableRegion>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Empty State (for blocks with no content, config, or regions) */}
+      {!hasContentFields && !hasConfigFields && !hasRegions && (
+        <div className="p-8 text-center text-muted-foreground">
+          <p className="text-sm">This block has no editable properties.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+================================================================================
+
+File: features/editor/components/blocks/BlockEditor.tsx
+// src/features/editor/components/blocks/BlockEditor.tsx
+
+import { useState, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+
+import { type Block } from '@/core/types';
+import { useAppStore } from '@/core/state/useAppStore';
+import { produce } from 'immer';
+import { Plus } from 'lucide-react';
+import { Button } from '@/core/components/ui/button';
+import { BLOCK_TYPES } from '@/features/editor/utils/blockUtils';
+
+// Import block-related components
+import BlockWrapper from './BlockWrapper';
+
+// Helper types for drag-and-drop
+interface DropZone {
+  type: 'main' | 'region';
+  blockId?: string; // For regions, this is the container block ID
+  regionName?: string; // For regions, this is the region name
+  index: number; // Position within the zone
+}
+
+// Helper function to find a block in the nested structure
+function findBlockPath(blocks: Block[], targetId: string): { path: number[]; parent?: Block; regionName?: string } | null {
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+    if (block.id === targetId) {
+      return { path: [i] };
+    }
+    
+    // Search in regions
+    if (block.regions) {
+      for (const [regionName, regionBlocks] of Object.entries(block.regions)) {
+        for (let j = 0; j < regionBlocks.length; j++) {
+          const nestedBlock = regionBlocks[j];
+          if (nestedBlock.id === targetId) {
+            return { path: [i, j], parent: block, regionName };
+          }
+          
+          // Could recursively search deeper if needed
+          const nestedResult = findBlockPath([nestedBlock], targetId);
+          if (nestedResult) {
+            return { 
+              path: [i, j, ...nestedResult.path], 
+              parent: nestedResult.parent || nestedBlock, 
+              regionName: nestedResult.regionName || regionName 
+            };
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
+// Helper function to remove a block from anywhere in the structure
+function removeBlock(blocks: Block[], blockId: string): { blocks: Block[]; removedBlock: Block | null } {
+  const blockPath = findBlockPath(blocks, blockId);
+  if (!blockPath) return { blocks, removedBlock: null };
+  
+  let removedBlock: Block | null = null;
+  
+  const newBlocks = produce(blocks, draft => {
+    if (blockPath.path.length === 1) {
+      // Block is at root level
+      const [index] = blockPath.path;
+      removedBlock = draft[index];
+      draft.splice(index, 1);
+    } else if (blockPath.path.length === 2 && blockPath.regionName) {
+      // Block is in a region
+      const [parentIndex, blockIndex] = blockPath.path;
+      const parentBlock = draft[parentIndex];
+      if (parentBlock.regions[blockPath.regionName]) {
+        removedBlock = parentBlock.regions[blockPath.regionName][blockIndex];
+        parentBlock.regions[blockPath.regionName].splice(blockIndex, 1);
+      }
+    }
+  });
+  
+  return { blocks: newBlocks, removedBlock };
+}
+
+// Helper function to insert a block at a specific location
+function insertBlock(blocks: Block[], block: Block, zone: DropZone): Block[] {
+  return produce(blocks, draft => {
+    if (zone.type === 'main') {
+      // Insert at root level
+      draft.splice(zone.index, 0, block);
+    } else if (zone.type === 'region' && zone.blockId && zone.regionName) {
+      // Insert in a region
+      const containerBlock = draft.find(b => b.id === zone.blockId);
+      if (containerBlock && containerBlock.regions[zone.regionName]) {
+        containerBlock.regions[zone.regionName].splice(zone.index, 0, block);
+      }
+    }
+  });
+}
+
+// Inline Add Button Component
+function InlineAddButton({ 
+  onAddBlock, 
+  position 
+}: { 
+  onAddBlock: (blockType: string, position: number) => void;
+  position: number;
+}) {
+  const [showMenu, setShowMenu] = useState(false);
+
+  return (
+    <div className="relative group">
+      {/* Add button - shows on hover */}
+      <div className="flex justify-center py-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 border border-dashed border-gray-300 rounded-full hover:border-blue-500 hover:bg-blue-50"
+          onClick={() => setShowMenu(!showMenu)}
+        >
+          <Plus className="h-4 w-4 text-gray-400 hover:text-blue-500" />
+        </Button>
+      </div>
+
+      {/* Simple block type menu */}
+      {showMenu && (
+        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-50 bg-white border rounded-lg shadow-lg p-2 min-w-48">
+          {BLOCK_TYPES.map((blockType) => (
+            <button
+              key={blockType.id}
+              className="flex items-center gap-3 w-full p-2 text-left hover:bg-gray-50 rounded text-sm"
+              onClick={() => {
+                onAddBlock(blockType.id, position);
+                setShowMenu(false);
+              }}
+            >
+              <span className="text-lg">{blockType.icon}</span>
+              <div>
+                <div className="font-medium">{blockType.name}</div>
+                <div className="text-gray-500 text-xs">{blockType.description}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// A simple component to render a preview of the block being dragged
+function DragOverlayItem({ blockId, blocks }: { blockId: string; blocks: Block[] }) {
+  const getBlockManifest = useAppStore(state => state.getBlockManifest);
+  const block = blocks.find(b => b.id === blockId);
+  if (!block) return null;
+
+  const manifest = getBlockManifest(block.type);
+  const title = typeof block.content.text === 'string' 
+    ? block.content.text.substring(0, 30) 
+    : manifest?.name || block.type || 'Block';
+
+  return (
+    <div className="flex items-center gap-2 p-2 bg-background border rounded-md shadow-lg text-sm font-semibold">
+      <span>{title}{title.length === 30 ? '...' : ''}</span>
+    </div>
+  );
+}
+
+interface BlockEditorProps {
+  siteId: string;
+  blocks: Block[];
+  onBlocksChange: (newBlocks: Block[]) => void;
+}
+
+/**
+ * The main editor canvas for the block-based editor.
+ * It manages the state for drag-and-drop and orchestrates the rendering
+ * and manipulation of the block list.
+ */
+export default function BlockEditor({ siteId, blocks, onBlocksChange }: BlockEditorProps) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const getBlockManifest = useAppStore(state => state.getBlockManifest);
+
+  // Handler to add a new block at a specific position
+  const handleAddBlock = useCallback((blockTypeId: string, position: number) => {
+    const blockType = BLOCK_TYPES.find(type => type.id === blockTypeId);
+    if (!blockType) return;
+
+    const newBlock = blockType.createBlock();
+    const newBlocks = [...blocks];
+    newBlocks.splice(position, 0, newBlock);
+    onBlocksChange(newBlocks);
+  }, [blocks, onBlocksChange]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 }, // Require a small drag before starting
+    })
+  );
+
+  // Get all block IDs including nested ones for drag-and-drop
+  const blockIds = useMemo(() => {
+    const getAllBlockIds = (blocks: Block[]): string[] => {
+      const ids: string[] = [];
+      for (const block of blocks) {
+        ids.push(block.id);
+        // Add nested block IDs from regions
+        if (block.regions) {
+          for (const regionBlocks of Object.values(block.regions)) {
+            ids.push(...getAllBlockIds(regionBlocks));
+          }
+        }
+      }
+      return ids;
+    };
+    return getAllBlockIds(blocks);
+  }, [blocks]);
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    
+    if (!over || active.id === over.id) return;
+    
+    const draggedBlockId = active.id as string;
+    const overId = over.id as string;
+    
+    // Parse the drop zone from the over ID
+    let dropZone: DropZone;
+    
+    if (overId.startsWith('region:')) {
+      // Format: "region:blockId:regionName:index"
+      const parts = overId.split(':');
+      dropZone = {
+        type: 'region',
+        blockId: parts[1],
+        regionName: parts[2],
+        index: parseInt(parts[3], 10)
+      };
+    } else if (overId.startsWith('main:')) {
+      // Format: "main:index"
+      const parts = overId.split(':');
+      dropZone = {
+        type: 'main',
+        index: parseInt(parts[1], 10)
+      };
+    } else {
+      // Fallback: try to find block and insert after it
+      const targetIndex = blockIds.indexOf(overId);
+      if (targetIndex === -1) return;
+      
+      dropZone = {
+        type: 'main',
+        index: targetIndex + 1
+      };
+    }
+    
+    // Remove the block from its current location
+    const { blocks: blocksAfterRemoval, removedBlock } = removeBlock(blocks, draggedBlockId);
+    if (!removedBlock) return;
+    
+    // Insert the block at the new location
+    const finalBlocks = insertBlock(blocksAfterRemoval, removedBlock, dropZone);
+    onBlocksChange(finalBlocks);
+  }, [blockIds, blocks, onBlocksChange]);
+
+
+  const handleBlockChange = useCallback((blockId: string, newBlockData: Partial<Block>) => {
+      const newBlocks = produce(blocks, draft => {
+          // First try to find the block at the top level
+          const index = draft.findIndex(b => b.id === blockId);
+          if (index !== -1) {
+              draft[index] = { ...draft[index], ...newBlockData };
+              return;
+          }
+          
+          // If not found at top level, search in nested regions
+          const blockPath = findBlockPath(draft, blockId);
+          if (blockPath) {
+              if (blockPath.path.length === 1) {
+                  // Top level block
+                  const [blockIndex] = blockPath.path;
+                  draft[blockIndex] = { ...draft[blockIndex], ...newBlockData };
+              } else if (blockPath.path.length === 2 && blockPath.regionName) {
+                  // Nested block in region
+                  const [parentIndex, nestedIndex] = blockPath.path;
+                  const parentBlock = draft[parentIndex];
+                  if (parentBlock.regions[blockPath.regionName]) {
+                      parentBlock.regions[blockPath.regionName][nestedIndex] = { 
+                          ...parentBlock.regions[blockPath.regionName][nestedIndex], 
+                          ...newBlockData 
+                      };
+                  }
+              }
+          }
+      });
+      onBlocksChange(newBlocks);
+  }, [blocks, onBlocksChange]);
+
+  const handleBlockDelete = useCallback((blockId: string) => {
+    const { blocks: newBlocks } = removeBlock(blocks, blockId);
+    onBlocksChange(newBlocks);
+  }, [blocks, onBlocksChange]);
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveId(null)}
+    >
+      <div className="container mx-auto max-w-[900px] flex-grow flex flex-col">
+        <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
+          {/* Add button at the top */}
+          <InlineAddButton onAddBlock={handleAddBlock} position={0} />
+          
+          {blocks.map((block, index) => (
+            <div key={block.id}>
+              <BlockWrapper
+                siteId={siteId}
+                block={block}
+                manifest={getBlockManifest(block.type)}
+                onChange={handleBlockChange}
+                onDelete={handleBlockDelete}
+              />
+              {/* Add button after each block */}
+              <InlineAddButton onAddBlock={handleAddBlock} position={index + 1} />
+            </div>
+          ))}
+        </SortableContext>
+      </div>
+
+      {createPortal(
+        <DragOverlay dropAnimation={null}>
+          {activeId ? <DragOverlayItem blockId={activeId} blocks={blocks} /> : null}
+        </DragOverlay>,
+        document.body
+      )}
+    </DndContext>
+  );
+}
+
+// NOTE: You will need to create the child components like `BlockWrapper` and `AddBlockMenu`,
+// as well as the specific editor components (`RichTextBlockEditor`, etc.).
+// This structure provides the complete orchestration logic.
+
+================================================================================
+
+File: features/editor/components/blocks/AddBlockMenu.tsx
+// src/features/editor/components/blocks/AddBlockMenu.tsx
+
+import { useState, useEffect, useMemo } from 'react';
+import { Search, Plus, Blocks, Image, List, Columns } from 'lucide-react';
+import { Button } from '@/core/components/ui/button';
+import { Input } from '@/core/components/ui/input';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from '@/core/components/ui/dialog';
+import { useAppStore } from '@/core/state/useAppStore';
+import { getAvailableBlocks, loadBlockManifest } from '@/core/services/block.service';
+import { type BlockInfo, type BlockManifest } from '@/core/types';
+import { toast } from 'sonner';
+
+interface AddBlockMenuProps {
+  siteId: string;
+  onBlockAdd: (manifest: BlockManifest) => void;
+}
+
+interface BlockCategory {
+  name: string;
+  blocks: BlockInfo[];
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+// Icon mapping for different block types
+const getBlockIcon = (blockId: string) => {
+  switch (blockId) {
+    case 'core:rich_text':
+      return Blocks;
+    case 'core:image':
+      return Image;
+    case 'core:collection_view':
+      return List;
+    case 'core:container':
+      return Columns;
+    default:
+      return Blocks;
+  }
+};
+
+// Categorize blocks by type
+const categorizeBlocks = (blocks: BlockInfo[]): BlockCategory[] => {
+  const contentBlocks = blocks.filter(block => 
+    ['core:rich_text', 'core:image', 'core:collection_view'].includes(block.id)
+  );
+  
+  const layoutBlocks = blocks.filter(block => 
+    ['core:container'].includes(block.id)
+  );
+
+  const categories: BlockCategory[] = [];
+  
+  if (contentBlocks.length > 0) {
+    categories.push({
+      name: 'Content',
+      blocks: contentBlocks,
+      icon: Blocks
+    });
+  }
+  
+  if (layoutBlocks.length > 0) {
+    categories.push({
+      name: 'Layout',
+      blocks: layoutBlocks,
+      icon: Columns
+    });
+  }
+
+  return categories;
+};
+
+export default function AddBlockMenu({ siteId, onBlockAdd }: AddBlockMenuProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [availableBlocks, setAvailableBlocks] = useState<BlockInfo[]>([]);
+
+  const manifest = useAppStore(state => state.getSiteById(siteId)?.manifest);
+
+  // Load available blocks when component mounts
+  useEffect(() => {
+    if (manifest) {
+      const blocks = getAvailableBlocks(manifest);
+      setAvailableBlocks(blocks);
+    }
+  }, [manifest]);
+
+  // Filter blocks based on search term
+  const filteredBlocks = useMemo(() => {
+    if (!searchTerm.trim()) return availableBlocks;
+    
+    return availableBlocks.filter(block =>
+      block.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      block.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [availableBlocks, searchTerm]);
+
+  // Categorize filtered blocks
+  const categories = useMemo(() => 
+    categorizeBlocks(filteredBlocks), 
+    [filteredBlocks]
+  );
+
+  // Handle block selection
+  const handleBlockSelect = async (blockInfo: BlockInfo) => {
+    setIsLoading(true);
+    try {
+      const manifest = await loadBlockManifest(blockInfo, siteId);
+      if (manifest) {
+        onBlockAdd(manifest);
+        setIsOpen(false);
+        setSearchTerm('');
+        toast.success(`${blockInfo.name} block added`);
+      } else {
+        toast.error(`Failed to load ${blockInfo.name} manifest`);
+      }
+    } catch (error) {
+      console.error('Error loading block manifest:', error);
+      toast.error(`Failed to add ${blockInfo.name} block`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button 
+          variant="outline" 
+          className="w-full mt-4 border-dashed border-2 hover:border-solid transition-all"
+          disabled={isLoading}
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Block
+        </Button>
+      </DialogTrigger>
+      
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle>Add New Block</DialogTitle>
+        </DialogHeader>
+        
+        <div className="flex flex-col h-full">
+          {/* Search */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search blocks..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Block Categories */}
+          <div className="flex-1 overflow-y-auto space-y-6">
+            {categories.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {searchTerm ? 'No blocks match your search' : 'No blocks available'}
+              </div>
+            ) : (
+              categories.map((category) => (
+                <div key={category.name}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <category.icon className="w-4 h-4" />
+                    <h3 className="font-medium text-sm uppercase tracking-wide text-muted-foreground">
+                      {category.name}
+                    </h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    {category.blocks.map((block) => {
+                      const IconComponent = getBlockIcon(block.id);
+                      return (
+                        <Button
+                          key={block.id}
+                          variant="outline"
+                          className="h-auto p-4 flex flex-col items-start gap-2 hover:bg-muted/50 transition-colors"
+                          onClick={() => handleBlockSelect(block)}
+                          disabled={isLoading}
+                        >
+                          <div className="flex items-center gap-2 w-full">
+                            <IconComponent className="w-5 h-5 text-primary" />
+                            <span className="font-medium text-left">{block.name}</span>
+                          </div>
+                          {block.description && (
+                            <p className="text-xs text-muted-foreground text-left leading-relaxed">
+                              {block.description}
+                            </p>
+                          )}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+================================================================================
+
+File: features/editor/components/forms/index.ts
+// src/features/editor/components/forms/index.ts
+
+// Re-export existing forms for convenience
+export { default as AdvancedSettingsForm } from './AdvancedSettingsForm';
+export { default as CollectionConfigForm } from './CollectionConfigForm';
+export { default as CollectionLayoutForm } from './CollectionLayoutForm';
+export { default as CollectionLayoutSchemaForm } from './CollectionLayoutSchemaForm';
+export { default as CoreSchemaForm } from './CoreSchemaForm';
+export { default as LayoutSelector } from './LayoutSelector';
+export { default as PageMetaDataForm } from './PageMetaDataForm';
+
+================================================================================
+
 File: features/editor/components/forms/LayoutSelector.tsx
 // src/features/editor/components/forms/LayoutSelector.tsx
 
@@ -19206,8 +21654,7 @@ import type { MarkdownFrontmatter } from '@/core/types';
 import SchemaDrivenForm from '@/core/components/SchemaDrivenForm';
 import { BASE_SCHEMA } from '@/config/editorConfig';
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
-import ImageUploadWidget from '../ImageUploadWidget';
-import SwitchWidget from '../SwitchWidget';
+import { ImageUploadWidget, SwitchWidget } from '../widgets';
 
 interface CoreSchemaFormProps {
   siteId: string;
@@ -19263,8 +21710,7 @@ File: features/editor/components/forms/CollectionLayoutSchemaForm.tsx
 // Imports are identical to PageLayoutSchemaForm
 import type { MarkdownFrontmatter, LayoutManifest } from '@/core/types';
 import SchemaDrivenForm from '@/core/components/SchemaDrivenForm';
-import ImageUploadWidget from '../ImageUploadWidget';
-import SwitchWidget from '../SwitchWidget';
+import { ImageUploadWidget, SwitchWidget } from '../widgets';
 
 interface CollectionLayoutSchemaFormProps {
   siteId: string;
@@ -19478,8 +21924,7 @@ import { BASE_SCHEMA } from '@/config/editorConfig';
 
 // Reusable components for form rendering
 import SchemaDrivenForm from '@/core/components/SchemaDrivenForm';
-import ImageUploadWidget from '@/features/editor/components/ImageUploadWidget';
-import SwitchWidget from '@/features/editor/components/SwitchWidget';
+import { ImageUploadWidget, SwitchWidget } from '@/features/editor/components/widgets';
 
 /**
  * Defines the props for the PageMetadataForm component.
@@ -19596,6 +22041,566 @@ export default function PageMetadataForm({
 
 ================================================================================
 
+File: features/editor/components/widgets/index.ts
+// src/features/editor/components/widgets/index.ts
+
+import type { ComponentType } from 'react';
+import type { WidgetProps } from '@rjsf/utils';
+
+// Widget imports
+import ImageUploadWidget from './ImageUploadWidget';
+import DataSourceSelectWidget from './DataSourceSelectWidget';
+import SwitchWidget from './SwitchWidget';
+import RichTextWidget from './RichTextWidget';
+import PartialSelectorWidget from './PartialSelectorWidget';
+
+/**
+ * Registry of all available editor widgets for RJSF forms.
+ * These widgets are used in block content and config schemas.
+ */
+export const editorWidgets: Record<string, ComponentType<WidgetProps>> = {
+  // Existing widgets (moved from other locations)
+  imageUploader: ImageUploadWidget,
+  dataSourceSelect: DataSourceSelectWidget,
+  switch: SwitchWidget,
+  
+  // New block-specific widgets
+  richText: RichTextWidget,
+  partialSelector: PartialSelectorWidget,
+};
+
+/**
+ * Helper function to get a widget by name with type safety
+ */
+export function getWidget(widgetName: string): ComponentType<WidgetProps> | undefined {
+  return editorWidgets[widgetName];
+}
+
+/**
+ * Get all available widget names
+ */
+export function getAvailableWidgets(): string[] {
+  return Object.keys(editorWidgets);
+}
+
+// Re-export individual widgets for direct imports
+export { default as ImageUploadWidget } from './ImageUploadWidget';
+export { default as DataSourceSelectWidget } from './DataSourceSelectWidget';
+export { default as SwitchWidget } from './SwitchWidget';
+export { default as RichTextWidget } from './RichTextWidget';
+export { default as PartialSelectorWidget } from './PartialSelectorWidget';
+
+================================================================================
+
+File: features/editor/components/widgets/RichTextWidget.tsx
+// src/features/editor/components/widgets/RichTextWidget.tsx
+
+import { useRef, useEffect } from 'react';
+import type { WidgetProps } from '@rjsf/utils';
+import { 
+  MDXEditor, 
+  type MDXEditorMethods, 
+  headingsPlugin,
+  listsPlugin,
+  quotePlugin,
+  thematicBreakPlugin,
+  markdownShortcutPlugin,
+  linkPlugin,
+  linkDialogPlugin,
+  imagePlugin,
+  tablePlugin,
+  codeBlockPlugin,
+  toolbarPlugin,
+  UndoRedo,
+  BoldItalicUnderlineToggles,
+  Separator,
+  BlockTypeSelect,
+  CreateLink,
+  InsertImage,
+  InsertTable,
+  InsertThematicBreak,
+  ListsToggle
+} from '@mdxeditor/editor';
+import '@mdxeditor/editor/style.css';
+import { Label } from '@/core/components/ui/label';
+
+export default function RichTextWidget(props: WidgetProps) {
+  const { id, label, value, onChange, options, schema } = props;
+  const editorRef = useRef<MDXEditorMethods>(null);
+  
+  // Get options from uiSchema
+  const uiOptions = options.uiOptions || {};
+  const placeholder = uiOptions.placeholder || schema.description || 'Start writing...';
+  const rows = uiOptions.rows || 10;
+
+  // Handle content changes
+  const handleContentChange = (markdown: string) => {
+    onChange(markdown);
+  };
+
+  // Set initial content when editor is ready
+  useEffect(() => {
+    if (editorRef.current && typeof value === 'string') {
+      // Only set if the content is different to avoid cursor jumping
+      const currentContent = editorRef.current.getMarkdown();
+      if (currentContent !== value) {
+        editorRef.current.setMarkdown(value || '');
+      }
+    }
+  }, [value]);
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      
+      <div 
+        className="border rounded-md overflow-hidden"
+        style={{ minHeight: `${Math.max(rows * 1.5, 10)}rem` }}
+      >
+        <MDXEditor
+          ref={editorRef}
+          markdown={value || ''}
+          onChange={handleContentChange}
+          placeholder={placeholder}
+          plugins={[
+            // Core editing plugins
+            headingsPlugin(),
+            listsPlugin(),
+            quotePlugin(),
+            thematicBreakPlugin(),
+            markdownShortcutPlugin(),
+            
+            // Link support
+            linkPlugin(),
+            linkDialogPlugin(),
+            
+            // Rich content
+            imagePlugin({
+              imageUploadHandler: async () => {
+                // For now, return a placeholder
+                // This could be enhanced to integrate with the image service
+                return '/placeholder-image.jpg';
+              }
+            }),
+            tablePlugin(),
+            codeBlockPlugin({ defaultCodeBlockLanguage: 'text' }),
+            
+            // Toolbar
+            toolbarPlugin({
+              toolbarContents: () => (
+                <>
+                  <UndoRedo />
+                  <Separator />
+                  <BoldItalicUnderlineToggles />
+                  <Separator />
+                  <BlockTypeSelect />
+                  <Separator />
+                  <CreateLink />
+                  <InsertImage />
+                  <Separator />
+                  <ListsToggle />
+                  <Separator />
+                  <InsertTable />
+                  <InsertThematicBreak />
+                </>
+              )
+            })
+          ]}
+        />
+      </div>
+      
+      {schema.description && (
+        <p className="text-sm text-muted-foreground">{schema.description}</p>
+      )}
+    </div>
+  );
+}
+
+================================================================================
+
+File: features/editor/components/widgets/ImageUploadWidget.tsx
+// src/features/editor/components/ImageUploadWidget.tsx
+
+import { useEffect, useState } from 'react';
+import type { WidgetProps } from '@rjsf/utils';
+import { useAppStore } from '@/core/state/useAppStore';
+import { getActiveImageService } from '@/core/services/images/images.service';
+import { Button } from '@/core/components/ui/button';
+import { Label } from '@/core/components/ui/label';
+import { UploadCloud, XCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import { MEMORY_CONFIG } from '@/config/editorConfig';
+
+export default function ImageUploadWidget(props: WidgetProps) {
+  const { id, label, value: imageRef, onChange, formContext } = props;
+  const siteId = formContext.siteId as string;
+
+  const site = useAppStore(state => state.getSiteById(siteId));
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    const generatePreview = async () => {
+      if (imageRef && site?.manifest) {
+        try {
+          const service = getActiveImageService(site.manifest);
+          const url = await service.getDisplayUrl(site.manifest, imageRef, { width: 256, crop: 'fit' }, false);
+          setPreviewUrl(url);
+          if (url.startsWith('blob:')) {
+            objectUrl = url;
+          }
+        } catch (error) {
+          console.error(`Could not generate preview for ${label}:`, error);
+          setPreviewUrl(null);
+        }
+      } else {
+        setPreviewUrl(null);
+      }
+    };
+    generatePreview();
+    
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [imageRef, site, label]);
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !site?.manifest) return;
+
+    const isSvg = file.type === 'image/svg+xml';
+    if (!MEMORY_CONFIG.SUPPORTED_IMAGE_TYPES.includes(file.type as typeof MEMORY_CONFIG.SUPPORTED_IMAGE_TYPES[number])) {
+      toast.error(`Unsupported file type.`);
+      return;
+    }
+    const maxSize = isSvg ? MEMORY_CONFIG.MAX_SVG_SIZE : MEMORY_CONFIG.MAX_UPLOAD_SIZE;
+    if (file.size > maxSize) {
+      const maxSizeFormatted = (maxSize / 1024 / (isSvg ? 1 : 1024)).toFixed(1);
+      const unit = isSvg ? 'KB' : 'MB';
+      toast.error(`Image is too large. Max size is ${maxSizeFormatted}${unit}.`);
+      return;
+    }
+    
+    setIsUploading(true);
+    try {
+      const service = getActiveImageService(site.manifest);
+      const newRef = await service.upload(file, siteId);
+      onChange(newRef);
+      toast.success(`${label} uploaded successfully.`);
+    } catch (error) {
+      console.error(`Upload failed for ${label}:`, error);
+      const errorMsg = error instanceof Error ? error.message : 'Upload failed. Please try again.';
+      toast.error(errorMsg);
+    } finally {
+      setIsUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleRemove = () => {
+    onChange(undefined);
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      
+      {previewUrl ? (
+        <div className="relative w-full aspect-video bg-muted rounded-md overflow-hidden">
+          <img src={previewUrl} alt={`${label} preview`} className="absolute inset-0 w-full h-full object-contain" />
+          <Button 
+            size="icon" 
+            variant="destructive" 
+            className="absolute top-2 right-2 h-7 w-7"
+            onClick={handleRemove}
+            aria-label={`Remove ${label}`}
+          >
+            <XCircle className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : (
+        <label
+          htmlFor={id}
+          className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted/80"
+        >
+          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+            <UploadCloud className="w-8 h-8 mb-2 text-muted-foreground" />
+            <p className="mb-1 text-sm text-muted-foreground">
+              <span className="font-semibold">Click to upload</span> or drag and drop
+            </p>
+            <p className="text-xs text-muted-foreground">PNG, JPG, or WEBP (Max 5MB)</p>
+          </div>
+          <input 
+            id={id} 
+            type="file" 
+            className="hidden" 
+            onChange={handleFileSelect}
+            accept={MEMORY_CONFIG.SUPPORTED_EXTENSIONS.join(',')}
+            disabled={isUploading}
+          />
+        </label>
+      )}
+
+      {isUploading && <p className="text-sm text-muted-foreground">Uploading...</p>}
+    </div>
+  );
+}
+
+================================================================================
+
+File: features/editor/components/widgets/SwitchWidget.tsx
+import type { WidgetProps } from '@rjsf/utils';
+import { Switch } from '@/core/components/ui/switch';
+import { Label } from '@/core/components/ui/label';
+
+export default function SwitchWidget(props: WidgetProps) {
+  const { id, value, onChange, label, schema } = props;
+  
+  return (
+    <div className="flex items-center space-x-2">
+      <Switch
+        id={id}
+        checked={Boolean(value)}
+        onCheckedChange={(checked) => onChange(checked)}
+      />
+      <Label htmlFor={id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+        {label || schema.title}
+      </Label>
+    </div>
+  );
+}
+
+================================================================================
+
+File: features/editor/components/widgets/DataSourceSelectWidget.tsx
+// src/features/editor/components/DataSourceSelectWidget.tsx
+'use client';
+
+import { useEffect, useState, useMemo } from 'react';
+import { getAvailableLayouts } from '@/core/services/config/configHelpers.service';
+import type { WidgetProps } from '@rjsf/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/core/components/ui/select";
+import { Label } from '@/core/components/ui/label';
+import type { LocalSiteData, StructureNode, LayoutManifest } from '@/core/types';
+
+interface SelectOption {
+  label: string;
+  value: string;
+}
+
+interface DataSourceSelectWidgetProps extends WidgetProps {
+    formContext?: {
+        site?: LocalSiteData;
+    };
+}
+
+const DataSourceSelectWidget = ({ id, label, options, value, onChange, required, formContext }: DataSourceSelectWidgetProps) => {
+  const { uiSchema } = options;
+  const site = formContext?.site;
+
+  const dataSource = uiSchema?.['ui:dataSource'] as string;
+  const layoutTypeFilter = uiSchema?.['ui:layoutType'] as string | undefined;
+
+  const [items, setItems] = useState<SelectOption[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchItems = async () => {
+      // Add a more robust guard clause
+      if (!site || !site.manifest || !site.contentFiles) {
+        setItems([]);
+        setIsLoading(false);
+        return;
+      }
+      setIsLoading(true);
+
+      let fetchedItems: SelectOption[] = [];
+
+      try {
+        switch (dataSource) {
+          case 'collections':
+            // 1. Find all content files that ARE collection pages.
+            const collectionFilePaths = new Set(
+              site.contentFiles
+                .filter(f => !!f.frontmatter.collection)
+                .map(f => f.path)
+            );
+            // 2. Filter the structure nodes to only include those whose paths are in our set.
+            fetchedItems = site.manifest.structure
+              .filter((n: StructureNode) => collectionFilePaths.has(n.path))
+              .map((c: StructureNode) => ({ label: c.title, value: c.slug }));
+            break;
+
+          case 'layouts':
+            const allLayouts: LayoutManifest[] = await getAvailableLayouts(site);
+            fetchedItems = allLayouts
+              .filter(l => !layoutTypeFilter || l.layoutType === layoutTypeFilter)
+              .map(l => ({ label: l.name, value: l.id })); // Use id for value
+            break;
+
+          default:
+            fetchedItems = [];
+        }
+        setItems(fetchedItems);
+      } catch (error) {
+        console.error(`Failed to fetch data source "${dataSource}":`, error);
+        setItems([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchItems();
+  }, [site, dataSource, layoutTypeFilter]);
+
+  const placeholder = useMemo(() => {
+    if (isLoading) return `Loading ${dataSource || 'options'}...`;
+    if (dataSource) return `Select a ${dataSource.replace(/s$/, '')}...`;
+    return 'Select an option...';
+  }, [isLoading, dataSource]);
+
+  return (
+    <div className="space-y-1">
+      <Label htmlFor={id}>{label}{required ? '*' : ''}</Label>
+      <Select value={value} onValueChange={onChange} disabled={isLoading}>
+        <SelectTrigger id={id} className="mt-1">
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {items.map(item => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+};
+
+export default DataSourceSelectWidget;
+
+================================================================================
+
+File: features/editor/components/widgets/PartialSelectorWidget.tsx
+// src/features/editor/components/widgets/PartialSelectorWidget.tsx
+
+import { useEffect, useState, useMemo } from 'react';
+import type { WidgetProps } from '@rjsf/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/core/components/ui/select";
+import { Label } from '@/core/components/ui/label';
+import type { LocalSiteData } from '@/core/types';
+
+interface SelectOption {
+  label: string;
+  value: string;
+  description?: string;
+}
+
+interface PartialSelectorWidgetProps extends WidgetProps {
+  formContext?: {
+    siteId?: string;
+    site?: LocalSiteData;
+  };
+}
+
+export default function PartialSelectorWidget(props: PartialSelectorWidgetProps) {
+  const { id, label, value, onChange, options, required, formContext } = props;
+  const { uiSchema } = options;
+  const site = formContext?.site;
+
+  // Get the asset type and path from uiSchema
+  const assetType = uiSchema?.['ui:assetType'] as 'theme' | 'layout' | 'block' || 'theme';
+  const assetPath = uiSchema?.['ui:assetPath'] as string || site?.manifest?.theme?.name;
+  const subDirectory = uiSchema?.['ui:subDirectory'] as string || 'partials';
+
+  const [partials, setPartials] = useState<SelectOption[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPartials = async () => {
+      if (!site || !assetPath) {
+        setPartials([]);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        // For now, we'll provide a static list of common partials
+        // In a full implementation, this would scan the actual directory
+        const commonPartials: SelectOption[] = [];
+
+        if (assetType === 'theme') {
+          // Common theme partials
+          commonPartials.push(
+            { label: 'Header', value: 'header.hbs', description: 'Site header with navigation' },
+            { label: 'Footer', value: 'footer.hbs', description: 'Site footer' },
+            { label: 'Sidebar', value: 'sidebar.hbs', description: 'Sidebar content' },
+            { label: 'Head', value: 'head.hbs', description: 'HTML head section' }
+          );
+        } else if (assetType === 'layout') {
+          // Common layout partials
+          commonPartials.push(
+            { label: 'Post Card', value: 'post-card.hbs', description: 'Blog post preview card' },
+            { label: 'Project Card', value: 'project-card.hbs', description: 'Portfolio project card' },
+            { label: 'Item List', value: 'item-list.hbs', description: 'Generic item listing' }
+          );
+        }
+
+        setPartials(commonPartials);
+      } catch (error) {
+        console.error('Failed to fetch partials:', error);
+        setPartials([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPartials();
+  }, [site, assetType, assetPath, subDirectory]);
+
+  const placeholder = useMemo(() => {
+    if (isLoading) return 'Loading partials...';
+    return 'Select a partial template...';
+  }, [isLoading]);
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}{required ? ' *' : ''}</Label>
+      
+      <Select value={value || ''} onValueChange={onChange} disabled={isLoading}>
+        <SelectTrigger id={id}>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {partials.map(partial => (
+            <SelectItem key={partial.value} value={partial.value}>
+              <div className="flex flex-col">
+                <span>{partial.label}</span>
+                {partial.description && (
+                  <span className="text-xs text-muted-foreground">{partial.description}</span>
+                )}
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      
+      {!isLoading && partials.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          No partials found in {assetType}/{assetPath}/{subDirectory}
+        </p>
+      )}
+    </div>
+  );
+}
+
+================================================================================
+
 File: features/editor/hooks/useUnloadPrompt.ts
 // src/features/editor/hooks/useUnloadPrompt.ts
 'use client';
@@ -19705,9 +22710,9 @@ import { useAppStore } from '@/core/state/useAppStore';
 import { useEditor } from '@/features/editor/contexts/useEditor';
 import { slugify } from '@/core/libraries/utils';
 import { toast } from 'sonner';
-import { type MarkdownFrontmatter } from '@/core/types';
+import { type MarkdownFrontmatter, type Block } from '@/core/types';
 import { DEFAULT_PAGE_LAYOUT_PATH } from '@/config/editorConfig';
-// Removed Block import as we're now working directly with markdown
+import { parseMarkdownString } from '@/core/libraries/markdownParser';
 
 /**
  * Manages the content state for the editor.
@@ -19737,14 +22742,19 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
   const [frontmatter, setFrontmatter] = useState<PageFrontmatter | null>(null);
   const [slug, setSlug] = useState('');
   const [initialMarkdown, setInitialMarkdown] = useState<string>('');
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [hasBlocks, setHasBlocks] = useState<boolean>(false);
 
   useEffect(() => {
     const loadData = async () => {
+      console.log('useFileContent - loadData called for filePath:', filePath, 'isNewFileMode:', isNewFileMode);
       if (!filePath) {
+        console.log('useFileContent - no filePath, setting loading status');
         setStatus('loading');
         return;
       }
       if (!site?.contentFiles) {
+        console.log('useFileContent - no contentFiles, setting loading status');
         setStatus('loading');
         return;
       }
@@ -19787,6 +22797,36 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         setFrontmatter(fileData.frontmatter);
         markdownContent = fileData.content;
         setSlug(fileData.slug);
+        
+        // For existing files, use the already parsed blocks if available
+        if (fileData.hasBlocks && fileData.blocks) {
+          console.log('Loading existing blocks for file:', filePath);
+          console.log('Blocks structure:', JSON.stringify(fileData.blocks, null, 2));
+          setBlocks(fileData.blocks);
+          setHasBlocks(true);
+        } else {
+          console.log('No blocks found for file:', filePath, 'hasBlocks:', fileData.hasBlocks, 'blocks:', fileData.blocks);
+          setBlocks([]);
+          setHasBlocks(false);
+        }
+      }
+
+      // For new files, parse the content to detect blocks
+      if (isNewFileMode) {
+        try {
+          const parseResult = parseMarkdownString(`---\n---\n${markdownContent}`);
+          if (parseResult.blocks && parseResult.blocks.length > 0) {
+            setBlocks(parseResult.blocks);
+            setHasBlocks(true);
+          } else {
+            setBlocks([]);
+            setHasBlocks(false);
+          }
+        } catch (error) {
+          console.error('Error parsing markdown for blocks:', error);
+          setBlocks([]);
+          setHasBlocks(false);
+        }
       }
       
       setInitialMarkdown(markdownContent);
@@ -19817,7 +22857,17 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
     onContentModified();
   }, [isNewFileMode, onContentModified]);
 
-  return { status, frontmatter, initialMarkdown, slug, setSlug, handleFrontmatterChange, onContentModified };
+  return { 
+    status, 
+    frontmatter, 
+    initialMarkdown, 
+    blocks, 
+    hasBlocks, 
+    slug, 
+    setSlug, 
+    handleFrontmatterChange, 
+    onContentModified 
+  };
 }
 
 ================================================================================
@@ -19835,8 +22885,7 @@ import { toast } from 'sonner';
 import { useUnloadPrompt } from './useUnloadPrompt';
 
 // Type imports
-import { type MarkdownFrontmatter } from '@/core/types';
-// Removed Block import as we're now working directly with markdown
+import { type MarkdownFrontmatter, type Block } from '@/core/types';
 
 interface PersistenceParams {
   siteId: string;
@@ -19844,11 +22893,13 @@ interface PersistenceParams {
   isNewFileMode: boolean;
   frontmatter: MarkdownFrontmatter | null;
   slug: string;
-  getEditorContent: () => string; 
+  getEditorContent: () => string;
+  getBlocks?: () => Block[];
+  hasBlocks?: boolean;
 }
 
 export function useFilePersistence({
-  siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent,
+  siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent, getBlocks, hasBlocks = false,
 }: PersistenceParams) {
   // Use the navigate hook from react-router-dom
   const navigate = useNavigate(); 
@@ -19863,7 +22914,21 @@ export function useFilePersistence({
     if (!frontmatter) throw new Error("Frontmatter not ready for saving.");
     if (!frontmatter.title.trim()) throw new Error("A title is required before saving.");
 
-    const markdownBody = getEditorContent();
+    // Determine content based on editor mode
+    let rawMarkdown: string;
+    console.log('useFilePersistence - saving to filePath:', filePath, 'isNewFileMode:', isNewFileMode);
+    
+    if (hasBlocks && getBlocks) {
+      // Block mode: serialize blocks to markdown
+      const blocks = getBlocks();
+      console.log('Saving blocks for file:', filePath, blocks);
+      rawMarkdown = stringifyToMarkdown(frontmatter, '', blocks);
+      console.log('Serialized markdown for file:', filePath, rawMarkdown);
+    } else {
+      // Markdown mode: use editor content
+      const markdownBody = getEditorContent();
+      rawMarkdown = stringifyToMarkdown(frontmatter, markdownBody);
+    }
     
     if (isNewFileMode) {
       // --- CREATION LOGIC (First Save) ---
@@ -19876,7 +22941,6 @@ export function useFilePersistence({
         throw new Error(`A page with the path "${slug}" already exists.`);
       }
 
-      const rawMarkdown = stringifyToMarkdown(frontmatter, markdownBody);
       await addOrUpdateContentFile(siteId, finalPath, rawMarkdown);
 
       const newEditPath = finalPath.replace(/^content\//, '').replace(/\.md$/, '');
@@ -19887,10 +22951,9 @@ export function useFilePersistence({
 
     } else {
       // --- UPDATE LOGIC (Subsequent Saves) ---
-      const rawMarkdown = stringifyToMarkdown(frontmatter, markdownBody);
       await addOrUpdateContentFile(siteId, filePath, rawMarkdown);
     }
-  }, [siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent, addOrUpdateContentFile, getSiteById, navigate]); // Add navigate to dependency array
+  }, [siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent, getBlocks, hasBlocks, addOrUpdateContentFile, getSiteById, navigate]);
 
   const handleDelete = useCallback(async () => {
     if (isNewFileMode || !frontmatter) return;
@@ -21382,7 +24445,7 @@ export default function EditSiteLayout() {
 File: pages/sites/edit/EditContentPage.tsx
 // src/pages/sites/edit/EditContentPage.tsx
 
-import { useMemo, useEffect, useRef, useCallback } from 'react';
+import { useMemo, useEffect, useRef, useCallback, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
 // Global State and UI Management
@@ -21390,7 +24453,8 @@ import { useUIStore } from '@/core/state/uiStore';
 import { useAppStore } from '@/core/state/useAppStore';
 import { type AppStore } from '@/core/state/useAppStore';
 import { EditorProvider } from '@/features/editor/contexts/EditorProvider';
-import { type MarkdownFrontmatter } from '@/core/types';
+import { type MarkdownFrontmatter, type Block } from '@/core/types';
+import { markdownToBlocks, blocksToMarkdown } from '@/features/editor/utils/blockUtils';
 
 // UI Components
 import { Button } from '@/core/components/ui/button';
@@ -21400,6 +24464,7 @@ import LeftSidebar from '@/features/editor/components/LeftSidebar';
 import NewPageDialog from '@/features/editor/components/NewPageDialog';
 // import CreateCollectionPageDialog from '@/features/editor/components/CreateCollectionPageDialog';
 import MarkdownEditor, { type BlocknoteEditorRef} from '@/features/editor/components/MarkdownEditor';
+import { BlockEditor } from '@/features/editor/components/blocks';
 import FrontmatterSidebar from '@/features/editor/components/FrontmatterSidebar';
 import PrimaryContentFields from '@/features/editor/components/PrimaryContentFields';
 import CollectionItemList from '@/features/editor/components/CollectionItemList';
@@ -21428,6 +24493,8 @@ function EditorLoadingSkeleton() {
  */
 function EditContentPageInternal() {
   const editorRef = useRef<BlocknoteEditorRef>(null);
+  const [currentBlocks, setCurrentBlocks] = useState<Block[]>([]);
+  const [editorMode] = useState<'blocks' | 'markdown'>('blocks');
 
   // --- 1. Get Data and Identifiers ---
   const { siteId = '' } = useParams<{ siteId: string }>();
@@ -21437,8 +24504,67 @@ function EditContentPageInternal() {
   const allContentFiles = useMemo(() => site?.contentFiles || [], [site?.contentFiles]);
   
   const { isNewFileMode, filePath } = usePageIdentifier({ siteStructure, allContentFiles });
-  const { status, frontmatter, initialMarkdown, slug, setSlug, handleFrontmatterChange, onContentModified } = useFileContent(siteId, filePath, isNewFileMode);
-  const { handleDelete } = useFilePersistence({ siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent: () => editorRef.current?.getBlocks() ?? '' });
+  const { status, frontmatter, initialMarkdown, blocks, slug, setSlug, handleFrontmatterChange, onContentModified } = useFileContent(siteId, filePath, isNewFileMode);
+  const { handleDelete } = useFilePersistence({ 
+    siteId, 
+    filePath, 
+    isNewFileMode, 
+    frontmatter, 
+    slug, 
+    getEditorContent: () => editorMode === 'markdown' ? (editorRef.current?.getBlocks() ?? '') : blocksToMarkdown(currentBlocks),
+    getBlocks: () => currentBlocks,
+    hasBlocks: editorMode === 'blocks'
+  });
+
+  // Initialize blocks from content or create default block
+  // Track the current file path to detect when we switch files
+  const [currentFilePath, setCurrentFilePath] = useState<string>('');
+  
+  useEffect(() => {
+    console.log('EditContentPage effect triggered - status:', status, 'editorMode:', editorMode);
+    if (status === 'ready') {
+      if (editorMode === 'blocks') {
+        // Update blocks if this is initial load OR if we've switched to a different file
+        const filePathChanged = currentFilePath !== filePath;
+        
+        console.log('EditContentPage effect - filePath:', filePath, 'currentFilePath:', currentFilePath, 'filePathChanged:', filePathChanged);
+        console.log('Current blocks length:', currentBlocks.length, 'incoming blocks length:', blocks?.length || 0);
+        
+        if (currentBlocks.length === 0 || filePathChanged) {
+          setCurrentFilePath(filePath);
+          
+          // Always reset blocks when file path changes, regardless of existing blocks
+          if (filePathChanged) {
+            console.log('File path changed - resetting blocks for new file');
+            if (blocks && blocks.length > 0) {
+              // Use existing blocks from saved file
+              console.log('Setting current blocks in editor:', JSON.stringify(blocks, null, 2));
+              setCurrentBlocks(blocks);
+            } else if (initialMarkdown) {
+              // Convert markdown to blocks
+              setCurrentBlocks(markdownToBlocks(initialMarkdown));
+            } else {
+              // Create default empty rich text block
+              setCurrentBlocks(markdownToBlocks(''));
+            }
+          } else if (currentBlocks.length === 0) {
+            // Initial load case
+            if (blocks && blocks.length > 0) {
+              // Use existing blocks from saved file
+              console.log('Initial load - setting current blocks in editor:', JSON.stringify(blocks, null, 2));
+              setCurrentBlocks(blocks);
+            } else if (initialMarkdown) {
+              // Convert markdown to blocks
+              setCurrentBlocks(markdownToBlocks(initialMarkdown));
+            } else {
+              // Create default empty rich text block
+              setCurrentBlocks(markdownToBlocks(''));
+            }
+          }
+        }
+      }
+    }
+  }, [status, blocks, initialMarkdown, editorMode, currentBlocks.length, filePath, currentFilePath]);
 
   // --- 2. Manage Sidebars via UI Store ---
   const { leftSidebarContent, rightSidebarContent, setLeftAvailable, setRightAvailable, setLeftSidebarContent, setRightSidebarContent } = useUIStore(state => state.sidebar);
@@ -21525,7 +24651,7 @@ function EditContentPageInternal() {
             }
             return (
               <div className='flex h-full w-full flex-col'>
-                <div className='container mx-auto flex h-full max-w-[900px] flex-col p-6'>
+                <div className='container mx-auto flex h-full max-w-[900px] flex-col py-6'>
                   <div className="shrink-0">
                     <PrimaryContentFields 
                       frontmatter={{ 
@@ -21540,6 +24666,15 @@ function EditContentPageInternal() {
                   <div className="mt-6 flex-grow min-h-0">
                     {isCollectionListingPage && frontmatter.layoutConfig?.collectionId ? (
                       <CollectionItemList siteId={siteId} collectionId={frontmatter.layoutConfig.collectionId} />
+                    ) : editorMode === 'blocks' ? (
+                      <BlockEditor 
+                        siteId={siteId}
+                        blocks={currentBlocks}
+                        onBlocksChange={(newBlocks) => {
+                          setCurrentBlocks(newBlocks);
+                          onContentModified();
+                        }}
+                      />
                     ) : (
                       <MarkdownEditor ref={editorRef} key={filePath} initialContent={initialMarkdown} onContentChange={onContentModified} />
                     )}

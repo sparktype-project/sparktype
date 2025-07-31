@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate from react-router-dom
 import { useAppStore } from '@/core/state/useAppStore';
 import { useEditor } from '@/features/editor/contexts/useEditor';
-import { stringifyToMarkdown } from '@/core/libraries/markdownParser';
+import { stringifyToMarkdown, stringifyToMarkdownAsync } from '@/core/libraries/markdownParser';
+import { DEFAULT_BLOCKS } from '@/config/defaultBlocks';
 import { AUTOSAVE_DELAY } from '@/config/editorConfig';
 import { toast } from 'sonner';
 import { useUnloadPrompt } from './useUnloadPrompt';
@@ -41,10 +42,28 @@ export function useFilePersistence({
 
     // Determine content based on editor mode
     let rawMarkdown: string;
+    console.log('useFilePersistence - saving to filePath:', filePath, 'isNewFileMode:', isNewFileMode);
+    
     if (hasBlocks && getBlocks) {
-      // Block mode: serialize blocks to markdown
+      // Block mode: serialize blocks to markdown using directive format
       const blocks = getBlocks();
-      rawMarkdown = stringifyToMarkdown(frontmatter, '', blocks);
+      console.log('Saving blocks for file:', filePath, blocks);
+      
+      // Get site data for manifest and block definitions
+      const site = getSiteById(siteId);
+      if (site?.manifest) {
+        // Use async serialization with directive support
+        const serializationOptions = {
+          useDirectives: true,
+          manifest: site.manifest,
+          availableBlocks: DEFAULT_BLOCKS
+        };
+        rawMarkdown = await stringifyToMarkdownAsync(frontmatter, '', blocks, serializationOptions);
+      } else {
+        // Fallback to legacy serialization if no manifest available
+        rawMarkdown = stringifyToMarkdown(frontmatter, '', blocks);
+      }
+      console.log('Serialized markdown for file:', filePath, rawMarkdown);
     } else {
       // Markdown mode: use editor content
       const markdownBody = getEditorContent();

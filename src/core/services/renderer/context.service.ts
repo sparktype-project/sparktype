@@ -24,6 +24,7 @@ type ResolvedImagePresets = Record<string, { url: string; width?: number; height
 
 // The context object passed into the main body template.
 type EnrichedPageContext = (PageResolutionResult & {
+    siteData?: LocalSiteData;
     images?: ResolvedImagePresets;
     collectionItems?: (ParsedMarkdownFile & { images?: ResolvedImagePresets; url: string })[];
     layoutManifest?: LayoutManifest | null;
@@ -119,6 +120,7 @@ export async function assemblePageContext(
 
     return {
         ...resolution,
+        siteData,
         images: imageContext,
         collectionItems: processedCollectionItems,
         layoutManifest: pageLayoutManifest,
@@ -162,6 +164,7 @@ export async function assembleBaseContext(
     }
     
     return {
+        siteData,
         manifest,
         options,
         pageContext,

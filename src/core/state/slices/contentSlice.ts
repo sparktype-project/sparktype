@@ -10,7 +10,8 @@ import * as localSiteFs from '@/core/services/localFileSystem.service';
 import { saveContentFile } from '@/core/services/localFileSystem.service';
 import { findAndRemoveNode, updatePathsRecursively, findNodeByPath } from '@/core/services/fileTree.service';
 import { getCollections } from '@/core/services/collections.service';
-import { stringifyToMarkdown, parseMarkdownString } from '@/core/libraries/markdownParser';
+import { stringifyToMarkdown, parseMarkdownString, stringifyToMarkdownAsync } from '@/core/libraries/markdownParser';
+import { DEFAULT_BLOCKS } from '@/config/defaultBlocks';
 import { type SiteSlice } from '@/core/state/slices/siteSlice';
 
 // Helper: Generates an up-to-date list of collection item references.
@@ -57,7 +58,30 @@ export interface ContentSlice {
 export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], ContentSlice> = (set, get) => ({
   
   updateContentFileOnly: async (siteId, savedFile) => {
-    await localSiteFs.saveContentFile(siteId, savedFile.path, stringifyToMarkdown(savedFile.frontmatter, savedFile.content));
+    if (!savedFile) {
+      console.error('SavedFile is undefined in updateContentFileOnly');
+      return;
+    }
+    
+    // Get site data for manifest and serialization options
+    const site = get().getSiteById(siteId);
+    let markdownContent: string;
+    
+    // Check if this file has blocks and use appropriate serialization
+    if (savedFile.blocks && savedFile.blocks.length > 0 && site?.manifest) {
+      // Use directive serialization for blocks
+      const serializationOptions = {
+        useDirectives: true,
+        manifest: site.manifest,
+        availableBlocks: DEFAULT_BLOCKS
+      };
+      markdownContent = await stringifyToMarkdownAsync(savedFile.frontmatter, savedFile.content, savedFile.blocks, serializationOptions);
+    } else {
+      // Use legacy serialization for content without blocks
+      markdownContent = stringifyToMarkdown(savedFile.frontmatter, savedFile.content);
+    }
+    
+    await localSiteFs.saveContentFile(siteId, savedFile.path, markdownContent);
 
     set(produce((draft: SiteSlice) => {
       const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
@@ -104,7 +128,7 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
       if (isNewFileInStructure) {
         // Determine if this is a collection item by checking path against collection contentPaths
         const collections = getCollections(draft);
-        const isCollectionPage = savedFile.frontmatter.collection;
+        const isCollectionPage = savedFile?.frontmatter?.collection;
         const isCollectionItem = !isCollectionPage && collections.some(c => savedFile.path.startsWith(c.contentPath));
 
         // Only add to structure if it's NOT a collection item

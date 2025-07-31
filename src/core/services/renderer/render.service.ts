@@ -9,6 +9,7 @@ import { getMergedThemeDataForForm } from '@/core/services/config/theme.service'
 import { prepareRenderEnvironment } from './asset.service';
 import { assemblePageContext, assembleBaseContext } from './context.service';
 import { getCollectionContent } from '@/core/services/collections.service';
+import { preRenderBlocks } from './helpers/render_blocks.helper';
 
 /**
  * Defines the options passed to the main render function.
@@ -71,10 +72,13 @@ export async function render(
     // Handle blocks in page content if present
     let bodyHtml: string;
     if (enrichedResolution.contentFile.hasBlocks && enrichedResolution.contentFile.blocks) {
+        // Pre-render blocks to avoid Promise issues in templates
+        const renderedBlocksHtml = await preRenderBlocks(enrichedResolution.contentFile.blocks, synchronizedSiteData);
+        
         // If the page has blocks, render them instead of markdown content
         const blockContext = {
             ...pageContext,
-            blocks: enrichedResolution.contentFile.blocks
+            blocks: renderedBlocksHtml // Pass pre-rendered HTML instead of block objects
         };
         bodyHtml = await Handlebars.compile(bodyTemplateSource)(blockContext);
     } else {

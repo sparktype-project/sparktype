@@ -9,7 +9,8 @@ import { slugify } from '@/core/libraries/utils';
 import { toast } from 'sonner';
 import { type MarkdownFrontmatter, type Block } from '@/core/types';
 import { DEFAULT_PAGE_LAYOUT_PATH } from '@/config/editorConfig';
-import { parseMarkdownString } from '@/core/libraries/markdownParser';
+import { parseMarkdownStringAsync } from '@/core/libraries/markdownParser';
+import { DEFAULT_BLOCKS } from '@/config/defaultBlocks';
 
 /**
  * Manages the content state for the editor.
@@ -44,11 +45,14 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
 
   useEffect(() => {
     const loadData = async () => {
+      console.log('useFileContent - loadData called for filePath:', filePath, 'isNewFileMode:', isNewFileMode);
       if (!filePath) {
+        console.log('useFileContent - no filePath, setting loading status');
         setStatus('loading');
         return;
       }
       if (!site?.contentFiles) {
+        console.log('useFileContent - no contentFiles, setting loading status');
         setStatus('loading');
         return;
       }
@@ -91,22 +95,67 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         setFrontmatter(fileData.frontmatter);
         markdownContent = fileData.content;
         setSlug(fileData.slug);
-      }
-
-      // Parse content to detect blocks
-      try {
-        const parseResult = parseMarkdownString(`---\n---\n${markdownContent}`);
-        if (parseResult.blocks && parseResult.blocks.length > 0) {
-          setBlocks(parseResult.blocks);
+        
+        // For existing files, use the already parsed blocks if available
+        if (fileData.hasBlocks && fileData.blocks) {
+          console.log('Loading existing blocks for file:', filePath);
+          console.log('Blocks structure:', JSON.stringify(fileData.blocks, null, 2));
+          setBlocks(fileData.blocks);
           setHasBlocks(true);
         } else {
+          // Try to parse the content to detect if it has directive or legacy blocks
+          console.log('No blocks found for file:', filePath, 'attempting to parse content for blocks');
+          try {
+            const parseOptions = {
+              useDirectives: true,
+              manifest: site.manifest,
+              availableBlocks: DEFAULT_BLOCKS
+            };
+            
+            // Use async parsing to support directive syntax
+            const parseResult = await parseMarkdownStringAsync(`---\n---\n${markdownContent}`, parseOptions);
+            
+            if (parseResult.blocks && parseResult.blocks.length > 0) {
+              console.log('Found blocks in content:', parseResult.blocks);
+              setBlocks(parseResult.blocks);
+              setHasBlocks(true);
+            } else {
+              console.log('No blocks detected in content');
+              setBlocks([]);
+              setHasBlocks(false);
+            }
+          } catch (error) {
+            console.error('Error parsing content for blocks:', error);
+            setBlocks([]);
+            setHasBlocks(false);
+          }
+        }
+      }
+
+      // For new files, parse the content to detect blocks
+      if (isNewFileMode) {
+        try {
+          const parseOptions = {
+            useDirectives: true,
+            manifest: site.manifest,
+            availableBlocks: DEFAULT_BLOCKS
+          };
+          
+          // Use async parsing to support directive syntax
+          const parseResult = await parseMarkdownStringAsync(`---\n---\n${markdownContent}`, parseOptions);
+          
+          if (parseResult.blocks && parseResult.blocks.length > 0) {
+            setBlocks(parseResult.blocks);
+            setHasBlocks(true);
+          } else {
+            setBlocks([]);
+            setHasBlocks(false);
+          }
+        } catch (error) {
+          console.error('Error parsing markdown for blocks:', error);
           setBlocks([]);
           setHasBlocks(false);
         }
-      } catch (error) {
-        console.warn('Failed to parse blocks, treating as regular markdown:', error);
-        setBlocks([]);
-        setHasBlocks(false);
       }
       
       setInitialMarkdown(markdownContent);

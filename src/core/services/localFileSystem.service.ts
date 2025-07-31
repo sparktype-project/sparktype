@@ -175,9 +175,9 @@ export async function saveManifest(siteId: string, manifest: Manifest): Promise<
 export async function saveContentFile(siteId: string, filePath: string, rawMarkdownContent: string): Promise<ParsedMarkdownFile> {
     const contentFiles = await siteContentFilesStore.getItem<ParsedMarkdownFile[]>(siteId) ?? [];
 
-    const { frontmatter, content } = parseMarkdownString(rawMarkdownContent);
+    const { frontmatter, content, blocks, hasBlocks } = parseMarkdownString(rawMarkdownContent);
     const fileSlug = filePath.replace(/^content\//, '').replace(/\.md$/, '');
-    const savedFile: ParsedMarkdownFile = { slug: fileSlug, path: filePath, frontmatter, content };
+    const savedFile: ParsedMarkdownFile = { slug: fileSlug, path: filePath, frontmatter, content, blocks, hasBlocks };
 
     const fileIndex = contentFiles.findIndex(f => f.path === filePath);
     if (fileIndex > -1) {

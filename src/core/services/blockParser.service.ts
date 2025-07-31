@@ -13,6 +13,7 @@ interface BlockSection {
   config?: Record<string, unknown>;
   regions?: string[];
   id?: string;
+  _regionBlocks?: Record<string, Block[]>; // Store actual nested blocks from new parser
 }
 
 /**
@@ -74,71 +75,181 @@ export function serializeBlocksToMarkdown(blocks: Block[]): string {
 }
 
 /**
- * Extracts block sections from markdown content.
- * Uses regex patterns similar to gray-matter's approach.
+ * Extracts and parses blocks with nested region support.
+ * Handles the format created by serializeBlock including region markers.
  */
 function extractBlockSections(content: string): BlockSection[] {
-  const sections: BlockSection[] = [];
-  const blockRegex = /```block:(container|content|end)\n([\s\S]*?)```/g;
-  let match;
-  let containerStack: BlockSection[] = [];
-
-  while ((match = blockRegex.exec(content)) !== null) {
-    const [, blockType, yamlContent] = match;
-
-    if (blockType === 'end') {
-      // End of container block
-      if (containerStack.length > 0) {
-        const container = containerStack.pop()!;
-        sections.push(container);
-      }
-      continue;
-    }
-
-    if (!yamlContent?.trim()) {
-      continue;
-    }
-
-    try {
-      const parsed = yaml.load(yamlContent.trim()) as any;
-      
-      if (!parsed?.type) {
-        console.warn("Block missing required 'type' field, skipping");
-        continue;
-      }
-
-      const section: BlockSection = {
-        type: parsed.type,
-        content: parsed.content || {},
-        config: parsed.config || {},
-        id: parsed.id || nanoid(8)
-      };
-
-      if (blockType === 'container') {
-        // Start of container block - will be closed by block:end
-        containerStack.push(section);
-      } else {
-        // Content block - add to current container or root
-        sections.push(section);
-      }
-    } catch (yamlError) {
-      console.error("Error parsing YAML in block section:", yamlError);
-      throw new Error(`Invalid YAML in block section: ${yamlError}`);
-    }
-  }
-
-  // Handle unclosed containers
-  if (containerStack.length > 0) {
-    console.warn("Unclosed container blocks detected, adding them anyway");
-    sections.push(...containerStack);
-  }
-
-  return sections;
+  // Parse the content to extract blocks with their nested structure
+  const parsedBlocks = parseBlocksWithRegions(content);
+  
+  // Convert Block[] back to BlockSection[] format for compatibility
+  return parsedBlocks.map(block => ({
+    id: block.id,
+    type: block.type,
+    content: block.content,
+    config: block.config,
+    regions: Object.keys(block.regions),
+    _regionBlocks: block.regions // Store actual nested blocks
+  }));
 }
 
 /**
- * Builds a nested Block tree from flat BlockSection array.
- * Follows similar patterns to existing tree-building logic in the codebase.
+ * Parses blocks with full region support, returning proper Block objects
+ */
+function parseBlocksWithRegions(content: string): Block[] {
+  const blocks: Block[] = [];
+  let pos = 0;
+  
+  while (pos < content.length) {
+    // Find next block start
+    const blockStart = content.indexOf('```block:', pos);
+    if (blockStart === -1) break;
+    
+    // Determine block type
+    const blockTypeMatch = content.slice(blockStart).match(/```block:(container|content)/);
+    if (!blockTypeMatch) {
+      pos = blockStart + 1;
+      continue;
+    }
+    
+    const blockType = blockTypeMatch[1];
+    
+    if (blockType === 'container') {
+      // Parse container block with regions
+      const result = parseContainerBlock(content, blockStart);
+      if (result.block) {
+        blocks.push(result.block);
+      }
+      pos = result.nextPos;
+    } else {
+      // Parse simple content block
+      const result = parseContentBlock(content, blockStart);
+      if (result.block) {
+        blocks.push(result.block);
+      }
+      pos = result.nextPos;
+    }
+  }
+  
+  return blocks;
+}
+
+/**
+ * Parses a container block with its regions and nested blocks
+ */
+function parseContainerBlock(content: string, startPos: number): { block: Block | null; nextPos: number } {
+  // Find the block definition end
+  const defStart = content.indexOf('\n', startPos) + 1;
+  const defEnd = content.indexOf('```', defStart);
+  if (defEnd === -1) return { block: null, nextPos: startPos + 1 };
+  
+  // Parse the block definition YAML
+  const yamlContent = content.slice(defStart, defEnd).trim();
+  let blockDef: any;
+  try {
+    blockDef = yaml.load(yamlContent);
+  } catch (e) {
+    console.error("Error parsing container block YAML:", e);
+    return { block: null, nextPos: defEnd + 3 };
+  }
+  
+  if (!blockDef?.type) {
+    return { block: null, nextPos: defEnd + 3 };
+  }
+  
+  // Create the base block
+  const block: Block = {
+    id: blockDef.id || nanoid(8),
+    type: blockDef.type,
+    content: blockDef.content || {},
+    config: blockDef.config || {},
+    regions: {}
+  };
+  
+  // Find the block end marker
+  let searchPos = defEnd + 3;
+  const endMarker = '```block:end```';
+  const blockEnd = content.indexOf(endMarker, searchPos);
+  if (blockEnd === -1) {
+    return { block, nextPos: content.length };
+  }
+  
+  // Parse regions between definition and end marker
+  const regionContent = content.slice(searchPos, blockEnd);
+  parseRegions(regionContent, block);
+  
+  return { block, nextPos: blockEnd + endMarker.length };
+}
+
+/**
+ * Parses regions within a container block
+ */
+function parseRegions(content: string, containerBlock: Block): void {
+  const regionRegex = /---region:([^-]+)---/g;
+  const regionMatches: Array<{ name: string; start: number; end: number }> = [];
+  let match;
+  
+  // First, find all region markers
+  while ((match = regionRegex.exec(content)) !== null) {
+    regionMatches.push({
+      name: match[1],
+      start: match.index + match[0].length,
+      end: content.length // Will be updated below
+    });
+  }
+  
+  // Update end positions based on next region start
+  for (let i = 0; i < regionMatches.length; i++) {
+    if (i + 1 < regionMatches.length) {
+      // Find the start of the next region marker
+      const nextRegionMarkerStart = content.indexOf(`---region:${regionMatches[i + 1].name}---`, regionMatches[i].start);
+      regionMatches[i].end = nextRegionMarkerStart;
+    }
+  }
+  
+  // Parse blocks for each region
+  for (const region of regionMatches) {
+    const regionContent = content.slice(region.start, region.end).trim();
+    const regionBlocks = parseBlocksWithRegions(regionContent);
+    containerBlock.regions[region.name] = regionBlocks;
+  }
+}
+
+/**
+ * Parses a simple content block
+ */
+function parseContentBlock(content: string, startPos: number): { block: Block | null; nextPos: number } {
+  const defStart = content.indexOf('\n', startPos) + 1;
+  const defEnd = content.indexOf('```', defStart);
+  if (defEnd === -1) return { block: null, nextPos: startPos + 1 };
+  
+  const yamlContent = content.slice(defStart, defEnd).trim();
+  let blockDef: any;
+  try {
+    blockDef = yaml.load(yamlContent);
+  } catch (e) {
+    console.error("Error parsing content block YAML:", e);
+    return { block: null, nextPos: defEnd + 3 };
+  }
+  
+  if (!blockDef?.type) {
+    return { block: null, nextPos: defEnd + 3 };
+  }
+  
+  const block: Block = {
+    id: blockDef.id || nanoid(8),
+    type: blockDef.type,
+    content: blockDef.content || {},
+    config: blockDef.config || {},
+    regions: {}
+  };
+  
+  return { block, nextPos: defEnd + 3 };
+}
+
+/**
+ * Builds a nested Block tree from BlockSection array.
+ * Now handles the new parsing structure with _regionBlocks.
  */
 function buildBlockTree(sections: BlockSection[]): Block[] {
   const blocks: Block[] = [];
@@ -149,8 +260,13 @@ function buildBlockTree(sections: BlockSection[]): Block[] {
       type: section.type,
       content: section.content || {},
       config: section.config || {},
-      regions: {} // Initialize empty regions - will be populated based on manifest
+      regions: {}
     };
+
+    // If this section has _regionBlocks (from new parser), use them
+    if (section._regionBlocks) {
+      block.regions = section._regionBlocks;
+    }
 
     blocks.push(block);
   }
