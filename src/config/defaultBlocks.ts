@@ -33,9 +33,6 @@ export const DEFAULT_BLOCKS: Record<string, BlockManifest> = {
         autoFormat: true
       }
     },
-    template: {
-      handlebars: 'blocks/core/paragraph.hbs'
-    }
   },
 
   'core:heading_1': {
@@ -69,9 +66,6 @@ export const DEFAULT_BLOCKS: Record<string, BlockManifest> = {
         autoFormat: true
       }
     },
-    template: {
-      handlebars: 'blocks/core/heading.hbs'
-    }
   },
 
   'core:heading_2': {
@@ -105,9 +99,6 @@ export const DEFAULT_BLOCKS: Record<string, BlockManifest> = {
         autoFormat: true
       }
     },
-    template: {
-      handlebars: 'blocks/core/heading.hbs'
-    }
   },
 
   'core:heading_3': {
@@ -141,9 +132,6 @@ export const DEFAULT_BLOCKS: Record<string, BlockManifest> = {
         autoFormat: true
       }
     },
-    template: {
-      handlebars: 'blocks/core/heading.hbs'
-    }
   },
 
   'core:quote': {
@@ -177,9 +165,6 @@ export const DEFAULT_BLOCKS: Record<string, BlockManifest> = {
         autoFormat: true
       }
     },
-    template: {
-      handlebars: 'blocks/core/quote.hbs'
-    }
   },
 
   'core:code': {
@@ -492,7 +477,7 @@ export const DEFAULT_BLOCKS: Record<string, BlockManifest> = {
       moveable: true
     },
     template: {
-      handlebars: 'blocks/core/collection_view.hbs'
+      handlebars: 'blocks/collection_view/template.hbs'
     }
   }
 };

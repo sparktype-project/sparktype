@@ -69,7 +69,7 @@ function SiteIcon({ site }: { site: AppStore['sites'][0] }) {
  */
 function SiteLayoutLoader() {
     return (
-        <div className="flex h-screen w-full items-center justify-center bg-muted/20">
+        <div className="flex h-screen w-full items-center justify-center">
             <div className="flex flex-col items-center gap-2">
                 <svg className="animate-spin h-6 w-6 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -119,7 +119,7 @@ export default function SiteLayout() {
   ];
 
   return (
-    <div className="flex h-screen flex-col lg:flex-row bg-muted/20">
+    <div className="flex h-screen flex-col lg:flex-row">
       <aside className="fixed inset-x-0 bottom-0 z-30 flex h-16 w-full shrink-0 border-t bg-background lg:static lg:inset-y-0 lg:left-0 lg:h-full lg:w-[60px] lg:border-r lg:border-t-0">
         <nav className="flex w-full items-center justify-center gap-2  lg:flex-col lg:justify-start">
           <Link

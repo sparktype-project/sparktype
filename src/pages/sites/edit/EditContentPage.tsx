@@ -75,7 +75,7 @@ function EditContentPageInternal() {
     frontmatter, 
     slug, 
     getEditorContent: () => currentMarkdown,
-    hasBlocks: false // SparkBlock just edits markdown content
+    hasBlocks: false // SparkBlock editor handles block logic internally
   });
 
   // Create SparkBlock adapter
@@ -168,7 +168,7 @@ function EditContentPageInternal() {
         headerActions={headerActions}
       >
         {isSiteEmpty ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-8 bg-background">
+          <div className="flex flex-col items-center justify-center h-full text-center p-8 bg-white dark:bg-gray-900">
             <h2 className="text-2xl font-bold mb-2">Create Your Homepage</h2>
             <p className="text-muted-foreground mb-6 max-w-md">Your site is empty. The first page you create will become the site's permanent homepage.</p>
             <div className="flex gap-4">
@@ -183,7 +183,7 @@ function EditContentPageInternal() {
             }
             return (
               <div className='flex h-full w-full flex-col'>
-                <div className='container mx-auto flex h-full max-w-[900px] flex-col p-6'>
+                <div className='container mx-auto flex h-full max-w-[960px] flex-col p-6'>
                   <div className="shrink-0">
                     <PrimaryContentFields 
                       frontmatter={{ 

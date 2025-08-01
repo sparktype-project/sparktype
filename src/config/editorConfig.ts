@@ -93,11 +93,7 @@ export const CORE_THEMES: ThemeInfo[] = [
  * The master list of all built-in blocks. 
  */
 export const CORE_BLOCKS: BlockInfo[] = [
-  { 
-    name: 'Rich text',
-    id: 'core:rich_text', 
-    path: 'rich_text' 
-  },
+
   { 
     name: 'Image',
     id: 'core:image', 

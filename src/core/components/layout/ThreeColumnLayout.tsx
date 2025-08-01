@@ -17,7 +17,7 @@ export default function ThreeColumnLayout({ leftSidebar, rightSidebar, children,
   const isRightOpen = useUIStore((state) => state.sidebar.isRightOpen);
 
   return (
-    <div className="flex h-screen w-full flex-col bg-muted/20">
+    <div className="flex h-screen w-full flex-col">
       <EditorHeader actions={headerActions} />
       
       {/* This is now the positioning context for all three columns */}

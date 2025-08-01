@@ -108,10 +108,11 @@ export class DirectiveParser {
    */
   private directiveToBlock(directive: any): Block | null {
     const blockType = directive.name;
-    const blockManifest = this.availableBlocks[blockType];
+    // Try with core: prefix first, then without prefix
+    const blockManifest = this.availableBlocks[`core:${blockType}`] || this.availableBlocks[blockType];
     
     if (!blockManifest) {
-      console.warn(`Unknown block type: ${blockType}`);
+      console.warn(`Unknown block type: ${blockType} (tried both core:${blockType} and ${blockType})`);
       return null;
     }
 
@@ -125,6 +126,17 @@ export class DirectiveParser {
         const fieldValue = attributes[fieldName];
         if (fieldValue !== undefined) {
           content[fieldName] = this.parseFieldValue(fieldValue, fieldConfig as any);
+        }
+      }
+    }
+    
+    // Map directive attributes to block config based on manifest
+    const config: Record<string, any> = {};
+    if (blockManifest.config) {
+      for (const [configName, configField] of Object.entries(blockManifest.config)) {
+        const configValue = attributes[configName];
+        if (configValue !== undefined) {
+          config[configName] = this.parseFieldValue(configValue, configField as any);
         }
       }
     }
@@ -146,11 +158,14 @@ export class DirectiveParser {
       }
     }
 
+    // Use the full block type from the manifest
+    const fullBlockType = blockManifest.id || `core:${blockType}`;
+    
     return {
       id: nanoid(),
-      type: blockType,
+      type: fullBlockType,
       content,
-      config: {},
+      config,
       regions: Object.keys(regions).length > 0 ? regions : {}
     };
   }
@@ -159,7 +174,12 @@ export class DirectiveParser {
    * Convert a Block object back to an AST node
    */
   private blockToNode(block: Block): any {
-    const blockManifest = this.availableBlocks[block.type];
+    // Try with exact type first, then try without core: prefix if it starts with core:
+    let blockManifest = this.availableBlocks[block.type];
+    if (!blockManifest && block.type.startsWith('core:')) {
+      const typeWithoutPrefix = block.type.replace('core:', '');
+      blockManifest = this.availableBlocks[typeWithoutPrefix];
+    }
     
     if (!blockManifest) {
       console.warn(`Unknown block type: ${block.type}`);

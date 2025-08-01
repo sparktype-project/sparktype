@@ -36,7 +36,7 @@ export function ParagraphBlock({ block, context }: BlockComponentProps) {
     <div
       contentEditable={!context.readonly}
       suppressContentEditableWarning
-      className="sparkblock-paragraph"
+      className="outline-none min-h-6 whitespace-pre-wrap"
       onInput={handleInput}
       onKeyDown={context.onKeyDown}
       onFocus={context.onFocus}
@@ -70,7 +70,7 @@ export function HeadingBlock({ block, context }: BlockComponentProps) {
   const headingProps = {
     contentEditable: !context.readonly,
     suppressContentEditableWarning: true,
-    className: `sparkblock-heading sparkblock-heading--${level}`,
+    className: `outline-none font-bold m-0 min-h-5 ${level === 1 ? 'text-3xl leading-tight' : level === 2 ? 'text-2xl leading-snug' : level === 3 ? 'text-xl leading-normal' : level === 4 ? 'text-lg leading-normal' : level === 5 ? 'text-base leading-relaxed' : 'text-sm leading-relaxed'}`,
     onInput: handleInput,
     onKeyDown: context.onKeyDown,
     onFocus: context.onFocus,
@@ -111,18 +111,18 @@ export function QuoteBlock({ block, context }: BlockComponentProps) {
   };
 
   return (
-    <blockquote className="sparkblock-quote">
+    <blockquote className="m-0 pl-4 border-l-4 border-gray-300 italic">
       <div
         contentEditable={!context.readonly}
         suppressContentEditableWarning
-        className="sparkblock-quote-text"
+        className="outline-none min-h-6"
         onInput={handleInput}
         onKeyDown={context.onKeyDown}
         onFocus={context.onFocus}
         data-placeholder="Enter quote..."
       >{text}</div>
       {(block.content.author as string) && (
-        <cite className="sparkblock-quote-author">— {String(block.content.author)}</cite>
+        <cite className="block mt-2 text-sm text-gray-500 not-italic">— {String(block.content.author)}</cite>
       )}
     </blockquote>
   );
@@ -158,14 +158,14 @@ export function CodeBlock({ block, context }: BlockComponentProps) {
   };
 
   return (
-    <div className="sparkblock-code-block">
+    <div className="bg-gray-100 rounded-md overflow-hidden">
       {(block.content.language as string) && (
-        <div className="sparkblock-code-language">{String(block.content.language)}</div>
+        <div className="px-3 py-2 text-xs font-medium text-gray-500 bg-gray-200 border-b border-gray-300">{String(block.content.language)}</div>
       )}
       <pre
         contentEditable={!context.readonly}
         suppressContentEditableWarning
-        className="sparkblock-code"
+        className="outline-none p-3 m-0 font-mono text-sm leading-normal whitespace-pre-wrap overflow-x-auto bg-transparent"
         onInput={handleInput}
         onKeyDown={handleKeyDown}
         onFocus={context.onFocus}
@@ -198,12 +198,12 @@ export function ListBlock({ block, context }: BlockComponentProps) {
   };
 
   return (
-    <div className={`sparkblock-list ${isOrdered ? 'sparkblock-list--ordered' : ''}`}>
-      <div className="sparkblock-list-marker">{isOrdered ? '1.' : '•'}</div>
+    <div className="flex items-start gap-2">
+      <div className="text-gray-500 font-medium mt-0.5 min-w-4">{isOrdered ? '1.' : '•'}</div>
       <div
         contentEditable={!context.readonly}
         suppressContentEditableWarning
-        className="sparkblock-list-content"
+        className="flex-1 outline-none min-h-6"
         onInput={handleInput}
         onKeyDown={context.onKeyDown}
         onFocus={context.onFocus}
@@ -236,20 +236,22 @@ export function ImageBlock({ block, context }: BlockComponentProps) {
 
   if (!block.content.src) {
     return (
-      <div className="sparkblock-image sparkblock-image--empty">
-        <div className="sparkblock-image-placeholder">📷 Click to add image</div>
+      <div className="text-center">
+        <div className="p-10 border-2 border-dashed border-gray-300 rounded-lg text-gray-500">
+          <div className="text-base cursor-pointer">📷 Click to add image</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="sparkblock-image">
-      <img src={block.content.src as string} alt={(block.content.alt as string) || ''} className="sparkblock-image-element"/>
+    <div className="text-center">
+      <img src={block.content.src as string} alt={(block.content.alt as string) || ''} className="max-w-full h-auto rounded-md shadow-sm"/>
       {(caption || !context.readonly) && (
         <div
           contentEditable={!context.readonly}
           suppressContentEditableWarning
-          className="sparkblock-image-caption"
+          className="mt-2 text-sm text-gray-500 italic outline-none"
           onInput={handleCaptionInput}
           data-placeholder="Add a caption..."
         >{caption}</div>
@@ -260,59 +262,33 @@ export function ImageBlock({ block, context }: BlockComponentProps) {
 
 export function DividerBlock(): React.JSX.Element {
   return (
-    <div className="sparkblock-divider"><hr /></div>
-  );
-}
-
-export function CollectionViewBlock({ block }: BlockComponentProps) {
-  const title = (block.content.title as string) || '';
-  const collectionId = (block.content.collectionId as string) || '';
-  const layout = (block.content.layout as string) || 'list';
-  const maxItems = (block.content.maxItems as number) || 10;
-
-  return (
-    <div className="sparkblock-collection-view">
-      <div className="sparkblock-collection-view-header">
-        <span className="sparkblock-icon">📋</span>
-        <span className="sparkblock-collection-view-title">
-          {title || 'Collection View'}
-        </span>
-      </div>
-      <div className="sparkblock-collection-view-details">
-        <div className="sparkblock-collection-view-meta">
-          {collectionId ? (
-            <span>Collection: {collectionId}</span>
-          ) : (
-            <span className="sparkblock-placeholder">No collection selected</span>
-          )}
-          <span> • Layout: {layout}</span>
-          <span> • Max items: {maxItems}</span>
-        </div>
-      </div>
+    <div className="my-4">
+      <hr className="border-none h-px bg-gray-300 m-0" />
     </div>
   );
 }
+
 
 export function ContainerBlock({ block }: BlockComponentProps) {
   const layout = (block.content.layout as string) || 'single';
   const gap = (block.content.gap as string) || 'medium';
 
   return (
-    <div className="sparkblock-container">
-      <div className="sparkblock-container-header">
-        <span className="sparkblock-icon">📦</span>
-        <span className="sparkblock-container-title">Container</span>
+    <div className="border border-gray-300 rounded-md p-4 my-2 bg-gray-50">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-base">📦</span>
+        <span className="font-semibold text-gray-700">Container</span>
       </div>
-      <div className="sparkblock-container-details">
-        <div className="sparkblock-container-meta">
+      <div>
+        <div className="text-xs text-gray-500 mb-1">
           <span>Layout: {layout}</span>
           <span> • Gap: {gap}</span>
         </div>
-        <div className="sparkblock-container-regions">
+        <div className="text-xs text-gray-500">
           {block.regions && Object.keys(block.regions).length > 0 ? (
             <div>Regions: {Object.keys(block.regions).join(', ')}</div>
           ) : (
-            <div className="sparkblock-placeholder">No content regions</div>
+            <div className="text-gray-400 italic">No content regions</div>
           )}
         </div>
       </div>
@@ -322,11 +298,11 @@ export function ContainerBlock({ block }: BlockComponentProps) {
 
 export function UnknownBlock({ block }: BlockComponentProps) {
   return (
-    <div className="sparkblock-unknown">
-      <div className="sparkblock-unknown-header">
-        <span className="sparkblock-unknown-type">Unknown block: {block.type}</span>
+    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800">
+      <div className="flex items-center justify-between mb-2">
+        <span className="font-medium">Unknown block: {block.type}</span>
       </div>
-      <pre className="sparkblock-unknown-content">
+      <pre className="font-mono text-xs max-h-[200px] overflow-auto bg-white bg-opacity-50 p-2 rounded">
         {JSON.stringify(block.content, null, 2)}
       </pre>
     </div>
@@ -346,7 +322,6 @@ export const DefaultBlockRenderers: Record<string, React.ComponentType<BlockComp
   ordered_list: props => <ListBlock {...props} block={{...props.block, content: {...props.block.content, ordered: true}}} />,
   image: ImageBlock,
   divider: DividerBlock,
-  collection_view: CollectionViewBlock,
   container: ContainerBlock,
   unknown: UnknownBlock,
 };

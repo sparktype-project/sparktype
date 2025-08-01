@@ -9,7 +9,6 @@ import { getMergedThemeDataForForm } from '@/core/services/config/theme.service'
 import { prepareRenderEnvironment } from './asset.service';
 import { assemblePageContext, assembleBaseContext } from './context.service';
 import { getCollectionContent } from '@/core/services/collections.service';
-import { preRenderBlocks } from './helpers/render_blocks.helper';
 
 /**
  * Defines the options passed to the main render function.
@@ -69,18 +68,35 @@ export async function render(
     const bodyTemplateSource = await getAssetContent(synchronizedSiteData, 'layout', enrichedResolution.layoutPath, bodyTemplatePath);
     if (!bodyTemplateSource) throw new Error(`Body template not found: layouts/${enrichedResolution.layoutPath}/${bodyTemplatePath}`);
 
-    // Handle blocks in page content if present
+    // Handle page content - process directives if present, otherwise render standard markdown
     let bodyHtml: string;
-    if (enrichedResolution.contentFile.hasBlocks && enrichedResolution.contentFile.blocks) {
-        // Pre-render blocks to avoid Promise issues in templates
-        const renderedBlocksHtml = await preRenderBlocks(enrichedResolution.contentFile.blocks, synchronizedSiteData);
+    
+    // Check if content contains directives that need to be processed
+    const contentHasDirectives = /::[\w-]+(?:\{[^}]*\})?/.test(enrichedResolution.contentFile.content);
+    
+    if (contentHasDirectives) {
+        // Parse and render directives in the content
+        const { DirectiveRenderHelper } = await import('./helpers/directiveRender.helper');
+        const { DEFAULT_BLOCKS } = await import('@/config/defaultBlocks');
         
-        // If the page has blocks, render them instead of markdown content
-        const blockContext = {
-            ...pageContext,
-            blocks: renderedBlocksHtml // Pass pre-rendered HTML instead of block objects
-        };
-        bodyHtml = await Handlebars.compile(bodyTemplateSource)(blockContext);
+        const directiveHelper = new DirectiveRenderHelper(synchronizedSiteData.manifest, DEFAULT_BLOCKS);
+        
+        try {
+            // Parse directives to blocks and render them
+            const parsedBlocks = await directiveHelper.directiveMarkdownToBlocks(enrichedResolution.contentFile.content);
+            const renderedBlocksHtml = await directiveHelper.preRenderBlocks(parsedBlocks, synchronizedSiteData);
+            
+            const blockContext = {
+                ...pageContext,
+                blocks: renderedBlocksHtml,
+                content: renderedBlocksHtml // Also set content for template compatibility
+            };
+            bodyHtml = await Handlebars.compile(bodyTemplateSource)(blockContext);
+        } catch (directiveError) {
+            console.error('Error processing directives in content:', directiveError);
+            // Fallback to standard markdown rendering
+            bodyHtml = await Handlebars.compile(bodyTemplateSource)(pageContext);
+        }
     } else {
         // Standard markdown content rendering
         bodyHtml = await Handlebars.compile(bodyTemplateSource)(pageContext);

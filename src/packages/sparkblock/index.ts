@@ -17,37 +17,23 @@ export type {
   UpdateOperation,
   SparkBlockAdapter,
   RenderContext,
-  SparkBlockTheme,
-  SparkBlockPlugin,
-  SparkBlockCommand,
-  SparkBlockEngine,
-  SparkBlockEngineOptions,
-  SparkBlockEngineState,
-  SparkBlockEvent,
-  SparkBlockEventListener
+  SparkBlockTheme
 } from './types';
 
-// === ENGINE ===
-export { createSparkBlockEngine } from './engine/SparkBlockEngine';
-export type { SparkBlockEngineImpl } from './engine/SparkBlockEngine';
-
-// === UTILITIES ===
-export { BlockOperations, BlockQueries } from './utils/blockOperations';
-export type { BlockPath, BlockLocation } from './utils/blockOperations';
 
 // === REACT COMPONENTS ===
-export { SparkBlockEditor } from './components/SparkBlockEditor';
-export { SparkBlockProvider, useSparkBlock } from './components/SparkBlockProvider';
-export { BlockCanvas } from './components/BlockCanvas';
-export { BlockRenderer } from './components/BlockRenderer';
-export { BlockToolbar } from './components/BlockToolbar';
-export { PlusMenu } from './components/PlusMenu';
+export { FullSparkBlockEditor } from './components/FullSparkBlockEditor';
+export { SimpleBlockRenderer } from './components/SimpleBlockRenderer';
 export { BlockMenu } from './components/BlockMenu';
-export { FloatingToolbar } from './components/FloatingToolbar';
+export { SlashMenu } from './components/SlashMenu';
 
 // === DEFAULT BLOCK RENDERERS ===
 export { DefaultBlockRenderers } from './components/blocks/DefaultBlockRenderers';
 export type { BlockComponentProps } from './components/blocks/DefaultBlockRenderers';
+
+// === UTILITIES ===
+export { blockManifestToJsonSchema, isCustomBlock } from './utils/SchemaConverter';
+export { BLOCK_ICONS } from './utils/BlockIcons';
 
 // === ERROR TYPES ===
 export {

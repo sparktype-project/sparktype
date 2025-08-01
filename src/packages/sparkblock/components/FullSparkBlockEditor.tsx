@@ -1,118 +1,19 @@
 // Full SparkBlock Editor - comprehensive block editing interface
-import React, { useState, useEffect, useCallback, useRef, type KeyboardEvent } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import type {
-  SparkBlock,
-  SparkBlockAdapter,
-} from '../types';
-import { DefaultBlockRenderers } from './blocks/DefaultBlockRenderers';
-import SchemaDrivenForm from '@/core/components/SchemaDrivenForm';
-import type { RJSFSchema, UiSchema } from '@rjsf/utils';
-import '../styles/sparkblock.css';
+import type { SparkBlock, SparkBlockAdapter } from '../types';
+import { SimpleBlockRenderer } from './SimpleBlockRenderer';
+import { BlockMenu } from './BlockMenu';
+import { SlashMenu } from './SlashMenu';
+import { BLOCK_ICONS } from '../utils/BlockIcons';
+import { isCustomBlock } from '../utils/SchemaConverter';
 
 export interface FullSparkBlockEditorProps {
   adapter: SparkBlockAdapter<string> | null;
   value: string; // Current markdown content
   onChange: (markdown: string) => void; // Called when content changes
   readonly?: boolean;
-}
-
-
-// Icon mapping for different block types
-const BLOCK_ICONS: Record<string, string> = {
-  paragraph: '¶',
-  heading_1: 'H1',
-  heading_2: 'H2', 
-  heading_3: 'H3',
-  quote: '"',
-  code: '</>',
-  unordered_list: '•',
-  ordered_list: '1.',
-  divider: '—',
-  image: '🖼️',
-  container: '📦',
-  collection_view: '📋',
-};
-
-// Convert block manifest fields to JSON Schema
-function blockManifestToJsonSchema(manifest: any, adapter?: SparkBlockAdapter<string> | null): { schema: RJSFSchema; uiSchema: UiSchema } {
-  const schema: RJSFSchema = {
-    type: 'object',
-    properties: {},
-    required: []
-  };
-  
-  const uiSchema: UiSchema = {};
-
-  // Convert fields
-  if (manifest.fields) {
-    for (const [fieldName, fieldConfig] of Object.entries(manifest.fields)) {
-      const field = fieldConfig as any;
-      
-      schema.properties![fieldName] = {
-        type: field.type === 'text' || field.type === 'select' ? 'string' : field.type,
-        title: field.label || fieldName,
-        default: field.default
-      };
-      
-      if (field.required) {
-        (schema.required as string[]).push(fieldName);
-      }
-
-      if (field.options) {
-        schema.properties![fieldName].enum = field.options;
-        schema.properties![fieldName].enumNames = field.options;
-      }
-    }
-  }
-
-  // Convert config fields  
-  if (manifest.config) {
-    for (const [configName, configField] of Object.entries(manifest.config)) {
-      const field = configField as any;
-      
-      schema.properties![configName] = {
-        type: field.type === 'text' || field.type === 'select' ? 'string' : field.type,
-        title: field.label || configName,
-        default: field.default
-      };
-      
-      if (field.required) {
-        (schema.required as string[]).push(configName);
-      }
-
-      if (field.options) {
-        schema.properties![configName].enum = field.options;
-        schema.properties![configName].enumNames = field.options;
-      } else if (configName === 'collectionId' && adapter) {
-        // Dynamic collection options
-        try {
-          const siteManifest = (adapter as any).getManifest?.();
-          if (siteManifest?.collections) {
-            const collections = siteManifest.collections || [];
-            const collectionOptions = collections.map((c: any) => c.id);
-            const collectionNames = collections.map((c: any) => `${c.name} (${c.id})`);
-            
-            if (collectionOptions.length > 0) {
-              schema.properties![configName].enum = collectionOptions;
-              schema.properties![configName].enumNames = collectionNames;
-            }
-          }
-        } catch (error) {
-          console.warn('Failed to load collection options:', error);
-        }
-      }
-    }
-  }
-
-  return { schema, uiSchema };
-}
-
-// Check if a block type is a custom block (needs form UI)
-function isCustomBlock(blockType: string): boolean {
-  const customBlockTypes = ['core:image', 'core:container', 'core:collection_view'];
-  return customBlockTypes.includes(blockType);
 }
 
 /**
@@ -130,13 +31,13 @@ export function FullSparkBlockEditor({
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [currentInput, setCurrentInput] = useState('');
+  const [showBlockMenu, setShowBlockMenu] = useState<{ type: 'create' | 'convert', blockId?: string, position?: { x: number, y: number } } | null>(null);
   const [parseError, setParseError] = useState<Error | null>(null);
   const [availableBlocks, setAvailableBlocks] = useState<any[]>([]);
-  // Simplified state - no complex synchronization needed
-  
+
   const editorRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  
+
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -145,26 +46,47 @@ export function FullSparkBlockEditor({
     })
   );
 
-  // Load available blocks from adapter
-  useEffect(() => {
-    const loadAvailableBlocks = async () => {
-      if (!adapter) {
-        setAvailableBlocks([]);
-        return;
-      }
+  // Update markdown content helper
+  const updateMarkdownContent = useCallback((newMarkdown: string) => {
+    if (newMarkdown !== value) {
+      onChange(newMarkdown);
+    }
+  }, [value, onChange]);
 
+  // Parse markdown content into blocks
+  useEffect(() => {
+    if (!adapter) return;
+
+    const parseMarkdown = async () => {
       try {
-        const blockDefinitions = await adapter.getAvailableBlocks();
-        const blockOptions = blockDefinitions.map(def => ({
-          id: def.id.replace('core:', ''),
-          fullId: def.id,
-          name: def.name,
-          description: def.description || '',
-          icon: BLOCK_ICONS[def.id.replace('core:', '')] || '■',
-          category: def.category || 'Basic',
-          keywords: def.keywords || []
+        setParseError(null);
+        const parsedBlocks = await adapter.parse(value);
+        setBlocks(parsedBlocks);
+      } catch (error) {
+        console.error('Parse error:', error);
+        setParseError(error as Error);
+        setBlocks([]);
+      }
+    };
+
+    parseMarkdown();
+  }, [value, adapter]);
+
+  // Load available block types
+  useEffect(() => {
+    if (!adapter) return;
+
+    const loadAvailableBlocks = async () => {
+      try {
+        const blockTypes = await adapter.getAvailableBlocks();
+        const processedBlocks = blockTypes.map(block => ({
+          ...block,
+          fullId: block.id,
+          id: block.id.replace('core:', ''),
+          icon: BLOCK_ICONS[block.id.replace('core:', '')] || '?',
+          keywords: block.keywords || []
         }));
-        setAvailableBlocks(blockOptions);
+        setAvailableBlocks(processedBlocks);
       } catch (error) {
         console.error('Failed to load available blocks:', error);
         setAvailableBlocks([]);
@@ -174,221 +96,17 @@ export function FullSparkBlockEditor({
     loadAvailableBlocks();
   }, [adapter]);
 
-  // Parse markdown into blocks when value changes - SIMPLIFIED
-  useEffect(() => {
-    const parseMarkdown = async () => {
-      if (!adapter || !value) {
-        setBlocks([]);
-        return;
-      }
-
-      // Only skip parsing if we're currently editing a block
-      if (editingBlockId) {
-        return;
-      }
-
-      try {
-        const parsedBlocks = await adapter.parse(value);
-        setBlocks(parsedBlocks);
-      } catch (error) {
-        console.error('Failed to parse markdown:', error);
-        setParseError(error as Error);
-        setBlocks([]);
-      }
-    };
-
-    parseMarkdown();
-  }, [adapter, value, editingBlockId]);
-
-  // Update markdown directly - SIMPLIFIED
-  const updateMarkdownContent = useCallback((newMarkdown: string) => {
-    onChange(newMarkdown);
-  }, [onChange]);
-
-  // Use adapter's block type detection instead of regex patterns
-  const detectBlockType = useCallback(async (text: string): Promise<SparkBlock | null> => {
-    if (!adapter || !text.trim()) return null;
-    
-    // Use the adapter's built-in detection
-    const detection = adapter.detectBlockType(text);
-    if (detection) {
-      // Create block using the adapter's createBlock method with cleaned text
-      const blockType = detection.blockId;
-      const initialContent = detection.cleanText ? { text: detection.cleanText } : {};
-      
-      try {
-        const block = await adapter.createBlock(blockType, initialContent);
-        return block;
-      } catch (error) {
-        console.error('Failed to create detected block:', error);
-      }
-    }
-    
-    // Fallback: create paragraph block
-    try {
-      return await adapter.createBlock('core:paragraph', { text });
-    } catch (error) {
-      console.error('Failed to create fallback paragraph:', error);
-      return null;
-    }
-  }, [adapter]);
-
-  // Handle Enter key - convert current input to block
-  const handleEnterKey = useCallback(async (text: string) => {
-    if (!text.trim() || !adapter) return;
-
-    const newBlock = await detectBlockType(text);
-    if (!newBlock) return;
-
-    const newBlocks = [...blocks, newBlock];
-    setBlocks(newBlocks);
-    
-    // Serialize and update markdown directly
-    try {
-      const newMarkdown = await adapter.serialize(newBlocks);
-      updateMarkdownContent(newMarkdown);
-    } catch (error) {
-      console.error('Failed to serialize after adding block:', error);
-    }
-    
-    setCurrentInput('');
-    setSelectedBlockId(newBlock.id);
-  }, [blocks, detectBlockType, adapter, updateMarkdownContent]);
-
-  // Handle typing and slash commands
-  const handleInputChange = useCallback((text: string) => {
-    setCurrentInput(text);
-    
-    if (text.startsWith('/')) {
-      setShowSlashMenu(true);
-    } else {
-      setShowSlashMenu(false);
-    }
-  }, []);
-
-  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      
-      // Handle slash command
-      if (currentInput.startsWith('/')) {
-        // Keep slash menu open, don't create block
-        return;
-      }
-      
-      // Convert text to block
-      handleEnterKey(currentInput);
-    }
-    
-    if (e.key === 'Escape') {
-      setShowSlashMenu(false);
-      setCurrentInput('');
-    }
-  }, [currentInput, handleEnterKey]);
-
-  // Create a new block
-  const createBlock = useCallback(async (blockType: string, targetId?: string, position?: 'before' | 'after') => {
-    if (!adapter) return;
-    
-    try {
-      // Use the adapter's createBlock method to get proper initial content
-      const newBlock = await adapter.createBlock(blockType);
-      if (!newBlock) {
-        console.error('Failed to create block:', blockType);
-        return;
-      }
-
-      let newBlocks = [...blocks];
-      
-      if (targetId && position) {
-        const targetIndex = newBlocks.findIndex(block => block.id === targetId);
-        const insertIndex = position === 'before' ? targetIndex : targetIndex + 1;
-        newBlocks.splice(insertIndex, 0, newBlock);
-      } else {
-        newBlocks.push(newBlock);
-      }
-
-      setBlocks(newBlocks);
-      
-      // Serialize and update markdown directly
-      try {
-        const newMarkdown = await adapter.serialize(newBlocks);
-        updateMarkdownContent(newMarkdown);
-      } catch (error) {
-        console.error('Failed to serialize after creating block:', error);
-      }
-      
-      setSelectedBlockId(newBlock.id);
-      setEditingBlockId(newBlock.id);
-      setShowSlashMenu(false);
-      setCurrentInput('');
-    } catch (error) {
-      console.error('Error creating block:', error);
-    }
-  }, [blocks, adapter, updateMarkdownContent]);
-
-  // Update a single block's content by replacing it in the block array
-  const updateBlockInMarkdown = useCallback(async (blockId: string, newMarkdown: string) => {
-    if (!adapter) return;
-    
-    try {
-      // Parse the new markdown to get the updated block
-      const newBlocks = await adapter.parse(newMarkdown);
-      if (newBlocks.length === 0) return;
-      
-      // Update the block in our current blocks array
-      const updatedBlocks = blocks.map(block => 
-        block.id === blockId 
-          ? { ...newBlocks[0], id: blockId }  // Keep the original ID
-          : block
-      );
-      
-      // Update the blocks state
-      setBlocks(updatedBlocks);
-      
-      // Serialize all blocks back to markdown
-      const fullMarkdown = await adapter.serialize(updatedBlocks);
-      updateMarkdownContent(fullMarkdown);
-      
-    } catch (error) {
-      console.error('Failed to update block in markdown:', error);
-    }
-  }, [adapter, blocks, updateMarkdownContent]);
-
-  // Delete a block
-  const deleteBlock = useCallback(async (blockId: string) => {
-    if (!adapter) return;
-    
-    const newBlocks = blocks.filter(block => block.id !== blockId);
-    setBlocks(newBlocks);
-    
-    // Serialize and update markdown directly
-    try {
-      const newMarkdown = await adapter.serialize(newBlocks);
-      updateMarkdownContent(newMarkdown);
-    } catch (error) {
-      console.error('Failed to serialize after deleting block:', error);
-    }
-    
-    if (selectedBlockId === blockId) {
-      setSelectedBlockId(null);
-    }
-    if (editingBlockId === blockId) {
-      setEditingBlockId(null);
-    }
-  }, [blocks, adapter, updateMarkdownContent, selectedBlockId, editingBlockId]);
-
-  // Handle drag end
+  // Handle drag and drop reordering
   const handleDragEnd = useCallback(async (event: any) => {
     const { active, over } = event;
 
     if (active.id !== over.id && adapter) {
       const oldIndex = blocks.findIndex(block => block.id === active.id);
       const newIndex = blocks.findIndex(block => block.id === over.id);
-      
+
       const newBlocks = arrayMove(blocks, oldIndex, newIndex);
       setBlocks(newBlocks);
-      
+
       // Serialize and update markdown directly
       try {
         const newMarkdown = await adapter.serialize(newBlocks);
@@ -399,38 +117,291 @@ export function FullSparkBlockEditor({
     }
   }, [blocks, adapter, updateMarkdownContent]);
 
-  // Handle slash command selection
-  const handleSlashCommandSelect = useCallback((blockType: string) => {
-    createBlock(blockType);
-  }, [createBlock]);
+  // Handle creating new blocks
+  const createBlock = useCallback(async (blockType: string, afterBlockId?: string, position: 'before' | 'after' = 'after') => {
+    if (!adapter) return;
 
-  // Handle block click to edit
+    try {
+      // Initialize content based on block type
+      let initialContent: Record<string, any> = {};
+
+      switch (blockType) {
+        case 'core:paragraph':
+          initialContent = { text: '' };
+          break;
+        case 'core:heading_1':
+          initialContent = { text: '' };
+          break;
+        case 'core:heading_2':
+          initialContent = { text: '' };
+          break;
+        case 'core:heading_3':
+          initialContent = { text: '' };
+          break;
+        case 'core:quote':
+          initialContent = { text: '' };
+          break;
+        case 'core:code':
+          initialContent = { code: '', language: 'text' };
+          break;
+        case 'core:unordered_list':
+          initialContent = { text: '' };
+          break;
+        case 'core:ordered_list':
+          initialContent = { text: '' };
+          break;
+        case 'core:image':
+          initialContent = { src: '', alt: '' };
+          break;
+        default:
+          initialContent = {};
+      }
+
+      // Create new block
+      const newBlock: SparkBlock = {
+        id: `block_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        type: blockType,
+        content: initialContent,
+        config: {},
+        metadata: {
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          version: 1
+        }
+      };
+
+      let newBlocks: SparkBlock[];
+      if (afterBlockId) {
+        const insertIndex = blocks.findIndex(b => b.id === afterBlockId);
+        if (insertIndex >= 0) {
+          const targetIndex = position === 'after' ? insertIndex + 1 : insertIndex;
+          newBlocks = [
+            ...blocks.slice(0, targetIndex),
+            newBlock,
+            ...blocks.slice(targetIndex)
+          ];
+        } else {
+          newBlocks = [...blocks, newBlock];
+        }
+      } else {
+        newBlocks = [...blocks, newBlock];
+      }
+
+      setBlocks(newBlocks);
+
+      // Update markdown
+      const newMarkdown = await adapter.serialize(newBlocks);
+      updateMarkdownContent(newMarkdown);
+
+      // Auto-select and edit the new block
+      setSelectedBlockId(newBlock.id);
+      setEditingBlockId(newBlock.id);
+    } catch (error) {
+      console.error('Failed to create block:', error);
+    }
+  }, [adapter, blocks, updateMarkdownContent]);
+
+  // Handle converting block types
+  const convertBlock = useCallback(async (blockId: string, newBlockType: string) => {
+    if (!adapter) return;
+
+    try {
+      const blockIndex = blocks.findIndex(b => b.id === blockId);
+      if (blockIndex >= 0) {
+        const updatedBlocks = [...blocks];
+        updatedBlocks[blockIndex] = {
+          ...updatedBlocks[blockIndex],
+          type: newBlockType,
+          // Reset content and config when converting
+          content: {},
+          config: {},
+        };
+
+        setBlocks(updatedBlocks);
+
+        // Update markdown
+        const newMarkdown = await adapter.serialize(updatedBlocks);
+        updateMarkdownContent(newMarkdown);
+      }
+    } catch (error) {
+      console.error('Failed to convert block:', error);
+    }
+  }, [adapter, blocks, updateMarkdownContent]);
+
+  // Handle updating block content from markdown
+  const updateBlockInMarkdown = useCallback(async (blockId: string, blockMarkdown: string) => {
+    if (!adapter) return;
+
+    try {
+      // Find the block to update
+      const blockIndex = blocks.findIndex(b => b.id === blockId);
+      if (blockIndex < 0) return;
+
+      // Parse the markdown to get updated content
+      const parsedBlocks = await adapter.parse(blockMarkdown);
+      if (parsedBlocks.length > 0) {
+        const updatedBlock = { ...blocks[blockIndex], ...parsedBlocks[0] };
+        const newBlocks = [...blocks];
+        newBlocks[blockIndex] = updatedBlock;
+
+        setBlocks(newBlocks);
+
+        // Serialize all blocks back to markdown
+        const newMarkdown = await adapter.serialize(newBlocks);
+        updateMarkdownContent(newMarkdown);
+      }
+    } catch (error) {
+      console.error('Failed to update block:', error);
+    }
+  }, [adapter, blocks, updateMarkdownContent]);
+
+  // Handle block interactions - restore original behavior
   const handleBlockClick = useCallback((blockId: string) => {
     if (readonly) return;
-    
+
     if (editingBlockId === blockId) {
       // Already editing, do nothing
       return;
     }
-    
+
     setEditingBlockId(blockId);
     setSelectedBlockId(blockId);
   }, [readonly, editingBlockId]);
 
-  // Handle block blur to stop editing
   const handleBlockBlur = useCallback(() => {
     setEditingBlockId(null);
   }, []);
 
+  const handleSave = useCallback(() => {
+    setEditingBlockId(null);
+  }, []);
+
+  const handleCancel = useCallback(() => {
+    setEditingBlockId(null);
+  }, []);
+
+  const handleShowBlockMenu = useCallback((type: 'create' | 'convert', blockId?: string, position?: { x: number, y: number }) => {
+    setShowBlockMenu({ type, blockId, position });
+  }, []);
+
+  // Handle slash command input
+  const handleInputChange = useCallback((inputValue: string) => {
+    setCurrentInput(inputValue);
+
+    if (inputValue.startsWith('/')) {
+      setShowSlashMenu(true);
+    } else {
+      setShowSlashMenu(false);
+    }
+  }, []);
+
+  const handleKeyDown = useCallback(async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && currentInput.trim()) {
+      e.preventDefault();
+
+      if (currentInput.startsWith('/')) {
+        // Don't create blocks for slash commands - let menu handle it
+        return;
+      }
+
+      if (!adapter) return;
+
+      try {
+        // Parse the input to detect the correct block type
+        const parsedBlocks = await adapter.parse(currentInput);
+        if (parsedBlocks.length > 0) {
+          const parsedBlock = parsedBlocks[0];
+
+          // Create the correct block type with the parsed content
+          const newBlock: SparkBlock = {
+            id: `block_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+            type: parsedBlock.type,
+            content: parsedBlock.content,
+            config: parsedBlock.config || {},
+            metadata: {
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              version: 1
+            }
+          };
+
+          const newBlocks = [...blocks, newBlock];
+          setBlocks(newBlocks);
+
+          // Update markdown
+          const newMarkdown = await adapter.serialize(newBlocks);
+          updateMarkdownContent(newMarkdown);
+
+          // Auto-select the new block for continued editing if it's a text block
+          if (['core:paragraph', 'core:heading_1', 'core:heading_2', 'core:heading_3', 'core:quote'].includes(parsedBlock.type)) {
+            setSelectedBlockId(newBlock.id);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to parse input:', error);
+        // Fallback: create a paragraph block with the raw text
+        await createBlock('core:paragraph');
+        if (blocks.length >= 0) {
+          const lastBlock = blocks[blocks.length - 1] || { content: {} };
+          const updatedBlock = { ...lastBlock, content: { text: currentInput } };
+          const newMarkdown = await adapter.serialize([...blocks.slice(0, -1), updatedBlock]);
+          updateMarkdownContent(newMarkdown);
+        }
+      }
+
+      setCurrentInput('');
+      setShowSlashMenu(false);
+    }
+
+    if (e.key === 'Escape') {
+      setShowSlashMenu(false);
+      setCurrentInput('');
+    }
+  }, [currentInput, adapter, blocks, createBlock, updateMarkdownContent]);
+
+  // Handle slash menu selection
+  const handleSlashCommand = useCallback(async (blockType: string) => {
+    await createBlock(blockType);
+    setCurrentInput('');
+    setShowSlashMenu(false);
+
+    // Focus the input after creating block
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  }, [createBlock]);
+
+  // Handle block menu actions
+  const handleBlockMenuAction = useCallback((blockType: string, action: 'create' | 'convert', blockId?: string) => {
+    if (action === 'create' && blockId) {
+      createBlock(blockType, blockId, 'after');
+    } else if (action === 'convert' && blockId) {
+      convertBlock(blockId, blockType);
+    }
+  }, [createBlock, convertBlock]);
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setShowBlockMenu(null);
+      setShowSlashMenu(false);
+    };
+
+    if (showBlockMenu || showSlashMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showBlockMenu, showSlashMenu]);
+
   if (parseError) {
     return (
-      <div className="sparkblock-error">
-        <div className="sparkblock-error-content">
-          <h3>Parse Error</h3>
-          <p>Failed to parse markdown: {parseError.message}</p>
-          <details>
-            <summary>Raw Content</summary>
-            <pre>{value}</pre>
+      <div className="flex items-center justify-center h-full min-h-[200px]">
+        <div className="text-center text-red-600">
+          <h3 className="text-lg font-semibold mb-2">Parse Error</h3>
+          <p className="mb-4">Failed to parse markdown: {parseError.message}</p>
+          <details className="text-left">
+            <summary className="cursor-pointer">Raw Content</summary>
+            <pre className="mt-2 p-2 bg-gray-100 rounded text-sm overflow-auto">{value}</pre>
           </details>
         </div>
       </div>
@@ -439,35 +410,34 @@ export function FullSparkBlockEditor({
 
   if (!adapter) {
     return (
-      <div className="sparkblock-error">
-        <div className="sparkblock-error-content">
-          <h3>SparkBlock Unavailable</h3>
+      <div className="flex items-center justify-center h-full min-h-[200px]">
+        <div className="text-center text-gray-600">
+          <h3 className="text-lg font-semibold mb-2">SparkBlock Unavailable</h3>
           <p>No adapter available for block editing</p>
         </div>
       </div>
     );
   }
 
-
   return (
-    <div className="sparkblock-editor" ref={editorRef}>
-      <DndContext 
+    <div className="relative flex flex-col w-full font-sans text-sm leading-relaxed text-gray-900 bg-white focus:outline-none" ref={editorRef}>
+      <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <div className="sparkblock-canvas">
-          <div className="sparkblock-blocks">
+        <div className="p-4 md:p-3 overflow-visible focus:outline-none">
+          <div className="max-w-4xl mx-auto md:max-w-full md:mx-auto" style={{ marginLeft: 'calc(50% - 28rem + 5.625rem)', marginRight: 'calc(50% - 28rem)' }}>
             {blocks.length === 0 ? (
-              <div className="sparkblock-empty">
-                <div className="sparkblock-empty-state">
-                  <div className="sparkblock-empty-icon">✏️</div>
-                  <div className="sparkblock-empty-text">Start writing your story...</div>
+              <div className="flex items-center justify-center h-full min-h-[200px]">
+                <div className="text-center text-gray-500">
+                  <div className="text-5xl mb-4">✏️</div>
+                  <div className="text-base mb-4">Start writing your story...</div>
                 </div>
               </div>
             ) : (
-              <SortableContext 
-                items={blocks.map(block => block.id)} 
+              <SortableContext
+                items={blocks.map(block => block.id)}
                 strategy={verticalListSortingStrategy}
               >
                 {blocks.map((block) => (
@@ -482,9 +452,10 @@ export function FullSparkBlockEditor({
                       // Replace this block's content in the full markdown
                       updateBlockInMarkdown(block.id, newMarkdown);
                     }}
-                    onDelete={() => deleteBlock(block.id)}
                     onBlur={handleBlockBlur}
-                    onCreateBelow={(blockType) => createBlock(blockType, block.id, 'after')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    onShowBlockMenu={handleShowBlockMenu}
                     adapter={adapter}
                   />
                 ))}
@@ -492,7 +463,7 @@ export function FullSparkBlockEditor({
             )}
 
             {/* Main typing area */}
-            <div style={{ marginTop: blocks.length > 0 ? '16px' : '0' }}>
+            <div className={blocks.length > 0 ? 'mt-4' : ''}>
               <textarea
                 ref={inputRef}
                 value={currentInput}
@@ -500,411 +471,29 @@ export function FullSparkBlockEditor({
                 onKeyDown={handleKeyDown}
                 disabled={readonly}
                 placeholder={blocks.length === 0 ? "Start writing, or type '/' for commands..." : "Continue writing..."}
-                className="sparkblock-input"
-                style={{
-                  width: '100%',
-                  minHeight: '60px',
-                  border: 'none',
-                  outline: 'none',
-                  resize: 'vertical',
-                  fontSize: '16px',
-                  lineHeight: '1.5',
-                  fontFamily: 'inherit',
-                  backgroundColor: 'transparent',
-                  padding: '8px 12px',
-                }}
+                className="w-full min-h-[60px] border-none outline-none resize-y text-base leading-6 font-inherit bg-transparent px-3 py-2 focus:outline-none"
               />
             </div>
           </div>
         </div>
       </DndContext>
 
+      {/* Block menu for create/convert */}
+      <BlockMenu
+        show={showBlockMenu}
+        availableBlocks={availableBlocks}
+        onSelectBlock={handleBlockMenuAction}
+        onClose={() => setShowBlockMenu(null)}
+      />
+
       {/* Slash command menu */}
-      {showSlashMenu && (
-        <div className="sparkblock-slash-menu" style={{
-          position: 'absolute',
-          bottom: '80px',
-          left: '20px',
-          background: 'white',
-          border: '1px solid #e0e0e0',
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          minWidth: '300px',
-          maxHeight: '300px',
-          overflow: 'auto',
-          zIndex: 1000
-        }}>
-          <div style={{ padding: '8px 12px', borderBottom: '1px solid #e0e0e0', fontSize: '12px', fontWeight: '600', color: '#666' }}>
-            Block Types
-          </div>
-          {availableBlocks
-            .filter(option => {
-              const filter = currentInput.slice(1).toLowerCase();
-              return !filter || 
-                option.name.toLowerCase().includes(filter) || 
-                option.description.toLowerCase().includes(filter) ||
-                option.keywords.some((keyword: string) => keyword.toLowerCase().includes(filter));
-            })
-            .map(option => (
-              <button
-                key={option.id}
-                onClick={() => handleSlashCommandSelect(option.fullId)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 16px',
-                  background: 'transparent',
-                  border: 'none',
-                  width: '100%',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  transition: 'background 0.2s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#f0f0f0'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                <span style={{ fontSize: '16px', width: '20px', textAlign: 'center' }}>{option.icon}</span>
-                <div>
-                  <div style={{ fontWeight: '500', color: '#1a1a1a' }}>{option.name}</div>
-                  <div style={{ fontSize: '12px', color: '#666' }}>{option.description}</div>
-                  {option.category && (
-                    <div style={{ fontSize: '10px', color: '#999', marginTop: '2px' }}>{option.category}</div>
-                  )}
-                </div>
-              </button>
-            ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Simplified block renderer that doesn't require provider context
-interface SimpleBlockRendererProps {
-  block: SparkBlock;
-  isSelected: boolean;
-  isEditing: boolean;
-  readonly: boolean;
-  onClick: () => void;
-  onMarkdownUpdate: (markdown: string) => void;
-  onDelete: () => void;
-  onBlur: () => void;
-  onCreateBelow: (blockType: string) => void;
-  adapter: SparkBlockAdapter<string> | null;
-}
-
-function SimpleBlockRenderer({
-  block,
-  isSelected,
-  isEditing,
-  readonly,
-  onClick,
-  onMarkdownUpdate,
-  onDelete,
-  onBlur,
-  onCreateBelow,
-  adapter,
-}: SimpleBlockRendererProps) {
-  const [showControls, setShowControls] = useState(false);
-  const [localContent, setLocalContent] = useState('');
-  const [blockDefinition, setBlockDefinition] = useState<any>(null);
-  
-  // Convert block content to markdown for editing
-  const getEditingContent = useCallback(() => {
-    switch (block.type) {
-      case 'core:heading_1':
-        return `# ${(block.content.text as string) || ''}`;
-      case 'core:heading_2':
-        return `## ${(block.content.text as string) || ''}`;
-      case 'core:heading_3':
-        return `### ${(block.content.text as string) || ''}`;
-      case 'core:quote':
-        return `> ${(block.content.text as string) || ''}`;
-      case 'core:unordered_list':
-        return `- ${(block.content.text as string) || ''}`;
-      case 'core:ordered_list':
-        return `1. ${(block.content.text as string) || ''}`;
-      case 'core:code':
-        const language = (block.content.language as string) || '';
-        const code = (block.content.code as string) || '';
-        return language ? `\`\`\`${language}\n${code}\n\`\`\`` : `\`\`\`\n${code}\n\`\`\``;
-      case 'core:divider':
-        return '---';
-      default:
-        return (block.content.text as string) || '';
-    }
-  }, [block]);
-
-  // Load block definition for custom blocks
-  useEffect(() => {
-    const loadBlockDefinition = async () => {
-      if (isCustomBlock(block.type) && adapter) {
-        try {
-          const blockDef = await adapter.getBlockDefinition(block.type);
-          setBlockDefinition(blockDef);
-        } catch (error) {
-          console.error('Failed to load block definition:', error);
-          setBlockDefinition(null);
-        }
-      } else {
-        setBlockDefinition(null);
-      }
-    };
-
-    loadBlockDefinition();
-  }, [block.type, adapter]);
-
-  useEffect(() => {
-    if (isEditing) {
-      // Set initial content with markdown syntax when entering edit mode
-      const editingContent = getEditingContent();
-      setLocalContent(editingContent);
-    }
-  }, [isEditing, getEditingContent, block.id, block.type]);
-
-
-  const handleSave = useCallback(() => {
-    // Simply pass the raw markdown content to the parent
-    // The adapter will handle parsing, normalization, and type detection
-    if (onMarkdownUpdate) {
-      onMarkdownUpdate(localContent);
-    }
-    
-    onBlur();
-  }, [localContent, onMarkdownUpdate, onBlur]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      // Check if this is a single-line block type
-      const isSingleLineBlock = [
-        'core:heading_1',
-        'core:heading_2', 
-        'core:heading_3',
-        'core:paragraph',
-        'core:unordered_list',
-        'core:ordered_list',
-        'core:divider'
-      ].includes(block.type);
-
-      if (isSingleLineBlock && !e.shiftKey) {
-        e.preventDefault();
-        handleSave();
-        // Create new paragraph block below
-        onCreateBelow('paragraph');
-        return;
-      }
-
-      // For multi-line blocks (quote, code), allow Enter unless Cmd/Ctrl is pressed
-      if (e.metaKey || e.ctrlKey) {
-        e.preventDefault();
-        handleSave();
-        return;
-      }
-    }
-    
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      onBlur();
-    }
-  }, [handleSave, onBlur, block.type, onCreateBelow]);
-
-  // Get the appropriate renderer from DefaultBlockRenderers
-  const renderContent = useCallback(() => {
-    if (isEditing) {
-      // Check if this is a custom block that needs a form
-      if (isCustomBlock(block.type) && blockDefinition) {
-        const { schema, uiSchema } = blockManifestToJsonSchema(blockDefinition, adapter);
-        
-        return (
-          <div style={{ padding: '12px', border: '1px solid #e0e0e0', borderRadius: '6px', background: '#fafafa' }}>
-            <div style={{ marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#666' }}>
-              {blockDefinition.name} Settings
-            </div>
-            <SchemaDrivenForm
-              schema={schema}
-              uiSchema={uiSchema}
-              formData={{
-                // Merge content and config for custom blocks
-                ...block.content,
-                ...(block.config || {})
-              }}
-              onFormChange={(data) => {
-                // Split data back into content and config based on manifest
-                const contentFields = Object.keys(blockDefinition.fields || {});
-                const configFields = Object.keys(blockDefinition.config || {});
-                
-                const newContent: Record<string, any> = {};
-                const newConfig: Record<string, any> = {};
-                
-                Object.entries(data).forEach(([key, value]) => {
-                  if (contentFields.includes(key)) {
-                    newContent[key] = value;
-                  } else if (configFields.includes(key)) {
-                    newConfig[key] = value;
-                  }
-                });
-                
-                // Update block content and generate directive markdown
-                const allAttributes = Object.entries(data)
-                  .filter(([_, value]) => value !== undefined && value !== '')
-                  .map(([key, value]) => `${key}="${value}"`)
-                  .join(' ');
-                const directive = `::${block.type.replace('core:', '')}${allAttributes ? `{${allAttributes}}` : ''}`;
-                onMarkdownUpdate(directive);
-              }}
-              liveValidate={true}
-            />
-            <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
-              <button 
-                onClick={onBlur}
-                style={{
-                  padding: '6px 12px',
-                  background: '#007bff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
-              >
-                Done
-              </button>
-              <button 
-                onClick={onBlur}
-                style={{
-                  padding: '6px 12px',
-                  background: '#6c757d',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        );
-      }
-      
-      // Fallback to textarea for standard blocks
-      return (
-        <textarea
-          value={localContent}
-          onChange={(e) => setLocalContent(e.target.value)}
-          onBlur={handleSave}
-          onKeyDown={handleKeyDown}
-          autoFocus
-          style={{
-            width: '100%',
-            minHeight: 'auto',
-            padding: '0',
-            margin: '0',
-            border: 'none',
-            borderRadius: '0',
-            fontSize: block.type === 'core:heading_1' ? '32px' : 
-                     block.type === 'core:heading_2' ? '24px' :
-                     block.type === 'core:heading_3' ? '20px' : '16px',
-            lineHeight: block.type.includes('heading') ? '1.2' : '1.5',
-            fontWeight: block.type.includes('heading') ? 'bold' : 'normal',
-            fontFamily: block.type === 'core:code' ? 'Monaco, Consolas, "Liberation Mono", "Courier New", monospace' : 'inherit',
-            fontStyle: block.type === 'core:quote' ? 'italic' : 'normal',
-            resize: 'none',
-            outline: 'none',
-            background: 'transparent',
-            color: 'inherit',
-            overflow: 'hidden',
-          }}
-          rows={1}
-          onInput={(e) => {
-            // Auto-resize textarea to fit content (only for multi-line blocks)
-            const isSingleLineBlock = [
-              'core:heading_1',
-              'core:heading_2', 
-              'core:heading_3',
-              'core:paragraph',
-              'core:unordered_list',
-              'core:ordered_list',
-              'core:divider'
-            ].includes(block.type);
-
-            if (!isSingleLineBlock) {
-              const textarea = e.target as HTMLTextAreaElement;
-              textarea.style.height = 'auto';
-              textarea.style.height = textarea.scrollHeight + 'px';
-            }
-          }}
-        />
-      );
-    }
-
-    // Mock render context for DefaultBlockRenderers
-    const mockContext = {
-      isEditing: false,
-      isSelected,
-      isFocused: isSelected,
-      isDragging: false,
-      nestingLevel: 0,
-      readonly,
-      theme: undefined,
-      onFocus: onClick,
-      onChange: onMarkdownUpdate,
-      onKeyDown: () => {},
-    };
-
-    // Use DefaultBlockRenderers
-    const blockTypeKey = block.type.replace('core:', '');
-    const RendererComponent = DefaultBlockRenderers[blockTypeKey] || DefaultBlockRenderers.unknown;
-    
-    return <RendererComponent block={block} context={mockContext} />;
-  }, [isEditing, localContent, block, isSelected, readonly, onClick, onMarkdownUpdate, handleSave, handleKeyDown, blockDefinition]);
-
-  return (
-    <div
-      className={`sparkblock-block ${isSelected ? 'sparkblock-block--selected' : ''} ${isEditing ? 'sparkblock-block--editing' : ''}`}
-      data-block-type={block.type}
-      onClick={onClick}
-      onMouseEnter={() => setShowControls(true)}
-      onMouseLeave={() => setShowControls(false)}
-    >
-      {/* Block controls */}
-      {showControls && !readonly && (
-        <div className="sparkblock-block-controls sparkblock-block-controls--visible">
-          <button 
-            className="sparkblock-control" 
-            onClick={(e) => {
-              e.stopPropagation();
-              onCreateBelow('paragraph');
-            }}
-            title="Add block below"
-          >
-            +
-          </button>
-          <button 
-            className="sparkblock-control sparkblock-control--drag" 
-            title="Drag to move"
-          >
-            ⋮⋮
-          </button>
-          <button 
-            className="sparkblock-control" 
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            title="Delete block"
-            style={{ color: '#d32f2f' }}
-          >
-            ×
-          </button>
-        </div>
-      )}
-      
-      <div className="sparkblock-block-content">
-        {renderContent()}
-      </div>
+      <SlashMenu
+        show={showSlashMenu}
+        availableBlocks={availableBlocks}
+        currentInput={currentInput}
+        onSelectBlock={handleSlashCommand}
+        inputRef={inputRef}
+      />
     </div>
   );
 }

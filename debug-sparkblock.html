@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SparkBlock Debug</title>
+</head>
+<body>
+    <h1>SparkBlock Custom Block Debug</h1>
+    <p>Open the browser console and try clicking on custom blocks like collection_view to see debug output.</p>
+    
+    <div id="debug-info">
+        <h2>Test Content</h2>
+        <p>You can test with markdown containing custom blocks like:</p>
+        <pre>
+# Test Page
+
+This is a paragraph.
+
+:::collection_view
+collectionId: posts
+limit: 5
+:::
+
+Another paragraph.
+        </pre>
+    </div>
+    
+    <script>
+        console.log('SparkBlock debug page loaded. Look for debug messages when interacting with custom blocks.');
+    </script>
+</body>
+</html>

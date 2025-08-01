@@ -43,6 +43,7 @@ export class SparktypeBlockAdapter implements SparkBlockAdapter<string> {
       let currentBlock: string[] = [];
       let inCodeBlock = false;
       let codeLanguage = '';
+      let blockIndex = 0; // Track block position for unique IDs
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -55,7 +56,7 @@ export class SparktypeBlockAdapter implements SparkBlockAdapter<string> {
             blocks.push(this.createSparkBlock('core:code', {
               code: codeContent,
               language: codeLanguage
-            }));
+            }, true, blockIndex++));
             currentBlock = [];
             inCodeBlock = false;
             codeLanguage = '';
@@ -78,13 +79,13 @@ export class SparktypeBlockAdapter implements SparkBlockAdapter<string> {
           if (currentBlock.length > 0) {
             const content = currentBlock.join('\n').trim();
             if (content) {
-              blocks.push(this.parseStandardMarkdown(content));
+              blocks.push(this.parseStandardMarkdown(content, true, blockIndex++));
             }
             currentBlock = [];
           }
 
           // Parse remark directive
-          const directiveBlock = this.parseRemarkDirective(line, lines, i);
+          const directiveBlock = this.parseRemarkDirective(line, lines, i, blockIndex++);
           if (directiveBlock.block) {
             blocks.push(directiveBlock.block);
             // Skip lines that were consumed by the directive parser
@@ -98,7 +99,7 @@ export class SparktypeBlockAdapter implements SparkBlockAdapter<string> {
           if (currentBlock.length > 0) {
             const content = currentBlock.join('\n').trim();
             if (content) {
-              blocks.push(this.parseStandardMarkdown(content));
+              blocks.push(this.parseStandardMarkdown(content, true, blockIndex++));
             }
             currentBlock = [];
           }
@@ -112,7 +113,7 @@ export class SparktypeBlockAdapter implements SparkBlockAdapter<string> {
       if (currentBlock.length > 0) {
         const content = currentBlock.join('\n').trim();
         if (content) {
-          blocks.push(this.parseStandardMarkdown(content));
+          blocks.push(this.parseStandardMarkdown(content, true, blockIndex++));
         }
       }
 
@@ -125,63 +126,63 @@ export class SparktypeBlockAdapter implements SparkBlockAdapter<string> {
     }
   }
 
-  private parseStandardMarkdown(content: string): SparkBlock {
+  private parseStandardMarkdown(content: string, generateStableId: boolean = false, blockIndex?: number): SparkBlock {
     const trimmed = content.trim();
     
     // Headings
     if (trimmed.startsWith('### ')) {
-      return this.createSparkBlock('core:heading_3', { text: trimmed.slice(4) });
+      return this.createSparkBlock('core:heading_3', { text: trimmed.slice(4) }, generateStableId, blockIndex);
     }
     if (trimmed.startsWith('## ')) {
-      return this.createSparkBlock('core:heading_2', { text: trimmed.slice(3) });
+      return this.createSparkBlock('core:heading_2', { text: trimmed.slice(3) }, generateStableId, blockIndex);
     }
     if (trimmed.startsWith('# ')) {
-      return this.createSparkBlock('core:heading_1', { text: trimmed.slice(2) });
+      return this.createSparkBlock('core:heading_1', { text: trimmed.slice(2) }, generateStableId, blockIndex);
     }
     
     // Quote
     if (trimmed.startsWith('> ')) {
-      return this.createSparkBlock('core:quote', { text: trimmed.slice(2) });
+      return this.createSparkBlock('core:quote', { text: trimmed.slice(2) }, generateStableId, blockIndex);
     }
     
     // Unordered list
     if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('+ ')) {
-      return this.createSparkBlock('core:unordered_list', { text: trimmed.slice(2) });
+      return this.createSparkBlock('core:unordered_list', { text: trimmed.slice(2) }, generateStableId, blockIndex);
     }
     
     // Ordered list
     if (/^\d+\. /.test(trimmed)) {
       const match = trimmed.match(/^\d+\. (.*)$/);
-      return this.createSparkBlock('core:ordered_list', { text: match?.[1] || '' });
+      return this.createSparkBlock('core:ordered_list', { text: match?.[1] || '' }, generateStableId, blockIndex);
     }
     
     // Divider
     if (trimmed === '---' || trimmed === '***' || trimmed === '___') {
-      return this.createSparkBlock('core:divider', {});
+      return this.createSparkBlock('core:divider', {}, generateStableId, blockIndex);
     }
     
     // Default to paragraph
-    return this.createSparkBlock('core:paragraph', { text: trimmed });
+    return this.createSparkBlock('core:paragraph', { text: trimmed }, generateStableId, blockIndex);
   }
 
-  private parseRemarkDirective(line: string, lines: string[], currentIndex: number): { block: SparkBlock | null; nextIndex: number } {
+  private parseRemarkDirective(line: string, lines: string[], currentIndex: number, blockIndex?: number): { block: SparkBlock | null; nextIndex: number } {
     const trimmed = line.trim();
     
     // Container directive (:::: or :::)
     if (trimmed.startsWith(':::')) {
-      return this.parseContainerDirective(line, lines, currentIndex);
+      return this.parseContainerDirective(line, lines, currentIndex, blockIndex);
     }
     
     // Leaf directive (::)
     if (trimmed.startsWith('::')) {
-      const block = this.parseLeafDirective(line);
+      const block = this.parseLeafDirective(line, blockIndex);
       return { block, nextIndex: currentIndex + 1 };
     }
     
     return { block: null, nextIndex: currentIndex + 1 };
   }
 
-  private parseContainerDirective(line: string, lines: string[], startIndex: number): { block: SparkBlock | null; nextIndex: number } {
+  private parseContainerDirective(line: string, lines: string[], startIndex: number, blockIndex?: number): { block: SparkBlock | null; nextIndex: number } {
     const trimmed = line.trim();
     
     // Parse container opening: :::container{layout="single" gap="medium"}
@@ -215,7 +216,7 @@ export class SparktypeBlockAdapter implements SparkBlockAdapter<string> {
       }
     }
     
-    const block = this.createSparkBlock(`core:${blockType}`, attributes);
+    const block = this.createSparkBlock(`core:${blockType}`, attributes, true, blockIndex);
     if (Object.keys(regions).length > 0) {
       block.regions = regions;
     }
@@ -223,7 +224,7 @@ export class SparktypeBlockAdapter implements SparkBlockAdapter<string> {
     return { block, nextIndex: endIndex };
   }
 
-  private parseLeafDirective(line: string): SparkBlock | null {
+  private parseLeafDirective(line: string, blockIndex?: number): SparkBlock | null {
     const trimmed = line.trim();
     
     // Parse leaf directive: ::image{src="..." alt="..."}
@@ -233,7 +234,7 @@ export class SparktypeBlockAdapter implements SparkBlockAdapter<string> {
     const [, blockType, attributeString] = match;
     const attributes = this.parseRemarkAttributes(attributeString || '');
     
-    return this.createSparkBlock(`core:${blockType}`, attributes);
+    return this.createSparkBlock(`core:${blockType}`, attributes, true, blockIndex);
   }
 
   private parseRemarkAttributes(attributeString: string): Record<string, any> {
@@ -255,13 +256,14 @@ export class SparktypeBlockAdapter implements SparkBlockAdapter<string> {
     const blocks: SparkBlock[] = [];
     const lines = markdown.split('\n');
     let currentBlock: string[] = [];
+    let blockIndex = 1000; // Use offset to avoid conflicts with main parsing
     
     for (const line of lines) {
       if (line.trim() === '') {
         if (currentBlock.length > 0) {
           const content = currentBlock.join('\n').trim();
           if (content) {
-            blocks.push(this.parseStandardMarkdown(content));
+            blocks.push(this.parseStandardMarkdown(content, true, blockIndex++));
           }
           currentBlock = [];
         }
@@ -274,16 +276,51 @@ export class SparktypeBlockAdapter implements SparkBlockAdapter<string> {
     if (currentBlock.length > 0) {
       const content = currentBlock.join('\n').trim();
       if (content) {
-        blocks.push(this.parseStandardMarkdown(content));
+        blocks.push(this.parseStandardMarkdown(content, true, blockIndex++));
       }
     }
     
     return blocks;
   }
 
-  private createSparkBlock(type: string, content: Record<string, any>): SparkBlock {
-    return {
-      id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+  private createSparkBlock(type: string, attributes: Record<string, any>, generateStableId: boolean = false, blockIndex?: number): SparkBlock {
+    const blockDef = this.blockDefinitions[type];
+    
+    // Separate content (fields) and config based on block definition
+    let content: Record<string, any> = {};
+    let config: Record<string, any> = {};
+    
+    if (blockDef) {
+      // Separate fields and config
+      for (const [key, value] of Object.entries(attributes)) {
+        if (blockDef.fields && key in blockDef.fields) {
+          content[key] = value;
+        } else if (blockDef.config && key in blockDef.config) {
+          config[key] = value;
+        } else {
+          // If not defined in either, default to content
+          content[key] = value;
+        }
+      }
+    } else {
+      // If no block definition, put everything in content
+      content = attributes;
+    }
+    
+    // Generate ID - stable for parsing, random for new blocks
+    let blockId: string;
+    if (generateStableId) {
+      // Create deterministic ID based on content and position for parsing
+      const contentStr = JSON.stringify({ type, content, config, index: blockIndex || 0 });
+      const hash = this.simpleHash(contentStr);
+      blockId = `block_${hash}`;
+    } else {
+      // Generate random ID for new blocks
+      blockId = `block_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    }
+    
+    const block: SparkBlock = {
+      id: blockId,
       type,
       content,
       metadata: {
@@ -292,6 +329,24 @@ export class SparktypeBlockAdapter implements SparkBlockAdapter<string> {
         version: 1
       }
     };
+    
+    // Add config if it has any properties
+    if (Object.keys(config).length > 0) {
+      block.config = config;
+    }
+    
+    return block;
+  }
+
+  // Simple hash function for generating stable IDs
+  private simpleHash(str: string): string {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash).toString(36);
   }
 
   async serialize(blocks: SparkBlock[]): Promise<string> {
@@ -375,7 +430,9 @@ export class SparktypeBlockAdapter implements SparkBlockAdapter<string> {
       default:
         // Fallback for unknown block types - use leaf directive format
         const blockName = block.type.replace('core:', '');
-        const attributes = Object.entries(block.content || {})
+        // Combine both content and config for serialization
+        const allAttributes = { ...block.content, ...block.config };
+        const attributes = Object.entries(allAttributes || {})
           .map(([key, value]) => `${key}="${value}"`)
           .join(' ');
         return `::${blockName}${attributes ? `{${attributes}}` : ''}`;
