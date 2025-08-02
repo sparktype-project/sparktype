@@ -23,7 +23,6 @@ interface EditTagGroupDialogProps {
 export default function EditTagGroupDialog({ siteId, tagGroup, open, onOpenChange }: EditTagGroupDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [color, setColor] = useState('#3B82F6');
   const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -38,7 +37,6 @@ export default function EditTagGroupDialog({ siteId, tagGroup, open, onOpenChang
     if (tagGroup) {
       setName(tagGroup.name);
       setDescription(tagGroup.description || '');
-      setColor(tagGroup.color || '#3B82F6');
       setSelectedCollections(tagGroup.applicableCollections);
     }
   }, [tagGroup]);
@@ -54,7 +52,6 @@ export default function EditTagGroupDialog({ siteId, tagGroup, open, onOpenChang
       const updates: Partial<Omit<TagGroup, 'id'>> = {
         name: name.trim(),
         description: description.trim() || undefined,
-        color: color || undefined,
         applicableCollections: selectedCollections,
       };
       
@@ -79,7 +76,6 @@ export default function EditTagGroupDialog({ siteId, tagGroup, open, onOpenChang
     if (tagGroup) {
       setName(tagGroup.name);
       setDescription(tagGroup.description || '');
-      setColor(tagGroup.color || '#3B82F6');
       setSelectedCollections(tagGroup.applicableCollections);
     }
     onOpenChange(false);
@@ -119,26 +115,6 @@ export default function EditTagGroupDialog({ siteId, tagGroup, open, onOpenChang
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
               />
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="edit-color">Color</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="edit-color"
-                  type="color"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="w-16 h-10 p-1 rounded cursor-pointer"
-                />
-                <Input
-                  type="text"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  placeholder="#3B82F6"
-                  className="flex-1"
-                />
-              </div>
             </div>
             
             <div className="grid gap-2">

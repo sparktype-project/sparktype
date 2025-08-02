@@ -71,11 +71,6 @@ export function validateTagGroup(tagGroup: TagGroup): { isValid: boolean; errors
   if (!tagGroup.name?.trim()) errors.push('Tag group name is required');
   if (!Array.isArray(tagGroup.applicableCollections)) errors.push('Applicable collections must be an array');
   
-  // Validate color if provided
-  if (tagGroup.color && !/^#[0-9A-F]{6}$/i.test(tagGroup.color)) {
-    errors.push('Color must be a valid hex color (e.g., #FF0000)');
-  }
-  
   return { isValid: errors.length === 0, errors };
 }
 

@@ -56,7 +56,6 @@ export default function TagSelector({ siteId, tagGroup, selectedTagIds, onTagsCh
     onTagsChange([]);
   };
 
-  const getTagColor = (tag: Tag) => tag.color || tagGroup.color || '#3B82F6';
 
   return (
     <div className="space-y-2">
@@ -64,12 +63,6 @@ export default function TagSelector({ siteId, tagGroup, selectedTagIds, onTagsCh
         <CollapsibleTrigger asChild>
           <Button variant="ghost" className="w-full justify-between p-0 h-auto font-normal">
             <div className="flex items-center gap-2">
-              {tagGroup.color && (
-                <div 
-                  className="w-3 h-3 rounded-full border border-gray-300" 
-                  style={{ backgroundColor: tagGroup.color }}
-                />
-              )}
               <Label className="text-sm font-medium cursor-pointer">{tagGroup.name}</Label>
               {selectedTagIds.length > 0 && (
                 <Badge variant="secondary" className="text-xs">
@@ -102,11 +95,6 @@ export default function TagSelector({ siteId, tagGroup, selectedTagIds, onTagsCh
                     key={tag.id} 
                     variant="secondary" 
                     className="text-xs flex items-center gap-1 pr-1"
-                    style={{ 
-                      backgroundColor: `${getTagColor(tag)}20`,
-                      borderColor: getTagColor(tag),
-                      color: getTagColor(tag)
-                    }}
                   >
                     {tag.name}
                     <Button
@@ -137,13 +125,9 @@ export default function TagSelector({ siteId, tagGroup, selectedTagIds, onTagsCh
                     />
                     <Label 
                       htmlFor={`tag-${tag.id}`} 
-                      className="text-sm font-normal cursor-pointer flex items-center gap-2 flex-1"
+                      className="text-sm font-normal cursor-pointer flex-1"
                     >
-                      <div 
-                        className="w-3 h-3 rounded-full border border-gray-300" 
-                        style={{ backgroundColor: getTagColor(tag) }}
-                      />
-                      <span className="flex-1">{tag.name}</span>
+                      {tag.name}
                     </Label>
                   </div>
                 ))}

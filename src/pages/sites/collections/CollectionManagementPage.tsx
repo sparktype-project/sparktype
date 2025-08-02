@@ -10,10 +10,12 @@ import { EditorProvider } from '@/features/editor/contexts/EditorProvider';
 
 // Services
 import { getCollection } from '@/core/services/collections.service';
+import { NEW_FILE_SLUG_MARKER } from '@/config/editorConfig';
 
 // UI Components
 import { Button } from '@/core/components/ui/button';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, PlusCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import ThreeColumnLayout from '@/core/components/layout/ThreeColumnLayout';
 import LeftSidebar from '@/features/editor/components/LeftSidebar';
 import CollectionItemList from '@/features/editor/components/CollectionItemList';
@@ -88,6 +90,12 @@ function CollectionManagementPageInternal() {
 
   const pageTitle = `Managing: ${collection.name} | ${site.manifest.title || 'Sparktype'}`;
   const headerActions = <Button variant="ghost" size="sm" onClick={() => navigate(`/sites/${siteId}/edit`)}><ArrowLeft className="h-4 w-4 mr-2" />Back to Editor</Button>;
+  
+  // Create new item path
+  const newItemPath = useMemo(() => {
+    const contentPathSlug = collection.contentPath.replace('content/', '').replace(/\/$/, '');
+    return `/sites/${siteId}/edit/content/${contentPathSlug}/${NEW_FILE_SLUG_MARKER}`;
+  }, [collection.contentPath, siteId]);
 
   return (
     <>
@@ -95,11 +103,15 @@ function CollectionManagementPageInternal() {
       <ThreeColumnLayout leftSidebar={<LeftSidebar />} rightSidebar={<CollectionSettingsSidebar siteId={siteId} collectionId={collectionId}/>} headerActions={headerActions}>
         <div className="container mx-auto max-w-[900px] p-6">
           <div className="shrink-0 mb-6">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center justify-between mb-1">
               <h1 className="text-3xl font-bold">{collection.name}</h1>
-              {/* CORRECTED: Removed obsolete `typeId` display */}
+              <Button asChild>
+                <Link to={newItemPath}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  New Item
+                </Link>
+              </Button>
             </div>
-             {/* CORRECTED: Added type guard for rendering the description */}
             {typeof collection.settings?.description === 'string' && (
               <p className="text-muted-foreground">{collection.settings.description}</p>
             )}

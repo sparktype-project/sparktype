@@ -65,7 +65,6 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
             title: '',
             layout: 'page', // Default layout for collection items
             date: new Date().toISOString().split('T')[0],
-            status: 'draft',
           });
         } else {
           // Setup for a brand new regular page
@@ -73,7 +72,6 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
             title: '',
             layout: DEFAULT_PAGE_LAYOUT_PATH,
             date: new Date().toISOString().split('T')[0],
-            status: 'draft',
           });
         }
         

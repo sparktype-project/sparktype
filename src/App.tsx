@@ -20,6 +20,7 @@ const HomePageDashboard = lazy(() => import('./pages/HomePageDashboard')); // ap
 const SiteLayout = lazy(() => import('./pages/sites/SiteLayout'));             // app/sites/[siteId]/layout.tsx
 const EditContentPage = lazy(() => import('./pages/sites/edit/EditContentPage'));// app/sites/[siteId]/edit/content/[[...slug]]/page.tsx
 const CollectionManagementPage = lazy(() => import('./pages/sites/collections/CollectionManagementPage')); // app/sites/[siteId]/collections/[collectionId]/page.tsx
+const TagGroupManagementPage = lazy(() => import('./pages/sites/taggroups/TagGroupManagementPage')); // app/sites/[siteId]/taggroups/[tagGroupId]/page.tsx
 const SettingsSectionLayout = lazy(() => import('@/pages/sites/settings/SettingsSectionLayout')); // app/sites/[siteId]/settings/layout.tsx
 const SiteSettingsPage = lazy(() => import('@/pages/sites/settings/SiteSettingsPage'));         // app/sites/[siteId]/settings/page.tsx
 const ThemeSettingsPage = lazy(() => import('@/pages/sites/settings/ThemeSettingsPage'));       // app/sites/[siteId]/settings/theme/page.tsx
@@ -79,6 +80,8 @@ export default function App() {
           <Route path="edit/*" element={<EditContentPage />} />
 
           <Route path="collections/:collectionId" element={<CollectionManagementPage />} />
+          
+          <Route path="taggroups/:tagGroupId" element={<TagGroupManagementPage />} />
             
           <Route path="collection/:collectionId/:slug" element={<ViewSitePage />} />
 

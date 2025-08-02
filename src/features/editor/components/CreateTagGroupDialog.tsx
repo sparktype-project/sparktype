@@ -22,7 +22,6 @@ interface CreateTagGroupDialogProps {
 export default function CreateTagGroupDialog({ siteId, open, onOpenChange }: CreateTagGroupDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [color, setColor] = useState('#3B82F6'); // Default blue
   const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,7 +42,6 @@ export default function CreateTagGroupDialog({ siteId, open, onOpenChange }: Cre
       const tagGroupData: Omit<TagGroup, 'id'> = {
         name: name.trim(),
         description: description.trim() || undefined,
-        color: color || undefined,
         applicableCollections: selectedCollections,
         settings: {}
       };
@@ -53,7 +51,6 @@ export default function CreateTagGroupDialog({ siteId, open, onOpenChange }: Cre
       // Reset form
       setName('');
       setDescription('');
-      setColor('#3B82F6');
       setSelectedCollections([]);
       onOpenChange(false);
     } catch (error) {
@@ -74,7 +71,6 @@ export default function CreateTagGroupDialog({ siteId, open, onOpenChange }: Cre
   const handleCancel = () => {
     setName('');
     setDescription('');
-    setColor('#3B82F6');
     setSelectedCollections([]);
     onOpenChange(false);
   };
@@ -111,26 +107,6 @@ export default function CreateTagGroupDialog({ siteId, open, onOpenChange }: Cre
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
               />
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="color">Color</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="color"
-                  type="color"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="w-16 h-10 p-1 rounded cursor-pointer"
-                />
-                <Input
-                  type="text"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  placeholder="#3B82F6"
-                  className="flex-1"
-                />
-              </div>
             </div>
             
             <div className="grid gap-2">

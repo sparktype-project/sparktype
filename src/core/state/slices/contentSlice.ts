@@ -13,7 +13,6 @@ import { getCollections } from '@/core/services/collections.service';
 import { stringifyToMarkdown, parseMarkdownString, stringifyToMarkdownAsync } from '@/core/libraries/markdownParser';
 import { DEFAULT_BLOCKS } from '@/config/defaultBlocks';
 import { type SiteSlice } from '@/core/state/slices/siteSlice';
-import { MigrationService } from '@/core/services/migration.service';
 import { createTagGroup, updateTagGroup, deleteTagGroup, getTagGroups, getTagGroupsForCollection } from '@/core/services/tagGroups.service';
 import { createTag, updateTag, deleteTag, getTags, getTagsInGroup } from '@/core/services/tags.service';
 import type { TagGroup, Tag } from '@/core/types';
@@ -57,7 +56,6 @@ export interface ContentSlice {
   repositionNode: (siteId: string, activeNodePath: string, newParentPath: string | null, newIndex: number) => Promise<void>;
   updateContentFileOnly: (siteId: string, savedFile: ParsedMarkdownFile) => Promise<void>;
   setAsHomepage: (siteId: string, filePath: string) => Promise<void>;
-  migrateLayoutChanges: (siteId: string, layoutId: string) => Promise<void>;
   
   // Tag Group operations
   createTagGroup: (siteId: string, tagGroupData: Omit<TagGroup, 'id'>) => Promise<void>;
@@ -391,39 +389,6 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
     }
   },
 
-  // Migrate content files when layout schemas change
-  migrateLayoutChanges: async (siteId: string, layoutId: string) => {
-    try {
-      const siteData = get().getSiteById(siteId);
-      if (!siteData) {
-        toast.error("Site not found");
-        return;
-      }
-
-      console.log(`Running migration for layout: ${layoutId}`);
-      
-      const result = await MigrationService.migrateLayoutChanges(siteData as LocalSiteData, layoutId);
-      
-      if (result.migratedFiles > 0) {
-        toast.success(`Migration completed: ${result.migratedFiles} files updated`, {
-          description: result.errors.length > 0 
-            ? `${result.errors.length} files had errors` 
-            : undefined
-        });
-
-        // Reload the site to reflect the changes
-        await get().loadSite(siteId);
-      } else if (result.errors.length > 0) {
-        toast.error(`Migration failed: ${result.errors.length} errors`);
-        console.error('Migration errors:', result.errors);
-      } else {
-        console.log('No migration needed - all files are up to date');
-      }
-    } catch (error) {
-      console.error("Migration failed:", error);
-      toast.error("Failed to run content migration");
-    }
-  },
 
   // === TAG GROUP OPERATIONS ===
 

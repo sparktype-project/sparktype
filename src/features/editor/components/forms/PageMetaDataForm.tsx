@@ -87,11 +87,7 @@ export default function PageMetadataForm({
       Object.assign(finalUiSchema, customUiSchema);
     }
     
-    // 4. Apply contextual adjustments. For example, hide the 'date' field for collection items,
-    // as their date is usually managed differently.
-    if (isCollectionItem) {
-        finalUiSchema.date = { 'ui:widget': 'hidden' };
-    }
+    // Schema is ready - no contextual adjustments needed
 
     return { schema: finalSchema, uiSchema: finalUiSchema };
   }, [layoutManifest, isCollectionItem]);

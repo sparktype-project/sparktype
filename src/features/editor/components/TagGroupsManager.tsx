@@ -1,6 +1,7 @@
 // src/features/editor/components/TagGroupsManager.tsx
 
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getCollections } from '@/core/services/collections.service';
 import { getTagGroups } from '@/core/services/tagGroups.service';
@@ -8,7 +9,6 @@ import { getTagsInGroup } from '@/core/services/tags.service';
 import type { TagGroup, Tag, Collection } from '@/core/types';
 import CreateTagGroupDialog from './CreateTagGroupDialog';
 import EditTagGroupDialog from './EditTagGroupDialog';
-import TagsManagerDialog from './TagsManagerDialog';
 
 // UI Components
 import { Button } from '@/core/components/ui/button';
@@ -24,14 +24,13 @@ interface TagGroupsManagerProps {
 }
 
 export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
+  const navigate = useNavigate();
   const [searchFilter, setSearchFilter] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [tagGroupToDelete, setTagGroupToDelete] = useState<TagGroup | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [tagGroupToEdit, setTagGroupToEdit] = useState<TagGroup | null>(null);
-  const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
-  const [tagGroupForTags, setTagGroupForTags] = useState<TagGroup | null>(null);
 
   const getSiteById = useAppStore(state => state.getSiteById);
   const deleteTagGroup = useAppStore(state => state.deleteTagGroup);
@@ -63,8 +62,7 @@ export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
   };
 
   const handleManageTags = (tagGroup: TagGroup) => {
-    setTagGroupForTags(tagGroup);
-    setTagsDialogOpen(true);
+    navigate(`/sites/${siteId}/taggroups/${tagGroup.id}`);
   };
 
   const confirmDeleteTagGroup = async () => {
@@ -151,7 +149,6 @@ export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
       
       <CreateTagGroupDialog siteId={siteId} open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
       <EditTagGroupDialog siteId={siteId} tagGroup={tagGroupToEdit} open={editDialogOpen} onOpenChange={setEditDialogOpen} />
-      <TagsManagerDialog siteId={siteId} tagGroup={tagGroupForTags} open={tagsDialogOpen} onOpenChange={setTagsDialogOpen} />
     </div>
   );
 }
@@ -181,16 +178,7 @@ function TagGroupItem({ tagGroup, siteData, collections, onEdit, onDelete, onMan
     <div className="group flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-accent">
       <div className="flex-1 min-w-0 cursor-pointer" onClick={onManageTags} title="Click to manage tags">
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            {tagGroup.color && (
-              <div 
-                className="w-3 h-3 rounded-full border border-gray-300" 
-                style={{ backgroundColor: tagGroup.color }}
-                title={`Color: ${tagGroup.color}`}
-              />
-            )}
-            <div className="text-sm font-medium truncate">{tagGroup.name}</div>
-          </div>
+          <div className="text-sm font-medium truncate">{tagGroup.name}</div>
           <div className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
             {tagCount} tags
           </div>

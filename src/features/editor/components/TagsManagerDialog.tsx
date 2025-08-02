@@ -27,7 +27,6 @@ export default function TagsManagerDialog({ siteId, tagGroup, open, onOpenChange
   const [searchFilter, setSearchFilter] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [newTagName, setNewTagName] = useState('');
-  const [newTagColor, setNewTagColor] = useState('');
   const [newTagDescription, setNewTagDescription] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [tagToDelete, setTagToDelete] = useState<Tag | null>(null);
@@ -62,7 +61,6 @@ export default function TagsManagerDialog({ siteId, tagGroup, open, onOpenChange
       const tagData: Omit<Tag, 'id'> = {
         name: newTagName.trim(),
         groupId: tagGroup.id,
-        color: newTagColor.trim() || tagGroup.color || undefined,
         description: newTagDescription.trim() || undefined,
       };
       
@@ -70,7 +68,6 @@ export default function TagsManagerDialog({ siteId, tagGroup, open, onOpenChange
       
       // Reset form
       setNewTagName('');
-      setNewTagColor('');
       setNewTagDescription('');
       setIsCreating(false);
     } catch (error) {
@@ -108,7 +105,6 @@ export default function TagsManagerDialog({ siteId, tagGroup, open, onOpenChange
   const handleCancel = () => {
     setIsCreating(false);
     setNewTagName('');
-    setNewTagColor('');
     setNewTagDescription('');
     setEditingTag(null);
     setSearchFilter('');
@@ -121,13 +117,7 @@ export default function TagsManagerDialog({ siteId, tagGroup, open, onOpenChange
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[600px] max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {tagGroup.color && (
-                <div 
-                  className="w-4 h-4 rounded-full border border-gray-300" 
-                  style={{ backgroundColor: tagGroup.color }}
-                />
-              )}
+            <DialogTitle>
               Manage Tags: {tagGroup.name}
             </DialogTitle>
             <DialogDescription>
@@ -172,25 +162,6 @@ export default function TagsManagerDialog({ siteId, tagGroup, open, onOpenChange
                     />
                   </div>
                   
-                  <div className="grid gap-2">
-                    <Label htmlFor="new-tag-color">Color (optional)</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="new-tag-color"
-                        type="color"
-                        value={newTagColor || tagGroup.color || '#3B82F6'}
-                        onChange={(e) => setNewTagColor(e.target.value)}
-                        className="w-16 h-8 p-1 rounded cursor-pointer"
-                      />
-                      <Input
-                        type="text"
-                        value={newTagColor}
-                        onChange={(e) => setNewTagColor(e.target.value)}
-                        placeholder={`Inherit from group (${tagGroup.color || '#3B82F6'})`}
-                        className="flex-1"
-                      />
-                    </div>
-                  </div>
                   
                   <div className="grid gap-2">
                     <Label htmlFor="new-tag-description">Description (optional)</Label>
@@ -280,13 +251,11 @@ interface TagItemProps {
 
 function TagItem({ tag, tagGroup, isEditing, onEdit, onCancelEdit, onUpdate, onDelete }: TagItemProps) {
   const [editName, setEditName] = useState(tag.name);
-  const [editColor, setEditColor] = useState(tag.color || '');
   const [editDescription, setEditDescription] = useState(tag.description || '');
 
   const handleSave = () => {
     const updates: Partial<Omit<Tag, 'id'>> = {
       name: editName.trim(),
-      color: editColor.trim() || undefined,
       description: editDescription.trim() || undefined,
     };
     onUpdate(updates);
@@ -294,12 +263,9 @@ function TagItem({ tag, tagGroup, isEditing, onEdit, onCancelEdit, onUpdate, onD
 
   const handleCancel = () => {
     setEditName(tag.name);
-    setEditColor(tag.color || '');
     setEditDescription(tag.description || '');
     onCancelEdit();
   };
-
-  const displayColor = tag.color || tagGroup.color || '#3B82F6';
 
   if (isEditing) {
     return (
@@ -311,21 +277,6 @@ function TagItem({ tag, tagGroup, isEditing, onEdit, onCancelEdit, onUpdate, onD
             placeholder="Tag name"
             className="text-sm"
           />
-          <div className="flex items-center gap-2">
-            <Input
-              type="color"
-              value={editColor || tagGroup.color || '#3B82F6'}
-              onChange={(e) => setEditColor(e.target.value)}
-              className="w-16 h-8 p-1 rounded cursor-pointer"
-            />
-            <Input
-              type="text"
-              value={editColor}
-              onChange={(e) => setEditColor(e.target.value)}
-              placeholder={`Inherit from group (${tagGroup.color || '#3B82F6'})`}
-              className="flex-1 text-sm"
-            />
-          </div>
           <Input
             value={editDescription}
             onChange={(e) => setEditDescription(e.target.value)}
@@ -348,10 +299,6 @@ function TagItem({ tag, tagGroup, isEditing, onEdit, onCancelEdit, onUpdate, onD
   return (
     <div className="group flex items-center justify-between rounded-md px-3 py-2 hover:bg-accent">
       <div className="flex items-center gap-2 flex-1 min-w-0">
-        <div 
-          className="w-3 h-3 rounded-full border border-gray-300 flex-shrink-0" 
-          style={{ backgroundColor: displayColor }}
-        />
         <div className="flex-1 min-w-0">
           <div className="font-medium text-sm truncate">{tag.name}</div>
           {tag.description && (

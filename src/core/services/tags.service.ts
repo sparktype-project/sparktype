@@ -112,11 +112,6 @@ export function validateTag(tag: Tag, manifest: Manifest): { isValid: boolean; e
   const tagGroup = getTagGroup(manifest, tag.groupId);
   if (!tagGroup) errors.push(`Tag group '${tag.groupId}' does not exist`);
   
-  // Validate color if provided
-  if (tag.color && !/^#[0-9A-F]{6}$/i.test(tag.color)) {
-    errors.push('Color must be a valid hex color (e.g., #FF0000)');
-  }
-  
   return { isValid: errors.length === 0, errors };
 }
 

@@ -151,7 +151,6 @@ export interface TagGroup {
   id: string;
   name: string;
   description?: string;
-  color?: string; // Hex color for UI visualization
   applicableCollections: string[]; // Array of collection IDs this group applies to
   settings?: Record<string, unknown>;
 }
@@ -163,7 +162,6 @@ export interface Tag {
   id: string;
   name: string;
   groupId: string;
-  color?: string; // Override group color if needed
   description?: string;
   slug?: string; // URL-friendly version of the name
 }
