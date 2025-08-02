@@ -13,6 +13,10 @@ import { getCollections } from '@/core/services/collections.service';
 import { stringifyToMarkdown, parseMarkdownString, stringifyToMarkdownAsync } from '@/core/libraries/markdownParser';
 import { DEFAULT_BLOCKS } from '@/config/defaultBlocks';
 import { type SiteSlice } from '@/core/state/slices/siteSlice';
+import { MigrationService } from '@/core/services/migration.service';
+import { createTagGroup, updateTagGroup, deleteTagGroup, getTagGroups, getTagGroupsForCollection } from '@/core/services/tagGroups.service';
+import { createTag, updateTag, deleteTag, getTags, getTagsInGroup } from '@/core/services/tags.service';
+import type { TagGroup, Tag } from '@/core/types';
 
 // Helper: Generates an up-to-date list of collection item references.
 function buildCollectionItemRefs(siteData: LocalSiteData): CollectionItemRef[] {
@@ -53,6 +57,19 @@ export interface ContentSlice {
   repositionNode: (siteId: string, activeNodePath: string, newParentPath: string | null, newIndex: number) => Promise<void>;
   updateContentFileOnly: (siteId: string, savedFile: ParsedMarkdownFile) => Promise<void>;
   setAsHomepage: (siteId: string, filePath: string) => Promise<void>;
+  migrateLayoutChanges: (siteId: string, layoutId: string) => Promise<void>;
+  
+  // Tag Group operations
+  createTagGroup: (siteId: string, tagGroupData: Omit<TagGroup, 'id'>) => Promise<void>;
+  updateTagGroup: (siteId: string, groupId: string, updates: Partial<Omit<TagGroup, 'id'>>) => Promise<void>;
+  deleteTagGroup: (siteId: string, groupId: string) => Promise<void>;
+  getApplicableTagGroups: (siteId: string, collectionId?: string) => TagGroup[];
+  
+  // Tag operations
+  createTag: (siteId: string, tagData: Omit<Tag, 'id'>) => Promise<void>;
+  updateTag: (siteId: string, tagId: string, updates: Partial<Omit<Tag, 'id'>>) => Promise<void>;
+  deleteTag: (siteId: string, tagId: string) => Promise<void>;
+  getTagsForGroup: (siteId: string, groupId: string) => Tag[];
 }
 
 export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], ContentSlice> = (set, get) => ({
@@ -372,5 +389,231 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
       console.error("Failed to set as homepage:", error);
       toast.error("Failed to set as homepage");
     }
+  },
+
+  // Migrate content files when layout schemas change
+  migrateLayoutChanges: async (siteId: string, layoutId: string) => {
+    try {
+      const siteData = get().getSiteById(siteId);
+      if (!siteData) {
+        toast.error("Site not found");
+        return;
+      }
+
+      console.log(`Running migration for layout: ${layoutId}`);
+      
+      const result = await MigrationService.migrateLayoutChanges(siteData as LocalSiteData, layoutId);
+      
+      if (result.migratedFiles > 0) {
+        toast.success(`Migration completed: ${result.migratedFiles} files updated`, {
+          description: result.errors.length > 0 
+            ? `${result.errors.length} files had errors` 
+            : undefined
+        });
+
+        // Reload the site to reflect the changes
+        await get().loadSite(siteId);
+      } else if (result.errors.length > 0) {
+        toast.error(`Migration failed: ${result.errors.length} errors`);
+        console.error('Migration errors:', result.errors);
+      } else {
+        console.log('No migration needed - all files are up to date');
+      }
+    } catch (error) {
+      console.error("Migration failed:", error);
+      toast.error("Failed to run content migration");
+    }
+  },
+
+  // === TAG GROUP OPERATIONS ===
+
+  createTagGroup: async (siteId: string, tagGroupData: Omit<TagGroup, 'id'>) => {
+    try {
+      const siteData = get().getSiteById(siteId);
+      if (!siteData) {
+        toast.error("Site not found");
+        return;
+      }
+
+      const { manifest: updatedManifest, tagGroup } = createTagGroup(siteData.manifest, tagGroupData);
+      
+      // Update state
+      set(produce((draft: SiteSlice) => {
+        const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
+        if (siteToUpdate) {
+          siteToUpdate.manifest = updatedManifest;
+        }
+      }));
+
+      // Persist to filesystem
+      await get().updateManifest(siteId, updatedManifest);
+      
+      toast.success(`Tag group "${tagGroup.name}" created successfully!`);
+    } catch (error) {
+      console.error("Failed to create tag group:", error);
+      toast.error(`Failed to create tag group: ${(error as Error).message}`);
+    }
+  },
+
+  updateTagGroup: async (siteId: string, groupId: string, updates: Partial<Omit<TagGroup, 'id'>>) => {
+    try {
+      const siteData = get().getSiteById(siteId);
+      if (!siteData) {
+        toast.error("Site not found");
+        return;
+      }
+
+      const updatedManifest = updateTagGroup(siteData.manifest, groupId, updates);
+      
+      // Update state
+      set(produce((draft: SiteSlice) => {
+        const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
+        if (siteToUpdate) {
+          siteToUpdate.manifest = updatedManifest;
+        }
+      }));
+
+      // Persist to filesystem
+      await get().updateManifest(siteId, updatedManifest);
+      
+      toast.success("Tag group updated successfully!");
+    } catch (error) {
+      console.error("Failed to update tag group:", error);
+      toast.error(`Failed to update tag group: ${(error as Error).message}`);
+    }
+  },
+
+  deleteTagGroup: async (siteId: string, groupId: string) => {
+    try {
+      const siteData = get().getSiteById(siteId);
+      if (!siteData) {
+        toast.error("Site not found");
+        return;
+      }
+
+      const tagGroup = getTagGroups(siteData.manifest).find(tg => tg.id === groupId);
+      const { manifest: updatedManifest } = deleteTagGroup(siteData.manifest, groupId);
+      
+      // Update state
+      set(produce((draft: SiteSlice) => {
+        const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
+        if (siteToUpdate) {
+          siteToUpdate.manifest = updatedManifest;
+        }
+      }));
+
+      // Persist to filesystem
+      await get().updateManifest(siteId, updatedManifest);
+      
+      toast.success(`Tag group "${tagGroup?.name}" deleted successfully!`);
+    } catch (error) {
+      console.error("Failed to delete tag group:", error);
+      toast.error(`Failed to delete tag group: ${(error as Error).message}`);
+    }
+  },
+
+  getApplicableTagGroups: (siteId: string, collectionId?: string) => {
+    const siteData = get().getSiteById(siteId);
+    if (!siteData) return [];
+    
+    if (collectionId) {
+      return getTagGroupsForCollection(siteData.manifest, collectionId);
+    }
+    
+    return getTagGroups(siteData.manifest);
+  },
+
+  // === TAG OPERATIONS ===
+
+  createTag: async (siteId: string, tagData: Omit<Tag, 'id'>) => {
+    try {
+      const siteData = get().getSiteById(siteId);
+      if (!siteData) {
+        toast.error("Site not found");
+        return;
+      }
+
+      const { manifest: updatedManifest, tag } = createTag(siteData.manifest, tagData);
+      
+      // Update state
+      set(produce((draft: SiteSlice) => {
+        const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
+        if (siteToUpdate) {
+          siteToUpdate.manifest = updatedManifest;
+        }
+      }));
+
+      // Persist to filesystem
+      await get().updateManifest(siteId, updatedManifest);
+      
+      toast.success(`Tag "${tag.name}" created successfully!`);
+    } catch (error) {
+      console.error("Failed to create tag:", error);
+      toast.error(`Failed to create tag: ${(error as Error).message}`);
+    }
+  },
+
+  updateTag: async (siteId: string, tagId: string, updates: Partial<Omit<Tag, 'id'>>) => {
+    try {
+      const siteData = get().getSiteById(siteId);
+      if (!siteData) {
+        toast.error("Site not found");
+        return;
+      }
+
+      const updatedManifest = updateTag(siteData.manifest, tagId, updates);
+      
+      // Update state
+      set(produce((draft: SiteSlice) => {
+        const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
+        if (siteToUpdate) {
+          siteToUpdate.manifest = updatedManifest;
+        }
+      }));
+
+      // Persist to filesystem
+      await get().updateManifest(siteId, updatedManifest);
+      
+      toast.success("Tag updated successfully!");
+    } catch (error) {
+      console.error("Failed to update tag:", error);
+      toast.error(`Failed to update tag: ${(error as Error).message}`);
+    }
+  },
+
+  deleteTag: async (siteId: string, tagId: string) => {
+    try {
+      const siteData = get().getSiteById(siteId);
+      if (!siteData) {
+        toast.error("Site not found");
+        return;
+      }
+
+      const tag = getTags(siteData.manifest).find(t => t.id === tagId);
+      const { manifest: updatedManifest } = deleteTag(siteData.manifest, tagId);
+      
+      // Update state
+      set(produce((draft: SiteSlice) => {
+        const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
+        if (siteToUpdate) {
+          siteToUpdate.manifest = updatedManifest;
+        }
+      }));
+
+      // Persist to filesystem
+      await get().updateManifest(siteId, updatedManifest);
+      
+      toast.success(`Tag "${tag?.name}" deleted successfully!`);
+    } catch (error) {
+      console.error("Failed to delete tag:", error);
+      toast.error(`Failed to delete tag: ${(error as Error).message}`);
+    }
+  },
+
+  getTagsForGroup: (siteId: string, groupId: string) => {
+    const siteData = get().getSiteById(siteId);
+    if (!siteData) return [];
+    
+    return getTagsInGroup(siteData.manifest, groupId);
   },
 });

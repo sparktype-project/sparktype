@@ -11,6 +11,17 @@
     "title": "Blog Post Fields",
     "type": "object",
     "properties": {
+       "show_updated_date": {
+        "type": "boolean",
+        "title": "Show Last Updated Date",
+        "default": false
+      },
+      "date_published": {
+        "type": "string",
+        "title": "Date Published",
+        "format": "date",
+        "description": "The original publication date of this blog post"
+      },
       "author": {
         "type": "string",
         "title": "Author Name"
@@ -29,7 +40,22 @@
       }
     }
   },
+  "image_presets": {
+    "banner": {
+      "source": "banner_image",
+      "width": 900,
+      "crop": "scale"
+    },
+    "featured": {
+      "source": "featured_image",
+      "width": 600,
+      "crop": "scale"
+    }
+  },
   "uiSchema": {
+    "date_published": {
+      "ui:widget": "date"
+    },
     "excerpt": {
       "ui:widget": "textarea",
       "ui:options": {

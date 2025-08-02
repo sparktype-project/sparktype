@@ -139,6 +139,44 @@ export interface Collection {
   settings?: Record<string, unknown>;
 }
 
+// ============================================================================
+// TAG SYSTEM
+// ============================================================================
+
+/**
+ * Represents a tag group that can contain multiple tags.
+ * Tag groups can be applied to specific collections.
+ */
+export interface TagGroup {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string; // Hex color for UI visualization
+  applicableCollections: string[]; // Array of collection IDs this group applies to
+  settings?: Record<string, unknown>;
+}
+
+/**
+ * Represents an individual tag within a tag group.
+ */
+export interface Tag {
+  id: string;
+  name: string;
+  groupId: string;
+  color?: string; // Override group color if needed
+  description?: string;
+  slug?: string; // URL-friendly version of the name
+}
+
+/**
+ * Reference structure for tag assignments in content frontmatter.
+ */
+export interface TagGroupRef {
+  groupId: string;
+  groupName: string;
+  tags: string[]; // Array of tag IDs
+}
+
 export interface CollectionItemRef {
   collectionId: string;
   slug: string;
@@ -263,6 +301,7 @@ export interface MarkdownFrontmatter {
   layout: string; 
   layoutConfig?: LayoutConfig; // Collection layout configuration
   homepage?: boolean;
+  tags?: Record<string, string[]>; // groupId -> array of tag IDs
   [key: string]: unknown;
 }
 
@@ -316,6 +355,8 @@ export interface Manifest {
   blocks?: BlockInfo[];
   collections?: Collection[];
   collectionItems?: CollectionItemRef[];
+  tagGroups?: TagGroup[];
+  tags?: Tag[];
   logo?: ImageRef;
   favicon?: ImageRef;
   settings?: {

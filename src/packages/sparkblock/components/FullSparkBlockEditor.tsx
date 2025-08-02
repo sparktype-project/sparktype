@@ -34,9 +34,11 @@ export function FullSparkBlockEditor({
   const [showBlockMenu, setShowBlockMenu] = useState<{ type: 'create' | 'convert', blockId?: string, position?: { x: number, y: number } } | null>(null);
   const [parseError, setParseError] = useState<Error | null>(null);
   const [availableBlocks, setAvailableBlocks] = useState<any[]>([]);
+  const [isInternalUpdate, setIsInternalUpdate] = useState(false);
+  const [pendingEditBlockId, setPendingEditBlockId] = useState<string | null>(null);
 
   const editorRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLDivElement>(null);
 
   // DnD sensors
   const sensors = useSensors(
@@ -47,8 +49,11 @@ export function FullSparkBlockEditor({
   );
 
   // Update markdown content helper
-  const updateMarkdownContent = useCallback((newMarkdown: string) => {
+  const updateMarkdownContent = useCallback((newMarkdown: string, isInternal: boolean = false) => {
     if (newMarkdown !== value) {
+      if (isInternal) {
+        setIsInternalUpdate(true);
+      }
       onChange(newMarkdown);
     }
   }, [value, onChange]);
@@ -61,7 +66,20 @@ export function FullSparkBlockEditor({
       try {
         setParseError(null);
         const parsedBlocks = await adapter.parse(value);
-        setBlocks(parsedBlocks);
+        
+        // If this is an internal update, preserve editing state
+        if (isInternalUpdate) {
+          console.log('Internal update - preserving editing state. Parsed blocks:', parsedBlocks.map(b => b.id));
+          setBlocks(parsedBlocks);
+          setIsInternalUpdate(false);
+          // Don't reset editing state during internal updates
+        } else {
+          console.log('External update - resetting editing state. Parsed blocks:', parsedBlocks.map(b => b.id));
+          setBlocks(parsedBlocks);
+          // Reset editing state for external updates
+          setSelectedBlockId(null);
+          setEditingBlockId(null);
+        }
       } catch (error) {
         console.error('Parse error:', error);
         setParseError(error as Error);
@@ -70,7 +88,34 @@ export function FullSparkBlockEditor({
     };
 
     parseMarkdown();
-  }, [value, adapter]);
+  }, [value, adapter, isInternalUpdate]);
+
+  // Handle pending edit state after blocks are updated
+  useEffect(() => {
+    if (pendingEditBlockId) {
+      const matchingBlock = blocks.find(block => block.id === pendingEditBlockId);
+      if (matchingBlock) {
+        console.log('Setting edit mode for matching block:', matchingBlock.id);
+        setSelectedBlockId(matchingBlock.id);
+        setEditingBlockId(matchingBlock.id);
+        setPendingEditBlockId(null);
+      } else {
+        // If exact ID match fails, try to find the last block with empty content (likely the new one)
+        const emptyBlocks = blocks.filter(block => 
+          block.content.text === '' || 
+          (block.content.code === '' && block.type === 'core:code') ||
+          (block.content.src === '' && block.type === 'core:image')
+        );
+        if (emptyBlocks.length > 0) {
+          const lastEmptyBlock = emptyBlocks[emptyBlocks.length - 1];
+          console.log('Setting edit mode for last empty block:', lastEmptyBlock.id);
+          setSelectedBlockId(lastEmptyBlock.id);
+          setEditingBlockId(lastEmptyBlock.id);
+          setPendingEditBlockId(null);
+        }
+      }
+    }
+  }, [blocks, pendingEditBlockId]);
 
   // Load available block types
   useEffect(() => {
@@ -110,7 +155,7 @@ export function FullSparkBlockEditor({
       // Serialize and update markdown directly
       try {
         const newMarkdown = await adapter.serialize(newBlocks);
-        updateMarkdownContent(newMarkdown);
+        updateMarkdownContent(newMarkdown, true);
       } catch (error) {
         console.error('Failed to serialize after drag:', error);
       }
@@ -187,19 +232,214 @@ export function FullSparkBlockEditor({
         newBlocks = [...blocks, newBlock];
       }
 
-      setBlocks(newBlocks);
+      // Schedule the new block for editing before updating markdown
+      console.log('Scheduling block for edit:', newBlock.id);
+      setPendingEditBlockId(newBlock.id);
 
-      // Update markdown
+      // Update markdown and flag as internal update (this will trigger parsing and block update)
       const newMarkdown = await adapter.serialize(newBlocks);
-      updateMarkdownContent(newMarkdown);
-
-      // Auto-select and edit the new block
-      setSelectedBlockId(newBlock.id);
-      setEditingBlockId(newBlock.id);
+      updateMarkdownContent(newMarkdown, true);
     } catch (error) {
       console.error('Failed to create block:', error);
     }
   }, [adapter, blocks, updateMarkdownContent]);
+
+  // Handle splitting a block at cursor position
+  const splitBlockAtCursor = useCallback(async (blockId: string, beforeText: string, afterText: string, blockType: string = 'core:paragraph') => {
+    if (!adapter) return;
+
+    try {
+      const blockIndex = blocks.findIndex(b => b.id === blockId);
+      if (blockIndex < 0) return;
+
+      const currentBlock = blocks[blockIndex];
+      
+      // Update current block with before text
+      const updatedCurrentBlock = {
+        ...currentBlock,
+        content: { ...currentBlock.content, text: beforeText }
+      };
+
+      // Create new block with after text
+      const newBlock: SparkBlock = {
+        id: `block_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        type: blockType,
+        content: { text: afterText },
+        config: {},
+        metadata: {
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          version: 1
+        }
+      };
+
+      // Insert the new block after the current one
+      const newBlocks = [
+        ...blocks.slice(0, blockIndex),
+        updatedCurrentBlock,
+        newBlock,
+        ...blocks.slice(blockIndex + 1)
+      ];
+
+      // Schedule the new block for editing before updating markdown
+      setPendingEditBlockId(newBlock.id);
+
+      // Update markdown
+      const newMarkdown = await adapter.serialize(newBlocks);
+      updateMarkdownContent(newMarkdown, true);
+    } catch (error) {
+      console.error('Failed to split block:', error);
+    }
+  }, [adapter, blocks, updateMarkdownContent]);
+
+  // Handle pasting multi-line content into an existing block
+  const handlePasteInBlock = useCallback(async (blockId: string, beforeText: string, pastedLines: string[], afterText: string) => {
+    if (!adapter || pastedLines.length === 0) return;
+
+    try {
+      const blockIndex = blocks.findIndex(b => b.id === blockId);
+      if (blockIndex < 0) return;
+
+      const currentBlock = blocks[blockIndex];
+      const newBlocks = [...blocks];
+      
+      // Parse each pasted line to determine block type
+      const parsedBlocks: SparkBlock[] = [];
+      
+      for (let i = 0; i < pastedLines.length; i++) {
+        const line = pastedLines[i].trim();
+        if (!line) continue;
+        
+        // Parse the line to determine block type
+        const parsedResult = await adapter.parse(line);
+        
+        if (parsedResult.length > 0) {
+          const parsedBlock = parsedResult[0];
+          
+          // Create a new block with unique ID
+          const newBlock: SparkBlock = {
+            id: `block_${Date.now()}_${Math.random().toString(36).substring(2, 11)}_${i}`,
+            type: parsedBlock.type,
+            content: parsedBlock.content,
+            config: parsedBlock.config || {},
+            metadata: {
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              version: 1
+            }
+          };
+          
+          parsedBlocks.push(newBlock);
+        }
+      }
+      
+      if (parsedBlocks.length === 0) return;
+      
+      // Update current block with beforeText + first pasted line
+      const firstParsedBlock = parsedBlocks[0];
+      const updatedCurrentBlock = {
+        ...currentBlock,
+        content: { 
+          ...currentBlock.content, 
+          text: beforeText + (firstParsedBlock.content.text || '') 
+        }
+      };
+      
+      newBlocks[blockIndex] = updatedCurrentBlock;
+      
+      // Insert remaining parsed blocks
+      const additionalBlocks = parsedBlocks.slice(1);
+      newBlocks.splice(blockIndex + 1, 0, ...additionalBlocks);
+      
+      // If there's afterText, create a final block with it
+      let lastBlockId = firstParsedBlock.id; // Will be updated if we create an after block
+      
+      if (afterText.trim()) {
+        const afterBlock: SparkBlock = {
+          id: `block_${Date.now()}_${Math.random().toString(36).substring(2, 11)}_after`,
+          type: 'core:paragraph',
+          content: { text: afterText },
+          config: {},
+          metadata: {
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            version: 1
+          }
+        };
+        
+        newBlocks.splice(blockIndex + 1 + additionalBlocks.length, 0, afterBlock);
+        lastBlockId = afterBlock.id;
+      } else if (additionalBlocks.length > 0) {
+        lastBlockId = additionalBlocks[additionalBlocks.length - 1].id;
+      }
+      
+      // Schedule the last block for editing
+      setPendingEditBlockId(lastBlockId);
+      
+      // Update markdown
+      const newMarkdown = await adapter.serialize(newBlocks);
+      updateMarkdownContent(newMarkdown, true);
+      
+    } catch (error) {
+      console.error('Failed to paste in block:', error);
+    }
+  }, [adapter, blocks, updateMarkdownContent]);
+
+  // Handle deleting a block
+  const deleteBlock = useCallback(async (blockId: string) => {
+    if (!adapter) return;
+
+    try {
+      const blockIndex = blocks.findIndex(b => b.id === blockId);
+      if (blockIndex < 0) return;
+
+      // Don't delete the last remaining block
+      if (blocks.length <= 1) {
+        console.log('Cannot delete the last remaining block');
+        return;
+      }
+
+      const newBlocks = blocks.filter(b => b.id !== blockId);
+      
+      // Clear editing state if we're deleting the currently edited block
+      if (editingBlockId === blockId) {
+        setEditingBlockId(null);
+      }
+      if (selectedBlockId === blockId) {
+        setSelectedBlockId(null);
+      }
+
+      // Update markdown
+      const newMarkdown = await adapter.serialize(newBlocks);
+      updateMarkdownContent(newMarkdown, true);
+      
+    } catch (error) {
+      console.error('Failed to delete block:', error);
+    }
+  }, [adapter, blocks, updateMarkdownContent, editingBlockId, selectedBlockId]);
+
+  // Check if a block is empty
+  const isBlockEmpty = useCallback((block: SparkBlock): boolean => {
+    if (!block.content) return true;
+    
+    // Check different content types
+    if (typeof block.content.text === 'string') {
+      return !block.content.text.trim();
+    }
+    
+    if (typeof block.content.code === 'string') {
+      return !block.content.code.trim();
+    }
+    
+    if (typeof block.content.src === 'string') {
+      return !block.content.src.trim();
+    }
+    
+    // For other content types, check if all values are empty
+    return Object.values(block.content).every(value => 
+      typeof value === 'string' ? !value.trim() : !value
+    );
+  }, []);
 
   // Handle converting block types
   const convertBlock = useCallback(async (blockId: string, newBlockType: string) => {
@@ -221,7 +461,7 @@ export function FullSparkBlockEditor({
 
         // Update markdown
         const newMarkdown = await adapter.serialize(updatedBlocks);
-        updateMarkdownContent(newMarkdown);
+        updateMarkdownContent(newMarkdown, true);
       }
     } catch (error) {
       console.error('Failed to convert block:', error);
@@ -248,7 +488,7 @@ export function FullSparkBlockEditor({
 
         // Serialize all blocks back to markdown
         const newMarkdown = await adapter.serialize(newBlocks);
-        updateMarkdownContent(newMarkdown);
+        updateMarkdownContent(newMarkdown, true);
       }
     } catch (error) {
       console.error('Failed to update block:', error);
@@ -268,9 +508,19 @@ export function FullSparkBlockEditor({
     setSelectedBlockId(blockId);
   }, [readonly, editingBlockId]);
 
-  const handleBlockBlur = useCallback(() => {
+  const handleBlockBlur = useCallback(async () => {
+    if (editingBlockId) {
+      // Find the block that was being edited
+      const editedBlock = blocks.find(b => b.id === editingBlockId);
+      
+      if (editedBlock && isBlockEmpty(editedBlock)) {
+        console.log('Deleting empty block on blur:', editingBlockId);
+        await deleteBlock(editingBlockId);
+      }
+    }
+    
     setEditingBlockId(null);
-  }, []);
+  }, [editingBlockId, blocks, isBlockEmpty, deleteBlock]);
 
   const handleSave = useCallback(() => {
     setEditingBlockId(null);
@@ -295,7 +545,83 @@ export function FullSparkBlockEditor({
     }
   }, []);
 
-  const handleKeyDown = useCallback(async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  // Handle pasting content with line break splitting and markdown parsing
+  const handlePaste = useCallback(async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    
+    if (!adapter) return;
+    
+    const pastedText = e.clipboardData.getData('text/plain');
+    if (!pastedText.trim()) return;
+    
+    try {
+      // Split pasted text by paragraph breaks (double line breaks) first, then single line breaks
+      const paragraphs = pastedText.split(/\n\s*\n/).filter(p => p.trim());
+      const lines: string[] = [];
+      
+      // Further split each paragraph by single line breaks to handle mixed content
+      paragraphs.forEach(paragraph => {
+        const paragraphLines = paragraph.split('\n').filter(line => line.trim());
+        lines.push(...paragraphLines);
+      });
+      
+      if (lines.length === 0) return;
+      
+      // Clear current input
+      setCurrentInput('');
+      e.currentTarget.textContent = '';
+      
+      // Process each line and create blocks
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        // Parse the line to determine block type
+        const parsedBlocks = await adapter.parse(line);
+        
+        if (parsedBlocks.length > 0) {
+          const parsedBlock = parsedBlocks[0];
+          
+          // Create a new block with a unique ID
+          const newBlock: SparkBlock = {
+            id: `block_${Date.now()}_${Math.random().toString(36).substring(2, 11)}_${i}`,
+            type: parsedBlock.type,
+            content: parsedBlock.content,
+            config: parsedBlock.config || {},
+            metadata: {
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              version: 1
+            }
+          };
+          
+          const newBlocks = [...blocks, newBlock];
+          setBlocks(newBlocks);
+          
+          // Update markdown
+          const newMarkdown = await adapter.serialize(newBlocks);
+          updateMarkdownContent(newMarkdown, true);
+          
+          // If this is the last line, set it to editing mode
+          if (i === lines.length - 1) {
+            setPendingEditBlockId(newBlock.id);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to process pasted content:', error);
+      // Fallback: create a single paragraph with the pasted text
+      await createBlock('core:paragraph');
+      if (blocks.length >= 0) {
+        const lastBlock = blocks[blocks.length - 1] || { content: {} };
+        const updatedBlock = { ...lastBlock, content: { text: pastedText } };
+        const newMarkdown = await adapter.serialize([...blocks.slice(0, -1), updatedBlock]);
+        updateMarkdownContent(newMarkdown, true);
+      }
+    }
+  }, [adapter, blocks, updateMarkdownContent, createBlock]);
+
+  const handleKeyDown = useCallback(async (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && currentInput.trim()) {
       e.preventDefault();
 
@@ -330,7 +656,7 @@ export function FullSparkBlockEditor({
 
           // Update markdown
           const newMarkdown = await adapter.serialize(newBlocks);
-          updateMarkdownContent(newMarkdown);
+          updateMarkdownContent(newMarkdown, true);
 
           // Auto-select the new block for continued editing if it's a text block
           if (['core:paragraph', 'core:heading_1', 'core:heading_2', 'core:heading_3', 'core:quote'].includes(parsedBlock.type)) {
@@ -345,7 +671,7 @@ export function FullSparkBlockEditor({
           const lastBlock = blocks[blocks.length - 1] || { content: {} };
           const updatedBlock = { ...lastBlock, content: { text: currentInput } };
           const newMarkdown = await adapter.serialize([...blocks.slice(0, -1), updatedBlock]);
-          updateMarkdownContent(newMarkdown);
+          updateMarkdownContent(newMarkdown, true);
         }
       }
 
@@ -420,14 +746,14 @@ export function FullSparkBlockEditor({
   }
 
   return (
-    <div className="relative flex flex-col w-full font-sans text-sm leading-relaxed text-gray-900 bg-white focus:outline-none" ref={editorRef}>
+    <div className="relative flex flex-col w-full prose prose-gray max-w-none bg-white focus:outline-none prose-p:mt-0 prose-headings:mt-0 prose-blockquote:mt-0" ref={editorRef}>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <div className="p-4 md:p-3 overflow-visible focus:outline-none">
-          <div className="max-w-4xl mx-auto md:max-w-full md:mx-auto" style={{ marginLeft: 'calc(50% - 28rem + 5.625rem)', marginRight: 'calc(50% - 28rem)' }}>
+        <div className="overflow-visible focus:outline-none md:pr-16">
+          <div className="max-w-4xl mx-auto">
             {blocks.length === 0 ? (
               <div className="flex items-center justify-center h-full min-h-[200px]">
                 <div className="text-center text-gray-500">
@@ -456,6 +782,9 @@ export function FullSparkBlockEditor({
                     onSave={handleSave}
                     onCancel={handleCancel}
                     onShowBlockMenu={handleShowBlockMenu}
+                    onSplitBlock={splitBlockAtCursor}
+                    onPasteInBlock={handlePasteInBlock}
+                    onDeleteBlock={deleteBlock}
                     adapter={adapter}
                   />
                 ))}
@@ -464,15 +793,32 @@ export function FullSparkBlockEditor({
 
             {/* Main typing area */}
             <div className={blocks.length > 0 ? 'mt-4' : ''}>
-              <textarea
-                ref={inputRef}
-                value={currentInput}
-                onChange={(e) => handleInputChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={readonly}
-                placeholder={blocks.length === 0 ? "Start writing, or type '/' for commands..." : "Continue writing..."}
-                className="w-full min-h-[60px] border-none outline-none resize-y text-base leading-6 font-inherit bg-transparent px-3 py-2 focus:outline-none"
-              />
+              <div className="flex items-start gap-2">
+                {/* Space to align with block controls */}
+                <div className="flex-shrink-0 w-16"></div>
+                {/* Contenteditable area - matches block content padding */}
+                <div
+                  ref={(element) => {
+                    if (element) {
+                      inputRef.current = element;
+                      // Sync content when currentInput changes
+                      if (element.textContent !== currentInput) {
+                        element.textContent = currentInput;
+                      }
+                    }
+                  }}
+                  contentEditable={!readonly}
+                  suppressContentEditableWarning
+                  onInput={(e) => {
+                    const newValue = e.currentTarget.textContent || '';
+                    handleInputChange(newValue);
+                  }}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  data-placeholder={blocks.length === 0 ? "Start writing or press '/' for commands..." : "Write or press '/' for commands..."}
+                  className="flex-1 min-h-[60px] border-none outline-none bg-transparent py-2 focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
+                />
+              </div>
             </div>
           </div>
         </div>

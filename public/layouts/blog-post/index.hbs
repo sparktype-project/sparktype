@@ -15,11 +15,25 @@
         <header class="post-header">
             <h1 class="f1 lh-title mb2">{{contentFile.frontmatter.title}}</h1>
             <div class="post-meta f6 mid-gray mb4">
-                {{#if contentFile.frontmatter.date}}
+                {{#if contentFile.frontmatter.date_published}}
+                    <time datetime="{{contentFile.frontmatter.date_published}}">
+                        Published on {{formatDate contentFile.frontmatter.date_published}}
+                    </time>
+                {{else if contentFile.frontmatter.date}}
                     <time datetime="{{contentFile.frontmatter.date}}">
                         Published on {{formatDate contentFile.frontmatter.date}}
                     </time>
                 {{/if}}
+                
+                {{#if contentFile.frontmatter.show_updated_date}}
+                    {{#if contentFile.frontmatter.date}}
+                        <span class="mh2">|</span>
+                        <time datetime="{{contentFile.frontmatter.date}}">
+                            Updated {{formatDate contentFile.frontmatter.date}}
+                        </time>
+                    {{/if}}
+                {{/if}}
+                
                 {{#if contentFile.frontmatter.author}}
                     <span class="mh2">|</span>
                     <span>By {{contentFile.frontmatter.author}}</span>

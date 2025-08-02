@@ -33,7 +33,7 @@ export function ParagraphBlock({ block, context }: BlockComponentProps) {
   };
 
   return (
-    <div
+    <p
       contentEditable={!context.readonly}
       suppressContentEditableWarning
       className="outline-none min-h-6 whitespace-pre-wrap"
@@ -41,7 +41,7 @@ export function ParagraphBlock({ block, context }: BlockComponentProps) {
       onKeyDown={context.onKeyDown}
       onFocus={context.onFocus}
       data-placeholder="Type something..."
-    >{text}</div>
+    >{text}</p>
   );
 }
 
@@ -70,7 +70,7 @@ export function HeadingBlock({ block, context }: BlockComponentProps) {
   const headingProps = {
     contentEditable: !context.readonly,
     suppressContentEditableWarning: true,
-    className: `outline-none font-bold m-0 min-h-5 ${level === 1 ? 'text-3xl leading-tight' : level === 2 ? 'text-2xl leading-snug' : level === 3 ? 'text-xl leading-normal' : level === 4 ? 'text-lg leading-normal' : level === 5 ? 'text-base leading-relaxed' : 'text-sm leading-relaxed'}`,
+    className: "outline-none min-h-5",
     onInput: handleInput,
     onKeyDown: context.onKeyDown,
     onFocus: context.onFocus,
@@ -111,8 +111,8 @@ export function QuoteBlock({ block, context }: BlockComponentProps) {
   };
 
   return (
-    <blockquote className="m-0 pl-4 border-l-4 border-gray-300 italic">
-      <div
+    <blockquote>
+      <p
         contentEditable={!context.readonly}
         suppressContentEditableWarning
         className="outline-none min-h-6"
@@ -120,7 +120,7 @@ export function QuoteBlock({ block, context }: BlockComponentProps) {
         onKeyDown={context.onKeyDown}
         onFocus={context.onFocus}
         data-placeholder="Enter quote..."
-      >{text}</div>
+      >{text}</p>
       {(block.content.author as string) && (
         <cite className="block mt-2 text-sm text-gray-500 not-italic">— {String(block.content.author)}</cite>
       )}

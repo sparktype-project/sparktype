@@ -12,6 +12,7 @@ import { Button } from '@/core/components/ui/button';
 import FileTree from '@/features/editor/components/FileTree';
 import NewPageDialog from '@/features/editor/components/NewPageDialog';
 import CollectionsManager from '@/features/editor/components/CollectionsManager';
+import TagGroupsManager from '@/features/editor/components/TagGroupsManager';
 // import CreateCollectionPageDialog from '@/features/editor/components/CreateCollectionPageDialog';
 import { FilePlus, GripVertical, Archive } from 'lucide-react';
 import {
@@ -249,6 +250,11 @@ export default function LeftSidebar() {
         {/* Collections Manager */}
         <div className=" border-t bg-background">
           <CollectionsManager siteId={siteId} />
+        </div>
+
+        {/* Tag Groups Manager */}
+        <div className=" border-t bg-background">
+          <TagGroupsManager siteId={siteId} />
         </div>
 
         <div className="mt-auto shrink-0 border-t p-2 space-y-1">

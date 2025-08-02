@@ -86,6 +86,30 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
           // Don't fail the entire site load for block manifests
         }
       }
+
+      // Check for and run any needed content migrations
+      if (appStore.migrateLayoutChanges) {
+        try {
+          // Check for blog post migrations (this is our current known migration)
+          const siteData = get().getSiteById(siteId);
+          if (siteData?.contentFiles) {
+            const blogPostsNeedingMigration = siteData.contentFiles.filter(f => 
+              f.frontmatter.layout === 'blog-post' && 
+              !f.frontmatter.date_published && 
+              f.frontmatter.date
+            );
+            
+            if (blogPostsNeedingMigration.length > 0) {
+              console.log(`Found ${blogPostsNeedingMigration.length} blog posts that need date_published migration`);
+              // Run migration silently in the background
+              await appStore.migrateLayoutChanges(siteId, 'blog-post');
+            }
+          }
+        } catch (error) {
+          console.warn(`[SiteSlice] Failed to run automatic migrations for ${siteId}:`, error);
+          // Don't fail the site load for migration errors
+        }
+      }
     } catch (error) {
       toast.error(`Could not load site data for ID: ${siteId}`);
       console.error(`[AppStore.loadSite] Error during load for ${siteId}:`, error);

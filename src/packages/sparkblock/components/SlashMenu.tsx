@@ -5,7 +5,7 @@ export interface SlashMenuProps {
   availableBlocks: any[];
   currentInput: string;
   onSelectBlock: (blockType: string) => void;
-  inputRef?: React.RefObject<HTMLTextAreaElement | null>;
+  inputRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function SlashMenu({ show, availableBlocks, currentInput, onSelectBlock, inputRef }: SlashMenuProps) {

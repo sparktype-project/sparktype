@@ -1,0 +1,178 @@
+// src/features/editor/components/CreateTagGroupDialog.tsx
+
+import { useState, useMemo } from 'react';
+import { useAppStore } from '@/core/state/useAppStore';
+import { getCollections } from '@/core/services/collections.service';
+import type { TagGroup, Collection } from '@/core/types';
+
+// UI Components
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/core/components/ui/dialog';
+import { Button } from '@/core/components/ui/button';
+import { Input } from '@/core/components/ui/input';
+import { Label } from '@/core/components/ui/label';
+import { Textarea } from '@/core/components/ui/textarea';
+import { Checkbox } from '@/core/components/ui/checkbox';
+
+interface CreateTagGroupDialogProps {
+  siteId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export default function CreateTagGroupDialog({ siteId, open, onOpenChange }: CreateTagGroupDialogProps) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [color, setColor] = useState('#3B82F6'); // Default blue
+  const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const getSiteById = useAppStore(state => state.getSiteById);
+  const createTagGroup = useAppStore(state => state.createTagGroup);
+  const siteData = getSiteById(siteId);
+
+  const collections = useMemo(() => siteData ? getCollections(siteData.manifest) : [], [siteData]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!name.trim()) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      const tagGroupData: Omit<TagGroup, 'id'> = {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        color: color || undefined,
+        applicableCollections: selectedCollections,
+        settings: {}
+      };
+      
+      await createTagGroup(siteId, tagGroupData);
+      
+      // Reset form
+      setName('');
+      setDescription('');
+      setColor('#3B82F6');
+      setSelectedCollections([]);
+      onOpenChange(false);
+    } catch (error) {
+      // Error handling is done in the store
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCollectionToggle = (collectionId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedCollections(prev => [...prev, collectionId]);
+    } else {
+      setSelectedCollections(prev => prev.filter(id => id !== collectionId));
+    }
+  };
+
+  const handleCancel = () => {
+    setName('');
+    setDescription('');
+    setColor('#3B82F6');
+    setSelectedCollections([]);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Create Tag Group</DialogTitle>
+            <DialogDescription>
+              Create a new tag group that can be applied to specific collections. Tags in this group will appear in the sidebar when editing content from the selected collections.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Name *</Label>
+              <Input
+                id="name"
+                placeholder="e.g. Blog Tags, Product Categories"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Optional description of this tag group"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="color">Color</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="color"
+                  type="color"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="w-16 h-10 p-1 rounded cursor-pointer"
+                />
+                <Input
+                  type="text"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  placeholder="#3B82F6"
+                  className="flex-1"
+                />
+              </div>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label>Applicable Collections</Label>
+              <div className="text-sm text-muted-foreground mb-2">
+                Select which collections this tag group should appear for when editing content.
+              </div>
+              
+              {collections.length === 0 ? (
+                <div className="text-sm text-muted-foreground p-3 border rounded-md bg-muted/50">
+                  No collections available. Create a collection first to assign tag groups to it.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
+                  {collections.map((collection) => (
+                    <div key={collection.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`collection-${collection.id}`}
+                        checked={selectedCollections.includes(collection.id)}
+                        onCheckedChange={(checked) => handleCollectionToggle(collection.id, !!checked)}
+                      />
+                      <Label htmlFor={`collection-${collection.id}`} className="text-sm font-normal cursor-pointer">
+                        {collection.name}
+                        <span className="text-muted-foreground ml-1">({collection.defaultItemLayout})</span>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={handleCancel}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting || !name.trim()}>
+              {isSubmitting ? 'Creating...' : 'Create Tag Group'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

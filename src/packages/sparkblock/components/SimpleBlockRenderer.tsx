@@ -18,6 +18,9 @@ export interface SimpleBlockRendererProps {
   onSave: () => void;
   onCancel: () => void;
   onShowBlockMenu: (type: 'create' | 'convert', blockId?: string, position?: { x: number, y: number }) => void;
+  onSplitBlock?: (blockId: string, beforeText: string, afterText: string, blockType?: string) => void;
+  onPasteInBlock?: (blockId: string, beforeText: string, pastedLines: string[], afterText: string) => void;
+  onDeleteBlock?: (blockId: string) => void;
   adapter: SparkBlockAdapter<string> | null;
 }
 
@@ -32,6 +35,9 @@ export function SimpleBlockRenderer({
   onSave,
   onCancel,
   onShowBlockMenu,
+  onSplitBlock,
+  onPasteInBlock,
+  onDeleteBlock,
   adapter,
 }: SimpleBlockRendererProps) {
   const [localContent, setLocalContent] = useState('');
@@ -286,33 +292,126 @@ export function SimpleBlockRenderer({
       }
     }
 
-    // For editing mode on non-custom blocks, show textarea
+    // For editing mode on non-custom blocks, show contenteditable
     if (isEditing && !isCustomBlock(block.type)) {
       return (
-        <textarea
-          value={localContent || getEditingContent()}
-          onChange={(e) => setLocalContent(e.target.value)}
+        <div
+          contentEditable
+          suppressContentEditableWarning
+          onInput={(e) => {
+            const newContent = e.currentTarget.textContent || '';
+            setLocalContent(newContent);
+          }}
           onBlur={() => {
-            if (localContent !== getEditingContent()) {
-              onMarkdownUpdate(localContent);
+            const currentContent = localContent || getEditingContent();
+            if (currentContent !== getEditingContent()) {
+              onMarkdownUpdate(currentContent);
             }
             onBlur();
+          }}
+          onPaste={(e) => {
+            if (onPasteInBlock) {
+              e.preventDefault();
+              
+              const pastedText = e.clipboardData.getData('text/plain');
+              if (!pastedText.trim()) return;
+              
+              // Split pasted text by paragraph breaks (double line breaks) first, then single line breaks
+              const paragraphs = pastedText.split(/\n\s*\n/).filter(p => p.trim());
+              const lines: string[] = [];
+              
+              // Further split each paragraph by single line breaks to handle mixed content
+              paragraphs.forEach(paragraph => {
+                const paragraphLines = paragraph.split('\n').filter(line => line.trim());
+                lines.push(...paragraphLines);
+              });
+              
+              if (lines.length === 0) return;
+              
+              // If only one line, just insert it at cursor position
+              if (lines.length === 1) {
+                // Let default paste behavior handle single line
+                e.preventDefault();
+                const selection = window.getSelection();
+                if (selection && selection.rangeCount > 0) {
+                  const range = selection.getRangeAt(0);
+                  range.deleteContents();
+                  range.insertNode(document.createTextNode(pastedText));
+                  range.collapse(false);
+                }
+                return;
+              }
+              
+              // Multiple lines - split the block
+              const selection = window.getSelection();
+              if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const currentContent = e.currentTarget.textContent || '';
+                
+                const beforeText = currentContent.substring(0, range.startOffset);
+                const afterText = currentContent.substring(range.startOffset);
+                
+                onPasteInBlock(block.id, beforeText, lines, afterText);
+              }
+            }
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
-              if (localContent !== getEditingContent()) {
-                onMarkdownUpdate(localContent);
+              
+              if (onSplitBlock) {
+                // Get cursor position and split text
+                const selection = window.getSelection();
+                if (selection && selection.rangeCount > 0) {
+                  const range = selection.getRangeAt(0);
+                  const currentContent = e.currentTarget.textContent || '';
+                  
+                  // Calculate cursor position in text
+                  const beforeText = currentContent.substring(0, range.startOffset);
+                  const afterText = currentContent.substring(range.startOffset);
+                  
+                  // Split the block
+                  onSplitBlock(block.id, beforeText, afterText, 'core:paragraph');
+                  return;
+                }
+              }
+              
+              // Fallback: save current content and exit edit mode
+              const currentContent = e.currentTarget.textContent || '';
+              if (currentContent !== getEditingContent()) {
+                onMarkdownUpdate(currentContent);
               }
               onBlur();
             }
             if (e.key === 'Escape') {
+              e.currentTarget.textContent = getEditingContent();
               setLocalContent('');
               onBlur();
             }
+            
+            if ((e.key === 'Backspace' || e.key === 'Delete') && onDeleteBlock) {
+              const currentContent = e.currentTarget.textContent || '';
+              
+              // If content is empty and user presses delete/backspace, delete the block
+              if (!currentContent.trim()) {
+                e.preventDefault();
+                onDeleteBlock(block.id);
+              }
+            }
           }}
-          autoFocus
-          className="w-full min-h-[60px] border-none outline-none resize-y text-base leading-6 font-inherit bg-transparent p-0 focus:outline-none"
+          className="min-h-[1.5em] border-none outline-none bg-transparent focus:outline-none"
+          ref={(element) => {
+            if (element && isEditing) {
+              element.textContent = localContent || getEditingContent();
+              // Focus and select all text
+              element.focus();
+              const range = document.createRange();
+              range.selectNodeContents(element);
+              const selection = window.getSelection();
+              selection?.removeAllRanges();
+              selection?.addRange(range);
+            }
+          }}
         />
       );
     }
@@ -356,11 +455,14 @@ export function SimpleBlockRenderer({
   };
 
   const blockClasses = [
-    'relative my-1 rounded-md transition-all duration-200 group',
-    !readonly && 'hover:bg-gray-50',
-    isSelected && 'bg-blue-50 ring-2 ring-blue-500',
+    'relative my-1 transition-all duration-200 group',
     isDragging && 'opacity-80 z-[1000]',
     readonly && 'pointer-events-none'
+  ].filter(Boolean).join(' ');
+
+  const contentClasses = [
+    'flex-1 py-1 px-1 rounded-md transition-all duration-200',
+    isSelected && 'bg-blue-50 ring-1 ring-blue-500'
   ].filter(Boolean).join(' ');
 
   return (
@@ -372,38 +474,44 @@ export function SimpleBlockRenderer({
       onClick={onClick}
       {...attributes}
     >
-      {!readonly && (
-        <div className="absolute -left-20 top-2 md:left-2 md:top-2 flex flex-row gap-1 opacity-0 transition-opacity duration-200 z-[100] p-1 -m-1 group-hover:opacity-100 hover:opacity-100 md:bg-white/90 md:rounded md:shadow-sm">
-          <button
-            className="flex items-center justify-center w-7 h-7 bg-white border border-gray-300 rounded-md cursor-pointer text-gray-500 transition-all duration-200 text-base font-medium shadow-sm hover:bg-blue-500 hover:text-white hover:border-blue-500 hover:scale-105 hover:shadow-md"
-            onClick={(e) => {
-              e.stopPropagation();
-              const rect = e.currentTarget.getBoundingClientRect();
-              onShowBlockMenu('create', block.id, { x: rect.right + 10, y: rect.top });
-            }}
-            title="Add block below"
-          >
-            +
-          </button>
-          <div
-            className="flex items-center justify-center w-7 h-7 bg-white border border-gray-300 rounded-md text-gray-500 transition-all duration-200 text-base font-medium shadow-sm hover:bg-blue-500 hover:text-white hover:border-blue-500 hover:scale-105 hover:shadow-md active:cursor-grabbing"
-            {...listeners}
-            onMouseDown={handleDragStart}
-            onMouseMove={hasDragged ? undefined : handleDragMove}
-            onMouseUp={handleDragEnd}
-            onTouchStart={handleDragStart}
-            onTouchMove={hasDragged ? undefined : handleDragMove}
-            onTouchEnd={handleDragEnd}
-            title="Tap to convert or drag to move"
-            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
-          >
-            ⋮⋮
-          </div>
+      <div className="flex items-start gap-2">
+        {/* Hover controls - always reserve space on the left */}
+        <div className="flex-shrink-0 w-16 flex flex-row gap-1 opacity-0 transition-opacity duration-200 z-[100] group-hover:opacity-100 hover:opacity-100">
+          {!readonly && (
+            <>
+              <button
+                className="flex items-center justify-center w-7 h-7 bg-white border border-gray-300 rounded-md cursor-pointer text-gray-500 transition-all duration-200 text-base font-medium shadow-sm hover:bg-blue-500 hover:text-white hover:border-blue-500 hover:scale-105 hover:shadow-md"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  onShowBlockMenu('create', block.id, { x: rect.right + 10, y: rect.top });
+                }}
+                title="Add block below"
+              >
+                +
+              </button>
+              <div
+                className="flex items-center justify-center w-7 h-7 bg-white border border-gray-300 rounded-md text-gray-500 transition-all duration-200 text-base font-medium shadow-sm hover:bg-blue-500 hover:text-white hover:border-blue-500 hover:scale-105 hover:shadow-md active:cursor-grabbing"
+                {...listeners}
+                onMouseDown={handleDragStart}
+                onMouseMove={hasDragged ? undefined : handleDragMove}
+                onMouseUp={handleDragEnd}
+                onTouchStart={handleDragStart}
+                onTouchMove={hasDragged ? undefined : handleDragMove}
+                onTouchEnd={handleDragEnd}
+                title="Tap to convert or drag to move"
+                style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+              >
+                ⋮⋮
+              </div>
+            </>
+          )}
         </div>
-      )}
 
-      <div className="px-3 py-2 min-h-6">
-        {renderContent()}
+        {/* Content area - takes remaining space */}
+        <div className={contentClasses}>
+          {renderContent()}
+        </div>
       </div>
     </div>
   );

@@ -20,6 +20,7 @@ import CollectionConfigForm from '@/features/editor/components/forms/CollectionC
 // CORRECTED: The import casing now exactly matches the actual filename 'PageMetaDataForm.tsx'.
 import PageMetadataForm from '@/features/editor/components/forms/PageMetaDataForm';
 import AdvancedSettingsForm from '@/features/editor/components/forms/AdvancedSettingsForm';
+import { MultiTagSelector } from '@/features/editor/components/TagSelector';
 
 interface FrontmatterSidebarProps {
   siteId: string;
@@ -117,6 +118,24 @@ export default function FrontmatterSidebar({
     onFrontmatterChange({ layoutConfig: newConfig });
   }, [onFrontmatterChange]);
 
+  const handleTagsChange = useCallback((groupId: string, tagIds: string[]) => {
+    const currentTags = frontmatter.tags || {};
+    const newTags = { ...currentTags };
+    
+    if (tagIds.length === 0) {
+      // Remove the group if no tags selected
+      delete newTags[groupId];
+    } else {
+      newTags[groupId] = tagIds;
+    }
+    
+    // If no tag groups left, remove the entire tags property
+    const hasAnyTags = Object.keys(newTags).length > 0;
+    onFrontmatterChange({ 
+      tags: hasAnyTags ? newTags : undefined 
+    });
+  }, [frontmatter.tags, onFrontmatterChange]);
+
   if (isLoading || !frontmatter) {
     return <div className="p-4 text-sm text-center text-muted-foreground">Loading settings...</div>;
   }
@@ -124,6 +143,9 @@ export default function FrontmatterSidebar({
   const defaultOpenSections = ['layout', 'metadata', 'advanced'];
   if (currentLayoutManifest?.layoutType === 'collection') {
     defaultOpenSections.push('collection-config');
+  }
+  if (isCollectionItem && parentCollection) {
+    defaultOpenSections.push('tags');
   }
 
   return (
@@ -173,6 +195,21 @@ export default function FrontmatterSidebar({
               />
             </AccordionContent>
           </AccordionItem>
+
+          {/* Tags - Shown only for collection items */}
+          {isCollectionItem && parentCollection && (
+            <AccordionItem value="tags">
+              <AccordionTrigger>Tags</AccordionTrigger>
+              <AccordionContent>
+                <MultiTagSelector
+                  siteId={siteId}
+                  collectionId={parentCollection.id}
+                  contentTags={frontmatter.tags || {}}
+                  onTagsChange={handleTagsChange}
+                />
+              </AccordionContent>
+            </AccordionItem>
+          )}
 
           {/* Advanced Settings (Slug, Delete) */}
           <AccordionItem value="advanced">
