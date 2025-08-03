@@ -36,7 +36,7 @@ export function ParagraphBlock({ block, context }: BlockComponentProps) {
     <p
       contentEditable={!context.readonly}
       suppressContentEditableWarning
-      className="outline-none min-h-6 whitespace-pre-wrap"
+      className="outline-none min-h-6 whitespace-pre-wrap dark:text-gray-100"
       onInput={handleInput}
       onKeyDown={context.onKeyDown}
       onFocus={context.onFocus}
@@ -70,7 +70,7 @@ export function HeadingBlock({ block, context }: BlockComponentProps) {
   const headingProps = {
     contentEditable: !context.readonly,
     suppressContentEditableWarning: true,
-    className: "outline-none min-h-5",
+    className: "outline-none min-h-5 dark:text-gray-100",
     onInput: handleInput,
     onKeyDown: context.onKeyDown,
     onFocus: context.onFocus,
@@ -115,14 +115,14 @@ export function QuoteBlock({ block, context }: BlockComponentProps) {
       <p
         contentEditable={!context.readonly}
         suppressContentEditableWarning
-        className="outline-none min-h-6"
+        className="outline-none min-h-6 dark:text-gray-100"
         onInput={handleInput}
         onKeyDown={context.onKeyDown}
         onFocus={context.onFocus}
         data-placeholder="Enter quote..."
       >{text}</p>
       {(block.content.author as string) && (
-        <cite className="block mt-2 text-sm text-gray-500 not-italic">— {String(block.content.author)}</cite>
+        <cite className="block mt-2 text-sm text-gray-500 dark:text-gray-400 not-italic">— {String(block.content.author)}</cite>
       )}
     </blockquote>
   );
@@ -158,14 +158,14 @@ export function CodeBlock({ block, context }: BlockComponentProps) {
   };
 
   return (
-    <div className="bg-gray-100 rounded-md overflow-hidden">
+    <div className="bg-gray-100 dark:bg-gray-800 rounded-md overflow-hidden">
       {(block.content.language as string) && (
-        <div className="px-3 py-2 text-xs font-medium text-gray-500 bg-gray-200 border-b border-gray-300">{String(block.content.language)}</div>
+        <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600">{String(block.content.language)}</div>
       )}
       <pre
         contentEditable={!context.readonly}
         suppressContentEditableWarning
-        className="outline-none p-3 m-0 font-mono text-sm leading-normal whitespace-pre-wrap overflow-x-auto bg-transparent"
+        className="outline-none p-3 m-0 font-mono text-sm leading-normal whitespace-pre-wrap overflow-x-auto bg-transparent dark:text-gray-100"
         onInput={handleInput}
         onKeyDown={handleKeyDown}
         onFocus={context.onFocus}
@@ -199,11 +199,11 @@ export function ListBlock({ block, context }: BlockComponentProps) {
 
   return (
     <div className="flex items-start gap-2">
-      <div className="text-gray-500 font-medium mt-0.5 min-w-4">{isOrdered ? '1.' : '•'}</div>
+      <div className="text-gray-500 dark:text-gray-400 font-medium mt-0.5 min-w-4">{isOrdered ? '1.' : '•'}</div>
       <div
         contentEditable={!context.readonly}
         suppressContentEditableWarning
-        className="flex-1 outline-none min-h-6"
+        className="flex-1 outline-none min-h-6 dark:text-gray-100"
         onInput={handleInput}
         onKeyDown={context.onKeyDown}
         onFocus={context.onFocus}
@@ -237,7 +237,7 @@ export function ImageBlock({ block, context }: BlockComponentProps) {
   if (!block.content.src) {
     return (
       <div className="text-center">
-        <div className="p-10 border-2 border-dashed border-gray-300 rounded-lg text-gray-500">
+        <div className="p-10 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400">
           <div className="text-base cursor-pointer">📷 Click to add image</div>
         </div>
       </div>
@@ -251,7 +251,7 @@ export function ImageBlock({ block, context }: BlockComponentProps) {
         <div
           contentEditable={!context.readonly}
           suppressContentEditableWarning
-          className="mt-2 text-sm text-gray-500 italic outline-none"
+          className="mt-2 text-sm text-gray-500 dark:text-gray-400 italic outline-none"
           onInput={handleCaptionInput}
           data-placeholder="Add a caption..."
         >{caption}</div>
@@ -263,7 +263,7 @@ export function ImageBlock({ block, context }: BlockComponentProps) {
 export function DividerBlock(): React.JSX.Element {
   return (
     <div className="my-4">
-      <hr className="border-none h-px bg-gray-300 m-0" />
+      <hr className="border-none h-px bg-gray-300 dark:bg-gray-600 m-0" />
     </div>
   );
 }
@@ -274,21 +274,21 @@ export function ContainerBlock({ block }: BlockComponentProps) {
   const gap = (block.content.gap as string) || 'medium';
 
   return (
-    <div className="border border-gray-300 rounded-md p-4 my-2 bg-gray-50">
+    <div className="border border-gray-300 dark:border-gray-600 rounded-md p-4 my-2 bg-gray-50 dark:bg-gray-800">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-base">📦</span>
-        <span className="font-semibold text-gray-700">Container</span>
+        <span className="font-semibold text-gray-700 dark:text-gray-300">Container</span>
       </div>
       <div>
-        <div className="text-xs text-gray-500 mb-1">
+        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
           <span>Layout: {layout}</span>
           <span> • Gap: {gap}</span>
         </div>
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-gray-500 dark:text-gray-400">
           {block.regions && Object.keys(block.regions).length > 0 ? (
             <div>Regions: {Object.keys(block.regions).join(', ')}</div>
           ) : (
-            <div className="text-gray-400 italic">No content regions</div>
+            <div className="text-gray-400 dark:text-gray-500 italic">No content regions</div>
           )}
         </div>
       </div>
@@ -298,11 +298,11 @@ export function ContainerBlock({ block }: BlockComponentProps) {
 
 export function UnknownBlock({ block }: BlockComponentProps) {
   return (
-    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800">
+    <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-600 rounded-md text-yellow-800 dark:text-yellow-200">
       <div className="flex items-center justify-between mb-2">
         <span className="font-medium">Unknown block: {block.type}</span>
       </div>
-      <pre className="font-mono text-xs max-h-[200px] overflow-auto bg-white bg-opacity-50 p-2 rounded">
+      <pre className="font-mono text-xs max-h-[200px] overflow-auto bg-white dark:bg-gray-800 bg-opacity-50 dark:bg-opacity-50 p-2 rounded dark:text-gray-300">
         {JSON.stringify(block.content, null, 2)}
       </pre>
     </div>

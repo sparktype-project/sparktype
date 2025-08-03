@@ -5,10 +5,10 @@
     {{!-- The head partial now receives its own scoped context --}}
     {{> head headContext}}
 </head>
-<body class="bg-white">
-    <div x-data="{ isMobileMenuOpen: false }" class="flex flex-column min-vh-100">
+<body>
+    <div x-data="{ isMobileMenuOpen: false }" class="flex flex-column min-h-screen">
         {{> header}}
-        <main class="">
+        <main class="flex-auto">
             {{!-- The body content is pre-rendered by the render service --}}
             {{{body}}}
         </main>

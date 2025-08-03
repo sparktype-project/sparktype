@@ -1,12 +1,11 @@
-<footer class="border-t border-gray-200 dark:border-gray-800">
-    <div class="mw8 center pa3 pa3-ns">
+<footer style="border-top: 1px solid var(--color-border); margin-top: auto;">
+    <div class="container p-4">
         {{#if (themeData 'footer_text')}}
             <div class="footer-content">
                 {{{themeData 'footer_text'}}}
             </div>
         {{else}}
-            <p>© {{year}} {{manifest.title}}. All Rights Reserved.</p>
+            <p class="text-center text-muted">© {{year}} {{manifest.title}}. All Rights Reserved.</p>
         {{/if}}
-        
     </div>
 </footer>

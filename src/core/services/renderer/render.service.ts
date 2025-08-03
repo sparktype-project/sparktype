@@ -1,14 +1,14 @@
 // src/core/services/renderer/render.service.ts
 
 import Handlebars from 'handlebars';
-import type { LocalSiteData, PageResolutionResult } from '@/core/types';
+import type { LocalSiteData, PageResolutionResult, ParsedMarkdownFile } from '@/core/types';
 import { PageType } from '@/core/types';
 import { getAssetContent, getLayoutManifest } from '@/core/services/config/configHelpers.service';
 import { getActiveImageService } from '@/core/services/images/images.service';
 import { getMergedThemeDataForForm } from '@/core/services/config/theme.service';
 import { prepareRenderEnvironment } from './asset.service';
 import { assemblePageContext, assembleBaseContext } from './context.service';
-import { getCollectionContent } from '@/core/services/collections.service';
+import { getCollectionContent, sortCollectionItems } from '@/core/services/collections.service';
 
 /**
  * Defines the options passed to the main render function.
@@ -50,7 +50,13 @@ export async function render(
     if (pageLayoutManifest.layoutType === 'collection') {
       const layoutConfig = resolution.contentFile.frontmatter.layoutConfig;
       if (layoutConfig && layoutConfig.collectionId) {
-        const collectionItems = getCollectionContent(synchronizedSiteData, layoutConfig.collectionId);
+        let collectionItems = getCollectionContent(synchronizedSiteData, layoutConfig.collectionId);
+        
+        // Apply sorting if specified in layoutConfig
+        if (layoutConfig.sortBy) {
+          collectionItems = sortCollectionItems(collectionItems, layoutConfig.sortBy, layoutConfig.sortOrder || 'desc');
+        }
+        
         enrichedResolution = {
           ...resolution,
           collectionItems
@@ -68,37 +74,29 @@ export async function render(
     const bodyTemplateSource = await getAssetContent(synchronizedSiteData, 'layout', enrichedResolution.layoutPath, bodyTemplatePath);
     if (!bodyTemplateSource) throw new Error(`Body template not found: layouts/${enrichedResolution.layoutPath}/${bodyTemplatePath}`);
 
-    // Handle page content - process directives if present, otherwise render standard markdown
+    // Handle page content - use mixed content renderer for all content
     let bodyHtml: string;
     
-    // Check if content contains directives that need to be processed
-    const contentHasDirectives = /::[\w-]+(?:\{[^}]*\})?/.test(enrichedResolution.contentFile.content);
-    
-    if (contentHasDirectives) {
-        // Parse and render directives in the content
-        const { DirectiveRenderHelper } = await import('./helpers/directiveRender.helper');
-        const { DEFAULT_BLOCKS } = await import('@/config/defaultBlocks');
+    try {
+        // Use the new mixed content renderer that handles both markdown and directives
+        const { MixedContentRenderer } = await import('./helpers/mixedContentRenderer.helper');
+        const mixedRenderer = new MixedContentRenderer();
         
-        const directiveHelper = new DirectiveRenderHelper(synchronizedSiteData.manifest, DEFAULT_BLOCKS);
+        // Render the content (markdown + directives) to HTML
+        const processedContent = await mixedRenderer.render(enrichedResolution.contentFile.content, synchronizedSiteData);
         
-        try {
-            // Parse directives to blocks and render them
-            const parsedBlocks = await directiveHelper.directiveMarkdownToBlocks(enrichedResolution.contentFile.content);
-            const renderedBlocksHtml = await directiveHelper.preRenderBlocks(parsedBlocks, synchronizedSiteData);
-            
-            const blockContext = {
-                ...pageContext,
-                blocks: renderedBlocksHtml,
-                content: renderedBlocksHtml // Also set content for template compatibility
-            };
-            bodyHtml = await Handlebars.compile(bodyTemplateSource)(blockContext);
-        } catch (directiveError) {
-            console.error('Error processing directives in content:', directiveError);
-            // Fallback to standard markdown rendering
-            bodyHtml = await Handlebars.compile(bodyTemplateSource)(pageContext);
-        }
-    } else {
-        // Standard markdown content rendering
+        // Create context with the processed content
+        const contentContext = {
+            ...pageContext,
+            content: new Handlebars.SafeString(processedContent) // Set the processed HTML as content
+        };
+        
+        bodyHtml = await Handlebars.compile(bodyTemplateSource)(contentContext);
+    } catch (renderError) {
+        console.error('[Render Service] Error processing mixed content:', renderError);
+        console.error('[Render Service] Error stack:', renderError.stack);
+        console.log('[Render Service] Falling back to standard markdown rendering');
+        // Fallback to standard markdown rendering
         bodyHtml = await Handlebars.compile(bodyTemplateSource)(pageContext);
     }
 
@@ -109,3 +107,4 @@ export async function render(
     const finalContextWithBody = { ...baseContext, body: new Handlebars.SafeString(bodyHtml) };
     return await Handlebars.compile(baseTemplateSource)(finalContextWithBody);
 }
+

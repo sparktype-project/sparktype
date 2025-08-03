@@ -3,7 +3,9 @@
 import Handlebars from 'handlebars';
 import type { Block, LocalSiteData, Manifest } from '@/core/types';
 import { getAssetContent } from '@/core/services/config/configHelpers.service';
-import { getCollectionContent } from '@/core/services/collections.service';
+import { getCollectionContent, sortCollectionItems } from '@/core/services/collections.service';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 /**
  * Modular rendering system for custom blocks.
@@ -119,8 +121,8 @@ class CollectionRenderer implements ComponentRenderer {
         return `<div class="collection-empty">No items found in collection "${context.utils.escapeHtml(collectionId)}"</div>`;
       }
       
-      // Apply sorting
-      items = this.sortItems(items, sortBy, sortOrder);
+      // Apply sorting using optimized function
+      items = sortCollectionItems(items, sortBy, sortOrder);
       
       // Apply max items limit
       if (maxItems > 0) {
@@ -136,37 +138,6 @@ class CollectionRenderer implements ComponentRenderer {
     }
   }
   
-  private sortItems(items: any[], sortBy: string, sortOrder: 'asc' | 'desc'): any[] {
-    return [...items].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
-      
-      switch (sortBy) {
-        case 'date':
-          aValue = new Date(a.frontmatter.date || 0);
-          bValue = new Date(b.frontmatter.date || 0);
-          break;
-        case 'title':
-          aValue = String(a.frontmatter.title || '').toLowerCase();
-          bValue = String(b.frontmatter.title || '').toLowerCase();
-          break;
-        case 'order':
-          aValue = Number(a.frontmatter.order || 999999);
-          bValue = Number(b.frontmatter.order || 999999);
-          break;
-        default:
-          aValue = String(a.frontmatter[sortBy] || '').toLowerCase();
-          bValue = String(b.frontmatter[sortBy] || '').toLowerCase();
-          break;
-      }
-      
-      let comparison = 0;
-      if (aValue < bValue) comparison = -1;
-      else if (aValue > bValue) comparison = 1;
-      
-      return sortOrder === 'desc' ? -comparison : comparison;
-    });
-  }
   
   private renderItems(items: any[], layout: string, utils: RenderUtils): string {
     const itemsHtml = items.map(item => {
@@ -325,22 +296,18 @@ export class ModularRenderHelper {
    * Render block using custom template
    */
   private async renderWithTemplate(context: RenderContext): Promise<string> {
-    const templatePath = context.blockManifest.template.handlebars;
-    console.log(`[ModularRenderHelper] Loading template: ${templatePath}`);
+    const blockId = context.block.type;
+    console.log(`[ModularRenderHelper] Using cached template for: ${blockId}`);
+    console.log(`[ModularRenderHelper] Block data:`, context.block);
+    console.log(`[ModularRenderHelper] Block config:`, context.block.config);
+    console.log(`[ModularRenderHelper] Block content:`, context.block.content);
     
-    // Load template content from site assets with timeout
-    let templateContent: string | null = null;
-    try {
-      templateContent = await Promise.race([
-        getAssetContent(context.siteData, 'block', templatePath, ''),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000))
-      ]);
-    } catch (error) {
-      console.warn(`[ModularRenderHelper] Could not load template: ${templatePath}`, error);
-    }
+    // Use pre-cached template from Handlebars.partials instead of loading from disk
+    const templateName = `block:${blockId}`;
+    const templateContent = Handlebars.partials[templateName];
     
     if (!templateContent) {
-      console.warn(`[ModularRenderHelper] Template not found or timed out: ${templatePath}, falling back to components`);
+      console.warn(`[ModularRenderHelper] Pre-cached template not found: ${templateName}, falling back to components`);
       return await this.renderWithComponents(context);
     }
     
@@ -362,13 +329,23 @@ export class ModularRenderHelper {
     const templateContext = {
       ...context.block,
       regions: processedRegions,
-      siteData: context.siteData,
-      manifest: context.manifest,
-      blockManifest: context.blockManifest,
       utils: this.utils
     };
     
-    return await template(templateContext);
+    // The @root context in Handlebars needs to be passed correctly
+    const rootData = {
+      root: {
+        siteData: context.siteData,
+        manifest: context.manifest,
+        blockManifest: context.blockManifest
+      }
+    };
+    
+    console.log(`[ModularRenderHelper] Template context for ${blockId}:`, templateContext);
+    console.log(`[ModularRenderHelper] Root data for ${blockId}:`, rootData);
+    const result = template(templateContext, { data: rootData });
+    console.log(`[ModularRenderHelper] Template result for ${blockId}:`, result);
+    return result;
   }
   
   /**
@@ -466,6 +443,26 @@ export class ModularRenderHelper {
   }
   
   /**
+   * Convert markdown to safe HTML
+   */
+  private markdownToHtml(markdown: string): string {
+    if (!markdown || typeof markdown !== 'string') {
+      return '';
+    }
+
+    // Use marked to parse markdown to HTML
+    const unsafeHtml = marked.parse(markdown, { async: false }) as string;
+    
+    // Sanitize HTML if running in browser environment
+    if (typeof window !== 'undefined') {
+      return DOMPurify.sanitize(unsafeHtml);
+    }
+    
+    // In server-side rendering, return the parsed HTML (should be safe if content is trusted)
+    return unsafeHtml;
+  }
+
+  /**
    * Fallback rendering for core blocks
    */
   private renderCoreBlockFallback(block: Block): string {
@@ -473,19 +470,35 @@ export class ModularRenderHelper {
     
     switch (blockType) {
       case 'paragraph':
-        return `<p>${this.utils.escapeHtml(String(block.content.text || ''))}</p>`;
+        const paragraphMarkdown = String(block.content.text || '');
+        const paragraphHtml = this.markdownToHtml(paragraphMarkdown);
+        // Remove the outer <p> tags since we're wrapping in our own
+        const innerHtml = paragraphHtml.replace(/^<p>(.*)<\/p>$/s, '$1');
+        return `<p>${innerHtml}</p>`;
       
       case 'heading_1':
-        return `<h1>${this.utils.escapeHtml(String(block.content.text || ''))}</h1>`;
+        const h1Markdown = String(block.content.text || '');
+        const h1Html = this.markdownToHtml(h1Markdown);
+        const h1Inner = h1Html.replace(/^<p>(.*)<\/p>$/s, '$1');
+        return `<h1>${h1Inner}</h1>`;
       
       case 'heading_2':
-        return `<h2>${this.utils.escapeHtml(String(block.content.text || ''))}</h2>`;
+        const h2Markdown = String(block.content.text || '');
+        const h2Html = this.markdownToHtml(h2Markdown);
+        const h2Inner = h2Html.replace(/^<p>(.*)<\/p>$/s, '$1');
+        return `<h2>${h2Inner}</h2>`;
       
       case 'heading_3':
-        return `<h3>${this.utils.escapeHtml(String(block.content.text || ''))}</h3>`;
+        const h3Markdown = String(block.content.text || '');
+        const h3Html = this.markdownToHtml(h3Markdown);
+        const h3Inner = h3Html.replace(/^<p>(.*)<\/p>$/s, '$1');
+        return `<h3>${h3Inner}</h3>`;
       
       case 'quote':
-        return `<blockquote><p>${this.utils.escapeHtml(String(block.content.text || ''))}</p></blockquote>`;
+        const quoteMarkdown = String(block.content.text || '');
+        const quoteHtml = this.markdownToHtml(quoteMarkdown);
+        const quoteInner = quoteHtml.replace(/^<p>(.*)<\/p>$/s, '$1');
+        return `<blockquote><p>${quoteInner}</p></blockquote>`;
       
       case 'code':
         const language = String(block.content.language || 'text');
@@ -493,10 +506,16 @@ export class ModularRenderHelper {
         return `<pre><code class="language-${language}">${code}</code></pre>`;
       
       case 'unordered_list':
-        return `<ul><li>${this.utils.escapeHtml(String(block.content.text || ''))}</li></ul>`;
+        const ulMarkdown = String(block.content.text || '');
+        const ulHtml = this.markdownToHtml(ulMarkdown);
+        const ulInner = ulHtml.replace(/^<p>(.*)<\/p>$/s, '$1');
+        return `<ul><li>${ulInner}</li></ul>`;
       
       case 'ordered_list':
-        return `<ol><li>${this.utils.escapeHtml(String(block.content.text || ''))}</li></ol>`;
+        const olMarkdown = String(block.content.text || '');
+        const olHtml = this.markdownToHtml(olMarkdown);
+        const olInner = olHtml.replace(/^<p>(.*)<\/p>$/s, '$1');
+        return `<ol><li>${olInner}</li></ol>`;
       
       case 'divider':
         return '<hr />';

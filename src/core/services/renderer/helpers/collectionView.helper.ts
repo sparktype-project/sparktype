@@ -2,7 +2,7 @@
 
 import type { SparktypeHelper } from './types';
 import type { LocalSiteData, ParsedMarkdownFile } from '@/core/types';
-import { getCollectionContent } from '@/core/services/collections.service';
+import { getCollectionContent, sortCollectionItems } from '@/core/services/collections.service';
 
 /**
  * Configuration object for the collectionView helper.
@@ -40,33 +40,47 @@ export const collectionViewHelper: SparktypeHelper = () => ({
    * @returns {string} JSON string representation of content items for the template to iterate over.
    */
   collectionView: function(...args: unknown[]): string {
-    // const _options = args[args.length - 1] as HelperOptions; // unused but required for signature
+    console.log('[collectionView] Helper called with args:', args);
+    const options = args[args.length - 1] as any; // Handlebars options object
     const config = args[0] as CollectionViewConfig;
-    const siteData = args[1] as LocalSiteData;
+    let siteData = args[1] as LocalSiteData;
+
+    console.log('[collectionView] Config:', config);
+    console.log('[collectionView] SiteData from args[1]:', siteData);
+    console.log('[collectionView] Options:', options);
+    console.log('[collectionView] Options.data:', options?.data);
+
+    // If siteData wasn't passed directly, try to get it from @root context
+    if (!siteData && options?.data?.root?.siteData) {
+      siteData = options.data.root.siteData;
+      console.log('[collectionView] Got siteData from @root:', siteData);
+    }
 
     // --- Guard Clauses for Robustness ---
     if (!config || !config.collectionId) {
       console.warn('[collectionView] Helper was called without a valid collectionId in config.');
-      return '[]';
+      return [];
     }
 
     if (!siteData) {
       console.warn('[collectionView] Helper was called without siteData.');
-      return '[]';
+      return [];
     }
 
     try {
       // Get the raw collection items
       let items = getCollectionContent(siteData, config.collectionId);
+      console.log(`[collectionView] Found ${items?.length || 0} items for collection "${config.collectionId}"`);
+      console.log(`[collectionView] Items:`, items);
 
       if (!items || items.length === 0) {
         console.warn(`[collectionView] No items found for collection "${config.collectionId}".`);
-        return '[]';
+        return [];
       }
 
-      // Apply sorting
+      // Apply sorting using optimized function
       if (config.sortBy) {
-        items = applySorting(items, config.sortBy, config.sortOrder || 'desc');
+        items = sortCollectionItems(items, config.sortBy, config.sortOrder || 'desc');
       }
 
       // Apply max items limit
@@ -82,68 +96,14 @@ export const collectionViewHelper: SparktypeHelper = () => ({
         // Add any other computed properties here
       }));
 
-      return JSON.stringify(items);
+      console.log(`[collectionView] Returning ${items.length} processed items`);
+      // Return the array directly, not JSON.stringify - Handlebars needs array for {{#each}}
+      return items;
 
     } catch (error) {
       console.error('[collectionView] Error processing collection:', error);
-      return '[]';
+      return [];
     }
   }
 });
 
-/**
- * Applies sorting to collection items based on the specified field and order.
- */
-function applySorting(
-  items: ParsedMarkdownFile[], 
-  sortBy: string, 
-  sortOrder: 'asc' | 'desc'
-): ParsedMarkdownFile[] {
-  return [...items].sort((a, b) => {
-    let aValue: unknown;
-    let bValue: unknown;
-
-    // Get values to compare
-    switch (sortBy) {
-      case 'date':
-        aValue = a.frontmatter.date;
-        bValue = b.frontmatter.date;
-        break;
-      case 'title':
-        aValue = a.frontmatter.title;
-        bValue = b.frontmatter.title;
-        break;
-      case 'order':
-        // Custom order field for manual sorting
-        aValue = (a.frontmatter as any).order || 999999;
-        bValue = (b.frontmatter as any).order || 999999;
-        break;
-      default:
-        // Try to get the field from frontmatter
-        aValue = (a.frontmatter as any)[sortBy];
-        bValue = (b.frontmatter as any)[sortBy];
-        break;
-    }
-
-    // Handle undefined/null values
-    if (aValue === undefined || aValue === null) aValue = '';
-    if (bValue === undefined || bValue === null) bValue = '';
-
-    // Compare values
-    let comparison = 0;
-    
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      comparison = aValue.localeCompare(bValue);
-    } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-      comparison = aValue - bValue;
-    } else if (aValue instanceof Date && bValue instanceof Date) {
-      comparison = aValue.getTime() - bValue.getTime();
-    } else {
-      // Convert to strings for comparison
-      comparison = String(aValue).localeCompare(String(bValue));
-    }
-
-    // Apply sort order
-    return sortOrder === 'desc' ? -comparison : comparison;
-  });
-}

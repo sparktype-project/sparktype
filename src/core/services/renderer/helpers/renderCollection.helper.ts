@@ -4,7 +4,7 @@ import Handlebars from 'handlebars';
 import type { SparktypeHelper } from './types';
 import type { ParsedMarkdownFile, LayoutConfig, LocalSiteData, LayoutManifest } from '@/core/types';
 import type { HelperOptions } from 'handlebars';
-import { getCollectionContent, getCollection } from '@/core/services/collections.service';
+import { getCollectionContent, getCollection, sortCollectionItems } from '@/core/services/collections.service';
 
 /**
  * Defines the expected shape of the root context object passed by the theme engine.
@@ -57,7 +57,12 @@ export const renderCollectionHelper: SparktypeHelper = () => ({
       if (!collection) {
         return new Handlebars.SafeString(`<!-- Collection "${layoutConfig.collectionId}" not found -->`);
       }
-      const collectionItems = getCollectionContent(root.siteData, layoutConfig.collectionId);
+      let collectionItems = getCollectionContent(root.siteData, layoutConfig.collectionId);
+
+      // Apply sorting if specified in layoutConfig
+      if (layoutConfig.sortBy) {
+        collectionItems = sortCollectionItems(collectionItems, layoutConfig.sortBy, layoutConfig.sortOrder || 'desc');
+      }
 
       // 2. Determine which template partial to use. The layout manifest specifies its templates.
       // This example assumes a simple 'index.hbs' for the list and a partial for each item.
@@ -88,3 +93,4 @@ export const renderCollectionHelper: SparktypeHelper = () => ({
     }
   }
 });
+

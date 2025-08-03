@@ -2,51 +2,49 @@
   Template for a single blog post.
   It receives the full `pageContext` object, which includes `contentFile`.
 }}
-<article class="mw8 ph3 pv4 center prose">
-    <div class="mw7 center">
-        {{! Display the banner image if one is set in the frontmatter }}
-        {{#if images.banner}}
-            <div class="banner-image mb4">
-                <img src="{{images.banner.url}}" class="w-100" alt="{{contentFile.frontmatter.title}} banner">
-            </div>
-        {{/if}}
+<article class="content-container py-4 prose">
+    {{! Display the banner image if one is set in the frontmatter }}
+    {{#if images.banner}}
+        <div class="banner-image mb-4">
+            <img src="{{images.banner.url}}" class="w-full" alt="{{contentFile.frontmatter.title}} banner" style="border-radius: 8px;">
+        </div>
+    {{/if}}
 
-        {{! Post Header: Title and Metadata }}
-        <header class="post-header">
-            <h1 class="f1 lh-title mb2">{{contentFile.frontmatter.title}}</h1>
-            <div class="post-meta f6 mid-gray mb4">
-                {{#if contentFile.frontmatter.date}}
-                    <time datetime="{{contentFile.frontmatter.date}}">
-                        Published on {{formatDate contentFile.frontmatter.date}}
-                    </time>
-                {{/if}}
-                
-                {{#if contentFile.frontmatter.author}}
-                    <span class="mh2">|</span>
-                    <span>By {{contentFile.frontmatter.author}}</span>
-                {{/if}}
-            </div>
-        </header>
-
-        {{! The main content of the post, rendered from Markdown or Blocks }}
-        <section class="post-content">
-            {{#if blocks}}
-                {{{render_blocks blocks}}}
-            {{else}}
-                {{{markdown contentFile.content}}}
+    {{! Post Header: Title and Metadata }}
+    <header class="post-header">
+        <h1 class="mb-2">{{contentFile.frontmatter.title}}</h1>
+        <div class="post-meta text-small text-muted mb-4">
+            {{#if contentFile.frontmatter.date}}
+                <time datetime="{{contentFile.frontmatter.date}}">
+                    Published on {{formatDate contentFile.frontmatter.date}}
+                </time>
             {{/if}}
-        </section>
+            
+            {{#if contentFile.frontmatter.author}}
+                <span style="margin: 0 0.5rem;">|</span>
+                <span>By {{contentFile.frontmatter.author}}</span>
+            {{/if}}
+        </div>
+    </header>
 
-        {{! Display tags at the bottom of the post }}
-        {{#if contentFile.frontmatter.tags}}
-            <footer class="post-footer mt5 bt b--black-10 pt3">
-                <p class="f6 fw6">Tagged In:</p>
-                <div class="tags-list">
-                    {{#each contentFile.frontmatter.tags}}
-                        <span class="dib bg-light-gray br2 pa2 mr2 mb2 f7">{{this}}</span>
-                    {{/each}}
-                </div>
-            </footer>
+    {{! The main content of the post, rendered from Markdown or Blocks }}
+    <section class="post-content">
+        {{#if blocks}}
+            {{{render_blocks blocks}}}
+        {{else}}
+            {{{markdown contentFile.content}}}
         {{/if}}
-    </div>
+    </section>
+
+    {{! Display tags at the bottom of the post }}
+    {{#if contentFile.frontmatter.tags}}
+        <footer class="post-footer mt-4" style="border-top: 1px solid var(--color-border); padding-top: 1rem;">
+            <p class="text-small font-bold">Tagged In:</p>
+            <div class="tags-list">
+                {{#each contentFile.frontmatter.tags}}
+                    <span class="inline-block text-small" style="background: #f8f9fa; border-radius: 4px; padding: 0.25rem 0.5rem; margin-right: 0.5rem; margin-bottom: 0.5rem;">{{this}}</span>
+                {{/each}}
+            </div>
+        </footer>
+    {{/if}}
 </article>

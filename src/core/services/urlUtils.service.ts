@@ -58,7 +58,12 @@ export function getUrlForNode(
     // If there's a conflicting collection page, use optimized flat structure
     // Collection page: blog/index.html, Collection items: blog/item-slug/index.html
     if (hasConflictingCollectionPage) {
-      const itemSlug = node.slug;
+      // Extract just the item slug part, removing any collection path prefix
+      const collectionSlug = parentCollection.id;
+      const itemSlug = node.slug.startsWith(collectionSlug + '/') 
+        ? node.slug.substring(collectionSlug.length + 1)
+        : node.slug.split('/').pop() || node.slug;
+        
       if (isExport) {
         return forFilePath 
           ? `${parentCollection.id}/${itemSlug}/index.html`  // Full path for file creation
@@ -70,7 +75,11 @@ export function getUrlForNode(
     
     // No conflict: use standard structure
     const basePath = parentCollection.id;
-    const itemSlug = node.slug;
+    // Extract just the item slug part, removing any collection path prefix
+    const collectionSlug = parentCollection.id;
+    const itemSlug = node.slug.startsWith(collectionSlug + '/') 
+      ? node.slug.substring(collectionSlug.length + 1)
+      : node.slug.split('/').pop() || node.slug;
 
     if (isExport) {
       return forFilePath

@@ -1,7 +1,7 @@
 // src/features/editor/components/EditorHeader.tsx
 
-import { type ReactNode, useState, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { type ReactNode, useState, useCallback, useMemo } from 'react';
+import { useParams, Link, useLocation } from 'react-router-dom';
 
 // State Management
 import { useUIStore } from '@/core/state/uiStore';
@@ -31,11 +31,28 @@ interface EditorHeaderProps {
 
 export default function EditorHeader({ actions }: EditorHeaderProps) {
   const { siteId = '' } = useParams<{ siteId: string }>();
+  const location = useLocation();
   const [isPublishing, setIsPublishing] = useState(false);
 
   // Get site and UI state from the global stores
   const site = useAppStore(useCallback((state: AppStore) => state.getSiteById(siteId), [siteId]));
   const { toggleLeftSidebar, toggleRightSidebar, isLeftAvailable, isRightAvailable } = useUIStore((state) => state.sidebar);
+
+  // Determine the view link based on current location
+  const viewLink = useMemo(() => {
+    const editorRootPath = `/sites/${siteId}/edit/content`;
+    
+    if (location.pathname.startsWith(editorRootPath)) {
+      // We're on a content page, extract the content path for preview
+      const contentPath = location.pathname.substring(editorRootPath.length).replace(/^\//, '');
+      if (contentPath) {
+        return `/sites/${siteId}/view/${contentPath}`;
+      }
+    }
+    
+    // Default to homepage view for non-content pages or homepage content
+    return `/sites/${siteId}/view`;
+  }, [location.pathname, siteId]);
 
   const handlePublishSite = async () => {
     if (!site) {
@@ -106,8 +123,7 @@ export default function EditorHeader({ actions }: EditorHeaderProps) {
         {actions}
 
         <Button variant="outline" asChild>
-            {/* The "View" link now correctly points to the hash-based route */}
-            <Link to={`/sites/${siteId}/view`}>
+            <Link to={viewLink}>
                 <Eye className="h-4 w-4" />
                 <span className='hidden md:block ml-2'>View</span>
             </Link>

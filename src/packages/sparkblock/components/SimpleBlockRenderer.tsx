@@ -177,14 +177,14 @@ export function SimpleBlockRenderer({
   const renderCustomBlockSummary = useCallback(() => {
     if (!blockDefinition) {
       return (
-        <div className="border border-gray-300 rounded-md p-4 my-2 bg-gray-50">
+        <div className="border border-gray-300 dark:border-gray-600 rounded-md p-4 my-2 bg-gray-50 dark:bg-gray-800">
           <div className="flex items-center gap-2">
             <span className="text-base">⚙️</span>
-            <span className="font-semibold text-gray-700">
+            <span className="font-semibold text-gray-700 dark:text-gray-300">
               {block.type.replace('core:', '').replace('_', ' ')}
             </span>
           </div>
-          <div className="text-xs text-gray-400 mt-1">Loading...</div>
+          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">Loading...</div>
         </div>
       );
     }
@@ -224,26 +224,26 @@ export function SimpleBlockRenderer({
     }
 
     return (
-      <div className="border border-gray-300 rounded-md p-4 my-2 bg-gray-50">
+      <div className="border border-gray-300 dark:border-gray-600 rounded-md p-4 my-2 bg-gray-50 dark:bg-gray-800">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-base">⚙️</span>
-          <span className="font-semibold text-gray-700">{displayName}</span>
+          <span className="font-semibold text-gray-700 dark:text-gray-300">{displayName}</span>
         </div>
         {importantFields.length > 0 ? (
           <div className="space-y-1">
             {importantFields.slice(0, 4).map((field) => (
-              <div key={field.key} className="text-xs text-gray-500">
+              <div key={field.key} className="text-xs text-gray-500 dark:text-gray-400">
                 <strong>{field.label}:</strong> {String(field.value)}
               </div>
             ))}
             {importantFields.length > 4 && (
-              <div className="text-xs text-gray-400 italic">
+              <div className="text-xs text-gray-400 dark:text-gray-500 italic">
                 ...and {importantFields.length - 4} more settings
               </div>
             )}
           </div>
         ) : (
-          <div className="text-xs text-gray-400 italic">No configuration set</div>
+          <div className="text-xs text-gray-400 dark:text-gray-500 italic">No configuration set</div>
         )}
       </div>
     );
@@ -256,8 +256,8 @@ export function SimpleBlockRenderer({
         const { schema, uiSchema } = blockManifestToJsonSchema(blockDefinition, adapter);
 
         return (
-          <div className="p-4 border border-blue-500 rounded-md my-2 bg-blue-50">
-            <div className="mb-3 text-sm font-medium text-gray-700">Edit {blockDefinition.name || block.type}</div>
+          <div className="p-4 border border-blue-500 dark:border-blue-400 rounded-md my-2 bg-blue-50 dark:bg-blue-900/20">
+            <div className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Edit {blockDefinition.name || block.type}</div>
             <SchemaDrivenForm
               schema={schema}
               uiSchema={uiSchema}
@@ -266,16 +266,16 @@ export function SimpleBlockRenderer({
                 setFormData(newFormData);
               }}
             />
-            <div className="flex gap-2 mt-4 pt-3 border-t border-blue-200">
+            <div className="flex gap-2 mt-4 pt-3 border-t border-blue-200 dark:border-blue-600">
               <button
                 onClick={handleSave}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-sm font-medium"
               >
                 Save Changes
               </button>
               <button
                 onClick={handleCancel}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors text-sm font-medium"
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
               >
                 Cancel
               </button>
@@ -285,7 +285,7 @@ export function SimpleBlockRenderer({
       } else {
         // Show loading state while block definition is loading
         return (
-          <div className="p-3 border border-gray-300 rounded-md my-2 text-center text-gray-500">
+          <div className="p-3 border border-gray-300 dark:border-gray-600 rounded-md my-2 text-center text-gray-500 dark:text-gray-400 dark:bg-gray-800">
             Loading block configuration...
           </div>
         );
@@ -399,7 +399,7 @@ export function SimpleBlockRenderer({
               }
             }
           }}
-          className="min-h-[1.5em] border-none outline-none bg-transparent focus:outline-none"
+          className="min-h-[1.5em] border-none outline-none bg-transparent focus:outline-none dark:text-gray-100"
           ref={(element) => {
             if (element && isEditing) {
               element.textContent = localContent || getEditingContent();
@@ -480,7 +480,7 @@ export function SimpleBlockRenderer({
           {!readonly && (
             <>
               <button
-                className="flex items-center justify-center w-7 h-7 bg-white border border-gray-300 rounded-md cursor-pointer text-gray-500 transition-all duration-200 text-base font-medium shadow-sm hover:bg-blue-500 hover:text-white hover:border-blue-500 hover:scale-105 hover:shadow-md"
+                className="flex items-center justify-center w-7 h-7 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer text-gray-500 dark:text-gray-400 transition-all duration-200 text-base font-medium shadow-sm hover:bg-blue-500 hover:text-white hover:border-blue-500 hover:scale-105 hover:shadow-md"
                 onClick={(e) => {
                   e.stopPropagation();
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -491,7 +491,7 @@ export function SimpleBlockRenderer({
                 +
               </button>
               <div
-                className="flex items-center justify-center w-7 h-7 bg-white border border-gray-300 rounded-md text-gray-500 transition-all duration-200 text-base font-medium shadow-sm hover:bg-blue-500 hover:text-white hover:border-blue-500 hover:scale-105 hover:shadow-md active:cursor-grabbing"
+                className="flex items-center justify-center w-7 h-7 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-500 dark:text-gray-400 transition-all duration-200 text-base font-medium shadow-sm hover:bg-blue-500 hover:text-white hover:border-blue-500 hover:scale-105 hover:shadow-md active:cursor-grabbing"
                 {...listeners}
                 onMouseDown={handleDragStart}
                 onMouseMove={hasDragged ? undefined : handleDragMove}

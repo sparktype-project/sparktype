@@ -9,12 +9,15 @@ import { useAppStore } from '@/core/state/useAppStore';
 
 // UI Components & Icons
 import { Button } from '@/core/components/ui/button';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/core/components/ui/accordion';
 import FileTree from '@/features/editor/components/FileTree';
 import NewPageDialog from '@/features/editor/components/NewPageDialog';
 import CollectionsManager from '@/features/editor/components/CollectionsManager';
 import TagGroupsManager from '@/features/editor/components/TagGroupsManager';
+import CreateCollectionDialog from '@/features/editor/components/CreateCollectionDialog';
+import CreateTagGroupDialog from '@/features/editor/components/CreateTagGroupDialog';
 // import CreateCollectionPageDialog from '@/features/editor/components/CreateCollectionPageDialog';
-import { FilePlus, GripVertical, Archive } from 'lucide-react';
+import { FilePlus, GripVertical, Archive, Plus } from 'lucide-react';
 import {
   DndContext,
   type DragEndEvent,
@@ -66,6 +69,10 @@ export default function LeftSidebar() {
   const [overId, setOverId] = useState<string | null>(null);
   const [offsetLeft, setOffsetLeft] = useState(0);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  
+  // Dialog states
+  const [isCreateCollectionDialogOpen, setIsCreateCollectionDialogOpen] = useState(false);
+  const [isCreateTagGroupDialogOpen, setIsCreateTagGroupDialogOpen] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const { setNodeRef: setRootDroppableRef } = useDroppable({ id: '__root_droppable__' });
@@ -247,14 +254,51 @@ export default function LeftSidebar() {
           )}
         </div>
 
-        {/* Collections Manager */}
-        <div className=" border-t bg-background">
-          <CollectionsManager siteId={siteId} />
-        </div>
-
-        {/* Tag Groups Manager */}
-        <div className=" border-t bg-background">
-          <TagGroupsManager siteId={siteId} />
+        {/* Collections and Tag Groups Accordion */}
+        <div className="border-t bg-background">
+          <Accordion type="multiple" defaultValue={['collections', 'taggroups']}>
+            <AccordionItem value="collections" className="border-b-0">
+              <AccordionTrigger className="hover:no-underline py-2 px-2">
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Collections</span>
+                  <div 
+                    className="size-7 p-1 mr-2 rounded-md hover:bg-accent hover:text-accent-foreground inline-flex items-center justify-center cursor-pointer" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsCreateCollectionDialogOpen(true);
+                    }}
+                    title="Create Collection"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pb-0">
+                <CollectionsManager siteId={siteId} />
+              </AccordionContent>
+            </AccordionItem>
+            
+            <AccordionItem value="taggroups" className="border-b-0">
+              <AccordionTrigger className="hover:no-underline py-2 px-2">
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tag Groups</span>
+                  <div 
+                    className="size-7 p-1 mr-2 rounded-md hover:bg-accent hover:text-accent-foreground inline-flex items-center justify-center cursor-pointer" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsCreateTagGroupDialogOpen(true);
+                    }}
+                    title="Create Tag Group"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pb-0">
+                <TagGroupsManager siteId={siteId} />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
 
         <div className="mt-auto shrink-0 border-t p-2 space-y-1">
@@ -263,6 +307,18 @@ export default function LeftSidebar() {
             </Button>
         </div>
       </div>
+      
+      {/* Dialog Components */}
+      <CreateCollectionDialog 
+        siteId={siteId} 
+        open={isCreateCollectionDialogOpen} 
+        onOpenChange={setIsCreateCollectionDialogOpen} 
+      />
+      <CreateTagGroupDialog 
+        siteId={siteId} 
+        open={isCreateTagGroupDialogOpen} 
+        onOpenChange={setIsCreateTagGroupDialogOpen} 
+      />
       
       {createPortal(
         <DragOverlay dropAnimation={null} style={{ pointerEvents: 'none' }}>

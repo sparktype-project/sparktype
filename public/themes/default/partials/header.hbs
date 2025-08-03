@@ -1,24 +1,19 @@
 {{! themes/default/partials/header.hbs }}
 {{!
-  This header provides a responsive navigation bar using Tachyons and Alpine.js.
+  This header provides a responsive navigation bar using Pico CSS and Alpine.js.
   Features a slide-in offcanvas sidebar for mobile with accordion sub-navigation.
 }}
 <div x-data="{ isMobileMenuOpen: false }" @keydown.escape.window="isMobileMenuOpen = false">
-<header class="sans-serif relative" style="backdrop-filter: blur(8px);">
-    <div class="ph3 ph3-ns">
-        <div class="header-60 flex  items-center justify-between">
+<header class="site-header relative">
+    <div class="container">
+        <div class="flex items-center justify-between" style="height: 60px;">
             
             {{!-- Site Logo/Title --}}
             <div class="flex-shrink-0">
-                <a href="{{#if @root.options.isExport}}./index.html{{else}}/{{/if}}" class="link dim f4 fw7 near-black flex items-center">
-                    
-                
+                <a href="{{#if @root.options.isExport}}./index.html{{else}}/{{/if}}" class="site-logo flex items-center">
                     {{#if @root.headContext.logoUrl}}
-                        <img src="{{@root.headContext.logoUrl}}" alt="{{@root.manifest.title}} logo" class="mr2 h-8 w-auto">
-                    {{else}}
-                        {{!-- Optional: You could place a default SVG logo here if you wanted --}}
+                        <img src="{{@root.headContext.logoUrl}}" alt="{{@root.manifest.title}} logo" style="height: 2rem; width: auto; margin-right: 0.5rem;">
                     {{/if}}
-
                     <span>{{@root.manifest.title}}</span>
                 </a>
             </div>
@@ -26,11 +21,11 @@
             {{!-- ================================== --}}
             {{!-- DESKTOP NAVIGATION (hidden on mobile) --}}
             {{!-- ================================== --}}
-            <nav class="dn db-ns">
-                <ul class="list pa0 ma0 flex items-center">
+            <nav class="md:block hidden">
+                <ul class="nav-list">
                     {{#each @root.navLinks}}
                         {{#if this.children.length}}
-                            <li class="mh2 relative" 
+                            <li class="relative" 
                                 x-data="{ 
                                     open: false, 
                                     alignRight: false,
@@ -58,11 +53,11 @@
                                 @click.away="open = false">
                                 <a href="{{this.href}}" 
                                    @click="handleClick($event)"
-                                   class="link dim gray f6 fw5 flex items-center pv2"
+                                   class="nav-link flex items-center py-2"
                                    :aria-expanded="open.toString()"
                                    aria-haspopup="true">
                                     <span>{{this.label}}</span>
-                                    <svg class="ml1 h1 w1 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg style="margin-left: 0.25rem; height: 1rem; width: 1rem; transition: transform 0.2s;" :style="{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                     </svg>
                                 </a>
@@ -76,21 +71,22 @@
                                     x-transition:leave-start="opacity-100 scale-100"
                                     x-transition:leave-end="opacity-0 scale-95"
                                     :class="alignRight ? 'right-0' : 'left-0'"
-                                    class="absolute mt1 w5 br2 shadow-5 bg-white z-1" 
+                                    class="absolute z-20" 
+                                    style="margin-top: 0.25rem; width: 12rem; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); background: white; border: 1px solid var(--color-border);"
                                     x-cloak
                                 >
-                                    <ul class="list pa0 ma0 py1">
+                                    <ul style="list-style: none; margin: 0; padding: 0.5rem 0;">
                                         {{#each this.children}}
                                             <li>
-                                                <a href="{{this.href}}" class="db link dim near-black f6 ph3 pv2 hover-bg-light-gray">{{this.label}}</a>
+                                                <a href="{{this.href}}" class="nav-link block" style="padding: 0.5rem 1rem; font-size: 0.875rem;">{{this.label}}</a>
                                             </li>
                                         {{/each}}
                                     </ul>
                                 </div>
                             </li>
                         {{else}}
-                            <li class="mh2">
-                                <a href="{{this.href}}" class="link dim gray f6 fw5 pv2">{{this.label}}</a>
+                            <li>
+                                <a href="{{this.href}}" class="nav-link py-2">{{this.label}}</a>
                             </li>
                         {{/if}}
                     {{/each}}
@@ -100,21 +96,21 @@
             {{!-- ========================================= --}}
             {{!-- MOBILE MENU BUTTON (visible only on mobile) --}}
             {{!-- ========================================= --}}
-            <div class="db dn-ns">
+            <div class="block md:hidden">
                 <button 
                     @click="isMobileMenuOpen = !isMobileMenuOpen" 
                     type="button" 
-                    class="button-reset bg-transparent bn pa2"
+                    class="mobile-menu-button"
                     aria-controls="mobile-menu" 
                     :aria-expanded="isMobileMenuOpen.toString()"
                 >
-                    <span class="sr-only">Open main menu</span>
+                    <span style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;">Open main menu</span>
                     {{!-- Hamburger Icon --}}
-                    <svg x-show="!isMobileMenuOpen" class="h2 w2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <svg x-show="!isMobileMenuOpen" style="height: 1.5rem; width: 1.5rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                     </svg>
                     {{!-- Close (X) Icon --}}
-                    <svg x-show="isMobileMenuOpen" x-cloak class="h2 w2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <svg x-show="isMobileMenuOpen" x-cloak style="height: 1.5rem; width: 1.5rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
@@ -125,9 +121,9 @@
 
     {{!-- Header Announcement Banner --}}
     {{#if (themeData 'header_announcement')}}
-        <div class="bg-light-blue dark:bg-dark-blue">
-            <div class="mw8 center ph3 ph4-ns pv2">
-                <div class="announcement-content f6 tc">
+        <div style="background: #e3f2fd;">
+            <div class="container py-2">
+                <div class="text-center text-small">
                     {{{themeData 'header_announcement'}}}
                 </div>
             </div>
@@ -147,8 +143,8 @@
     x-transition:leave-start="opacity-100"
     x-transition:leave-end="opacity-0"
     @click="isMobileMenuOpen = false"
-    class="fixed top-0 left-0 right-0 bottom-0 z-40"
-    style="background-color: rgba(0, 0, 0, 0.5); height: 100vh; width: 100vw;"
+    class="fixed z-40"
+    style="top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); height: 100vh; width: 100vw;"
     x-cloak
 ></div>
 
@@ -163,8 +159,8 @@
     x-transition:leave="transform transition ease-in-out duration-300 sm:duration-700"
     x-transition:leave-start="translate-x-0"
     x-transition:leave-end="translate-x-full"
-    class="fixed top-0 right-0 bottom-0 bg-white shadow-5 z-50 flex flex-column"
-    style="height: 100vh; width: 280px;"
+    class="fixed z-50 flex flex-column"
+    style="top: 0; right: 0; bottom: 0; background: white; box-shadow: -4px 0 6px rgba(0,0,0,0.1); height: 100vh; width: 280px;"
     id="mobile-menu"
     role="dialog"
     aria-modal="true"
@@ -173,42 +169,43 @@
     x-trap="isMobileMenuOpen"
 >
     {{!-- Sidebar Header --}}
-    <div class="flex items-center justify-between pa3 bb b--light-gray">
-        <h2 id="mobile-menu-title" class="f5 fw6 ma0 near-black">Menu</h2>
+    <div class="flex items-center justify-between p-4" style="border-bottom: 1px solid var(--color-border);">
+        <h2 id="mobile-menu-title" class="font-bold mb-0">Menu</h2>
         <button 
             @click="isMobileMenuOpen = false" 
             type="button" 
-            class="button-reset bg-transparent bn pa2 hover-bg-light-gray br2"
+            class="mobile-menu-button"
             aria-label="Close menu"
         >
-            <svg class="h1 w1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <svg style="height: 1rem; width: 1rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
         </button>
     </div>
 
     {{!-- Sidebar Navigation --}}
-    <nav class="pa3 overflow-y-auto flex-auto">
-        <ul class="list pa0 ma0">
+    <nav class="p-4 flex-auto" style="overflow-y: auto;">
+        <ul style="list-style: none; margin: 0; padding: 0;">
             {{#each @root.navLinks}}
-                <li class="mb2">
+                <li class="mb-2">
                     {{#if this.children.length}}
                         {{!-- Parent Link with Accordion --}}
                         <div x-data="{ accordionOpen: false }">
                             <div class="flex items-center justify-between">
-                                <a href="{{this.href}}" class="link dim f5 fw5 near-black flex-auto pv2" @click="isMobileMenuOpen = false">
+                                <a href="{{this.href}}" class="nav-link flex-auto py-2" @click="isMobileMenuOpen = false">
                                     {{this.label}}
                                 </a>
                                 <button 
                                     @click="accordionOpen = !accordionOpen" 
                                     type="button"
-                                    class="button-reset bg-transparent bn pa2 ml2 hover-bg-light-gray br2"
+                                    class="mobile-menu-button"
+                                    style="margin-left: 0.5rem;"
                                     :aria-expanded="accordionOpen.toString()"
                                     aria-label="Toggle submenu"
                                 >
                                     <svg 
-                                        class="h1 w1 gray transition-transform duration-200" 
-                                        :class="{ 'rotate-180': accordionOpen }" 
+                                        style="height: 1rem; width: 1rem; color: #6c757d; transition: transform 0.2s;" 
+                                        :style="{ transform: accordionOpen ? 'rotate(180deg)' : 'rotate(0deg)' }"
                                         fill="none" 
                                         viewBox="0 0 24 24" 
                                         stroke="currentColor"
@@ -227,14 +224,15 @@
                                 x-transition:leave="transition-all ease-in duration-150"
                                 x-transition:leave-start="opacity-100 max-h-screen"
                                 x-transition:leave-end="opacity-0 max-h-0"
-                                class="overflow-hidden"
+                                style="overflow: hidden;"
                             >
-                                <ul class="list pa0 ma0 mt2 pl3 bl b--light-gray">
+                                <ul style="list-style: none; margin: 0.5rem 0 0 0; padding: 0 0 0 1rem; border-left: 1px solid var(--color-border);">
                                     {{#each this.children}}
-                                        <li class="pv1">
+                                        <li style="padding: 0.25rem 0;">
                                             <a 
                                                 href="{{this.href}}" 
-                                                class="link dim f6 gray hover-near-black pv1 db" 
+                                                class="nav-link block text-small py-1" 
+                                                style="color: #6c757d;"
                                                 @click="isMobileMenuOpen = false"
                                             >
                                                 {{this.label}}
@@ -248,7 +246,7 @@
                         {{!-- Simple Link --}}
                         <a 
                             href="{{this.href}}" 
-                            class="link dim f5 fw5 near-black pv2 db" 
+                            class="nav-link block py-2" 
                             @click="isMobileMenuOpen = false"
                         >
                             {{this.label}}

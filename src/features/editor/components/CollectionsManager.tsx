@@ -81,12 +81,6 @@ export default function CollectionsManager({ siteId }: CollectionsManagerProps) 
   return (
     <CollectionErrorBoundary fallback={CollectionErrorFallback}>
       <div className="flex h-full flex-col">
-        <div className="flex shrink-0 items-center justify-between border-b px-2 py-0.5">
-          <h3 className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Collections</h3>
-          <Button variant="ghost" size="sm" className="size-7 p-1" onClick={() => setIsCreateDialogOpen(true)} title="Create Collection">
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
         {collections.length > 0 && (
           <div className="p-2">
             <div className="relative">

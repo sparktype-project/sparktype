@@ -2,25 +2,25 @@
   Partial for a single blog post card.
   'this' refers to one item from the `collectionItems` array.
 }}
-<article class="post-card flex flex-column br2 ba b--black-10">
+<article class="post-card flex flex-column">
     {{#if this.frontmatter.featured_image}}
-        <a href="{{getCollectionItemUrl this}}" class="db aspect-ratio aspect-ratio--16x9">
-            {{{image src=this.frontmatter.featured_image alt=this.frontmatter.title class="aspect-ratio--object"}}}
+        <a href="{{getCollectionItemUrl this}}" class="block">
+            {{{image src=this.frontmatter.featured_image alt=this.frontmatter.title class="post-card-image"}}}
         </a>
     {{/if}}
 
-    <div class="pa3 flex-auto flex flex-column">
-        <h3 class="f4 lh-title mv0">
-            <a href="{{getCollectionItemUrl this}}" class="link black hover-blue">{{this.frontmatter.title}}</a>
+    <div class="post-card-content">
+        <h3 class="post-card-title">
+            <a href="{{getCollectionItemUrl this}}">{{this.frontmatter.title}}</a>
         </h3>
-        <p class="f6 mid-gray mv2">
+        <p class="post-card-date">
             {{formatDate this.frontmatter.date}}
         </p>
         {{#if this.frontmatter.excerpt}}
-            <p class="f6 lh-copy mt2 mb3 flex-auto">
+            <p class="post-card-excerpt">
                 {{this.frontmatter.excerpt}}
             </p>
         {{/if}}
-        <a href="{{getCollectionItemUrl this}}" class="link blue f6 fw6 mt-auto">Read More →</a>
+        <a href="{{getCollectionItemUrl this}}" class="post-card-link">Read More →</a>
     </div>
 </article>

@@ -307,11 +307,18 @@ export class DirectiveParser {
   }
 
   /**
-   * Extract text content from AST node
+   * Extract text content from AST node, preserving markdown formatting
    */
   private extractTextContent(node: any): string {
-    let text = '';
+    // For nodes that may contain formatting, preserve the original markdown
+    if (node.children && node.children.length > 0) {
+      // Use the unified processor to convert the node back to markdown
+      const tempTree = { type: 'root', children: [node] };
+      return String(this.processor.stringify(tempTree)).trim();
+    }
     
+    // For simple text nodes, extract the text directly
+    let text = '';
     visit(node, 'text', (textNode: Text) => {
       text += textNode.value;
     });

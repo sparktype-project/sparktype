@@ -36,20 +36,121 @@ export function getCollection(manifest: Manifest, collectionId: string): Collect
   return getCollections(manifest).find(c => c.id === collectionId) || null;
 }
 
+// Cache for collection content to avoid repeated filtering
+const collectionContentCache = new Map<string, { data: ParsedMarkdownFile[]; timestamp: number; siteDataHash: string }>();
+const CACHE_TTL = 5000; // 5 seconds cache
+
+/**
+ * Creates a simple hash of siteData for cache invalidation
+ */
+function createSiteDataHash(siteData: { manifest: Manifest; contentFiles?: ParsedMarkdownFile[] }): string {
+  const fileCount = siteData.contentFiles?.length || 0;
+  const manifestStr = JSON.stringify(siteData.manifest.collections || []);
+  return `${fileCount}-${manifestStr.slice(0, 100)}`;
+}
+
 /**
  * Gets all content files that belong to a specific collection.
+ * Uses caching to improve performance for repeated calls.
  * @param siteData The complete data for the site.
  * @param collectionId The ID of the collection.
  * @returns An array of ParsedMarkdownFile objects belonging to the collection.
  */
 export function getCollectionContent(siteData: { manifest: Manifest; contentFiles?: ParsedMarkdownFile[] }, collectionId: string): ParsedMarkdownFile[] {
   const collection = getCollection(siteData.manifest, collectionId);
+  console.log(`[getCollectionContent] Looking for collection "${collectionId}"`);
+  console.log(`[getCollectionContent] Found collection:`, collection);
+  console.log(`[getCollectionContent] Available collections:`, siteData.manifest.collections);
+  console.log(`[getCollectionContent] Total content files:`, siteData.contentFiles?.length || 0);
+  
   if (!collection || !siteData.contentFiles) {
     return [];
   }
-  return siteData.contentFiles.filter(file =>
+
+  // Create cache key and check cache
+  const cacheKey = `${collectionId}-${collection.contentPath}`;
+  const siteDataHash = createSiteDataHash(siteData);
+  const now = Date.now();
+  const cached = collectionContentCache.get(cacheKey);
+
+  if (cached && 
+      now - cached.timestamp < CACHE_TTL && 
+      cached.siteDataHash === siteDataHash) {
+    return cached.data;
+  }
+
+  // Filter and cache the result
+  const result = siteData.contentFiles.filter(file =>
     file.path.startsWith(collection.contentPath)
   );
+
+  collectionContentCache.set(cacheKey, {
+    data: result,
+    timestamp: now,
+    siteDataHash
+  });
+
+  // Clean up old cache entries periodically
+  if (collectionContentCache.size > 50) {
+    const cutoff = now - CACHE_TTL * 2;
+    for (const [key, value] of collectionContentCache.entries()) {
+      if (value.timestamp < cutoff) {
+        collectionContentCache.delete(key);
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Optimized sorting function for collection items
+ * Shared across all collection rendering helpers to avoid duplication
+ */
+export function sortCollectionItems(
+  items: ParsedMarkdownFile[], 
+  sortBy: string, 
+  sortOrder: 'asc' | 'desc' = 'desc'
+): ParsedMarkdownFile[] {
+  if (!items.length || !sortBy) return items;
+
+  return [...items].sort((a, b) => {
+    let aValue: unknown;
+    let bValue: unknown;
+
+    // Get values to compare
+    switch (sortBy) {
+      case 'date':
+        aValue = a.frontmatter.date ? new Date(a.frontmatter.date) : new Date(0);
+        bValue = b.frontmatter.date ? new Date(b.frontmatter.date) : new Date(0);
+        break;
+      case 'title':
+        aValue = (a.frontmatter.title || '').toLowerCase();
+        bValue = (b.frontmatter.title || '').toLowerCase();
+        break;
+      case 'order':
+        aValue = (a.frontmatter as any).order ?? 999999;
+        bValue = (b.frontmatter as any).order ?? 999999;
+        break;
+      default:
+        aValue = ((a.frontmatter as any)[sortBy] || '').toString().toLowerCase();
+        bValue = ((b.frontmatter as any)[sortBy] || '').toString().toLowerCase();
+        break;
+    }
+
+    // Compare values efficiently
+    let comparison = 0;
+    
+    if (aValue instanceof Date && bValue instanceof Date) {
+      comparison = aValue.getTime() - bValue.getTime();
+    } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+      comparison = aValue - bValue;
+    } else {
+      comparison = String(aValue).localeCompare(String(bValue));
+    }
+
+    return sortOrder === 'desc' ? -comparison : comparison;
+  });
 }
 
 

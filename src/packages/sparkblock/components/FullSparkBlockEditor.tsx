@@ -722,12 +722,12 @@ export function FullSparkBlockEditor({
   if (parseError) {
     return (
       <div className="flex items-center justify-center h-full min-h-[200px]">
-        <div className="text-center text-red-600">
+        <div className="text-center text-red-600 dark:text-red-400">
           <h3 className="text-lg font-semibold mb-2">Parse Error</h3>
           <p className="mb-4">Failed to parse markdown: {parseError.message}</p>
           <details className="text-left">
             <summary className="cursor-pointer">Raw Content</summary>
-            <pre className="mt-2 p-2 bg-gray-100 rounded text-sm overflow-auto">{value}</pre>
+            <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 dark:text-gray-300 rounded text-sm overflow-auto">{value}</pre>
           </details>
         </div>
       </div>
@@ -737,7 +737,7 @@ export function FullSparkBlockEditor({
   if (!adapter) {
     return (
       <div className="flex items-center justify-center h-full min-h-[200px]">
-        <div className="text-center text-gray-600">
+        <div className="text-center text-gray-600 dark:text-gray-400">
           <h3 className="text-lg font-semibold mb-2">SparkBlock Unavailable</h3>
           <p>No adapter available for block editing</p>
         </div>
@@ -746,7 +746,7 @@ export function FullSparkBlockEditor({
   }
 
   return (
-    <div className="relative flex flex-col w-full prose prose-gray max-w-none bg-white focus:outline-none prose-p:mt-0 prose-headings:mt-0 prose-blockquote:mt-0" ref={editorRef}>
+    <div className="relative flex flex-col w-full prose prose-gray max-w-none bg-white dark:bg-gray-900 focus:outline-none prose-p:mt-0 prose-headings:mt-0 prose-blockquote:mt-0 dark:prose-invert" ref={editorRef}>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -756,7 +756,7 @@ export function FullSparkBlockEditor({
           <div className="max-w-4xl mx-auto">
             {blocks.length === 0 ? (
               <div className="flex items-center justify-center h-full min-h-[200px]">
-                <div className="text-center text-gray-500">
+                <div className="text-center text-gray-500 dark:text-gray-400">
                   <div className="text-5xl mb-4">✏️</div>
                   <div className="text-base mb-4">Start writing your story...</div>
                 </div>
@@ -816,7 +816,7 @@ export function FullSparkBlockEditor({
                   onKeyDown={handleKeyDown}
                   onPaste={handlePaste}
                   data-placeholder={blocks.length === 0 ? "Start writing or press '/' for commands..." : "Write or press '/' for commands..."}
-                  className="flex-1 min-h-[60px] border-none outline-none bg-transparent py-2 focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
+                  className="flex-1 min-h-[60px] border-none outline-none bg-transparent py-2 focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 dark:empty:before:text-gray-500 dark:text-gray-100"
                 />
               </div>
             </div>
