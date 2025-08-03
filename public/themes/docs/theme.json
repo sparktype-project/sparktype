@@ -39,9 +39,9 @@
         "format": "color",
         "default": "#3b82f6"
       },
-      "color_borders": {
+      "color_border": {
         "type": "string",
-        "title": "Borders Color",
+        "title": "Border Color",
         "format": "color",
         "default": "#e5e5e5"
       },

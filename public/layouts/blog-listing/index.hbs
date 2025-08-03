@@ -6,9 +6,9 @@
     <header class="page-header mb-4 text-center">
         <div class="content-container">
             {{! Use the custom listing title if it exists, otherwise fall back to the page's main title }}
-            <h1>{{contentFile.frontmatter.title}}</h1>
+            <h1 style="color: var(--color-headings); font-family: var(--font-headings);">{{contentFile.frontmatter.title}}</h1>
             {{#if contentFile.frontmatter.listing_intro}}
-                <p class="text-muted">{{contentFile.frontmatter.listing_intro}}</p>
+                <p class="listing-intro" style="color: var(--color-text); opacity: 0.7;">{{contentFile.frontmatter.listing_intro}}</p>
             {{/if}}
         </div>
     </header>
@@ -32,7 +32,7 @@
             {{/if}}
         {{else}}
             <div class="text-center py-4">
-                <p class="text-muted">No blog posts have been published yet.</p>
+                <p style="color: var(--color-text); opacity: 0.7;">No blog posts have been published yet.</p>
             </div>
         {{/if}}
     </div>

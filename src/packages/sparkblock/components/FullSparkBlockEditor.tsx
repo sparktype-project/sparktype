@@ -141,6 +141,7 @@ export function FullSparkBlockEditor({
     loadAvailableBlocks();
   }, [adapter]);
 
+
   // Handle drag and drop reordering
   const handleDragEnd = useCallback(async (event: any) => {
     const { active, over } = event;
@@ -436,10 +437,99 @@ export function FullSparkBlockEditor({
     }
     
     // For other content types, check if all values are empty
-    return Object.values(block.content).every(value => 
-      typeof value === 'string' ? !value.trim() : !value
-    );
+    const values = Object.values(block.content);
+    return values.every(value => {
+      if (typeof value === 'string') return !value.trim();
+      if (typeof value === 'number') return value === 0;
+      if (Array.isArray(value)) return value.length === 0;
+      if (typeof value === 'object' && value !== null) return Object.keys(value).length === 0;
+      return !value;
+    });
   }, []);
+
+  // Handle sequential deletion - delete blocks one by one going backwards
+  const handleSequentialDelete = useCallback(async () => {
+    if (!adapter || blocks.length === 0) return;
+
+    try {
+      let blockToDelete: SparkBlock | null = null;
+
+      if (selectedBlockId && !editingBlockId) {
+        // If a block is selected but not being edited, delete it
+        blockToDelete = blocks.find(b => b.id === selectedBlockId) || null;
+      } else if (blocks.length > 0) {
+        // Otherwise, delete the last block
+        blockToDelete = blocks[blocks.length - 1];
+      }
+
+      if (!blockToDelete) return;
+
+      // Don't delete the last remaining block if it has content
+      if (blocks.length === 1 && !isBlockEmpty(blockToDelete)) {
+        // If it's the last block with content, clear its content instead of deleting
+        const updatedBlock = {
+          ...blockToDelete,
+          content: { text: '' }
+        };
+        
+        const newBlocks = [updatedBlock];
+        const newMarkdown = await adapter.serialize(newBlocks);
+        updateMarkdownContent(newMarkdown, true);
+        
+        // Select the now-empty block
+        setSelectedBlockId(blockToDelete.id);
+        setEditingBlockId(null);
+        return;
+      }
+
+      // Delete the block
+      const newBlocks = blocks.filter(b => b.id !== blockToDelete.id);
+      
+      // Clear editing/selection state
+      if (editingBlockId === blockToDelete.id) {
+        setEditingBlockId(null);
+      }
+      if (selectedBlockId === blockToDelete.id) {
+        // Select the previous block if available
+        const blockIndex = blocks.findIndex(b => b.id === blockToDelete.id);
+        const previousBlockIndex = blockIndex - 1;
+        if (previousBlockIndex >= 0 && newBlocks[previousBlockIndex]) {
+          setSelectedBlockId(newBlocks[previousBlockIndex].id);
+        } else if (newBlocks.length > 0) {
+          setSelectedBlockId(newBlocks[0].id);
+        } else {
+          setSelectedBlockId(null);
+        }
+      }
+      
+      // Update markdown
+      const newMarkdown = await adapter.serialize(newBlocks);
+      updateMarkdownContent(newMarkdown, true);
+      
+    } catch (error) {
+      console.error('Failed to handle sequential delete:', error);
+    }
+  }, [adapter, blocks, selectedBlockId, editingBlockId, isBlockEmpty, updateMarkdownContent]);
+
+  // Global keyboard event handler for block operations
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Only handle keys when we're not in an input field, textarea, or contenteditable
+      const target = e.target as HTMLElement;
+      const isInputElement = target.tagName === 'INPUT' || 
+                           target.tagName === 'TEXTAREA' || 
+                           target.isContentEditable ||
+                           target.getAttribute('contenteditable') === 'true';
+      
+      if (!isInputElement && (e.key === 'Delete' || e.key === 'Backspace')) {
+        e.preventDefault();
+        handleSequentialDelete();
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [handleSequentialDelete]);
 
   // Handle converting block types
   const convertBlock = useCallback(async (blockId: string, newBlockType: string) => {
@@ -504,9 +594,34 @@ export function FullSparkBlockEditor({
       return;
     }
 
+    const block = blocks.find(b => b.id === blockId);
+    if (!block) return;
+    
+    // For custom blocks, just select them (don't auto-edit)
+    if (isCustomBlock(block.type)) {
+      setSelectedBlockId(blockId);
+      setEditingBlockId(null); // Clear editing mode
+      return;
+    }
+    
+    // For core text blocks, auto-enter edit mode
     setEditingBlockId(blockId);
     setSelectedBlockId(blockId);
-  }, [readonly, editingBlockId]);
+  }, [readonly, editingBlockId, blocks]);
+
+  // Handle double-click to edit custom blocks
+  const handleBlockDoubleClick = useCallback((blockId: string) => {
+    if (readonly) return;
+    
+    const block = blocks.find(b => b.id === blockId);
+    if (!block) return;
+    
+    // For custom blocks, double-click enters edit mode
+    if (isCustomBlock(block.type)) {
+      setSelectedBlockId(blockId);
+      setEditingBlockId(blockId);
+    }
+  }, [readonly, blocks]);
 
   const handleBlockBlur = useCallback(async () => {
     if (editingBlockId) {
@@ -622,6 +737,13 @@ export function FullSparkBlockEditor({
   }, [adapter, blocks, updateMarkdownContent, createBlock]);
 
   const handleKeyDown = useCallback(async (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Handle delete/backspace in empty input - sequential delete
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !currentInput.trim() && blocks.length > 0) {
+      e.preventDefault();
+      await handleSequentialDelete();
+      return;
+    }
+
     if (e.key === 'Enter' && !e.shiftKey && currentInput.trim()) {
       e.preventDefault();
 
@@ -677,13 +799,18 @@ export function FullSparkBlockEditor({
 
       setCurrentInput('');
       setShowSlashMenu(false);
+      
+      // Also clear the input element directly to prevent duplication
+      if (inputRef.current) {
+        inputRef.current.textContent = '';
+      }
     }
 
     if (e.key === 'Escape') {
       setShowSlashMenu(false);
       setCurrentInput('');
     }
-  }, [currentInput, adapter, blocks, createBlock, updateMarkdownContent]);
+  }, [currentInput, adapter, blocks, createBlock, updateMarkdownContent, handleSequentialDelete]);
 
   // Handle slash menu selection
   const handleSlashCommand = useCallback(async (blockType: string) => {
@@ -754,14 +881,7 @@ export function FullSparkBlockEditor({
       >
         <div className="overflow-visible focus:outline-none md:pr-16">
           <div className="max-w-4xl mx-auto">
-            {blocks.length === 0 ? (
-              <div className="flex items-center justify-center h-full min-h-[200px]">
-                <div className="text-center text-gray-500 dark:text-gray-400">
-                  <div className="text-5xl mb-4">✏️</div>
-                  <div className="text-base mb-4">Start writing your story...</div>
-                </div>
-              </div>
-            ) : (
+            {blocks.length > 0 && (
               <SortableContext
                 items={blocks.map(block => block.id)}
                 strategy={verticalListSortingStrategy}
@@ -774,6 +894,7 @@ export function FullSparkBlockEditor({
                     isEditing={editingBlockId === block.id}
                     readonly={readonly}
                     onClick={() => handleBlockClick(block.id)}
+                    onDoubleClick={() => handleBlockDoubleClick(block.id)}
                     onMarkdownUpdate={(newMarkdown) => {
                       // Replace this block's content in the full markdown
                       updateBlockInMarkdown(block.id, newMarkdown);
@@ -801,10 +922,7 @@ export function FullSparkBlockEditor({
                   ref={(element) => {
                     if (element) {
                       inputRef.current = element;
-                      // Sync content when currentInput changes
-                      if (element.textContent !== currentInput) {
-                        element.textContent = currentInput;
-                      }
+                      // Don't automatically sync content - let user input control it
                     }
                   }}
                   contentEditable={!readonly}

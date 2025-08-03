@@ -10,17 +10,17 @@
     {{/if}}
 
     <div class="post-card-content">
-        <h3 class="post-card-title">
-            <a href="{{getCollectionItemUrl this}}">{{this.frontmatter.title}}</a>
+        <h3 class="post-card-title" style="color: var(--color-headings); font-family: var(--font-headings);">
+            <a href="{{getCollectionItemUrl this}}" class="post-card-title-link">{{this.frontmatter.title}}</a>
         </h3>
-        <p class="post-card-date">
+        <p class="post-card-date" style="color: var(--color-text); opacity: 0.7; font-family: var(--font-text);">
             {{formatDate this.frontmatter.date}}
         </p>
         {{#if this.frontmatter.excerpt}}
-            <p class="post-card-excerpt">
+            <p class="post-card-excerpt" style="color: var(--color-text); font-family: var(--font-text);">
                 {{this.frontmatter.excerpt}}
             </p>
         {{/if}}
-        <a href="{{getCollectionItemUrl this}}" class="post-card-link">Read More →</a>
+        <a href="{{getCollectionItemUrl this}}" class="post-card-link" style="color: var(--color-primary); font-family: var(--font-text);">Read More →</a>
     </div>
 </article>

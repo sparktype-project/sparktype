@@ -132,7 +132,7 @@ export class MixedContentRenderer {
           <article class="collection-item border rounded-lg p-4 hover:shadow-md transition-shadow">
             <div class="item-content">
               <h3 class="item-title text-lg font-semibold mb-2">
-                <a href="${itemPath}" class="text-blue-600 hover:text-blue-800 no-underline">${item.frontmatter.title || 'Untitled'}</a>
+                <a href="${itemPath}" class="collection-item-link">${item.frontmatter.title || 'Untitled'}</a>
               </h3>
               ${formattedDate ? `
                 <time class="item-date text-sm text-gray-500 block mb-2" datetime="${displayDate}">

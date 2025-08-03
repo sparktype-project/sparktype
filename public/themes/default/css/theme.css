@@ -387,7 +387,7 @@ main > .container {
 
 /* Post card styles */
 .post-card {
-  background: white;
+  background: var(--color-background);
   border: 1px solid var(--color-border);
   border-radius: 8px;
   overflow: hidden;
@@ -416,12 +416,14 @@ main > .container {
   font-size: 1.25rem;
 }
 
-.post-card-title a {
+.post-card-title a,
+.post-card-title-link {
   color: var(--color-headings);
   text-decoration: none;
 }
 
-.post-card-title a:hover {
+.post-card-title a:hover,
+.post-card-title-link:hover {
   color: var(--color-primary);
 }
 
@@ -446,6 +448,17 @@ main > .container {
 }
 
 .post-card-link:hover {
+  text-decoration: underline;
+}
+
+/* Collection view item links */
+.collection-item-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.collection-item-link:hover {
   text-decoration: underline;
 }
 
@@ -488,7 +501,13 @@ main > .container {
 }
 /* Links inside prose content get an underline on hover */
 .prose a {
+  color: var(--color-primary);
   font-weight: 500;
+  text-decoration: none;
+}
+
+.prose a:hover {
+  text-decoration: underline;
 }
 
 /* --- Lists (Ordered and Unordered) --- */

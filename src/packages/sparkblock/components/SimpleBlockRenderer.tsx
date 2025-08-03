@@ -13,6 +13,7 @@ export interface SimpleBlockRendererProps {
   isEditing: boolean;
   readonly: boolean;
   onClick: () => void;
+  onDoubleClick?: () => void;
   onMarkdownUpdate: (markdown: string) => void;
   onBlur: () => void;
   onSave: () => void;
@@ -30,6 +31,7 @@ export function SimpleBlockRenderer({
   isEditing,
   readonly,
   onClick,
+  onDoubleClick,
   onMarkdownUpdate,
   onBlur,
   onSave,
@@ -118,6 +120,7 @@ export function SimpleBlockRenderer({
           const availableBlocks = await adapter.getAvailableBlocks();
           const definition = availableBlocks.find(b => b.id === block.type);
           if (definition) {
+            console.log('[Block Preview] Block definition loaded:', block.type);
             setBlockDefinition(definition);
           } else {
             console.warn('Block definition not found for:', block.type);
@@ -136,6 +139,8 @@ export function SimpleBlockRenderer({
       setFormData({ ...block.content, ...block.config });
     }
   }, [isEditing, block.content, block.config, block.type]);
+
+
 
   // Handle save button click
   const handleSave = useCallback(async () => {
@@ -173,9 +178,9 @@ export function SimpleBlockRenderer({
     onCancel();
   }, [block.content, block.config, onCancel]);
 
-  // Generic renderer for custom blocks in view mode
+  // Generic renderer for custom blocks in view mode - shows settings overview
   const renderCustomBlockSummary = useCallback(() => {
-    if (!blockDefinition) {
+    if (!blockDefinition || !adapter) {
       return (
         <div className="border border-gray-300 dark:border-gray-600 rounded-md p-4 my-2 bg-gray-50 dark:bg-gray-800">
           <div className="flex items-center gap-2">
@@ -189,6 +194,7 @@ export function SimpleBlockRenderer({
       );
     }
 
+    // Show settings summary
     const allData = { ...block.content, ...block.config };
     const displayName = blockDefinition.name || block.type.replace('core:', '').replace('_', ' ');
 
@@ -247,7 +253,7 @@ export function SimpleBlockRenderer({
         )}
       </div>
     );
-  }, [blockDefinition, block.content, block.config, block.type]);
+  }, [blockDefinition, block.content, block.config, block.type, adapter]);
 
   const renderContent = () => {
     // For custom blocks, show form if editing
@@ -401,15 +407,19 @@ export function SimpleBlockRenderer({
           }}
           className="min-h-[1.5em] border-none outline-none bg-transparent focus:outline-none dark:text-gray-100"
           ref={(element) => {
-            if (element && isEditing) {
+            if (element && isEditing && !element.textContent) {
+              // Only set initial content if the element is empty
               element.textContent = localContent || getEditingContent();
-              // Focus and select all text
+              // Focus and select all text on initial load
               element.focus();
               const range = document.createRange();
               range.selectNodeContents(element);
               const selection = window.getSelection();
               selection?.removeAllRanges();
               selection?.addRange(range);
+            } else if (element && isEditing && !element.matches(':focus')) {
+              // Only focus if not already focused
+              element.focus();
             }
           }}
         />
@@ -472,6 +482,7 @@ export function SimpleBlockRenderer({
       className={blockClasses}
       data-block-type={block.type}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
       {...attributes}
     >
       <div className="flex items-start gap-2">

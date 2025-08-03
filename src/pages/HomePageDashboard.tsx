@@ -152,21 +152,22 @@ export default function HomePageDashboard() {
         ) : (
           <div className="grid grid-cols-1 gap-6">
             {validSites.map((site: LocalSiteData) => (
-              <Link to={`/sites/${site.siteId}/view`} target="_blank" rel="noopener noreferrer" className='hover:cursor-pointer'>
-                <div key={site.siteId} className="hover:cursor-pointer bg-card border-b flex flex-row justify-between pb-6">
+              <div key={site.siteId} className="bg-card border-b flex flex-row justify-between pb-6">
+                <Link to={`/sites/${site.siteId}/view`} target="_blank" rel="noopener noreferrer" className='flex-1 hover:cursor-pointer group'>
                   <div className=''>
-                    <h2 className="text-2xl cursor-pointer font-bold text-card-foreground mb-2 truncate hover:underline" title={site.manifest.title}>
+                    <h2 className="text-2xl cursor-pointer font-bold text-card-foreground mb-2 truncate group-hover:underline" title={site.manifest.title}>
                       {site.manifest.title || "Untitled Site"}
                     </h2>
                     <p className="text-sm text-muted-foreground line-clamp-2" title={site.manifest.description}>
                       {site.manifest.description || 'No description provided.'}
                     </p>
                   </div>
-                  <div className=" flex flex-wrap justify-end gap-2">
-                    <Button variant="outline" size="sm" asChild>
-                      <Link to={`/sites/${site.siteId}/edit`}><Edit3 className="mr-2 h-4 w-4" /> Edit</Link>
-                    </Button>
-                    <DropdownMenu>
+                </Link>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to={`/sites/${site.siteId}/edit`}><Edit3 className="mr-2 h-4 w-4" /> Edit</Link>
+                  </Button>
+                  <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm"><MoreVertical className="h-4 w-4" /></Button>
                       </DropdownMenuTrigger>
@@ -201,9 +202,8 @@ export default function HomePageDashboard() {
                         </AlertDialog>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </div>
                 </div>
-              </Link>
+              </div>
 
             ))}
           </div>

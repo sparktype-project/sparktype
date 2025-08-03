@@ -24,14 +24,20 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
   getSiteById: (siteId) => get().sites.find(s => s.siteId === siteId),
 
   initializeSites: async () => {
-    // ... (this function is correct, no changes needed)
     try {
+      console.log('[initializeSites] Loading all site manifests...');
       const manifests = await localSiteFs.loadAllSiteManifests();
+      console.log('[initializeSites] Found manifests:', manifests.map(m => m.siteId));
+      
       const initialSites: LocalSiteData[] = manifests.map(manifest => ({
         siteId: manifest.siteId,
         manifest: manifest,
       }));
       set({ sites: initialSites });
+      
+      if (initialSites.length === 0) {
+        console.log('[initializeSites] No sites found - storage may have been cleared');
+      }
     } catch (error) {
       console.error("Failed to initialize sites from storage:", error);
       toast.error("Could not load your sites. Storage might be corrupted.");
@@ -49,9 +55,14 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
     set(produce(draft => { draft.loadingSites.add(siteId); }));
 
     try {
+      console.log(`[loadSite] Loading site data for: ${siteId}`);
       const rawManifest = await localSiteFs.getManifestById(siteId);
-      if (!rawManifest) throw new Error(`Failed to load manifest for siteId: ${siteId}`);
+      if (!rawManifest) {
+        console.error(`[loadSite] No manifest found for siteId: ${siteId}`);
+        throw new Error(`Failed to load manifest for siteId: ${siteId}`);
+      }
       
+      console.log(`[loadSite] Manifest loaded for: ${siteId}`, rawManifest);
       const manifest = rawManifest;
       
       const [contentFiles, layoutFiles, themeFiles, secrets] = await Promise.all([
@@ -90,8 +101,19 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
       // Migration system available if needed in the future
       // Currently no automatic migrations are required
     } catch (error) {
-      toast.error(`Could not load site data for ID: ${siteId}`);
       console.error(`[AppStore.loadSite] Error during load for ${siteId}:`, error);
+      
+      // Check if this is a missing site (corrupted storage)
+      if (error instanceof Error && error.message.includes('Failed to load manifest')) {
+        toast.error(`Site data missing for ID: ${siteId}. Storage may have been cleared. Please create a new site or restore from backup.`);
+        
+        // Remove the site from the sites list since it's corrupted
+        set(produce((draft: SiteSlice) => {
+          draft.sites = draft.sites.filter(s => s.siteId !== siteId);
+        }));
+      } else {
+        toast.error(`Could not load site data for ID: ${siteId}`);
+      }
     } finally {
       set(produce(draft => { draft.loadingSites.delete(siteId); }));
     }
