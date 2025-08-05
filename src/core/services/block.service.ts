@@ -37,19 +37,24 @@ export async function loadBlockManifest(
     return blockManifestCache.get(blockInfo.id)!;
   }
 
-  // This call now correctly delegates to the refactored helper,
-  // which knows how to load from either public assets or the new assetStorage service.
-  const manifest = await configHelpers.getJsonAsset<BlockManifest>(
-    { siteId },
-    'block',
-    blockInfo.path,
-    'block.json'
-  );
+  try {
+    // This call now correctly delegates to the refactored helper,
+    // which knows how to load from either public assets or the new assetStorage service.
+    const manifest = await configHelpers.getJsonAsset<BlockManifest>(
+      { siteId },
+      'block',
+      blockInfo.path,
+      'block.json'
+    );
 
-  if (manifest) {
-    blockManifestCache.set(blockInfo.id, manifest);
+    if (manifest) {
+      blockManifestCache.set(blockInfo.id, manifest);
+    }
+    return manifest;
+  } catch (error) {
+    console.warn(`Failed to load block manifest for ${blockInfo.id}:`, error);
+    return null;
   }
-  return manifest;
 }
 
 /**

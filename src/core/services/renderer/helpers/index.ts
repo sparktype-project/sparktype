@@ -16,7 +16,7 @@ import { renderLayoutHelper } from './renderLayout.helper';
 import { renderItemHelper } from './renderItem.helper';
 import { renderCollectionHelper } from './renderCollection.helper';
 import { themeDataHelper, rawThemeDataHelper } from './themeData.helper';
-import { renderBlocksHelper } from './render_blocks.helper';
+// render_blocks.helper removed - BlockNote handles this natively
 import { collectionViewHelper } from './collectionView.helper';
 
 export const coreHelpers: SparktypeHelper[] = [
@@ -36,6 +36,6 @@ export const coreHelpers: SparktypeHelper[] = [
   renderLayoutHelper,
   themeDataHelper,
   rawThemeDataHelper,
-  renderBlocksHelper,
+  // renderBlocksHelper removed - BlockNote handles this natively
   collectionViewHelper
 ];

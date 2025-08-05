@@ -300,6 +300,8 @@ export interface MarkdownFrontmatter {
   layoutConfig?: LayoutConfig; // Collection layout configuration
   homepage?: boolean;
   tags?: Record<string, string[]>; // groupId -> array of tag IDs
+  // BlockNote blocks stored directly in frontmatter
+  blocknoteBlocks?: import('@blocknote/core').Block[];
   [key: string]: unknown;
 }
 
@@ -311,6 +313,9 @@ export interface ParsedMarkdownFile {
   path: string;
   frontmatter: MarkdownFrontmatter;
   content: string;
+  // BlockNote blocks stored directly in frontmatter
+  blocknoteBlocks?: import('@blocknote/core').Block[];
+  // Legacy support - will be removed
   hasBlocks?: boolean;
   blocks?: Block[];
 }
@@ -383,6 +388,7 @@ export interface LocalSiteData {
   layoutFiles?: RawFile[];
   themeFiles?: RawFile[];
   dataFiles?: Record<string, string>; // Added for storing data like categories.json
+  blocks?: BlockInfo[]; // Available blocks from manifest.blocks
   secrets?: SiteSecrets;
 }
 

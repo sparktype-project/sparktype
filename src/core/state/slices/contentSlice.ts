@@ -10,8 +10,7 @@ import * as localSiteFs from '@/core/services/localFileSystem.service';
 import { saveContentFile } from '@/core/services/localFileSystem.service';
 import { findAndRemoveNode, updatePathsRecursively, findNodeByPath } from '@/core/services/fileTree.service';
 import { getCollections } from '@/core/services/collections.service';
-import { stringifyToMarkdown, parseMarkdownString, stringifyToMarkdownAsync } from '@/core/libraries/markdownParser';
-import { DEFAULT_BLOCKS } from '@/config/defaultBlocks';
+import { stringifyToMarkdown, parseMarkdownString } from '@/core/libraries/markdownParser';
 import { type SiteSlice } from '@/core/state/slices/siteSlice';
 import { createTagGroup, updateTagGroup, deleteTagGroup, getTagGroups, getTagGroupsForCollection } from '@/core/services/tagGroups.service';
 import { createTag, updateTag, deleteTag, getTags, getTagsInGroup } from '@/core/services/tags.service';
@@ -95,7 +94,7 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
         manifest: site.manifest,
         availableBlocks: DEFAULT_BLOCKS
       };
-      markdownContent = await stringifyToMarkdownAsync(savedFile.frontmatter, savedFile.content, savedFile.blocks, serializationOptions);
+      markdownContent = stringifyToMarkdown(savedFile.frontmatter, savedFile.content);
     } else {
       // Use legacy serialization for content without blocks
       markdownContent = stringifyToMarkdown(savedFile.frontmatter, savedFile.content);
