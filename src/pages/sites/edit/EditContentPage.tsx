@@ -16,11 +16,33 @@ import { FilePlus, Loader2 } from 'lucide-react';
 import ThreeColumnLayout from '@/core/components/layout/ThreeColumnLayout';
 import LeftSidebar from '@/features/editor/components/LeftSidebar';
 import NewPageDialog from '@/features/editor/components/NewPageDialog';
-// import CreateCollectionPageDialog from '@/features/editor/components/CreateCollectionPageDialog';
-import BlocknoteEditor, { type BlocknoteEditorRef } from '@/features/editor/components/Editor';
+
+import type { Value } from 'platejs';
+ 
+import {
+  BlockquotePlugin,
+  BoldPlugin,
+  H1Plugin,
+  H2Plugin,
+  H3Plugin,
+  ItalicPlugin,
+  UnderlinePlugin,
+} from '@platejs/basic-nodes/react';
+import { BlockquoteElement } from '@/components/ui/blockquote-node';
+import { H1Element, H2Element, H3Element } from '@/components/ui/heading-node';
+import { ToolbarButton } from '@/components/ui/toolbar'; // Generic toolbar button
+
+import {
+  Plate,
+  usePlateEditor,
+} from 'platejs/react';
+ 
+import { Editor, EditorContainer } from '@/components/ui/editor';
+import { FixedToolbar } from '@/components/ui/fixed-toolbar';
+import { MarkToolbarButton } from '@/components/ui/mark-toolbar-button';
+
 import FrontmatterSidebar from '@/features/editor/components/FrontmatterSidebar';
 import PrimaryContentFields from '@/features/editor/components/PrimaryContentFields';
-import CollectionItemList from '@/features/editor/components/CollectionItemList';
 import SaveButton from '@/features/editor/components/SaveButton';
 
 // Modular Hooks
@@ -40,12 +62,30 @@ function EditorLoadingSkeleton({ message = "Loading Editor..." }: { message?: st
   );
 }
 
+const initialValue: Value = [
+  {
+    children: [{ text: 'Title' }],
+    type: 'h3',
+  },
+  {
+    children: [{ text: 'This is a quote.' }],
+    type: 'blockquote',
+  },
+  {
+    children: [
+      { text: 'With some ' },
+      { bold: true, text: 'bold' },
+      { text: ' text for emphasis!' },
+    ],
+    type: 'p',
+  },
+];
+
 /**
  * The internal component that contains the core editor logic and UI.
  * It's wrapped by EditorProvider so it can use the useEditor() hook.
  */
 function EditContentPageInternal() {
-  const editorRef = useRef<BlocknoteEditorRef>(null);
 
   // --- 1. Get Data and Identifiers ---
   const { siteId = '' } = useParams<{ siteId: string }>();
@@ -57,6 +97,19 @@ function EditContentPageInternal() {
   const { isNewFileMode, filePath } = usePageIdentifier({ siteStructure, allContentFiles });
   const { status, frontmatter, initialBlocks, slug, setSlug, handleFrontmatterChange, onContentModified } = useFileContent(siteId, filePath, isNewFileMode);
   const { handleDelete } = useFilePersistence({ siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent: () => editorRef.current?.getBlocks() ?? [] });
+
+ const editor = usePlateEditor({
+    plugins: [
+      BoldPlugin,
+      ItalicPlugin,
+      UnderlinePlugin,
+      H1Plugin.withComponent(H1Element),
+      H2Plugin.withComponent(H2Element),
+      H3Plugin.withComponent(H3Element),
+      BlockquotePlugin.withComponent(BlockquoteElement),
+    ],
+    value: initialValue,
+  });
 
   // --- 2. Manage Sidebars via UI Store ---
   const { leftSidebarContent, rightSidebarContent, setLeftAvailable, setRightAvailable, setLeftSidebarContent, setRightSidebarContent } = useUIStore(state => state.sidebar);
@@ -128,7 +181,6 @@ function EditContentPageInternal() {
             <p className="text-muted-foreground mb-6 max-w-md">Your site is empty. The first page you create will become the site's permanent homepage.</p>
             <div className="flex gap-4">
               <NewPageDialog siteId={siteId}><Button size="lg"><FilePlus className="mr-2 h-5 w-5" /> Create Content Page</Button></NewPageDialog>
-              {/* <CreateCollectionPageDialog siteId={siteId}><Button size="lg" variant="outline"><LayoutGrid className="mr-2 h-5 w-5" /> Create Collection Page</Button></CreateCollectionPageDialog> */}
             </div>
           </div>
         ) : (
@@ -146,28 +198,29 @@ function EditContentPageInternal() {
                     <PrimaryContentFields 
                       frontmatter={{ 
                         title: frontmatter.title, 
-                        // FIX #2: Add a type assertion to safely pass the description.
-                        // We know it's a string from the schema, so this is safe.
+           
                         description: frontmatter.description as string | undefined
                       }} 
                       onFrontmatterChange={handleFrontmatterChange as (newData: Partial<MarkdownFrontmatter>) => void} 
                     />
                   </div>
                   <div className="mt-6 flex-grow min-h-0">
-                    {isCollectionPage ? (
-                      <CollectionItemList siteId={siteId} collectionPagePath={filePath} />
-                    ) : (
-                      <BlocknoteEditor 
-                        ref={editorRef} 
-                        key={filePath} 
-                        initialContent={initialBlocks} 
-                        onContentChange={onContentModified}
-                        siteData={site}
-                        currentPage={site?.contentFiles?.find(f => f.path === filePath) || null}
-                        siteId={siteId}
-                        filePath={filePath}
-                      />
-                    )}
+                   <Plate editor={editor}>
+      <FixedToolbar className="flex justify-start gap-1 rounded-t-lg">
+        {/* Element Toolbar Buttons */}
+        <ToolbarButton onClick={() => editor.tf.h1.toggle()}>H1</ToolbarButton>
+        <ToolbarButton onClick={() => editor.tf.h2.toggle()}>H2</ToolbarButton>
+        <ToolbarButton onClick={() => editor.tf.h3.toggle()}>H3</ToolbarButton>
+        <ToolbarButton onClick={() => editor.tf.blockquote.toggle()}>Quote</ToolbarButton>
+        {/* Mark Toolbar Buttons */}
+        <MarkToolbarButton nodeType="bold" tooltip="Bold (⌘+B)">B</MarkToolbarButton>
+        <MarkToolbarButton nodeType="italic" tooltip="Italic (⌘+I)">I</MarkToolbarButton>
+        <MarkToolbarButton nodeType="underline" tooltip="Underline (⌘+U)">U</MarkToolbarButton>
+      </FixedToolbar>
+      <EditorContainer>
+        <Editor placeholder="Type your amazing content here..." />
+      </EditorContainer>
+    </Plate>
                   </div>
                 </div>
               </div>
