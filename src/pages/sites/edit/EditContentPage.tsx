@@ -1,6 +1,6 @@
 // src/pages/sites/edit/EditContentPage.tsx
 
-import { useMemo, useEffect, useRef, useCallback } from 'react';
+import { useMemo, useEffect, useRef, useCallback, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
 // Global State and UI Management
@@ -18,28 +18,8 @@ import LeftSidebar from '@/features/editor/components/LeftSidebar';
 import NewPageDialog from '@/features/editor/components/NewPageDialog';
 
 import type { Value } from 'platejs';
- 
-import {
-  BlockquotePlugin,
-  BoldPlugin,
-  H1Plugin,
-  H2Plugin,
-  H3Plugin,
-  ItalicPlugin,
-  UnderlinePlugin,
-} from '@platejs/basic-nodes/react';
-import { BlockquoteElement } from '@/components/ui/blockquote-node';
-import { H1Element, H2Element, H3Element } from '@/components/ui/heading-node';
-import { ToolbarButton } from '@/components/ui/toolbar'; // Generic toolbar button
-
-import {
-  Plate,
-  usePlateEditor,
-} from 'platejs/react';
- 
-import { Editor, EditorContainer } from '@/components/ui/editor';
-import { FixedToolbar } from '@/components/ui/fixed-toolbar';
-import { MarkToolbarButton } from '@/components/ui/mark-toolbar-button';
+import { PlateEditor, type PlateEditorRef } from '@/components/editor/PlateEditor';
+import AutosaveIndicator from '@/features/editor/components/AutosaveIndicator';
 
 import FrontmatterSidebar from '@/features/editor/components/FrontmatterSidebar';
 import PrimaryContentFields from '@/features/editor/components/PrimaryContentFields';
@@ -62,21 +42,9 @@ function EditorLoadingSkeleton({ message = "Loading Editor..." }: { message?: st
   );
 }
 
-const initialValue: Value = [
+const defaultInitialValue: Value = [
   {
-    children: [{ text: 'Title' }],
-    type: 'h3',
-  },
-  {
-    children: [{ text: 'This is a quote.' }],
-    type: 'blockquote',
-  },
-  {
-    children: [
-      { text: 'With some ' },
-      { bold: true, text: 'bold' },
-      { text: ' text for emphasis!' },
-    ],
+    children: [{ text: '' }],
     type: 'p',
   },
 ];
@@ -95,29 +63,49 @@ function EditContentPageInternal() {
   const allContentFiles = useMemo(() => site?.contentFiles || [], [site?.contentFiles]);
   
   const { isNewFileMode, filePath } = usePageIdentifier({ siteStructure, allContentFiles });
-  const { status, frontmatter, initialBlocks, slug, setSlug, handleFrontmatterChange, onContentModified } = useFileContent(siteId, filePath, isNewFileMode);
-  const { handleDelete } = useFilePersistence({ siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent: () => editorRef.current?.getBlocks() ?? [] });
-
- const editor = usePlateEditor({
-    plugins: [
-      BoldPlugin,
-      ItalicPlugin,
-      UnderlinePlugin,
-      H1Plugin.withComponent(H1Element),
-      H2Plugin.withComponent(H2Element),
-      H3Plugin.withComponent(H3Element),
-      BlockquotePlugin.withComponent(BlockquoteElement),
-    ],
-    value: initialValue,
+  const { status, frontmatter, slug, setSlug, handleFrontmatterChange, onContentModified } = useFileContent(siteId, filePath, isNewFileMode);
+  const editorRef = useRef<PlateEditorRef>(null);
+  const [editorValue, setEditorValue] = useState<Value>(defaultInitialValue);
+  
+  const { handleDelete, autosaveState } = useFilePersistence({ 
+    siteId, 
+    filePath, 
+    isNewFileMode, 
+    frontmatter, 
+    slug, 
+    getEditorContent: () => editorRef.current?.getMarkdown() ?? '' 
   });
+
+  // Load initial content when file data is ready
+  useEffect(() => {
+    if (status === 'ready' && !isNewFileMode) {
+      // Load content from markdown if available
+      const site = useAppStore.getState().getSiteById(siteId);
+      const fileData = site?.contentFiles?.find(f => f.path === filePath);
+      
+      if (fileData?.content && editorRef.current) {
+        // Try to load from markdown content
+        const contentToLoad = fileData.content.replace('<!-- Content managed by BlockNote editor -->', '').trim();
+        
+        console.log('Loading content into editor:', contentToLoad.substring(0, 200));
+        
+        if (contentToLoad) {
+          editorRef.current.setMarkdown(contentToLoad);
+        }
+      }
+    }
+  }, [status, siteId, filePath, isNewFileMode]);
 
   // --- 2. Manage Sidebars via UI Store ---
   const { leftSidebarContent, rightSidebarContent, setLeftAvailable, setRightAvailable, setLeftSidebarContent, setRightSidebarContent } = useUIStore(state => state.sidebar);
 
+  // Extract stable references to prevent re-renders on content file changes
+  const siteManifest = useMemo(() => site?.manifest, [site?.manifest]);
+  const layoutFiles = useMemo(() => site?.layoutFiles, [site?.layoutFiles]);
+  const themeFiles = useMemo(() => site?.themeFiles, [site?.themeFiles]);
+
   const rightSidebarComponent = useMemo(() => {
-    // FIX #1: Add a guard for `site` itself. This narrows the type of `site`
-    // for all subsequent accesses (e.g., `site.manifest`), resolving the errors.
-    if (status !== 'ready' || !frontmatter || !siteId || !site) {
+    if (status !== 'ready' || !frontmatter || !siteId || !siteManifest) {
       return null;
     }
     
@@ -125,9 +113,9 @@ function EditContentPageInternal() {
       <FrontmatterSidebar
         siteId={siteId}
         filePath={filePath}
-        manifest={site.manifest}
-        layoutFiles={site.layoutFiles}
-        themeFiles={site.themeFiles}
+        manifest={siteManifest}
+        layoutFiles={layoutFiles}
+        themeFiles={themeFiles}
         allContentFiles={allContentFiles}
         frontmatter={frontmatter}
         onFrontmatterChange={handleFrontmatterChange}
@@ -137,7 +125,7 @@ function EditContentPageInternal() {
         onDelete={handleDelete}
       />
     );
-  }, [status, frontmatter, site, siteId, filePath, allContentFiles, handleFrontmatterChange, isNewFileMode, slug, setSlug, handleDelete]);
+  }, [status, frontmatter, siteManifest, layoutFiles, themeFiles, siteId, filePath, allContentFiles, handleFrontmatterChange, isNewFileMode, slug, setSlug, handleDelete]);
 
   useEffect(() => {
     setLeftAvailable(true);
@@ -164,7 +152,14 @@ function EditContentPageInternal() {
     ? `Editing: ${frontmatter.title} | ${site?.manifest.title || 'Sparktype'}` 
     : `Editor - ${site?.manifest.title || 'Sparktype'}`;
 
-  const headerActions = isSiteEmpty ? null : <SaveButton />;
+  const headerActions = isSiteEmpty ? null : (
+    <div className="flex items-center gap-3">
+      <AutosaveIndicator 
+        state={autosaveState} 
+      />
+      <SaveButton />
+    </div>
+  );
 
   // --- 4. Render the UI ---
   return (
@@ -205,22 +200,16 @@ function EditContentPageInternal() {
                     />
                   </div>
                   <div className="mt-6 flex-grow min-h-0">
-                   <Plate editor={editor}>
-      <FixedToolbar className="flex justify-start gap-1 rounded-t-lg">
-        {/* Element Toolbar Buttons */}
-        <ToolbarButton onClick={() => editor.tf.h1.toggle()}>H1</ToolbarButton>
-        <ToolbarButton onClick={() => editor.tf.h2.toggle()}>H2</ToolbarButton>
-        <ToolbarButton onClick={() => editor.tf.h3.toggle()}>H3</ToolbarButton>
-        <ToolbarButton onClick={() => editor.tf.blockquote.toggle()}>Quote</ToolbarButton>
-        {/* Mark Toolbar Buttons */}
-        <MarkToolbarButton nodeType="bold" tooltip="Bold (⌘+B)">B</MarkToolbarButton>
-        <MarkToolbarButton nodeType="italic" tooltip="Italic (⌘+I)">I</MarkToolbarButton>
-        <MarkToolbarButton nodeType="underline" tooltip="Underline (⌘+U)">U</MarkToolbarButton>
-      </FixedToolbar>
-      <EditorContainer>
-        <Editor placeholder="Type your amazing content here..." />
-      </EditorContainer>
-    </Plate>
+                    <PlateEditor 
+                      ref={editorRef}
+                      initialValue={editorValue}
+                      onContentChange={(value) => {
+                        setEditorValue(value);
+                        onContentModified();
+                      }}
+                      placeholder="Type your amazing content here..."
+                      siteId={siteId}
+                    />
                   </div>
                 </div>
               </div>

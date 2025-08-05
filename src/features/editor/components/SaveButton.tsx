@@ -13,7 +13,7 @@ import { Save, Check, Loader2 } from 'lucide-react';
  * as it relies on the `useEditor` hook for its state and actions.
  */
 export default function SaveButton() {
-  const { saveState, hasUnsavedChanges, triggerSave } = useEditor();
+  const { saveState, hasUnsavedChangesSinceManualSave, triggerSave } = useEditor();
 
   // Define the visual states for the button
   const buttonStates = {
@@ -38,7 +38,7 @@ export default function SaveButton() {
   if (saveState === 'saving') {
     currentDisplayState = 'saving';
     isDisabled = true;
-  } else if (hasUnsavedChanges) {
+  } else if (hasUnsavedChangesSinceManualSave) {
     currentDisplayState = 'idle';
     isDisabled = false;
   } else {

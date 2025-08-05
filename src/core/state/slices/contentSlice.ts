@@ -58,7 +58,7 @@ export interface ContentSlice {
   addOrUpdateContentFile: (siteId: string, filePath: string, rawMarkdownContent: string) => Promise<boolean>;
   deleteContentFileAndState: (siteId: string, filePath: string) => Promise<void>;
   repositionNode: (siteId: string, activeNodePath: string, newParentPath: string | null, newIndex: number) => Promise<void>;
-  updateContentFileOnly: (siteId: string, savedFile: ParsedMarkdownFile) => Promise<void>;
+  updateContentFileOnly: (siteId: string, savedFile: ParsedMarkdownFile, silent?: boolean) => Promise<void>;
   setAsHomepage: (siteId: string, filePath: string) => Promise<void>;
   
   // Tag Group operations
@@ -76,7 +76,7 @@ export interface ContentSlice {
 
 export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], ContentSlice> = (set, get) => ({
   
-  updateContentFileOnly: async (siteId, savedFile) => {
+  updateContentFileOnly: async (siteId, savedFile, silent = false) => {
     if (!savedFile) {
       console.error('SavedFile is undefined in updateContentFileOnly');
       return;
@@ -86,21 +86,16 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
     const site = get().getSiteById(siteId);
     let markdownContent: string;
     
-    // Check if this file has blocks and use appropriate serialization
-    if (savedFile.blocks && savedFile.blocks.length > 0 && site?.manifest) {
-      // Use directive serialization for blocks
-      const serializationOptions = {
-        useDirectives: true,
-        manifest: site.manifest,
-        availableBlocks: DEFAULT_BLOCKS
-      };
-      markdownContent = stringifyToMarkdown(savedFile.frontmatter, savedFile.content);
-    } else {
-      // Use legacy serialization for content without blocks
-      markdownContent = stringifyToMarkdown(savedFile.frontmatter, savedFile.content);
-    }
+    // Serialize to markdown (blocks are empty in our current implementation)
+    markdownContent = stringifyToMarkdown(savedFile.frontmatter, savedFile.content);
     
     await localSiteFs.saveContentFile(siteId, savedFile.path, markdownContent);
+
+    // If silent mode (for autosave), skip state updates to prevent re-renders
+    if (silent) {
+      console.log('Silent mode: Skipping state updates to prevent re-renders');
+      return;
+    }
 
     set(produce((draft: SiteSlice) => {
       const siteToUpdate = draft.sites.find(s => s.siteId === siteId);

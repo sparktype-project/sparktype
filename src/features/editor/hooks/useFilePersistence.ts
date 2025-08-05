@@ -1,6 +1,6 @@
 // src/features/editor/hooks/useFilePersistence.ts
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate from react-router-dom
 import { useAppStore } from '@/core/state/useAppStore';
 import { useEditor } from '@/features/editor/contexts/useEditor';
@@ -11,7 +11,9 @@ import { useUnloadPrompt } from './useUnloadPrompt';
 
 // Type imports
 import { type MarkdownFrontmatter } from '@/core/types';
-import type { Block } from '@blocknote/core';
+
+// Autosave state type
+type AutosaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 interface PersistenceParams {
   siteId: string;
@@ -19,7 +21,7 @@ interface PersistenceParams {
   isNewFileMode: boolean;
   frontmatter: MarkdownFrontmatter | null;
   slug: string;
-  getEditorContent: () => Block[];
+  getEditorContent: () => string;
 }
 
 export function useFilePersistence({
@@ -28,32 +30,42 @@ export function useFilePersistence({
   // Use the navigate hook from react-router-dom
   const navigate = useNavigate(); 
   
+  // Local autosave state - separate from shared editor context
+  const [autosaveState, setAutosaveState] = useState<AutosaveState>('idle');
+  
   // These app state interactions do not need to change
   const { addOrUpdateContentFile, updateContentFileOnly, deleteContentFileAndState, getSiteById } = useAppStore.getState();
   const { hasUnsavedChanges, setHasUnsavedChanges, setSaveState, registerSaveAction } = useEditor();
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Silent autosave that doesn't trigger full re-renders
+  // Autosave that updates state properly but doesn't trigger re-renders
   const handleAutosave = useCallback(async () => {
     if (!frontmatter) return;
     if (!frontmatter.title.trim()) return; // Don't autosave without title
     
-    const blocks = getEditorContent();
-    
-    // Create the file object for updateContentFileOnly
-    const fileToUpdate = {
-      path: filePath,
-      frontmatter: {
-        ...frontmatter,
-        blocknoteBlocks: blocks
-      },
-      content: '<!-- Content managed by BlockNote editor -->',
-      slug: frontmatter.title ? frontmatter.title.toLowerCase().replace(/\s+/g, '-') : '',
-      blocks: [] // Legacy blocks field (empty for BlockNote content)
-    };
-    
-    await updateContentFileOnly(siteId, fileToUpdate);
-    console.log('Silent autosave completed for:', filePath);
+    try {
+      setAutosaveState('saving');
+      
+      const markdownContent = getEditorContent();
+      
+      // Create the file object for updateContentFileOnly
+      const fileToUpdate = {
+        path: filePath,
+        frontmatter: frontmatter,
+        content: markdownContent,
+        slug: frontmatter.title ? frontmatter.title.toLowerCase().replace(/\s+/g, '-') : '',
+        blocks: [] // Legacy blocks field (empty)
+      };
+      
+      await updateContentFileOnly(siteId, fileToUpdate, true); // Silent mode for autosave
+      
+      setAutosaveState('saved');
+      
+    } catch (error) {
+      console.error('Autosave failed:', error);
+      setAutosaveState('error');
+      setTimeout(() => setAutosaveState('idle'), 3000);
+    }
   }, [siteId, filePath, frontmatter, getEditorContent, updateContentFileOnly]);
 
   const handleSave = useCallback(async () => {
@@ -61,21 +73,12 @@ export function useFilePersistence({
     if (!frontmatter) throw new Error("Frontmatter not ready for saving.");
     if (!frontmatter.title.trim()) throw new Error("A title is required before saving.");
 
-    // Get BlockNote blocks and store them directly in frontmatter
-    const blocks = getEditorContent();
-    console.log('useFilePersistence - saving blocks to filePath:', filePath, 'isNewFileMode:', isNewFileMode, 'blocks:', blocks.length);
+    const markdownContent = getEditorContent();
+    console.log('useFilePersistence - saving markdown to filePath:', filePath, 'isNewFileMode:', isNewFileMode, 'content length:', markdownContent.length);
     
-    // Store blocks directly in frontmatter (new format)
-    const updatedFrontmatter = {
-      ...frontmatter,
-      blocknoteBlocks: blocks
-    };
+    const rawMarkdown = stringifyToMarkdown(frontmatter, markdownContent);
     
-    // Generate minimal markdown content (can be empty or just a placeholder)
-    const markdownBody = '<!-- Content managed by BlockNote editor -->';
-    const rawMarkdown = stringifyToMarkdown(updatedFrontmatter, markdownBody);
-    
-    console.log('Serialized markdown with BlockNote blocks in frontmatter for file:', filePath);
+    console.log('Serialized markdown for file:', filePath);
     
     if (isNewFileMode) {
       // --- CREATION LOGIC (First Save) ---
@@ -122,28 +125,34 @@ export function useFilePersistence({
     registerSaveAction(handleSave);
   }, [handleSave, registerSaveAction]);
 
-  // This effect handles the autosave logic using silent autosave
+  // Reset autosave state when new changes are detected
+  useEffect(() => {
+    if (hasUnsavedChanges && autosaveState === 'saved') {
+      setAutosaveState('idle');
+    }
+  }, [hasUnsavedChanges, autosaveState]);
+
+  // This effect handles the autosave logic - SILENTLY without UI state changes
   useEffect(() => {
     if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
+    
     if (hasUnsavedChanges && !isNewFileMode) {
       autosaveTimeoutRef.current = setTimeout(async () => {
-        setSaveState('saving');
         try {
-          await handleAutosave(); // Use silent autosave instead of full save
-          setHasUnsavedChanges(false);
-          setSaveState('saved');
-          setTimeout(() => setSaveState('no_changes'), 2000);
+          await handleAutosave();
         } catch (error) { 
-            console.error("Autosave failed:", error); 
-            setSaveState('idle'); 
+          console.error("Autosave failed:", error); 
         }
       }, AUTOSAVE_DELAY);
     }
     return () => { if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current); };
-  }, [hasUnsavedChanges, isNewFileMode, handleAutosave, setSaveState, setHasUnsavedChanges]);
+  }, [hasUnsavedChanges, isNewFileMode, handleAutosave]);
 
   // This hook handles the "Are you sure you want to leave?" prompt. No changes needed.
   useUnloadPrompt(hasUnsavedChanges);
 
-  return { handleDelete };
+  return { 
+    handleDelete,
+    autosaveState
+  };
 }

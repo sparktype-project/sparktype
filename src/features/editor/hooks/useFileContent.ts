@@ -9,8 +9,6 @@ import { slugify } from '@/core/libraries/utils';
 import { toast } from 'sonner';
 import { type MarkdownFrontmatter } from '@/core/types';
 import { DEFAULT_PAGE_LAYOUT_PATH } from '@/config/editorConfig';
-import { BlockNoteEditor } from '@blocknote/core';
-import type { Block } from '@blocknote/core';
 
 /**
  * Manages the content state for the editor.
@@ -34,22 +32,16 @@ interface PageFrontmatter extends MarkdownFrontmatter { menuTitle?: string; }
 export function useFileContent(siteId: string, filePath: string, isNewFileMode: boolean) {
   const navigate = useNavigate(); // <--- Use the navigate hook
   const site = useAppStore(state => state.getSiteById(siteId));
-  const { setHasUnsavedChanges } = useEditor();
+  const { setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave } = useEditor();
 
   const [status, setStatus] = useState<FileStatus>('initializing');
   const [frontmatter, setFrontmatter] = useState<PageFrontmatter | null>(null);
   const [slug, setSlug] = useState('');
-  const [initialBlocks, setInitialBlocks] = useState<Block[]>([]);
-  const [hasLoadedInitialBlocks, setHasLoadedInitialBlocks] = useState(false);
-
-  // Reset initial blocks flag when file changes
-  useEffect(() => {
-    setHasLoadedInitialBlocks(false);
-  }, [filePath]);
+  // Remove BlockNote-specific state since we're using Plate now
 
   useEffect(() => {
     const loadData = async () => {
-      console.log('useFileContent - loadData called for filePath:', filePath, 'isNewFileMode:', isNewFileMode, 'hasLoadedInitialBlocks:', hasLoadedInitialBlocks);
+      console.log('useFileContent - loadData called for filePath:', filePath, 'isNewFileMode:', isNewFileMode);
       if (!filePath) {
         console.log('useFileContent - no filePath, setting loading status');
         setStatus('loading');
@@ -106,84 +98,23 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         setSlug(fileData.slug);
       }
 
-      // Set status to converting before markdown conversion
-      setStatus('converting');
-      
-      // Check if we have BlockNote blocks in frontmatter (new format)
-      if (!isNewFileMode && fileData && fileData.frontmatter.blocknoteBlocks) {
-        console.log('useFileContent - found BlockNote blocks in frontmatter:', fileData.frontmatter.blocknoteBlocks.length, 'blocks');
-        
-        // Validate blocks against available block types - filter out invalid ones
-        const validBlocks = fileData.frontmatter.blocknoteBlocks.filter((block: any) => {
-          // Allow default BlockNote block types
-          const defaultTypes = ['paragraph', 'heading', 'bulletListItem', 'numberedListItem', 'checkListItem', 'table', 'image', 'video', 'audio', 'file'];
-          if (defaultTypes.includes(block.type)) {
-            return true;
-          }
-          
-          // For now, skip custom blocks until schema is fully loaded
-          console.log(`useFileContent - skipping custom block type: ${block.type}`);
-          return false;
-        });
-        
-        console.log('useFileContent - using valid blocks:', validBlocks.length, 'of', fileData.frontmatter.blocknoteBlocks.length);
-        
-        // Only set initial blocks if we haven't loaded them yet for this file
-        if (!hasLoadedInitialBlocks) {
-          setInitialBlocks(validBlocks.length > 0 ? validBlocks : []);
-          setHasLoadedInitialBlocks(true);
-          console.log('useFileContent - set initial blocks for first time');
-        } else {
-          console.log('useFileContent - skipping initial blocks update (already loaded)');
-        }
-        setStatus('ready');
-      } else {
-        // Legacy: Convert markdown to BlockNote blocks
-        try {
-          // Only convert and set initial blocks if we haven't loaded them yet for this file
-          if (!hasLoadedInitialBlocks) {
-            const editor = BlockNoteEditor.create();
-            const blocks = await editor.tryParseMarkdownToBlocks(markdownContent);
-            console.log('useFileContent - converted markdown to blocks:', blocks.length, 'blocks');
-            setInitialBlocks(blocks);
-            setHasLoadedInitialBlocks(true);
-            console.log('useFileContent - set initial blocks from markdown conversion');
-          } else {
-            console.log('useFileContent - skipping markdown conversion (already loaded)');
-          }
-          setStatus('ready');
-        } catch (error) {
-          console.error('useFileContent - error converting markdown to blocks:', error);
-          // Fallback to empty paragraph if parsing fails
-          if (!hasLoadedInitialBlocks) {
-            setInitialBlocks([{
-            id: '1',
-            type: 'paragraph',
-            props: {
-              backgroundColor: 'default',
-              textColor: 'default',
-              textAlignment: 'left'
-            },
-            content: [{ type: 'text', text: markdownContent, styles: {} }],
-            children: []
-          } as any]);
-            setHasLoadedInitialBlocks(true);
-          }
-          setStatus('ready');
-        }
-      }
+      // Content is ready - no conversion needed for Plate editor
+      console.log('useFileContent - content ready for Plate editor');
+      setStatus('ready');
       
       setHasUnsavedChanges(false);
+      setHasUnsavedChangesSinceManualSave(false);
     };
 
     loadData();
     
-  }, [site, filePath, isNewFileMode, siteId, navigate, setHasUnsavedChanges, hasLoadedInitialBlocks]);
+  }, [site, filePath, isNewFileMode, siteId, navigate, setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave]);
 
   // Callback to signal that some content (either body or frontmatter) has changed.
   const onContentModified = useCallback(() => {
     setHasUnsavedChanges(true);
-  }, [setHasUnsavedChanges]);
+    setHasUnsavedChangesSinceManualSave(true);
+  }, [setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave]);
 
   // Handler for frontmatter form changes. It receives a partial update.
   const handleFrontmatterChange = useCallback((update: Partial<PageFrontmatter>) => {
@@ -202,7 +133,6 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
   return { 
     status, 
     frontmatter, 
-    initialBlocks, 
     slug, 
     setSlug, 
     handleFrontmatterChange, 

@@ -17,6 +17,7 @@ interface EditorProviderProps {
 export function EditorProvider({ children }: EditorProviderProps) {
   const [saveState, setSaveState] = useState<SaveState>('no_changes');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [hasUnsavedChangesSinceManualSave, setHasUnsavedChangesSinceManualSave] = useState(false);
   
   // A ref to hold the current save function, registered by the active page.
   const saveActionRef = useRef<(() => Promise<void>) | null>(null);
@@ -38,6 +39,7 @@ export function EditorProvider({ children }: EditorProviderProps) {
         await saveActionRef.current();
         setSaveState('saved');
         setHasUnsavedChanges(false);
+        setHasUnsavedChangesSinceManualSave(false); // Reset manual save tracking
         // Reset to idle state after a delay for user feedback
         setTimeout(() => setSaveState('no_changes'), 2000);
       } catch (error) {
@@ -57,10 +59,12 @@ export function EditorProvider({ children }: EditorProviderProps) {
     saveState,
     setSaveState,
     hasUnsavedChanges, 
-    setHasUnsavedChanges, 
+    setHasUnsavedChanges,
+    hasUnsavedChangesSinceManualSave,
+    setHasUnsavedChangesSinceManualSave,
     triggerSave,
     registerSaveAction,
-  }), [saveState, setSaveState, hasUnsavedChanges, setHasUnsavedChanges, triggerSave, registerSaveAction]);
+  }), [saveState, setSaveState, hasUnsavedChanges, setHasUnsavedChanges, hasUnsavedChangesSinceManualSave, setHasUnsavedChangesSinceManualSave, triggerSave, registerSaveAction]);
 
   return (
     <EditorContext.Provider value={contextValue}>

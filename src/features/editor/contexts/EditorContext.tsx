@@ -11,6 +11,8 @@ export interface EditorContextType {
   setSaveState: (state: SaveState) => void;
   hasUnsavedChanges: boolean;
   setHasUnsavedChanges: (hasChanges: boolean) => void;
+  hasUnsavedChangesSinceManualSave: boolean;
+  setHasUnsavedChangesSinceManualSave: (hasChanges: boolean) => void;
   triggerSave: () => Promise<void>;
   registerSaveAction: (saveFn: () => Promise<void>) => void;
 }
