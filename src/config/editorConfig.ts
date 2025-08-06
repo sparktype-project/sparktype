@@ -1,5 +1,5 @@
 // src/config/editorConfig.ts
-import type { ThemeInfo, LayoutInfo, BlockInfo } from '@/core/types';
+import type { ThemeInfo, LayoutInfo } from '@/core/types';
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 
 /**
@@ -89,17 +89,7 @@ export const CORE_THEMES: ThemeInfo[] = [
     path: 'docs'
   },
 ];
-/**
- * The master list of all built-in blocks. 
- */
-export const CORE_BLOCKS: BlockInfo[] = [
-
-  { 
-    name: 'Collection view',
-    id: 'core:collection_view', 
-    path: 'collection_view' 
-  }
-];
+// Note: CORE_BLOCKS removed - collection views now use layout partials directly
 
 /**
  * Default configuration for a new site's homepage (index.md).

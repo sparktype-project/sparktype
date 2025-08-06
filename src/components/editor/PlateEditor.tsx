@@ -73,8 +73,8 @@ export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
       ...EditorKit,
       ...BasicNodesKit,
       
-      // Core functionality - MarkdownKit is now included in sparkTypeMediaKit when siteId is available
-      ...(siteId ? [] : MarkdownKit), // Only use default MarkdownKit when no siteId
+      // Core functionality
+      ...(siteId ? [] : MarkdownKit), // MarkdownKit is included in sparkTypeMediaKit when siteId is available
       ...ExitBreakKit,
       ...AutoformatKit,
       ...BlockSelectionKit,
@@ -101,7 +101,9 @@ export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
   // Method to get current content as markdown
   const getMarkdown = useCallback(() => {
     if (editor?.api?.markdown) {
-      return editor.api.markdown.serialize();
+      const serialized = editor.api.markdown.serialize();
+      console.log('PlateJS getMarkdown serialized:', serialized);
+      return serialized;
     }
     return '';
   }, [editor]);

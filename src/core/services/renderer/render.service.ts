@@ -79,78 +79,69 @@ export async function render(
     // Process markdown content using the existing markdown helper
     const markdownContent = enrichedResolution.contentFile.content || '';
     console.log('[Render Service] Raw markdown content:', markdownContent);
+    console.log('[Render Service] Content contains directive:', markdownContent.includes('::collection_view'));
     
-    // Import the markdown processing logic
-    const { marked } = await import('marked');
+    // Import the remark processing logic
+    const { remark } = await import('remark');
+    const { default: remarkDirective } = await import('remark-directive');
+    const { default: remarkRehype } = await import('remark-rehype');
+    const { default: rehypeStringify } = await import('rehype-stringify');
+    const { visit } = await import('unist-util-visit');
     
     let processedContent: string;
     if (markdownContent.trim()) {
-        // Configure marked with custom image renderer for Sparktype images
-        const renderer = new marked.Renderer();
+        // Configure remark with directive support and custom image handling
+        const processor = remark()
+          .use(remarkDirective)
+          .use(() => {
+            return (tree: any) => {
+              // Process collection_view directives (both leaf and container types)
+              const processCollectionDirective = (node: any) => {
+                if (node.name === 'collection_view') {
+                  // Convert directive to HTML placeholder for post-processing
+                  const attrs = node.attributes || {};
+                  const directiveHtml = `<div data-collection-directive="true" data-collection="${attrs.collection}" data-layout="${attrs.layout}" data-max-items="${attrs.maxItems}" data-sort-by="${attrs.sortBy}" data-sort-order="${attrs.sortOrder}"></div>`;
+                  
+                  // Replace the directive node with an HTML node
+                  node.type = 'html';
+                  node.value = directiveHtml;
+                  delete node.name;
+                  delete node.attributes;
+                  delete node.children;
+                }
+              };
+              
+              visit(tree, 'leafDirective', processCollectionDirective);
+              visit(tree, 'containerDirective', processCollectionDirective);
+              
+              // Process images to mark Sparktype assets
+              visit(tree, 'image', (node: any) => {
+                if (node.url && node.url.startsWith('assets/images/')) {
+                  console.log('[Render Service] Marking Sparktype asset for processing:', node.url);
+                  // Convert to HTML node with data attribute
+                  const htmlNode = {
+                    type: 'html',
+                    value: `<img src="${node.url}" alt="${node.alt || ''}" title="${node.title || ''}" data-sparktype-asset="true">`
+                  };
+                  Object.assign(node, htmlNode);
+                } else {
+                  console.log('[Render Service] Standard image handling for:', node.url);
+                }
+              });
+            };
+          })
+          .use(remarkRehype, { allowDangerousHtml: true })
+          .use(rehypeStringify, { allowDangerousHtml: true });
         
-        // Custom image renderer that processes Sparktype assets
-        renderer.image = function(href: any, title: any, text: any) {
-          console.log('[Render Service] Image renderer called with objects:', { 
-            href: href, 
-            title: title, 
-            text: text,
-            hrefKeys: typeof href === 'object' && href !== null ? Object.keys(href) : 'not object',
-            hrefValues: typeof href === 'object' && href !== null ? Object.values(href) : 'not object'
-          });
-          
-          // Handle marked.js token object structure - it passes a single token object as href
-          let imageUrl = '';
-          let imageTitle = '';
-          let imageAlt = '';
-          
-          if (typeof href === 'object' && href !== null) {
-            // Log the exact object structure to debug
-            console.log('[Render Service] href object properties:', href);
-            
-            // Try different possible property names for marked.js token
-            imageUrl = href.href || href.url || href.src || '';
-            imageTitle = href.title || '';
-            imageAlt = href.text || href.alt || '';
-            
-            // If the object has nested properties, check those too
-            if (!imageUrl && href.token) {
-              imageUrl = href.token.href || href.token.url || href.token.src || '';
-              imageTitle = href.token.title || '';
-              imageAlt = href.token.text || href.token.alt || '';
-            }
-          } else {
-            // Fallback for direct string parameters (older marked.js versions)
-            imageUrl = href;
-            imageTitle = title;
-            imageAlt = text;
-          }
-          
-          console.log('[Render Service] Extracted values:', { imageUrl, imageTitle, imageAlt });
-          
-          // Type check for imageUrl
-          if (!imageUrl || typeof imageUrl !== 'string') {
-            console.log('[Render Service] Invalid imageUrl, returning empty image. Full href object:', href);
-            return `<img src="" alt="${imageAlt || ''}" title="${imageTitle || ''}">`;
-          }
-          
-          // If this is a Sparktype asset path, mark it for post-processing
-          if (imageUrl.startsWith('assets/images/')) {
-            console.log('[Render Service] Marking Sparktype asset for processing:', imageUrl);
-            return `<img src="${imageUrl}" alt="${imageAlt || ''}" title="${imageTitle || ''}" data-sparktype-asset="true">`;
-          }
-          
-          // Standard image handling for non-Sparktype images
-          console.log('[Render Service] Standard image handling for:', imageUrl);
-          return `<img src="${imageUrl}" alt="${imageAlt || ''}" title="${imageTitle || ''}">`;
-        };
+        // Process markdown to HTML
+        const result = await processor.process(markdownContent);
+        processedContent = String(result);
+        console.log('[Render Service] After remark processing:', processedContent.substring(0, 500));
         
-        // Process markdown to HTML with custom renderer
-        processedContent = marked.parse(markdownContent, { 
-          async: false,
-          renderer: renderer
-        }) as string;
+        // Post-process HTML to convert collection directives and Sparktype asset paths
+        processedContent = await postProcessCollectionDirectives(processedContent, synchronizedSiteData);
+        console.log('[Render Service] After directive processing:', processedContent.substring(0, 500));
         
-        // Post-process HTML to convert Sparktype asset paths 
         if (!options.isExport) {
           // For preview: convert asset paths to blob URLs
           console.log('[Render Service] Processing images for preview, content before:', processedContent.substring(0, 500));
@@ -277,6 +268,123 @@ async function postProcessSparkTypeImagesForExport(
       console.log('[Render Service] Converted asset to derivative filename:', assetPath, '->', derivativeFilename);
     } catch (error) {
       console.error('[Render Service] Failed to convert asset to derivative filename:', assetPath, error);
+    }
+  }
+  
+  return processedHtml;
+}
+
+/**
+ * Post-processes HTML content to convert collection view directives to rendered collection content
+ */
+async function postProcessCollectionDirectives(
+  htmlContent: string, 
+  siteData: LocalSiteData
+): Promise<string> {
+  // Find all collection directive placeholders
+  const directiveRegex = /<div[^>]*data-collection-directive="true"[^>]*>/g;
+  
+  let processedHtml = htmlContent;
+  const matches = Array.from(htmlContent.matchAll(directiveRegex));
+  
+  console.log('[Render Service] Found collection directives to process:', matches.length);
+  
+  for (const match of matches) {
+    const [fullMatch] = match;
+    
+    try {
+      // Extract attributes from the directive div
+      const collectionMatch = fullMatch.match(/data-collection="([^"]*)"/) || [];
+      const layoutMatch = fullMatch.match(/data-layout="([^"]*)"/) || [];
+      const maxItemsMatch = fullMatch.match(/data-max-items="([^"]*)"/) || [];
+      const sortByMatch = fullMatch.match(/data-sort-by="([^"]*)"/) || [];
+      const sortOrderMatch = fullMatch.match(/data-sort-order="([^"]*)"/) || [];
+      
+      const config = {
+        collectionId: collectionMatch[1] || '',
+        layout: layoutMatch[1] || 'list',
+        maxItems: parseInt(maxItemsMatch[1] || '10'),
+        sortBy: sortByMatch[1] || 'date',
+        sortOrder: (sortOrderMatch[1] || 'desc') as 'asc' | 'desc'
+      };
+      
+      console.log('[Render Service] Processing collection directive with config:', config);
+      
+      if (config.collectionId) {
+        // Get collection items
+        let items = getCollectionContent(siteData, config.collectionId);
+        
+        if (items && items.length > 0) {
+          // Apply sorting
+          if (config.sortBy) {
+            items = sortCollectionItems(items, config.sortBy, config.sortOrder);
+          }
+          
+          // Apply max items limit
+          if (config.maxItems && config.maxItems > 0) {
+            items = items.slice(0, config.maxItems);
+          }
+          
+          // Add computed properties for template use
+          items = items.map(item => ({
+            ...item,
+            url: `/${item.path.replace(/^content\//, '').replace(/\.md$/, '')}`,
+          }));
+          
+          // Use layout partials instead of block templates
+          const layoutId = config.layout || 'blog-listing'; // default to blog-listing
+          console.log('[Render Service] Using collection layout:', layoutId);
+          
+          try {
+            // Import the layout discovery service to get partial path
+            const { getCollectionLayoutById } = await import('@/core/services/collectionLayout.service');
+            const layoutInfo = await getCollectionLayoutById(siteData, layoutId);
+            
+            if (layoutInfo && layoutInfo.partialPath) {
+              console.log('[Render Service] Found layout partial:', layoutInfo.partialPath);
+              
+              // Render each item using the layout partial
+              const renderedItems = items.map(item => {
+                // Use Handlebars to render the partial for each item
+                const partialTemplate = Handlebars.partials[layoutInfo.partialPath!];
+                if (partialTemplate) {
+                  const compiledPartial = typeof partialTemplate === 'string' 
+                    ? Handlebars.compile(partialTemplate) 
+                    : partialTemplate;
+                  return compiledPartial(item);
+                }
+                return `<!-- Partial not found: ${layoutInfo.partialPath} -->`;
+              });
+              
+              // Wrap the rendered items in a container
+              const containerClass = layoutId.includes('grid') 
+                ? 'collection-grid grid gap-4' 
+                : 'collection-list space-y-4';
+              
+              const renderedContent = `<div class="${containerClass}">\n${renderedItems.join('\n')}\n</div>`;
+              
+              // Replace the directive placeholder with rendered content
+              processedHtml = processedHtml.replace(fullMatch + '</div>', renderedContent);
+              console.log('[Render Service] Rendered collection directive with layout partial:', layoutInfo.partialPath);
+            } else {
+              console.warn('[Render Service] Layout not found or missing partial:', layoutId);
+              processedHtml = processedHtml.replace(fullMatch + '</div>', `<!-- Collection layout not found: ${layoutId} -->`);
+            }
+          } catch (error) {
+            console.error('[Render Service] Failed to render collection directive:', error);
+            processedHtml = processedHtml.replace(fullMatch + '</div>', '<!-- Error rendering collection directive -->');
+          }
+        } else {
+          console.warn('[Render Service] No items found for collection:', config.collectionId);
+          processedHtml = processedHtml.replace(fullMatch + '</div>', '<!-- No items found for this collection -->');
+        }
+      } else {
+        console.warn('[Render Service] Collection directive missing collectionId');
+        processedHtml = processedHtml.replace(fullMatch + '</div>', '<!-- Collection directive missing collection ID -->');
+      }
+    } catch (error) {
+      console.error('[Render Service] Failed to process collection directive:', error);
+      processedHtml = processedHtml.replace(fullMatch + '</div>', '<!-- Error processing collection directive -->');
     }
   }
   

@@ -383,7 +383,13 @@ const createDragPreviewElements = (
   };
 
   const resolveElement = (node: TElement, index: number) => {
-    const domNode = editor.api.toDOMNode(node)!;
+    const domNode = editor.api.toDOMNode(node);
+    
+    if (!domNode) {
+      console.warn('resolveElement: Unable to find DOM node for element', node);
+      return;
+    }
+    
     const newDomNode = domNode.cloneNode(true) as HTMLElement;
 
     // Apply visual compensation for horizontal scroll
@@ -429,17 +435,17 @@ const createDragPreviewElements = (
     const lastDomNode = blocks[index - 1];
 
     if (lastDomNode) {
-      const lastDomNodeRect = editor.api
-        .toDOMNode(lastDomNode)!
-        .parentElement!.getBoundingClientRect();
+      const lastDomNodeElement = editor.api.toDOMNode(lastDomNode);
+      
+      if (lastDomNodeElement?.parentElement && domNode.parentElement) {
+        const lastDomNodeRect = lastDomNodeElement.parentElement.getBoundingClientRect();
+        const domNodeRect = domNode.parentElement.getBoundingClientRect();
+        const distance = domNodeRect.top - lastDomNodeRect.bottom;
 
-      const domNodeRect = domNode.parentElement!.getBoundingClientRect();
-
-      const distance = domNodeRect.top - lastDomNodeRect.bottom;
-
-      // Check if the two elements are adjacent (touching each other)
-      if (distance > 15) {
-        wrapper.style.marginTop = `${distance}px`;
+        // Check if the two elements are adjacent (touching each other)
+        if (distance > 15) {
+          wrapper.style.marginTop = `${distance}px`;
+        }
       }
     }
 
@@ -464,11 +470,21 @@ const calculatePreviewTop = (
     element: TElement;
   }
 ): number => {
-  const child = editor.api.toDOMNode(element)!;
-  const editable = editor.api.toDOMNode(editor)!;
+  const child = editor.api.toDOMNode(element);
+  const editable = editor.api.toDOMNode(editor);
   const firstSelectedChild = blocks[0];
 
-  const firstDomNode = editor.api.toDOMNode(firstSelectedChild)!;
+  if (!child || !editable || !firstSelectedChild) {
+    console.warn('calculatePreviewTop: Missing DOM nodes', { child, editable, firstSelectedChild });
+    return 0;
+  }
+
+  const firstDomNode = editor.api.toDOMNode(firstSelectedChild);
+  
+  if (!firstDomNode) {
+    console.warn('calculatePreviewTop: Unable to find DOM node for first selected child', firstSelectedChild);
+    return 0;
+  };
   // Get editor's top padding
   const editorPaddingTop = Number(
     window.getComputedStyle(editable).paddingTop.replace('px', '')
@@ -503,7 +519,12 @@ const calculatePreviewTop = (
 };
 
 const calcDragButtonTop = (editor: PlateEditor, element: TElement): number => {
-  const child = editor.api.toDOMNode(element)!;
+  const child = editor.api.toDOMNode(element);
+  
+  if (!child) {
+    console.warn('calcDragButtonTop: Unable to find DOM node for element', element);
+    return 0;
+  }
 
   const currentMarginTopString = window.getComputedStyle(child).marginTop;
   const currentMarginTop = Number(currentMarginTopString.replace('px', ''));

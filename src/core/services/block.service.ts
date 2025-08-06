@@ -2,7 +2,7 @@
 
 // src/core/services/block.service.ts
 
-import { CORE_BLOCKS } from '@/config/editorConfig';
+// CORE_BLOCKS removed - using layout partials instead
 import {
   type BlockInfo,
   type BlockManifest,
@@ -17,16 +17,8 @@ const blockManifestCache = new Map<string, BlockManifest>();
  */
 
 export function getAvailableBlocks(manifest: Manifest): BlockInfo[] {
-  const available = [...CORE_BLOCKS];
-  const registeredIds = new Set(available.map(b => b.id));
-
-  if (manifest.blocks) {
-    const customBlocks = manifest.blocks.filter(
-      (customBlock) => !registeredIds.has(customBlock.id)
-    );
-    available.push(...customBlocks);
-  }
-  return available;
+  // Return only custom blocks from manifest - no core blocks
+  return manifest.blocks || [];
 }
 
 export async function loadBlockManifest(

@@ -1,7 +1,7 @@
 // src/core/services/config/configHelpers.service.ts
 
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
-import { CORE_LAYOUTS, CORE_THEMES, CORE_BLOCKS } from '@/config/editorConfig';
+import { CORE_LAYOUTS, CORE_THEMES } from '@/config/editorConfig';
 import * as assetStorage from '../assetStorage.service';
 
 import type {
@@ -9,7 +9,6 @@ import type {
     LayoutInfo,
     ThemeInfo,
     LayoutManifest,
-    BlockInfo,
 } from '@/core/types';
 
 /**
@@ -35,7 +34,7 @@ export const isCoreTheme = (path: string) => CORE_THEMES.some((t: ThemeInfo) => 
 export const isCoreLayout = (path: string) => CORE_LAYOUTS.some((l: LayoutInfo) => l.id === path);
 
 /** Checks if a given block path corresponds to a core (built-in) block. */
-export const isCoreBlock = (path: string) => CORE_BLOCKS.some((b: BlockInfo) => b.path === path);
+export const isCoreBlock = (path: string) => false; // No core blocks anymore - using layout partials
 
 /** Merges multiple JSON Schemas into one. */
 export function mergeSchemas(...schemas: (RJSFSchema | null | undefined)[]): RJSFSchema {

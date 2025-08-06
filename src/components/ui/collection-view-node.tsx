@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card';
 import { Badge } from '@/core/components/ui/badge';
 import { Settings, List, Grid, LayoutGrid } from 'lucide-react';
+import { getAvailableCollectionLayouts, type CollectionLayoutOption } from '@/core/services/collectionLayout.service';
+import { useAppStore } from '@/core/state/useAppStore';
 import {
   Dialog,
   DialogContent,
@@ -25,7 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/core/components/ui/label';
 interface CollectionViewElementData {
   collection?: string;
-  layout?: 'list' | 'grid' | 'cards';
+  layout?: string; // Now uses layout IDs like 'blog-listing', 'portfolio-grid'
   maxItems?: number;
   sortBy?: 'date' | 'title' | 'order';
   sortOrder?: 'asc' | 'desc';
@@ -39,28 +41,54 @@ interface CollectionViewElementProps extends PlateElementProps {
 export function CollectionViewElement(props: CollectionViewElementProps) {
   const { editor, element, attributes, children, collections = [] } = props;
   const readOnly = useReadOnly();
+  const { activeSiteId, getSiteById } = useAppStore();
   
   const [isEditOpen, setIsEditOpen] = React.useState(false);
+  const [availableLayouts, setAvailableLayouts] = React.useState<CollectionLayoutOption[]>([]);
   const [localConfig, setLocalConfig] = React.useState<CollectionViewElementData>({
     collection: element.collection as string || '',
-    layout: element.layout as 'list' | 'grid' | 'cards' || 'list',
+    layout: element.layout as string || 'blog-listing',
     maxItems: element.maxItems as number || 10,
     sortBy: element.sortBy as 'date' | 'title' | 'order' || 'date',
     sortOrder: element.sortOrder as 'asc' | 'desc' || 'desc',
     tagFilters: element.tagFilters as string[] || [],
   });
 
+  // Load available collection layouts
+  React.useEffect(() => {
+    async function loadLayouts() {
+      if (activeSiteId) {
+        const siteData = getSiteById(activeSiteId);
+        if (siteData) {
+          const layouts = await getAvailableCollectionLayouts(siteData);
+          setAvailableLayouts(layouts);
+          
+          // Set default layout if none selected
+          if (!localConfig.layout && layouts.length > 0) {
+            setLocalConfig(prev => ({ ...prev, layout: layouts[0].id }));
+          }
+        }
+      }
+    }
+    loadLayouts();
+  }, [activeSiteId, getSiteById, localConfig.layout]);
+
   const selectedCollection = React.useMemo(() => {
     return collections.find(c => c.id === localConfig.collection);
   }, [collections, localConfig.collection]);
 
-  const layoutIcons = {
-    list: List,
-    grid: Grid,
-    cards: LayoutGrid,
+  const selectedLayout = React.useMemo(() => {
+    return availableLayouts.find(l => l.id === localConfig.layout);
+  }, [availableLayouts, localConfig.layout]);
+
+  // Simple icon mapping based on layout name
+  const getLayoutIcon = (layoutName: string) => {
+    if (layoutName.includes('grid')) return Grid;
+    if (layoutName.includes('list')) return List;
+    return LayoutGrid;
   };
 
-  const LayoutIcon = layoutIcons[localConfig.layout || 'list'] || List;
+  const LayoutIcon = selectedLayout ? getLayoutIcon(selectedLayout.name) : List;
 
   const handleSaveConfig = () => {
     editor.tf.setNodes(
@@ -114,7 +142,7 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
           </div>
           <div className="flex items-center gap-4">
             <span>
-              <span className="font-medium">Layout:</span> {localConfig.layout}
+              <span className="font-medium">Layout:</span> {selectedLayout?.name || localConfig.layout}
             </span>
             <span>
               <span className="font-medium">Max items:</span> {localConfig.maxItems}
@@ -186,16 +214,18 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
               <Select
                 value={localConfig.layout}
                 onValueChange={(value) => 
-                  setLocalConfig(prev => ({ ...prev, layout: value as 'list' | 'grid' | 'cards' }))
+                  setLocalConfig(prev => ({ ...prev, layout: value }))
                 }
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select a layout" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="list">List</SelectItem>
-                  <SelectItem value="grid">Grid</SelectItem>
-                  <SelectItem value="cards">Cards</SelectItem>
+                  {availableLayouts.map((layout) => (
+                    <SelectItem key={layout.id} value={layout.id}>
+                      {layout.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

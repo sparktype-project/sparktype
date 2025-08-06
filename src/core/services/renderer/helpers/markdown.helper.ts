@@ -1,7 +1,10 @@
 // src/core/services/theme-engine/helpers/markdown.helper.ts
 import type { SparktypeHelper } from './types';
 import Handlebars from 'handlebars';
-import { marked } from 'marked';
+import { remark } from 'remark';
+import remarkDirective from 'remark-directive';
+import remarkRehype from 'remark-rehype';
+import rehypeStringify from 'rehype-stringify';
 import DOMPurify from 'dompurify';
 
 export const markdownHelper: SparktypeHelper = () => ({
@@ -21,17 +24,28 @@ export const markdownHelper: SparktypeHelper = () => ({
       return new Handlebars.SafeString('');
     }
 
-    // Use marked to parse, then DOMPurify to sanitize against XSS attacks.
-    const unsafeHtml = marked.parse(markdownString, { async: false }) as string;
-    
-    // Check if running in a browser environment before using DOMPurify
-    if (typeof window !== 'undefined') {
-        const safeHtml = DOMPurify.sanitize(unsafeHtml);
-        return new Handlebars.SafeString(safeHtml);
-    }
+    try {
+      // Use remark to parse with directive support, then convert to HTML
+      const processor = remark()
+        .use(remarkDirective)
+        .use(remarkRehype, { allowDangerousHtml: true })
+        .use(rehypeStringify, { allowDangerousHtml: true });
+      
+      const result = processor.processSync(markdownString);
+      const unsafeHtml = String(result);
+      
+      // Check if running in a browser environment before using DOMPurify
+      if (typeof window !== 'undefined') {
+          const safeHtml = DOMPurify.sanitize(unsafeHtml);
+          return new Handlebars.SafeString(safeHtml);
+      }
 
-    // If not in a browser (e.g., during server-side testing), return the raw parsed HTML.
-    // In a real-world scenario, you might use a Node.js-compatible sanitizer here.
-    return new Handlebars.SafeString(unsafeHtml);
+      // If not in a browser (e.g., during server-side testing), return the raw parsed HTML.
+      // In a real-world scenario, you might use a Node.js-compatible sanitizer here.
+      return new Handlebars.SafeString(unsafeHtml);
+    } catch (error) {
+      console.error('[Markdown Helper] Error processing markdown:', error);
+      return new Handlebars.SafeString('');
+    }
   }
 });

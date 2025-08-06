@@ -64,6 +64,8 @@ export function createMarkdownKit(siteId?: string) {
         // Custom serialization rule for collection view blocks
         collection_view: {
           serialize: (slateNode: any) => {
+            console.log('PlateJS serializing collection_view node:', slateNode);
+            
             // Convert collection view element to directive
             const attributes: Record<string, string> = {};
             
@@ -76,32 +78,77 @@ export function createMarkdownKit(siteId?: string) {
               attributes.tagFilters = slateNode.tagFilters.join(',');
             }
             
-            console.log('Serializing collection view to directive:', attributes);
+            console.log('Serializing collection view to directive with attributes:', attributes);
             
+            // Return a containerDirective (block-level) instead of leafDirective
             return {
-              type: 'leafDirective',
+              type: 'containerDirective',
               name: 'collection_view',
               attributes: attributes,
+              children: []
             };
-          },
+          }
+        },
+        // Deserialization rule for directives (key must match mdast node type)
+        containerDirective: {
           deserialize: (mdastNode: any) => {
-            // Convert directive back to collection view element
-            console.log('Deserializing collection view from directive:', mdastNode);
+            console.log('MarkdownKit: Processing containerDirective:', mdastNode);
             
-            const tagFilters = mdastNode.attributes?.tagFilters 
-              ? mdastNode.attributes.tagFilters.split(',')
-              : [];
+            if (mdastNode.name === 'collection_view') {
+              console.log('MarkdownKit: Found collection_view containerDirective with attributes:', mdastNode.attributes);
+              
+              const tagFilters = mdastNode.attributes?.tagFilters 
+                ? mdastNode.attributes.tagFilters.split(',')
+                : [];
+              
+              const plateNode = {
+                type: 'collection_view',
+                collection: mdastNode.attributes?.collection || '',
+                layout: mdastNode.attributes?.layout || 'list',
+                maxItems: parseInt(mdastNode.attributes?.maxItems || '10'),
+                sortBy: mdastNode.attributes?.sortBy || 'date',
+                sortOrder: mdastNode.attributes?.sortOrder || 'desc',
+                tagFilters: tagFilters,
+                children: [{ text: '' }]
+              };
+              
+              console.log('MarkdownKit: Converted containerDirective to Plate node:', plateNode);
+              return plateNode;
+            }
             
-            return {
-              type: 'collection_view',
-              collection: mdastNode.attributes?.collection || '',
-              layout: mdastNode.attributes?.layout || 'list',
-              maxItems: parseInt(mdastNode.attributes?.maxItems || '10'),
-              sortBy: mdastNode.attributes?.sortBy || 'date',
-              sortOrder: mdastNode.attributes?.sortOrder || 'desc',
-              tagFilters: tagFilters,
-              children: [{ text: '' }]
-            };
+            console.log('MarkdownKit: Unhandled containerDirective:', mdastNode.name);
+            return null;
+          }
+        },
+        leafDirective: {
+          deserialize: (mdastNode: any) => {
+            console.log('MarkdownKit: Processing leafDirective:', mdastNode);
+            
+            if (mdastNode.name === 'collection_view') {
+              console.log('MarkdownKit: Found collection_view directive with attributes:', mdastNode.attributes);
+              
+              const tagFilters = mdastNode.attributes?.tagFilters 
+                ? mdastNode.attributes.tagFilters.split(',')
+                : [];
+              
+              const plateNode = {
+                type: 'collection_view',
+                collection: mdastNode.attributes?.collection || '',
+                layout: mdastNode.attributes?.layout || 'list',
+                maxItems: parseInt(mdastNode.attributes?.maxItems || '10'),
+                sortBy: mdastNode.attributes?.sortBy || 'date',
+                sortOrder: mdastNode.attributes?.sortOrder || 'desc',
+                tagFilters: tagFilters,
+                children: [{ text: '' }]
+              };
+              
+              console.log('MarkdownKit: Converted to Plate node:', plateNode);
+              return plateNode;
+            }
+            
+            console.log('MarkdownKit: Unhandled directive:', mdastNode.name);
+            // Return null for other directives to let default handling take over
+            return null;
           }
         }
       }

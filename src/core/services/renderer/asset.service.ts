@@ -3,7 +3,7 @@
 import Handlebars from 'handlebars';
 import type { LocalSiteData, ThemeManifest, LayoutManifest, AssetFile } from '@/core/types';
 import { getJsonAsset, getAssetContent, getAvailableLayouts } from '@/core/services/config/configHelpers.service';
-import { getAvailableBlocks } from '@/core/services/block.service';
+// Block service removed - using layout partials instead
 import { coreHelpers } from './helpers';
 
 let areHelpersRegistered = false;
@@ -56,21 +56,8 @@ async function cacheAllTemplates(siteData: LocalSiteData): Promise<void> {
             }
         });
 
-    // 4. Register block templates.
-    const availableBlocks = getAvailableBlocks(manifest);
-    const blockTemplatePromises = availableBlocks.map(async (blockInfo) => {
-        try {
-            const templateContent = await getAssetContent(siteData, 'block', blockInfo.path, 'template.hbs');
-            if (templateContent) {
-                // Register block templates with a namespace to prevent collisions
-                // e.g., 'block:rich_text', 'block:container'
-                const templateName = `block:${blockInfo.id}`;
-                Handlebars.registerPartial(templateName, templateContent);
-            }
-        } catch (error) {
-            console.warn(`Failed to load template for block ${blockInfo.id}:`, error);
-        }
-    });
+    // 4. Block templates removed - using layout partials instead
+    const blockTemplatePromises: Promise<void>[] = [];
 
     // 5. Wait for all file reading and registration to complete.
     await Promise.all([...layoutPromises, ...themePartialPromises, ...blockTemplatePromises]);
