@@ -95,11 +95,6 @@ export const CORE_THEMES: ThemeInfo[] = [
 export const CORE_BLOCKS: BlockInfo[] = [
 
   { 
-    name: 'Image',
-    id: 'core:image', 
-    path: 'image' 
-  },
-  { 
     name: 'Collection view',
     id: 'core:collection_view', 
     path: 'collection_view' 

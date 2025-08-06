@@ -27,6 +27,22 @@ import {
 
 const ACTION_THREE_COLUMNS = 'action_three_columns';
 
+const insertCollectionView = (editor: PlateEditor) => {
+  editor.tf.insertNodes(
+    {
+      type: 'collection_view',
+      collection: '',
+      layout: 'list',
+      maxItems: 10,
+      sortBy: 'date',
+      sortOrder: 'desc',
+      tagFilters: [],
+      children: [{ text: '' }],
+    },
+    { select: true }
+  );
+};
+
 const insertList = (editor: PlateEditor, type: string) => {
   editor.tf.insertNodes(
     editor.api.create.block({
@@ -44,6 +60,7 @@ const insertBlockMap: Record<
   [KEYS.listTodo]: insertList,
   [KEYS.ol]: insertList,
   [KEYS.ul]: insertList,
+  collection_view: insertCollectionView,
   [ACTION_THREE_COLUMNS]: (editor) =>
     insertColumnGroup(editor, { columns: 3, select: true }),
   [KEYS.audio]: (editor) => insertAudioPlaceholder(editor, { select: true }),

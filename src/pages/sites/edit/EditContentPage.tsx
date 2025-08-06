@@ -61,6 +61,7 @@ function EditContentPageInternal() {
 
   const siteStructure = useMemo(() => site?.manifest.structure || [], [site?.manifest.structure]);
   const allContentFiles = useMemo(() => site?.contentFiles || [], [site?.contentFiles]);
+  const siteCollections = useMemo(() => site?.manifest.collections || [], [site?.manifest.collections]);
   
   const { isNewFileMode, filePath } = usePageIdentifier({ siteStructure, allContentFiles });
   const { status, frontmatter, slug, setSlug, handleFrontmatterChange, onContentModified } = useFileContent(siteId, filePath, isNewFileMode);
@@ -209,6 +210,7 @@ function EditContentPageInternal() {
                       }}
                       placeholder="Type your amazing content here..."
                       siteId={siteId}
+                      collections={siteCollections}
                     />
                   </div>
                 </div>

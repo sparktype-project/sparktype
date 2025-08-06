@@ -24,6 +24,7 @@ import { ColumnKit } from '@/components/editor/plugins/column-kit';
 import { FloatingToolbarKit } from '@/components/editor/plugins/floating-toolbar-kit';
 import { CursorOverlayKit } from '@/components/editor/plugins/cursor-overlay-kit';
 import { createSparkTypeMediaKit } from '@/components/editor/plugins/sparktype-media-kit';
+import { createCollectionViewKit } from '@/components/editor/plugins/collection-view-kit';
 
 interface PlateEditorProps {
   initialValue?: Value;
@@ -31,6 +32,7 @@ interface PlateEditorProps {
   placeholder?: string;
   className?: string;
   siteId?: string;
+  collections?: Array<{ id: string; name: string }>;
 }
 
 // Export the ref type for external use
@@ -51,13 +53,19 @@ export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
   onContentChange, 
   placeholder = "Start writing...",
   className = "",
-  siteId
+  siteId,
+  collections = []
 }, ref) => {
 
   // Create SparkType MediaKit with siteId if available, otherwise use empty array
   const sparkTypeMediaKit = React.useMemo(() => {
     return siteId ? createSparkTypeMediaKit(siteId) : [];
   }, [siteId]);
+
+  // Create CollectionViewKit with collections data
+  const collectionViewKit = React.useMemo(() => {
+    return createCollectionViewKit(collections);
+  }, [collections]);
 
   const editor = usePlateEditor({
     plugins: [
@@ -77,6 +85,7 @@ export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
       ...FloatingToolbarKit,
       ...CursorOverlayKit,
       ...sparkTypeMediaKit,
+      ...collectionViewKit,
     ],
     value: initialValue,
   });

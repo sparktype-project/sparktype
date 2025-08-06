@@ -1,9 +1,0 @@
-{{!-- Image Block Template --}}
-<figure class="image-block mb-4 {{#if this.config.alignment}}text-{{this.config.alignment}}{{/if}} {{#if this.config.size}}size-{{this.config.size}}{{/if}}">
-  {{{image src=this.content.imageRef alt=this.content.caption class="max-w-full h-auto"}}}
-  {{#if this.content.caption}}
-    <figcaption class="image-caption text-sm text-gray-600 mt-2">
-      {{this.content.caption}}
-    </figcaption>
-  {{/if}}
-</figure>

@@ -5,29 +5,23 @@ import * as React from 'react';
 import type { PlateEditor, PlateElementProps } from 'platejs/react';
 
 import {
-  CalendarIcon,
-  ChevronRightIcon,
   Code2,
   Columns3Icon,
   Heading1Icon,
   Heading2Icon,
   Heading3Icon,
-  LightbulbIcon,
-  ListIcon,
   ListOrdered,
   PilcrowIcon,
+  ListIcon,
   Quote,
-  RadicalIcon,
-  Square,
+  Library,
   Table,
-  TableOfContentsIcon,
 } from 'lucide-react';
 import { type TComboboxInputElement, KEYS } from 'platejs';
 import { PlateElement } from 'platejs/react';
 
 import {
   insertBlock,
-  insertInlineElement,
 } from '@/components/editor/transforms';
 
 import {
@@ -122,7 +116,12 @@ const groups: Group[] = [
   {
     group: 'Advanced blocks',
     items: [
-      
+      {
+        icon: <Library />,
+        keywords: ['collection', 'posts', 'blog', 'portfolio'],
+        label: 'Collection View',
+        value: 'collection_view',
+      },
       {
         icon: <Columns3Icon />,
         label: '3 columns',
