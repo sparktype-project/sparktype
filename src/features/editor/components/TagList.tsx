@@ -9,11 +9,10 @@ import type { Tag } from '@/core/types';
 import { Button } from '@/core/components/ui/button';
 import { Input } from '@/core/components/ui/input';
 import { Label } from '@/core/components/ui/label';
-import { Badge } from '@/core/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/core/components/ui/alert-dialog';
 
-import { Search, MoreHorizontal, Trash2, Edit } from 'lucide-react';
+import { MoreHorizontal, Trash2, Edit } from 'lucide-react';
 
 interface TagListProps {
   siteId: string;
@@ -21,7 +20,7 @@ interface TagListProps {
 }
 
 export default function TagList({ siteId, tagGroupId }: TagListProps) {
-  const [searchFilter, setSearchFilter] = useState('');
+  const [searchFilter] = useState('');
   const [newTagName, setNewTagName] = useState('');
   const [newTagDescription, setNewTagDescription] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);

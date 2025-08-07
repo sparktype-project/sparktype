@@ -9,9 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/cor
 import { Separator } from '@/core/components/ui/separator';
 import { toast } from 'sonner';
 import { Download, Globe, Settings } from 'lucide-react';
-import { exportSiteBackup } from '@/core/services/siteBackup.service';
-import { NetlifyProvider } from '@/core/services/publishing/NetlifyProvider';
-import { slugify } from '@/core/libraries/utils';
 
 type PublishingProvider = 'zip' | 'netlify';
 
@@ -35,7 +32,6 @@ export default function PublishingSettingsPage() {
   const { siteId } = useParams<{ siteId: string }>();
   const { getSiteById, updateManifest, updateSiteSecrets, loadSite } = useAppStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
   
   // Publishing configuration state
   const [provider, setProvider] = useState<PublishingProvider>('zip');
@@ -47,19 +43,45 @@ export default function PublishingSettingsPage() {
 
   const site = siteId ? getSiteById(siteId) : null;
 
+  // Load site data including secrets when component mounts
   useEffect(() => {
+    if (siteId && !site?.secrets) {
+      console.log('[PublishingSettings] Loading site data including secrets');
+      loadSite(siteId);
+    }
+  }, [siteId, site?.secrets, loadSite]);
+
+  useEffect(() => {
+    console.log('[PublishingSettings] Site data changed:', {
+      hasSite: !!site,
+      hasSecrets: !!site?.secrets,
+      hasPublishingSecrets: !!site?.secrets?.publishing,
+      hasNetlifyToken: !!site?.secrets?.publishing?.netlify?.apiToken,
+      publishingConfig: site?.manifest.publishingConfig
+    });
+
     if (site?.manifest.publishingConfig) {
       const config = site.manifest.publishingConfig;
       setProvider(config.provider);
+      
+      // Always load the API token from secrets if available
+      const apiToken = site.secrets?.publishing?.netlify?.apiToken || '';
+      
       if (config.netlify) {
         setNetlifyConfig({
           siteId: config.netlify?.siteId || '',
           siteName: config.netlify?.siteName || '',
-          apiToken: site.secrets?.publishing?.netlify?.apiToken || ''
+          apiToken
         });
+      } else if (apiToken) {
+        // If we have an API token but no netlify config yet, still load the token
+        setNetlifyConfig(prev => ({
+          ...prev,
+          apiToken
+        }));
       }
     }
-    // If no config but we have secrets, still load the API token
+    // If no publishing config but we have secrets, load the API token
     else if (site?.secrets?.publishing?.netlify?.apiToken) {
       setNetlifyConfig(prev => ({
         ...prev,
@@ -113,54 +135,6 @@ export default function PublishingSettingsPage() {
     }
   };
 
-  const handlePublish = async () => {
-    if (!site || !siteId) return;
-
-    setIsPublishing(true);
-    try {
-      await loadSite(siteId);
-      const siteToPublish = getSiteById(siteId);
-      if (!siteToPublish) throw new Error("Could not load site data for publishing.");
-
-      if (provider === 'zip') {
-        // Export as ZIP
-        const blob = await exportSiteBackup(siteToPublish);
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `${slugify(siteToPublish.manifest.title || 'signum-site')}.zip`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
-        toast.success('Site exported as ZIP!');
-      } else if (provider === 'netlify') {
-        // Deploy to Netlify - get API token from secrets store
-        const apiToken = site.secrets?.publishing?.netlify?.apiToken || netlifyConfig.apiToken;
-        if (!apiToken) {
-          throw new Error('Netlify API token not found. Please save your settings first.');
-        }
-
-        const netlifyConfigWithToken = {
-          ...netlifyConfig,
-          apiToken
-        };
-
-        const netlifyProvider = new NetlifyProvider();
-        const result = await netlifyProvider.deploy(siteToPublish, netlifyConfigWithToken as unknown as Record<string, unknown>);
-        
-        if (result.success) {
-          toast.success(result.message + (result.url ? ` Site URL: ${result.url}` : ''));
-        } else {
-          throw new Error(result.message);
-        }
-      }
-    } catch (error) {
-      console.error('Publishing failed:', error);
-      toast.error(`Publishing failed: ${(error as Error).message}`);
-    } finally {
-      setIsPublishing(false);
-    }
-  };
 
   if (!site) {
     return <div>Site not found</div>;
@@ -262,15 +236,15 @@ export default function PublishingSettingsPage() {
           )}
 
           <div className="flex gap-2 pt-4">
-            <Button onClick={handleSaveSettings} disabled={isLoading} variant="outline">
+            <Button onClick={handleSaveSettings} disabled={isLoading}>
               {isLoading ? 'Saving...' : 'Save Settings'}
             </Button>
-            <Button 
-              onClick={handlePublish} 
-              disabled={isPublishing || (provider === 'netlify' && !site?.secrets?.publishing?.netlify?.apiToken && !netlifyConfig.apiToken)}
-            >
-              {isPublishing ? 'Publishing...' : provider === 'zip' ? 'Export ZIP' : 'Deploy to Netlify'}
-            </Button>
+          </div>
+          
+          <div className="bg-muted/50 p-4 rounded-lg">
+            <p className="text-sm text-muted-foreground">
+              <strong>Note:</strong> After saving your settings, use the "Publish" button in the editor header to publish your site using the configured provider.
+            </p>
           </div>
         </CardContent>
       </Card>

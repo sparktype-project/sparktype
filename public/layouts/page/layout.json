@@ -1,5 +1,5 @@
 {
-  "name": "Standard Page",
+  "name": "Standard page",
   "version": "1.0.0",
   "description": "A clean, single-column layout for standard pages like 'About Us'.",
   "layoutType": "page",
@@ -7,17 +7,7 @@
     { "path": "layout.json", "type": "manifest" },
     { "path": "index.hbs", "type": "template" }
   ],
-  "schema": {
-    "title": "Page Options",
-    "type": "object",
-    "properties": {
-      "show_updated_date": {
-        "type": "boolean",
-        "title": "Show Last Updated Date",
-        "default": false
-      }
-    }
-  },
+  
   "image_presets": {
     "banner": {
       "source": "banner_image",

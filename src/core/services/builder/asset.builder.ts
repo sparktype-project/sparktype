@@ -4,8 +4,7 @@ import type { LocalSiteData, SiteBundle, ImageRef, ThemeManifest, LayoutManifest
 import { getAssetContent, getJsonAsset } from '@/core/services/config/configHelpers.service';
 import { getActiveImageService } from '@/core/services/images/images.service';
 import { cleanupOrphanedImages } from '@/core/services/images/imageCleanup.service';
-import fs from 'fs';
-import path from 'path';
+import { CSS_CONFIG } from '@/config/editorConfig';
 
 /**
  * Recursively finds all ImageRef objects within the site's data.
@@ -53,15 +52,15 @@ async function bundleAssetFiles(
  * Gathers and adds all site assets (images, themes, layouts) to the bundle.
  */
 export async function bundleAllAssets(bundle: SiteBundle, siteData: LocalSiteData): Promise<void> {
-    // 1. Bundle main styles CSS
+    // 1. Bundle main styles CSS via HTTP request (using configurable paths)
     try {
-        const stylesPath = path.join(process.cwd(), 'public', 'styles.css');
-        if (fs.existsSync(stylesPath)) {
-            const stylesCSS = fs.readFileSync(stylesPath, 'utf8');
-            bundle['_site/css/styles.css'] = stylesCSS;
-            console.log('[AssetBuilder] Bundled main styles CSS to _site/css/styles.css');
+        const response = await fetch(CSS_CONFIG.MAIN_STYLESHEET_PATH);
+        if (response.ok) {
+            const stylesCSS = await response.text();
+            bundle[CSS_CONFIG.EXPORT_BUNDLE_PATH] = stylesCSS;
+            console.log(`[AssetBuilder] Bundled main styles CSS: ${CSS_CONFIG.MAIN_STYLESHEET_PATH} -> ${CSS_CONFIG.EXPORT_BUNDLE_PATH}`);
         } else {
-            console.warn('[AssetBuilder] Main styles CSS not found at:', stylesPath);
+            console.warn(`[AssetBuilder] Main styles CSS not found at: ${CSS_CONFIG.MAIN_STYLESHEET_PATH}`);
         }
     } catch (error) {
         console.error('[AssetBuilder] Failed to bundle main styles CSS:', error);

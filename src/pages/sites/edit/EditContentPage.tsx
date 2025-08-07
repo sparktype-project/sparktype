@@ -192,18 +192,19 @@ function EditContentPageInternal() {
                 <div className='container mx-auto flex h-full max-w-[900px] flex-col p-6'>
                   <div className="shrink-0">
                     {/* Context Indicator */}
-                    <div className="mb-4 px-3 py-2 bg-muted/30 rounded-lg border">
+                    <div className="mb-4">
                       <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${collectionContext.isCollectionItem ? 'bg-blue-500' : 'bg-green-500'}`}></div>
-                        <span className="text-sm font-medium text-foreground">
-                          {collectionContext.displayName}
+                        <span className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">
+                          {collectionContext.displayName} 
+                          {collectionContext.isCollectionItem && collectionContext.collection && (
+                            <span className='ml-1'>
+                            / {collectionContext.collectionItemLayout}
+                           </span>
+                          )} 
+                        
                         </span>
                       </div>
-                      {collectionContext.isCollectionItem && collectionContext.collection && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Collection: {collectionContext.collection.name} | Layout: {collectionContext.collectionItemLayout}
-                        </p>
-                      )}
+                      
                     </div>
                     
                     <PrimaryContentFields 

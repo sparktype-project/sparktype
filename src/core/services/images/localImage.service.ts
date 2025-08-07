@@ -140,7 +140,7 @@ class LocalImageService implements ImageService {
   public async getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions, isExport: boolean): Promise<string> {
     // SVGs are returned directly without processing.
     if (ref.src.toLowerCase().endsWith('.svg')) {
-      if (isExport) return ref.src;
+      if (isExport) return `/${ref.src}`;
       const sourceBlob = await this.getSourceBlob(manifest.siteId, ref.src);
       return URL.createObjectURL(sourceBlob);
     }
@@ -157,7 +157,13 @@ class LocalImageService implements ImageService {
 
     const finalBlob = await this.getOrProcessDerivative(manifest.siteId, ref.src, cacheKey, options);
     
-    return isExport ? derivativeFileName : URL.createObjectURL(finalBlob);
+    if (isExport) {
+      // For exports, ensure absolute path starting with /assets/images/
+      const filename = derivativeFileName.split('/').pop() || derivativeFileName;
+      return `/assets/images/${filename}`;
+    } else {
+      return URL.createObjectURL(finalBlob);
+    }
   }
 
   /**

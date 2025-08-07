@@ -111,7 +111,6 @@ export const DEFAULT_HOMEPAGE_CONFIG = {
  */
 export const BASE_SCHEMA: { schema: RJSFSchema; uiSchema: UiSchema } = {
   schema: {
-    title: 'Base content fields',
     type: 'object',
     properties: {
       featured_image: {
@@ -198,4 +197,29 @@ export const MEMORY_CONFIG = {
     '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'
   ] as const,
 
+} as const;
+
+/**
+ * Configuration for CSS bundling and assets.
+ */
+export const CSS_CONFIG = {
+  /**
+   * The path to the main stylesheet that should be bundled with exported sites.
+   * This CSS file will be fetched via HTTP and included in all site exports.
+   */
+  MAIN_STYLESHEET_PATH: '/styles.css',
+
+  /**
+   * The path where the main stylesheet should be bundled in the exported site.
+   * This determines where the CSS will be placed in the final site bundle.
+   */
+  EXPORT_BUNDLE_PATH: 'assets/css/styles.css',
+
+  /**
+   * Additional stylesheets that can be optionally bundled.
+   * These could be theme-specific or feature-specific CSS files.
+   */
+  ADDITIONAL_STYLESHEETS: [
+    // Example: '/css/print.css' -> 'assets/css/print.css'
+  ] as const,
 } as const;

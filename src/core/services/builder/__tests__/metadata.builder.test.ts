@@ -95,7 +95,7 @@ describe('metadata.builder', () => {
       expect(sitemap).toContain('<lastmod>2024-01-03</lastmod>');
     });
 
-    test('generates RSS feed including all dated content', () => {
+    test('generates RSS feed including only collection items with dates', () => {
       // CORRECTED: Call with the new, 2-argument signature.
       generateMetadataFiles(mockBundle, mockSiteData);
 
@@ -104,18 +104,31 @@ describe('metadata.builder', () => {
 
       expect(rss).toContain('<?xml version="1.0" encoding="UTF-8"?>');
       expect(rss).toContain('<rss version="2.0"');
+      expect(rss).toContain('xmlns:content="http://purl.org/rss/1.0/modules/content/"');
 
       // Should correctly escape special characters from the manifest title and description.
       expect(rss).toContain('<title>Test Site with & "Special Chars"</title>');
       expect(rss).toContain('<description>A test website with < and ></description>');
       expect(rss).toContain('<link>https://example.com</link>');
 
-      // Should include items for all pages with a `date` in frontmatter
-      expect(rss.match(/<item>/g)?.length).toBe(3);
-      expect(rss).toContain('<title>Home Page</title>');
-      expect(rss).toContain('<title>About Us</title>');
+      // Should include items only for collection items with a `date` in frontmatter (not pages)
+      expect(rss.match(/<item>/g)?.length).toBe(1);
       expect(rss).toContain('<title>Blog Post</title>');
-      expect(rss).toContain('<description>Home page description</description>');
+      expect(rss).toContain('<content:encoded><![CDATA[Blog content.]]></content:encoded>');
+      
+      // Should NOT include regular pages
+      expect(rss).not.toContain('<title>Home Page</title>');
+      expect(rss).not.toContain('<title>About Us</title>');
+    });
+
+    test('does not generate RSS feed when no collection items exist', () => {
+      const siteDataNoCollections = {
+        ...mockSiteData,
+        manifest: { ...mockSiteData.manifest, collectionItems: [] }
+      };
+      generateMetadataFiles(mockBundle, siteDataNoCollections);
+
+      expect(mockBundle['rss.xml']).toBeUndefined();
     });
 
     test('handles missing baseUrl gracefully', () => {

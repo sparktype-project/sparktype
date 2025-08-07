@@ -15,7 +15,7 @@ import { Button } from '@/core/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/core/components/ui/alert-dialog';
 
-import { MoreHorizontal, Trash2, Edit, Plus } from 'lucide-react';
+import { MoreHorizontal, Trash2, Edit, Plus, LayoutGrid } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CollectionsManagerProps {
@@ -74,7 +74,7 @@ export default function CollectionsManager({ siteId }: CollectionsManagerProps) 
         
         <div className="flex-1 overflow-y-auto">
           {collections.length === 0 ? (
-            <div className="p-4">
+            <div className="p-2">
               <div className="space-y-3">
                 <div className="text-muted-foreground">
                   <p className="text-xs">No collections yet. Click the plus button above to create one.</p>
@@ -137,10 +137,12 @@ function CollectionItem({ collection, siteData, siteId, onClick, onEdit, onDelet
   }, [collection, siteId]);
 
   return (
-    <div className="group flex items-center justify-between rounded-md">
+    <div className="group flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-md">
       <div className="flex-1 min-w-0 cursor-pointer" onClick={onClick} title="Click to view collection items">
         <div className="flex items-center gap-2">
-          <div className="text-sm font-medium truncate">{collection.name}</div>
+                    <LayoutGrid className='size-4' />
+
+          <div className="text-sm truncate">{collection.name}</div>
           <div className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{itemCount} items</div>
         </div>
       </div>

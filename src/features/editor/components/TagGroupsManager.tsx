@@ -16,7 +16,7 @@ import { Button } from '@/core/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/core/components/ui/alert-dialog';
 
-import { MoreHorizontal, Trash2, Edit, Tag as TagIcon, Plus } from 'lucide-react';
+import { MoreHorizontal, Trash2, Edit, Tag as TagIcon, Plus, Tags } from 'lucide-react';
 
 interface TagGroupsManagerProps {
   siteId: string;
@@ -79,7 +79,7 @@ export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto">
         {tagGroups.length === 0 ? (
-          <div className="p-4">
+          <div className="p-2">
             <div className="space-y-3">
               <div className="text-muted-foreground">
                 <p className="text-xs">No tag groups yet. Click the plus button above to create one.</p>
@@ -87,7 +87,7 @@ export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
             </div>
           </div>
         ) : (
-          <div className="space-y-1 p-2">
+          <div className="space-y-1">
             {tagGroups.map((tagGroup) => (
               <TagGroupItem
                 key={tagGroup.id}
@@ -145,31 +145,22 @@ interface TagGroupItemProps {
   onAddTag: () => void;
 }
 
-function TagGroupItem({ tagGroup, siteData, siteId, collections, onEdit, onDelete, onManageTags, onAddTag }: TagGroupItemProps) {
+function TagGroupItem({ tagGroup, siteData, onEdit, onDelete, onManageTags, onAddTag }: TagGroupItemProps) {
   const tagCount = useMemo(() => {
     return getTagsInGroup(siteData.manifest, tagGroup.id).length;
   }, [siteData.manifest, tagGroup.id]);
-
-  const applicableCollectionNames = useMemo(() => {
-    return tagGroup.applicableCollections
-      .map(collectionId => collections.find(c => c.id === collectionId)?.name)
-      .filter(Boolean)
-      .join(', ');
-  }, [tagGroup.applicableCollections, collections]);
-
 
   return (
     <div className="group flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-accent">
       <div className="flex-1 min-w-0 cursor-pointer" onClick={onManageTags} title="Click to manage tags">
         <div className="flex items-center gap-2">
-          <div className="text-sm font-medium truncate">{tagGroup.name}</div>
+          <Tags className='size-4' />
+          <div className="text-sm truncate">{tagGroup.name}</div>
           <div className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
             {tagCount} tags
           </div>
         </div>
-        <div className="text-xs text-muted-foreground">
-          {applicableCollectionNames || 'No collections selected'}
-        </div>
+        
       </div>
       <div className="flex items-center gap-1">
         <DropdownMenu>

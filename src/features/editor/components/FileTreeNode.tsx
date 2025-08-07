@@ -119,7 +119,7 @@ export default function FileTreeNode({
             </button>
           ) : (
             // A spacer is used to keep alignment consistent for items without a collapse button.
-            <span className="w-5 mr-1 shrink-0" />
+            <span className="" />
           )}
 
           {isHomepage ? (

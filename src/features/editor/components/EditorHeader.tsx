@@ -14,8 +14,7 @@ import { Eye, PanelLeft, UploadCloud, PanelRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Services
-import { exportSiteToZip } from '@/core/services/siteExporter.service';
-import { slugify } from '@/core/libraries/utils';
+import { publishSite } from '@/core/services/publishing.service';
 
 /**
  * Props for the generic EditorHeader component.
@@ -59,21 +58,52 @@ export default function EditorHeader({ actions }: EditorHeaderProps) {
       toast.error("Site data not found. Cannot publish.");
       return;
     }
+    
     setIsPublishing(true);
-    toast.info("Generating site bundle for download...");
+    
+    // Get the configured provider for appropriate messaging
+    const provider = site.manifest.publishingConfig?.provider || 'zip';
+    const publishingMessage = provider === 'zip' 
+      ? "Generating site bundle for download..."
+      : `Publishing site to ${provider}...`;
+    
+    toast.info(publishingMessage);
+    
     try {
-      const blob = await exportSiteToZip(site);
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${slugify(site.manifest.title || 'signum-site')}.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
-      toast.success("Site bundle downloaded!");
+      // Ensure site is fully loaded before publishing
+      const { loadSite } = useAppStore.getState();
+      await loadSite(siteId);
+      const fullyLoadedSite = useAppStore.getState().getSiteById(siteId);
+      
+      if (!fullyLoadedSite) {
+        throw new Error("Failed to load site data for publishing.");
+      }
+      
+      const result = await publishSite(fullyLoadedSite);
+      
+      if (result.success) {
+        // Handle ZIP download
+        if (result.downloadUrl && result.filename) {
+          const link = document.createElement('a');
+          link.href = result.downloadUrl;
+          link.download = result.filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(result.downloadUrl);
+        }
+        
+        // Show success message with URL if available
+        const successMessage = result.url 
+          ? `${result.message} Site URL: ${result.url}`
+          : result.message;
+        toast.success(successMessage);
+      } else {
+        toast.error(result.message);
+      }
     } catch (error) {
-      console.error("Error publishing site to Zip:", error);
-      toast.error(`Failed to generate Zip: ${(error as Error).message}`);
+      console.error("Error publishing site:", error);
+      toast.error(`Publishing failed: ${(error as Error).message}`);
     } finally {
       setIsPublishing(false);
     }

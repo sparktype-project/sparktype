@@ -140,13 +140,7 @@ export default function TagGroupSettingsSidebar({ siteId, tagGroupId }: TagGroup
                     description !== (tagGroup.description || '') ||
                     JSON.stringify(applicableCollections.sort()) !== JSON.stringify(tagGroup.applicableCollections.sort());
 
-  const applicableCollectionNames = useMemo(() => {
-    return applicableCollections
-      .map(collectionId => collections.find(c => c.id === collectionId)?.name)
-      .filter(Boolean)
-      .join(', ');
-  }, [applicableCollections, collections]);
-
+ 
   return (
     <div className="h-full flex flex-col">
 

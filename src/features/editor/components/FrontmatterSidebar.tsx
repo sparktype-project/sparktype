@@ -1,7 +1,7 @@
 // src/features/editor/components/FrontmatterSidebar.tsx
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Manifest, RawFile, MarkdownFrontmatter, LayoutConfig, Collection } from '@/core/types';
+import type { Manifest, RawFile, MarkdownFrontmatter, LayoutConfig } from '@/core/types';
 import { type CollectionContext } from '@/core/services/collectionContext.service';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getAvailableLayouts } from '@/core/services/config/configHelpers.service';
@@ -146,20 +146,7 @@ export default function FrontmatterSidebar({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Context Indicator */}
-      <div className="px-4 py-3 border-b border-border bg-muted/30">
-        <div className="flex items-center space-x-2">
-          <div className={`w-2 h-2 rounded-full ${collectionContext.isCollectionItem ? 'bg-blue-500' : 'bg-green-500'}`}></div>
-          <span className="text-sm font-medium text-foreground">
-            {collectionContext.displayName}
-          </span>
-        </div>
-        {collectionContext.isCollectionItem && collectionContext.collection && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Layout: {collectionContext.collectionItemLayout}
-          </p>
-        )}
-      </div>
+      
       
       <div className="flex-grow overflow-y-auto">
         <Accordion type="multiple" defaultValue={defaultOpenSections} className="w-full">
@@ -168,7 +155,7 @@ export default function FrontmatterSidebar({
           {!isCollectionItem && (
             <AccordionItem value="layout">
               <AccordionTrigger>Layout</AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className='p-2'>
                 <LayoutSelector
                   siteId={siteId}
                   selectedLayoutId={frontmatter.layout || ''}
@@ -182,7 +169,7 @@ export default function FrontmatterSidebar({
           {currentLayoutManifest?.layoutType === 'collection' && (
             <AccordionItem value="collection-config">
               <AccordionTrigger>Collection display</AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className='p-2'>
                 <CollectionConfigForm
                   siteId={siteId}
                   layoutConfig={frontmatter.layoutConfig}
@@ -196,7 +183,7 @@ export default function FrontmatterSidebar({
           {/* Metadata Form - The schema it uses depends on whether it's a page or an item. */}
           <AccordionItem value="metadata">
             <AccordionTrigger>Metadata</AccordionTrigger>
-            <AccordionContent>
+            <AccordionContent className='p-2'>
               <PageMetadataForm
                 siteId={siteId}
                 frontmatter={frontmatter}
@@ -212,7 +199,7 @@ export default function FrontmatterSidebar({
           {isCollectionItem && parentCollection && (
             <AccordionItem value="tags">
               <AccordionTrigger>Tags</AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className='p-2'>
                 <MultiTagSelector
                   siteId={siteId}
                   collectionId={parentCollection.id}
@@ -226,7 +213,7 @@ export default function FrontmatterSidebar({
           {/* Advanced Settings (Slug, Delete) */}
           <AccordionItem value="advanced">
             <AccordionTrigger>Advanced</AccordionTrigger>
-            <AccordionContent className="space-y-4">
+            <AccordionContent className="space-y-4 p-2 pb-0">
               <AdvancedSettingsForm
                 slug={slug}
                 onSlugChange={onSlugChange}

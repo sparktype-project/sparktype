@@ -14,7 +14,7 @@
     {{/if}}
 
     <header class="mb-8">
-        <h2 class="text-3xl md:text-4xl font-bold text-heading mb-4 leading-tight">
+        <h2 class="text-3xl md:text-4xl font-bold text-heading my-4 leading-tight">
             <a 
                 href="{{getCollectionItemUrl this}}" 
                 class="hover:text-primary transition-colors duration-200"
@@ -35,15 +35,7 @@
                 </span>
             {{/if}}
             
-            {{#if this.frontmatter.tags}}
-                <div class="flex flex-wrap gap-2">
-                    {{#each this.frontmatter.tags}}
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                            {{this}}
-                        </span>
-                    {{/each}}
-                </div>
-            {{/if}}
+           
         </div>
 
         {{#if this.frontmatter.excerpt}}
@@ -63,13 +55,15 @@
         </div>
     {{/if}}
 
-    <footer class="mt-8 pt-6 border-t border-border">
-        <a 
-            href="{{getCollectionItemUrl this}}" 
-            class="inline-flex items-center text-primary font-medium hover:underline transition-colors duration-200"
-        >
-            View Full Post
-            <span class="ml-1">→</span>
-        </a>
+    <footer class="mt-4 pt-4 border-t border-border">
+         {{#if this.frontmatter.tags}}
+                <div class="flex flex-wrap gap-2">
+                    {{#each this.frontmatter.tags}}
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                            {{this}}
+                        </span>
+                    {{/each}}
+                </div>
+            {{/if}}
     </footer>
 </article>

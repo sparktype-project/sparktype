@@ -85,7 +85,7 @@ export default function ImageUploadWidget(props: WidgetProps) {
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
+      
       
       {previewUrl ? (
         <div className="relative w-full aspect-video bg-muted rounded-md overflow-hidden">
@@ -103,14 +103,16 @@ export default function ImageUploadWidget(props: WidgetProps) {
       ) : (
         <label
           htmlFor={id}
-          className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted/80"
+          className="flex flex-col items-center justify-center w-full  border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted/80 p-0"
         >
-          <div className="flex flex-col items-center justify-center pt-5 pb-6">
-            <UploadCloud className="w-8 h-8 mb-2 text-muted-foreground" />
+          <div className="flex flex-row items-center justify-center py-3 px-0 w-full gap-3">
+            <UploadCloud className="w-8 h-8  text-muted-foreground" />
+            <div>
             <p className="mb-1 text-sm text-muted-foreground">
               <span className="font-semibold">Click to upload</span> or drag and drop
             </p>
             <p className="text-xs text-muted-foreground">PNG, JPG, or WEBP (Max 5MB)</p>
+            </div>
           </div>
           <input 
             id={id} 

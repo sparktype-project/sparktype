@@ -50,9 +50,16 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 {{/if}}
 
+{{!-- RSS Feed Discovery --}}
+{{#if @root.options.isExport}}
+    <link rel="alternate" type="application/rss+xml" title="{{manifest.title}}" href="{{@root.options.relativeAssetPath}}rss.xml">
+{{else}}
+    <link rel="alternate" type="application/rss+xml" title="{{manifest.title}}" href="/rss.xml">
+{{/if}}
+
  {{!-- STYLESHEETS --}}
 {{#if @root.options.isExport}}
-    <link rel="stylesheet" href="{{@root.options.relativeAssetPath}}_site/css/styles.css">
+    <link rel="stylesheet" href="{{@root.options.relativeAssetPath}}assets/css/styles.css">
     <link rel="stylesheet" href="{{@root.options.relativeAssetPath}}_site/themes/{{manifest.theme.name}}/variables.css">
 {{else}}
     <link rel="stylesheet" href="/styles.css">

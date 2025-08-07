@@ -44,14 +44,21 @@ export function generateMetadataFiles(
     const siteBaseUrl = manifest.baseUrl?.replace(/\/$/, '') || 'https://example.com';
 
     // --- 2. RSS Feed Generation ---
-    const rssItems = allPageNodes.reduce((acc: string[], currentNode) => {
-        const file = contentFiles.find(f => f.path === currentNode.path);
+    // Only include collection items (blog posts, articles, etc.), not static pages
+    const collectionItems = manifest.collectionItems || [];
+    const rssItems = collectionItems.reduce((acc: string[], item) => {
+        const file = contentFiles.find(f => f.path === item.path);
         // Only include items that have a publication date in their frontmatter.
         if (file && file.frontmatter.date) {
-            const absoluteUrl = new URL(getUrlForNode(currentNode, manifest, false, undefined, siteData), siteBaseUrl).href;
+            const absoluteUrl = new URL(getUrlForNode(item, manifest, false, undefined, siteData), siteBaseUrl).href;
             const description = (file.frontmatter.description || '') as string;
             const pubDate = new Date(file.frontmatter.date as string).toUTCString();
-            const rssItem = `<item><title>${escapeForXml(currentNode.title)}</title><link>${escapeForXml(absoluteUrl)}</link><guid isPermaLink="true">${escapeForXml(absoluteUrl)}</guid><pubDate>${pubDate}</pubDate><description>${escapeForXml(description)}</description></item>`;
+            
+            // Include full content in the feed, with CDATA to handle HTML
+            const fullContent = file.content || '';
+            const contentCData = `<![CDATA[${fullContent}]]>`;
+            
+            const rssItem = `<item><title>${escapeForXml(item.title)}</title><link>${escapeForXml(absoluteUrl)}</link><guid isPermaLink="true">${escapeForXml(absoluteUrl)}</guid><pubDate>${pubDate}</pubDate><description>${escapeForXml(description)}</description><content:encoded>${contentCData}</content:encoded></item>`;
             acc.push(rssItem);
         }
         return acc;
@@ -61,7 +68,10 @@ export function generateMetadataFiles(
     .slice(0, 20)
     .join('');
 
-    bundle['rss.xml'] = `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>${escapeForXml(manifest.title)}</title><link>${siteBaseUrl}</link><description>${escapeForXml(manifest.description)}</description><lastBuildDate>${new Date().toUTCString()}</lastBuildDate><atom:link href="${new URL('rss.xml', siteBaseUrl).href}" rel="self" type="application/rss+xml" />${rssItems}</channel></rss>`;
+    // Only generate RSS if there are collection items with dates
+    if (rssItems) {
+        bundle['rss.xml'] = `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>${escapeForXml(manifest.title)}</title><link>${siteBaseUrl}</link><description>${escapeForXml(manifest.description)}</description><lastBuildDate>${new Date().toUTCString()}</lastBuildDate><atom:link href="${new URL('rss.xml', siteBaseUrl).href}" rel="self" type="application/rss+xml" />${rssItems}</channel></rss>`;
+    }
 
     // --- 3. Sitemap Generation ---
     const sitemapUrls = allPageNodes.map((node) => {
