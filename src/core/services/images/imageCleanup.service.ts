@@ -15,8 +15,22 @@ export interface CleanupResult {
 }
 
 /**
- * Recursively finds all ImageRef objects within the site's data.
- * This is similar to asset.builder.ts but separated for clarity.
+ * Recursively finds all ImageRef objects within the site's data structure.
+ * 
+ * Searches through:
+ * - Site manifest (including theme config, settings, etc.)
+ * - All content files' frontmatter (structured data)
+ * - Markdown content for inline image references ![alt](path)
+ * 
+ * Uses circular reference protection to prevent infinite loops when
+ * traversing complex nested objects.
+ * 
+ * @param siteData The complete site data to search
+ * @returns Set of unique image paths that are referenced somewhere in the site
+ * 
+ * @example
+ * const referenced = findAllReferencedImages(siteData);
+ * // Returns: Set(['assets/images/logo.jpg', 'assets/images/hero.png'])
  */
 function findAllReferencedImages(siteData: LocalSiteData): Set<string> {
   const referencedPaths = new Set<string>();
@@ -59,6 +73,22 @@ function findAllReferencedImages(siteData: LocalSiteData): Set<string> {
 
 /**
  * Identifies orphaned images that are stored but not referenced anywhere in the site.
+ * 
+ * An image is considered orphaned if:
+ * 1. Original image: Stored in IndexedDB but no ImageRef points to it
+ * 2. Derivative image: Cached but its source image is orphaned or unreferenced
+ * 
+ * This function performs comprehensive error handling to ensure cleanup can continue
+ * even if some storage operations fail (e.g., IndexedDB corruption, permission issues).
+ * 
+ * @param siteData The site data to analyze
+ * @returns Object containing arrays of orphaned original and derivative paths
+ * @throws Error only for critical failures that prevent any analysis
+ * 
+ * @example
+ * const { orphanedOriginals, orphanedDerivatives } = await findOrphanedImages(siteData);
+ * // orphanedOriginals: ['assets/images/unused.jpg']
+ * // orphanedDerivatives: ['assets/images/unused_w300_hauto_c-scale_g-center.jpg']
  */
 async function findOrphanedImages(siteData: LocalSiteData): Promise<{
   orphanedOriginals: string[];
@@ -118,34 +148,62 @@ async function findOrphanedImages(siteData: LocalSiteData): Promise<{
 
 /**
  * Extracts the original source path from a derivative filename.
- * e.g., "assets/images/photo_w300_h200_c-scale_g-center.jpg" -> "assets/images/photo.jpg"
+ * 
+ * Current format (as of localImage.service.ts line 155):
+ * `${pathWithoutExt}_w${width||'auto'}_h${height||'auto'}_c-${crop}_g-${gravity}${ext}`
+ * 
+ * Examples:
+ * - "assets/images/photo_w300_hauto_c-scale_g-center.jpg" -> "assets/images/photo.jpg"
+ * - "assets/images/image_wauto_h200_c-fill_g-north.png" -> "assets/images/image.png"
+ * - "nested/path/pic_w150_h150_c-fit_g-south.webp" -> "nested/path/pic.webp"
+ * 
+ * @param derivativePath The derivative filename to parse
+ * @returns The original source image path
+ * @throws Error if the path cannot be parsed as a derivative
  */
 function extractSourcePathFromDerivative(derivativePath: string): string {
   try {
-    // Remove transformation parameters: _w{width}_h{height}_c-{crop}_g-{gravity}
-    // Example: "assets/images/photo_w300_h200_c-scale_g-center.jpg" -> "assets/images/photo.jpg"
-    const regex = /_w[^_]*_h[^_]*_c-[^_]*_g-[^_]*(\.[^.]+)$/;
+    // Current format: _w{width|'auto'}_h{height|'auto'}_c-{crop}_g-{gravity}
+    // Match the transformation suffix pattern
+    const transformSuffixRegex = /_w[^_]+_h[^_]+_c-[^_]+_g-[^_]+(\.[^.]+)$/;
     
-    // Check if this looks like a derivative (contains transformation parameters)
-    if (regex.test(derivativePath)) {
-      // Remove everything from the first _w to the end, then add back the extension
-      const pathWithoutExtension = derivativePath.replace(/\.[^.]+$/, ''); // Remove extension
-      const extension = derivativePath.match(/\.[^.]+$/)?.[0] || ''; // Get extension
-      const basePathWithoutParams = pathWithoutExtension.replace(/_w[^_]*_h[^_]*_c-[^_]*_g-[^_]*$/, ''); // Remove params
-      return basePathWithoutParams + extension;
+    if (!transformSuffixRegex.test(derivativePath)) {
+      // This might be a legacy format or not a derivative at all
+      console.warn(`[ImageCleanup] Path doesn't match current derivative format: ${derivativePath}`);
+      return derivativePath; // Return as-is, might be a source path
     }
     
-    // If no transformation parameters found, it's probably already a source path
-    console.warn(`[ImageCleanup] Could not extract source path from derivative (no transform params found): ${derivativePath}`);
-    return derivativePath;
+    // Extract file extension first
+    const extensionMatch = derivativePath.match(/(\.[^.]+)$/);
+    const extension = extensionMatch ? extensionMatch[1] : '';
+    
+    // Remove extension, then remove the transformation suffix
+    const pathWithoutExtension = derivativePath.replace(/\.[^.]+$/, '');
+    const basePath = pathWithoutExtension.replace(/_w[^_]+_h[^_]+_c-[^_]+_g-[^_]+$/, '');
+    
+    if (!basePath) {
+      throw new Error(`Failed to extract base path from derivative: ${derivativePath}`);
+    }
+    
+    const sourcePath = basePath + extension;
+    console.debug(`[ImageCleanup] Extracted source path: ${derivativePath} -> ${sourcePath}`);
+    
+    return sourcePath;
   } catch (error) {
     console.error(`[ImageCleanup] Error extracting source path from ${derivativePath}:`, error);
-    return derivativePath;
+    throw new Error(`Cannot parse derivative path: ${derivativePath}. ${error}`);
   }
 }
 
 /**
  * Calculates the total size of blobs in bytes.
+ * 
+ * @param blobs Array of Blob objects to measure
+ * @returns Total size in bytes
+ * 
+ * @example
+ * const size = await calculateBlobSizes([blob1, blob2]);
+ * // Returns: 2048576 (2MB in bytes)
  */
 async function calculateBlobSizes(blobs: Blob[]): Promise<number> {
   return blobs.reduce((total, blob) => total + blob.size, 0);
@@ -153,7 +211,24 @@ async function calculateBlobSizes(blobs: Blob[]): Promise<number> {
 
 /**
  * Removes orphaned images from storage.
- * This is the main cleanup function that should be called during export/publish.
+ * 
+ * This is the main cleanup function that should be called during export/publish
+ * to free up storage space by removing images that are no longer referenced
+ * anywhere in the site's content or configuration.
+ * 
+ * The function is designed to be resilient:
+ * - Continues cleanup even if some operations fail
+ * - Provides detailed logging for debugging
+ * - Returns metrics about what was cleaned up
+ * - Handles IndexedDB errors gracefully
+ * 
+ * @param siteData The complete site data to clean up
+ * @returns Promise resolving to cleanup results with metrics and logs
+ * 
+ * @example
+ * const result = await cleanupOrphanedImages(siteData);
+ * console.log(`Freed ${(result.bytesFreed / 1024 / 1024).toFixed(2)} MB`);
+ * console.log(`Removed ${result.originalImagesRemoved} originals, ${result.derivativesRemoved} derivatives`);
  */
 export async function cleanupOrphanedImages(siteData: LocalSiteData): Promise<CleanupResult> {
   const log: string[] = [];
@@ -255,7 +330,26 @@ export async function cleanupOrphanedImages(siteData: LocalSiteData): Promise<Cl
 
 /**
  * Performs a dry run cleanup to show what would be cleaned without actually doing it.
- * Useful for showing users what will be cleaned before export.
+ * 
+ * This is useful for:
+ * - Showing users a preview of what will be cleaned before export
+ * - UI components that want to display storage savings
+ * - Debugging orphaned image detection logic
+ * - Confirming cleanup behavior before running the real cleanup
+ * 
+ * The function analyzes the same data as cleanupOrphanedImages() but doesn't
+ * modify any storage. It calculates estimated bytes freed by measuring actual
+ * blob sizes.
+ * 
+ * @param siteData The site data to analyze
+ * @returns Promise with preview results including paths and estimated storage savings
+ * 
+ * @example
+ * const preview = await previewCleanup(siteData);
+ * if (preview.orphanedOriginals.length > 0) {
+ *   const mb = (preview.estimatedBytesFreed / 1024 / 1024).toFixed(1);
+ *   console.log(`Would free ${mb} MB by removing ${preview.orphanedOriginals.length} images`);
+ * }
  */
 export async function previewCleanup(siteData: LocalSiteData): Promise<{
   orphanedOriginals: string[];
@@ -318,7 +412,27 @@ export async function previewCleanup(siteData: LocalSiteData): Promise<{
 }
 
 /**
- * Gets statistics about image usage for a site.
+ * Gets comprehensive statistics about image usage for a site.
+ * 
+ * Provides a complete overview of image storage usage including:
+ * - Total counts of original images and derivatives
+ * - How many images are actually referenced vs orphaned
+ * - Total storage usage across all image data
+ * 
+ * This is useful for:
+ * - Site management dashboards
+ * - Storage usage monitoring
+ * - Understanding cleanup impact
+ * - Performance optimization decisions
+ * 
+ * @param siteData The site data to analyze
+ * @returns Promise with complete image usage statistics
+ * 
+ * @example
+ * const stats = await getImageUsageStats(siteData);
+ * const efficiencyPct = (stats.referencedImages / stats.totalOriginalImages * 100).toFixed(1);
+ * console.log(`Storage efficiency: ${efficiencyPct}% (${stats.referencedImages}/${stats.totalOriginalImages} images used)`);
+ * console.log(`Total storage: ${(stats.totalStorageBytes / 1024 / 1024).toFixed(2)} MB`);
  */
 export async function getImageUsageStats(siteData: LocalSiteData): Promise<{
   totalOriginalImages: number;
