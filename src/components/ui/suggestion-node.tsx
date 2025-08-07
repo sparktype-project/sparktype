@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import { useRef, Fragment } from 'react';
 
 import type { TSuggestionData, TSuggestionText } from 'platejs';
 import type { PlateLeafProps, RenderNodeWrapper } from 'platejs/react';
@@ -66,10 +66,10 @@ export const SuggestionLineBreak: RenderNodeWrapper<SuggestionConfig> = ({
 
   return function Component({ children }) {
     return (
-      <React.Fragment>
+      <Fragment>
         {children}
         <SuggestionLineBreakContent suggestionData={suggestionData} />
-      </React.Fragment>
+      </Fragment>
     );
   };
 };
@@ -89,7 +89,7 @@ function SuggestionLineBreakContent({
   const isActive = activeSuggestionId === suggestionData.id;
   const isHover = hoverSuggestionId === suggestionData.id;
 
-  const spanRef = React.useRef<HTMLSpanElement>(null);
+  const spanRef = useRef<HTMLSpanElement>(null);
 
   return (
     <span

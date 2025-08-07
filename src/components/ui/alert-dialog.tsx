@@ -1,4 +1,4 @@
-import * as React from "react"
+// React import removed - not needed with react-jsx
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"

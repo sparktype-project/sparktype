@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { PlateElementProps } from 'platejs/react';
 import { PlateElement, useReadOnly } from 'platejs/react';
 import { Button } from '@/components/ui/button';
@@ -43,9 +43,9 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
   const readOnly = useReadOnly();
   const { activeSiteId, getSiteById } = useAppStore();
   
-  const [isEditOpen, setIsEditOpen] = React.useState(false);
-  const [availableLayouts, setAvailableLayouts] = React.useState<CollectionLayoutOption[]>([]);
-  const [localConfig, setLocalConfig] = React.useState<CollectionViewElementData>({
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [availableLayouts, setAvailableLayouts] = useState<CollectionLayoutOption[]>([]);
+  const [localConfig, setLocalConfig] = useState<CollectionViewElementData>({
     collection: element.collection as string || '',
     layout: element.layout as string || 'blog-listing',
     maxItems: element.maxItems as number || 10,
@@ -55,7 +55,7 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
   });
 
   // Load available collection layouts
-  React.useEffect(() => {
+  useEffect(() => {
     async function loadLayouts() {
       if (activeSiteId) {
         const siteData = getSiteById(activeSiteId);
@@ -73,11 +73,11 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
     loadLayouts();
   }, [activeSiteId, getSiteById, localConfig.layout]);
 
-  const selectedCollection = React.useMemo(() => {
+  const selectedCollection = useMemo(() => {
     return collections.find(c => c.id === localConfig.collection);
   }, [collections, localConfig.collection]);
 
-  const selectedLayout = React.useMemo(() => {
+  const selectedLayout = useMemo(() => {
     return availableLayouts.find(l => l.id === localConfig.layout);
   }, [availableLayouts, localConfig.layout]);
 

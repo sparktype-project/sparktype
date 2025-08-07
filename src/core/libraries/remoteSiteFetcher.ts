@@ -41,9 +41,9 @@ export async function fetchRemoteSiteData(remoteSiteUrl: string): Promise<LocalS
     const contentFilesPromises = contentFilePaths.map(async (path) => {
         try {
             const rawMarkdown = await fetchRemoteFile(remoteSiteUrl, `_site/${path}`);
-            const { frontmatter, content, blocks, hasBlocks } = parseMarkdownString(rawMarkdown);
+            const { frontmatter, content } = parseMarkdownString(rawMarkdown);
             const slug = path.replace(/^content\//, '').replace(/\.md$/, '');
-            return { slug, path, frontmatter, content, blocks, hasBlocks };
+            return { slug, path, frontmatter, content, blocks: [], hasBlocks: false };
         } catch (error) {
             console.warn(`Could not fetch or parse content file: ${path}`, error);
             return null; // Return null on failure for this specific file

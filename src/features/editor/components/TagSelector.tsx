@@ -74,7 +74,8 @@ export default function TagSelector({ siteId, tagGroup, selectedTagIds, onTagsCh
           </Button>
         </CollapsibleTrigger>
         
-        <CollapsibleContent className="space-y-3">
+        <CollapsibleContent>
+          <div className="space-y-3">
           {/* Selected Tags Display */}
           {selectedTags.length > 0 && (
             <div className="space-y-2">
@@ -144,6 +145,7 @@ export default function TagSelector({ siteId, tagGroup, selectedTagIds, onTagsCh
               {tagGroup.description}
             </div>
           )}
+          </div>
         </CollapsibleContent>
       </Collapsible>
     </div>

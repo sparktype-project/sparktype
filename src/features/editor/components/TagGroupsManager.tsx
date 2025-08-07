@@ -6,7 +6,7 @@ import { useAppStore } from '@/core/state/useAppStore';
 import { getCollections } from '@/core/services/collections.service';
 import { getTagGroups } from '@/core/services/tagGroups.service';
 import { getTagsInGroup } from '@/core/services/tags.service';
-import type { TagGroup, Tag, Collection } from '@/core/types';
+import type { TagGroup, Collection } from '@/core/types';
 import CreateTagGroupDialog from './CreateTagGroupDialog';
 import EditTagGroupDialog from './EditTagGroupDialog';
 
@@ -16,8 +16,7 @@ import { Input } from '@/core/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/core/components/ui/alert-dialog';
 
-import { Plus, Search, MoreHorizontal, Trash2, Edit, Tag as TagIcon } from 'lucide-react';
-import { toast } from 'sonner';
+import { Search, MoreHorizontal, Trash2, Edit, Tag as TagIcon } from 'lucide-react';
 
 interface TagGroupsManagerProps {
   siteId: string;

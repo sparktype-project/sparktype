@@ -41,36 +41,48 @@
 
       "font_headings": {
         "type": "string",
-        "title": "Headings Font Family",
+        "title": "Heading style",
         "description": "Choose the font family for all headlines.",
         "enum": [
-          "var(--font-stack-serif)",
-          "var(--font-stack-sans)",
-          "var(--font-stack-mono)"
+          "Geist",
+          "Geist Mono",
+          "Gentium Book Plus",
+          "IBM Plex Mono",
+          "IBM Plex Sans",
+          "IBM Plex Serif",
+          "Instrument Serif",
+          "Inter"
+          
+
         ],
         "enumNames": [
-          "Serif (System)",
-          "Sans-Serif (System)",
-          "Monospace (System)"
+          "Serif",
+          "Sans-Serif",
+          "Monospace"
         ],
-        "default": "var(--font-stack-serif)"
+        "default": "Inter"
       },
       
       "font_text": {
         "type": "string",
-        "title": "Body Text Font Family",
+        "title": "Text style",
         "description": "Choose the font family for all paragraphs and lists.",
         "enum": [
-          "var(--font-stack-serif)",
-          "var(--font-stack-sans)",
-          "var(--font-stack-mono)"
+          "Geist",
+          "Geist Mono",
+          "Gentium Book Plus",
+          "IBM Plex Mono",
+          "IBM Plex Sans",
+          "IBM Plex Serif",
+          "Instrument Serif",
+          "Inter"
         ],
         "enumNames": [
-          "Serif (System)",
-          "Sans-Serif (System)",
-          "Monospace (System)"
+          "Serif",
+          "Sans-Serif",
+          "Monospace"
         ],
-        "default": "var(--font-stack-sans)"
+        "default": "Gentium Book Plus"
       }
     }
   },

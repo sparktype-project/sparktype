@@ -13,8 +13,7 @@ import { Badge } from '@/core/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/core/components/ui/alert-dialog';
 
-import { Search, MoreHorizontal, Trash2, Edit, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { Search, MoreHorizontal, Trash2, Edit } from 'lucide-react';
 
 interface TagListProps {
   siteId: string;
@@ -109,20 +108,7 @@ export default function TagList({ siteId, tagGroupId }: TagListProps) {
     <>
       <div className="space-y-6">
         {/* Header Actions */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 flex-1">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input 
-                placeholder="Search tags..." 
-                value={searchFilter} 
-                onChange={(e) => setSearchFilter(e.target.value)} 
-                className="pl-8" 
-              />
-            </div>
-            <Badge variant="secondary">{tags.length} tags</Badge>
-          </div>
-        </div>
+        
 
         {/* Add New Tag Form - Always Visible */}
         <form onSubmit={handleCreateTag} className="border rounded-lg p-4 bg-muted/50">

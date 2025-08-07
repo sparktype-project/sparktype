@@ -1,6 +1,6 @@
 // src/features/editor/contexts/SparktypeBlockContext.tsx
 
-import React, { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import type { LocalSiteData, ParsedMarkdownFile } from '@/core/types';
 
 /**

@@ -1,4 +1,4 @@
-import React, { useCallback, forwardRef, useImperativeHandle } from 'react';
+import { useCallback, forwardRef, useImperativeHandle, useMemo } from 'react';
 import type { Value } from 'platejs';
 
 import { BasicNodesKit } from '@/components/editor/plugins/basic-nodes-kit';
@@ -58,12 +58,12 @@ export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
 }, ref) => {
 
   // Create SparkType MediaKit with siteId if available, otherwise use empty array
-  const sparkTypeMediaKit = React.useMemo(() => {
+  const sparkTypeMediaKit = useMemo(() => {
     return siteId ? createSparkTypeMediaKit(siteId) : [];
   }, [siteId]);
 
   // Create CollectionViewKit with collections data
-  const collectionViewKit = React.useMemo(() => {
+  const collectionViewKit = useMemo(() => {
     return createCollectionViewKit(collections);
   }, [collections]);
 

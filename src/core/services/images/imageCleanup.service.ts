@@ -1,6 +1,6 @@
 // src/core/services/images/imageCleanup.service.ts
 
-import type { LocalSiteData, ImageRef, SiteBundle } from '@/core/types';
+import type { LocalSiteData, ImageRef } from '@/core/types';
 import { getAllImageAssetsForSite, saveAllImageAssetsForSite } from '@/core/services/localFileSystem.service';
 import { getAllCacheKeys, getCachedDerivative, removeCachedDerivative } from './derivativeCache.service';
 

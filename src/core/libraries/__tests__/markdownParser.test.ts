@@ -322,7 +322,7 @@ Deep content.`;
         title: 'Test Post',
         layout: 'post',
         date: '2024-01-01',
-        tags: ['test', 'markdown']
+        tags: { 'general': ['test', 'markdown'] }
       };
       const content = '# Hello World\n\nThis is a test.';
 

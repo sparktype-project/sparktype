@@ -58,7 +58,6 @@ function TagGroupNotFound({ siteId, tagGroupId }: { siteId: string; tagGroupId: 
  * The internal component that contains the core tag group management logic.
  */
 function TagGroupManagementPageInternal() {
-  const navigate = useNavigate();
   const { siteId = '', tagGroupId = '' } = useParams<{ siteId: string; tagGroupId: string }>();
   
   const site = useAppStore(useCallback((state) => state.getSiteById(siteId), [siteId]));
@@ -100,7 +99,6 @@ function TagGroupManagementPageInternal() {
             {tagGroup.description && (
               <p className="text-muted-foreground">{tagGroup.description}</p>
             )}
-            <p className="text-sm text-muted-foreground mt-1">Tag Group ID: {tagGroup.id}</p>
           </div>
           <TagList siteId={siteId} tagGroupId={tagGroupId} />
         </div>

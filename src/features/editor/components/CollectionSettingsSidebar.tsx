@@ -16,7 +16,6 @@ import { Button } from '@/core/components/ui/button';
 import { Input } from '@/core/components/ui/input';
 import { Label } from '@/core/components/ui/label';
 import { Textarea } from '@/core/components/ui/textarea';
-import { Badge } from '@/core/components/ui/badge';
 import { Separator } from '@/core/components/ui/separator';
 import {
   Accordion,
@@ -180,14 +179,12 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b">
-        <h3 className="font-semibold">Collection Settings</h3>
-      </div>
+      
       <div className="flex-grow overflow-y-auto">
         <Accordion type="multiple" defaultValue={['basic', 'info']}>
           <AccordionItem value="basic">
-            <AccordionTrigger className="px-4">Basic Settings</AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
+            <AccordionTrigger className="px-4">Collection settings</AccordionTrigger>
+            <AccordionContent>
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="collection-name">Name</Label>
@@ -198,7 +195,7 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
                   <Textarea id="collection-description" value={description} onChange={(e) => setDescription(e.target.value)} disabled={isLoading} rows={3} placeholder="Optional description..." />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="item-layout-select">Default Item Layout</Label>
+                  <Label htmlFor="item-layout-select">Item layout</Label>
                   <Select value={defaultItemLayout} onValueChange={setDefaultItemLayout} disabled={isLoading || loadingLayouts}>
                     <SelectTrigger id="item-layout-select">
                       <SelectValue placeholder={loadingLayouts ? "Loading layouts..." : "Choose a layout for items..."} />
@@ -206,7 +203,7 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
                     <SelectContent>
                       {itemLayouts.map((layout) => (
                         <SelectItem key={layout.id} value={layout.id}>
-                          {layout.name} {layout.description && <span className="text-muted-foreground">— {layout.description}</span>}
+                          {layout.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -220,25 +217,7 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
               </div>
             </AccordionContent>
           </AccordionItem>
-          <AccordionItem value="info">
-            <AccordionTrigger className="px-4">Information</AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Items in Collection</span>
-                  <Badge variant="secondary">{itemCount}</Badge>
-                </div>
-                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Default Item Layout</span>
-                  <Badge variant="outline">{itemLayout?.name || collection.defaultItemLayout}</Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Content Path</span>
-                  <span className="text-xs font-mono bg-muted px-2 py-1 rounded">{collection.contentPath}</span>
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+
         </Accordion>
       </div>
       <div className="p-4 border-t">

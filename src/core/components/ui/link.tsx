@@ -1,6 +1,6 @@
 // src/core/components/ui/link.tsx
 
-import React from 'react';
+// React import removed - not needed with react-jsx
 import { Link as RouterLink, type LinkProps } from 'react-router-dom';
 
 /**

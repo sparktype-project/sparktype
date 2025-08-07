@@ -1,6 +1,6 @@
 // src/core/components/Navbar.tsx
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Leaf, Home, Settings, Globe } from 'lucide-react';
 import { toast } from 'sonner';

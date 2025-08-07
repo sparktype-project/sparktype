@@ -29,6 +29,7 @@ import SaveButton from '@/features/editor/components/SaveButton';
 import { usePageIdentifier } from '@/features/editor/hooks/usePageIdentifier';
 import { useFileContent } from '@/features/editor/hooks/useFileContent';
 import { useFilePersistence } from '@/features/editor/hooks/useFilePersistence';
+import CollectionItemList from '@/features/editor/components/CollectionItemList';
 
 /**
  * A loading skeleton specifically for the main editor content area.
@@ -146,7 +147,6 @@ function EditContentPageInternal() {
   }, [rightSidebarComponent, setRightAvailable, setRightSidebarContent]);
 
   // --- 3. Determine Page State for Rendering ---
-  const isCollectionPage = useMemo(() => !!frontmatter?.collection, [frontmatter]);
   const isSiteEmpty = siteId && siteStructure.length === 0 && !isNewFileMode;
 
   const pageTitle = status === 'ready' && frontmatter?.title 
@@ -216,6 +216,9 @@ function EditContentPageInternal() {
                     />
                   </div>
                   <div className="mt-6 flex-grow min-h-0">
+                     {frontmatter.layoutConfig?.collectionId ? (
+                      <CollectionItemList siteId={siteId} collectionId={frontmatter.layoutConfig.collectionId as string} />
+                    ) : (
                     <PlateEditor 
                       ref={editorRef}
                       initialValue={editorValue}
@@ -227,6 +230,7 @@ function EditContentPageInternal() {
                       siteId={siteId}
                       collections={siteCollections}
                     />
+                    )};
                   </div>
                 </div>
               </div>

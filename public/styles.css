@@ -425,6 +425,7 @@
 .h-8 { height: 2rem; }
 .h-10 { height: 2.5rem; }
 .h-12 { height: 3rem; }
+.h-14 { height: 3.5rem; }
 .h-16 { height: 4rem; }
 .h-20 { height: 5rem; }
 .h-24 { height: 6rem; }
@@ -1037,7 +1038,7 @@
 
 html {
   /* Tailwind's default font size (16px = 1rem) */
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
   -moz-tab-size: 4;
@@ -1057,19 +1058,25 @@ body {
    GLOBAL TYPOGRAPHY STYLES
    Applied to base elements without requiring .prose class
    ========================================================================== */
+.font-headings {
+  font-family: var(--font-headings);
+}
+.font-text {
+  font-family: var(--font-text);
+}
 
 /* Headings */
 h1, h2, h3, h4, h5, h6 {
   color: var(--color-heading);
-  font-weight: 600;
-  font-family: var(--font-serif);
+  font-weight: 700;
+  font-family: var(--font-headings);
   line-height: 1.25;
   margin-top: 0;
   margin-bottom: 0.75em;
 }
 
 h1 {
-  font-size: 2.25rem;
+  font-size: 2.5rem;
   line-height: 2.5rem;
   margin-bottom: 1rem;
 }
@@ -1113,7 +1120,6 @@ p {
 a {
   color: var(--color-primary);
   text-decoration: none;
-  font-weight: 500;
 }
 
 a:hover {
@@ -1123,7 +1129,7 @@ a:hover {
 /* Strong and Emphasis */
 strong, b {
   color: var(--color-heading);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 em, i {
@@ -1247,9 +1253,6 @@ hr {
 
 /* Images */
 img {
-  margin-top: 2rem;
-  margin-bottom: 2rem;
-  border-radius: 0.5rem;
   max-width: 100%;
   height: auto;
 }
@@ -1260,4 +1263,11 @@ img {
    ========================================================================== */
 .prose {
   max-width: 65ch;
+}
+
+.cover {
+  object-fit: cover;
+}
+.bg-center {
+  background-position: center;
 }

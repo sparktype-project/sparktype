@@ -11,11 +11,10 @@ import { CollectionErrorBoundary, CollectionErrorFallback } from './ErrorBoundar
 
 // UI Components
 import { Button } from '@/core/components/ui/button';
-import { Input } from '@/core/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/core/components/ui/alert-dialog';
 
-import { Plus, Search, MoreHorizontal, Trash2, Edit } from 'lucide-react';
+import { MoreHorizontal, Trash2, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CollectionsManagerProps {
@@ -24,7 +23,7 @@ interface CollectionsManagerProps {
 
 export default function CollectionsManager({ siteId }: CollectionsManagerProps) {
   const navigate = useNavigate();
-  const [searchFilter, setSearchFilter] = useState('');
+  const [searchFilter] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [collectionToDelete, setCollectionToDelete] = useState<Collection | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -81,14 +80,7 @@ export default function CollectionsManager({ siteId }: CollectionsManagerProps) 
   return (
     <CollectionErrorBoundary fallback={CollectionErrorFallback}>
       <div className="flex h-full flex-col">
-        {collections.length > 0 && (
-          <div className="p-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search collections..." value={searchFilter} onChange={(e) => setSearchFilter(e.target.value)} className="pl-8 h-8 text-xs" />
-            </div>
-          </div>
-        )}
+        
         <div className="flex-1 overflow-y-auto">
           {filteredCollections.length === 0 ? (
             <div className="p-4">
@@ -103,7 +95,7 @@ export default function CollectionsManager({ siteId }: CollectionsManagerProps) 
               )}
             </div>
           ) : (
-            <div className="space-y-1 p-2">
+            <div className="space-y-1">
               {filteredCollections.map((collection) => (
                 <CollectionItem
                   key={collection.id}
@@ -151,14 +143,12 @@ function CollectionItem({ collection, siteData, onClick, onEdit, onDelete }: Col
   }, [siteData.contentFiles, collection.contentPath]);
 
   return (
-    <div className="group flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-accent">
+    <div className="group flex items-center justify-between rounded-md">
       <div className="flex-1 min-w-0 cursor-pointer" onClick={onClick} title="Click to view collection items">
         <div className="flex items-center gap-2">
           <div className="text-sm font-medium truncate">{collection.name}</div>
-          {/* CORRECTED: Display the more informative `defaultItemLayout` instead of `typeId`. */}
-          <div className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{collection.defaultItemLayout}</div>
+          <div className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{itemCount} items</div>
         </div>
-        <div className="text-xs text-muted-foreground">{itemCount} items • {collection.contentPath}</div>
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

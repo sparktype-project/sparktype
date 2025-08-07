@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { useState, useCallback } from 'react';
 import { getActiveImageService } from '@/core/services/images/images.service';
 import { useAppStore } from '@/core/state/useAppStore';
 import type { ImageRef } from '@/core/types';
@@ -23,12 +23,12 @@ export function useSparkTypeUpload({
   onUploadComplete,
   onUploadError,
 }: UseSparkTypeUploadProps) {
-  const [uploadedFile, setUploadedFile] = React.useState<SparkTypeUploadedFile>();
-  const [uploadingFile, setUploadingFile] = React.useState<File>();
-  const [progress, setProgress] = React.useState<number>(0);
-  const [isUploading, setIsUploading] = React.useState(false);
+  const [uploadedFile, setUploadedFile] = useState<SparkTypeUploadedFile>();
+  const [uploadingFile, setUploadingFile] = useState<File>();
+  const [progress, setProgress] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const uploadFile = React.useCallback(async (file: File): Promise<SparkTypeUploadedFile | undefined> => {
+  const uploadFile = useCallback(async (file: File): Promise<SparkTypeUploadedFile | undefined> => {
     if (!siteId) {
       const error = new Error('Site ID is required for image upload');
       onUploadError?.(error);

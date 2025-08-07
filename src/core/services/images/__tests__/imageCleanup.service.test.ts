@@ -2,10 +2,10 @@
 import { 
   cleanupOrphanedImages, 
   previewCleanup, 
-  getImageUsageStats,
-  CleanupResult
+  getImageUsageStats
 } from '../imageCleanup.service';
-import { LocalSiteData, ImageRef, Manifest, ParsedMarkdownFile } from '@/core/types';
+// CleanupResult type is imported when needed via function return types
+import type { LocalSiteData, ImageRef, Manifest, ParsedMarkdownFile } from '@/core/types';
 import * as localSiteFs from '@/core/services/localFileSystem.service';
 import * as derivativeCache from '../derivativeCache.service';
 
@@ -47,7 +47,7 @@ describe('imageCleanup.service', () => {
   const createMockContentFile = (
     path: string, 
     content: string, 
-    frontmatter: Record<string, any> = {}
+    frontmatter: any = {}
   ): ParsedMarkdownFile => ({
     slug: path.replace(/^content\//, '').replace(/\.md$/, ''),
     path,
@@ -136,7 +136,7 @@ describe('imageCleanup.service', () => {
       circularObj.self = circularObj;
       circularObj.imageRef = createMockImageRef('assets/images/circular.jpg');
       
-      siteData.manifest.circularData = circularObj;
+      (siteData.manifest as any).circularData = circularObj;
 
       mockLocalSiteFs.getAllImageAssetsForSite.mockResolvedValue({
         'assets/images/circular.jpg': createMockBlob('circular-data'),

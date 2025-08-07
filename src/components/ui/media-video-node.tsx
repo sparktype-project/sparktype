@@ -1,8 +1,6 @@
+// React import removed - not needed with react-jsx
 'use client';
-
-import * as React from 'react';
 import LiteYouTubeEmbed from 'react-lite-youtube-embed';
-import ReactPlayer from 'react-player';
 
 import type { TResizableProps, TVideoElement } from 'platejs';
 import type { PlateElementProps } from 'platejs/react';
@@ -100,7 +98,7 @@ export const VideoElement = withHOC(
                 <div ref={handleRef}>
                   <ReactPlayer
                     height="100%"
-                    url={unsafeUrl}
+                    src={unsafeUrl}
                     width="100%"
                     controls
                   />

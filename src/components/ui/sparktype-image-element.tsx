@@ -99,7 +99,7 @@ export const SparkTypeImageElement = withHOC(
             site.manifest,
             effectiveImageRef,
             { 
-              width: width || effectiveImageRef.width, 
+              width: typeof width === 'string' ? parseInt(width, 10) : (width || effectiveImageRef.width), 
               height: effectiveImageRef.height 
             },
             false // isExport = false generates blob URLs for browser display

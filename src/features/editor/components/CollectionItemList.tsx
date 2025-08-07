@@ -96,15 +96,12 @@ export default function CollectionItemList({ siteId, collectionId }: CollectionI
     }
   }, [itemToDelete, siteId, deleteContentFile]);
 
-  const collectionName = collection?.name || 'Collection Items';
-
   return (
-    <div className="h-full flex flex-col p-6 bg-muted/30">
+    <div className="h-full flex flex-col">
       <div className="flex shrink-0 items-center justify-between mb-4 pb-4 border-b">
-        <h1 className="text-2xl font-bold">{collectionName}</h1>
         <Button asChild>
           <Link to={newItemPath}>
-            <PlusCircle className="mr-2 h-4 w-4" /> New Item
+            <PlusCircle className="mr-2 h-4 w-4" /> Add post
           </Link>
         </Button>
       </div>
@@ -139,7 +136,7 @@ export default function CollectionItemList({ siteId, collectionId }: CollectionI
                       {date}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={isPublished ? "default" : "secondary"}>
+                      <Badge variant="secondary">
                         {isPublished ? "Published" : "Draft"}
                       </Badge>
                     </TableCell>

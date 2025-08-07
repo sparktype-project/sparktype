@@ -10,14 +10,12 @@ import {
 } from '@/core/services/tagGroups.service';
 import { getCollections } from '@/core/services/collections.service';
 import { getTagsInGroup } from '@/core/services/tags.service';
-import type { TagGroup, Collection } from '@/core/types';
 
 // UI Components
 import { Button } from '@/core/components/ui/button';
 import { Input } from '@/core/components/ui/input';
 import { Label } from '@/core/components/ui/label';
 import { Textarea } from '@/core/components/ui/textarea';
-import { Badge } from '@/core/components/ui/badge';
 import { Separator } from '@/core/components/ui/separator';
 import { Checkbox } from '@/core/components/ui/checkbox';
 import {
@@ -151,14 +149,12 @@ export default function TagGroupSettingsSidebar({ siteId, tagGroupId }: TagGroup
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b">
-        <h3 className="font-semibold">Tag Group Settings</h3>
-      </div>
+
       <div className="flex-grow overflow-y-auto">
         <Accordion type="multiple" defaultValue={['basic', 'collections', 'info']}>
           <AccordionItem value="basic">
-            <AccordionTrigger className="px-4">Basic Settings</AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
+            <AccordionTrigger className="px-4">Settings</AccordionTrigger>
+            <AccordionContent>
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="taggroup-name">Name</Label>
@@ -178,8 +174,8 @@ export default function TagGroupSettingsSidebar({ siteId, tagGroupId }: TagGroup
           </AccordionItem>
           
           <AccordionItem value="collections">
-            <AccordionTrigger className="px-4">Applicable Collections</AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
+            <AccordionTrigger className="px-4">Collections</AccordionTrigger>
+            <AccordionContent>
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
                   Select which collections can use tags from this group. Tags will appear in the sidebar when editing content from these collections.
@@ -212,31 +208,7 @@ export default function TagGroupSettingsSidebar({ siteId, tagGroupId }: TagGroup
             </AccordionContent>
           </AccordionItem>
           
-          <AccordionItem value="info">
-            <AccordionTrigger className="px-4">Information</AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Tags in Group</span>
-                  <Badge variant="secondary">{tagCount}</Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Applicable Collections</span>
-                  <Badge variant="outline">{applicableCollections.length}</Badge>
-                </div>
-                {applicableCollectionNames && (
-                  <div className="space-y-1">
-                    <span className="text-sm text-muted-foreground">Collections:</span>
-                    <div className="text-xs text-muted-foreground">{applicableCollectionNames}</div>
-                  </div>
-                )}
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Group ID</span>
-                  <span className="text-xs font-mono bg-muted px-2 py-1 rounded">{tagGroup.id}</span>
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+          
         </Accordion>
       </div>
       <div className="p-4 border-t">

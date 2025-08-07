@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+// React import removed as not needed with react-jsx
 
 import { DndPlugin } from '@platejs/dnd';
 import { useBlockSelected } from '@platejs/selection/react';

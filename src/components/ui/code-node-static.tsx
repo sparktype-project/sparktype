@@ -1,4 +1,4 @@
-import * as React from 'react';
+// React import removed - not needed with react-jsx
 
 import type { SlateLeafProps } from 'platejs';
 

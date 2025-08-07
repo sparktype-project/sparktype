@@ -260,7 +260,7 @@ describe('source.builder', () => {
             frontmatter: {
               title: 'Complex Post',
               layout: 'blog',
-              tags: ['tech', 'tutorial'],
+              tags: { 'general': ['tech', 'tutorial'] },
               metadata: {
                 seo: {
                   title: 'SEO Title',
@@ -270,7 +270,9 @@ describe('source.builder', () => {
               published: true,
               publishDate: '2024-01-01'
             },
-            content: 'Complex content here'
+            content: 'Complex content here',
+            blocks: [],
+            hasBlocks: false
           }
         ]
       };

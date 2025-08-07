@@ -32,8 +32,8 @@
      DEFAULT FONT ASSIGNMENTS
      These defaults will be overridden by theme config via styleOverrides
      ========================================================================== */
-  --font-headings: var(--font-stack-serif);
-  --font-text: var(--font-stack-sans);
+  --font-headings: "Inter", sans-serif;
+  --font-text: "Gentium Book Plus", serif;
 
   /* ==========================================================================
      MAPPED FONTS (Used by Design System)
@@ -64,4 +64,42 @@
   --transition-fast: 150ms ease-in-out;
   --transition-medium: 300ms ease-in-out;
   --transition-slow: 500ms ease-in-out;
+}
+
+.gentium-book-plus-regular {
+  font-family: "Gentium Book Plus", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.gentium-book-plus-regular-italic {
+  font-family: "Gentium Book Plus", serif;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.instrument-serif-regular {
+  font-family: "Instrument Serif", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.instrument-serif-regular-italic {
+  font-family: "Instrument Serif", serif;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.inter-regular {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.inter-bold {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: normal;
 }
