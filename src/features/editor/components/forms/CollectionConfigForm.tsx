@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getCollections } from '@/core/services/collections.service';
-import type { LayoutConfig } from '@/core/types';
+import type { LayoutConfig, LayoutManifest } from '@/core/types';
 
 // UI Components
 import { Label } from '@/core/components/ui/label';
@@ -21,6 +21,7 @@ interface CollectionConfigFormProps {
   siteId: string;
   layoutConfig?: LayoutConfig;
   onLayoutConfigChange: (config: LayoutConfig) => void;
+  currentLayout?: LayoutManifest;
 }
 
 /**
@@ -31,7 +32,8 @@ interface CollectionConfigFormProps {
 export default function CollectionConfigForm({
   siteId,
   layoutConfig,
-  onLayoutConfigChange
+  onLayoutConfigChange,
+  currentLayout
 }: CollectionConfigFormProps) {
 
   const getSiteById = useAppStore(state => state.getSiteById);
@@ -42,6 +44,29 @@ export default function CollectionConfigForm({
     if (!siteData) return [];
     return getCollections(siteData.manifest);
   }, [siteData]);
+
+  // Get available display types (partials) from the current layout
+  const availableDisplayTypes = useMemo(() => {
+    if (!currentLayout?.partials) return [];
+    return currentLayout.partials.map(partial => {
+      // Extract just the basename without path and extension
+      // partials/post-full.hbs -> post-full
+      const pathParts = partial.path.split('/');
+      const filename = pathParts[pathParts.length - 1]?.replace('.hbs', '') || '';
+      return {
+        value: filename,
+        label: partial.name,
+        description: partial.description,
+        isDefault: partial.isDefault
+      };
+    });
+  }, [currentLayout]);
+
+  // Get the default display type
+  const defaultDisplayType = useMemo(() => {
+    const defaultPartial = availableDisplayTypes.find(type => type.isDefault);
+    return defaultPartial?.value || availableDisplayTypes[0]?.value || '';
+  }, [availableDisplayTypes]);
 
   // A generic handler to update the layoutConfig state.
   const handleConfigChange = (updates: Partial<LayoutConfig>) => {
@@ -76,6 +101,34 @@ export default function CollectionConfigForm({
         </Select>
         <p className="text-xs text-muted-foreground">Choose which collection's items to show on this page.</p>
       </div>
+
+      {/* Display Type Selection */}
+      {availableDisplayTypes.length > 0 && (
+        <div className="space-y-2">
+          <Label htmlFor="display-type-select">Display Type</Label>
+          <Select
+            value={layoutConfig?.displayType || defaultDisplayType}
+            onValueChange={(value) => handleConfigChange({ displayType: value })}
+          >
+            <SelectTrigger id="display-type-select">
+              <SelectValue placeholder="Select display type..." />
+            </SelectTrigger>
+            <SelectContent>
+              {availableDisplayTypes.map((displayType: { value: string; label: string; description?: string }) => (
+                <SelectItem key={displayType.value} value={displayType.value}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{displayType.label}</span>
+                    {displayType.description && (
+                      <span className="text-xs text-muted-foreground">{displayType.description}</span>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">Choose how collection items are displayed on the page.</p>
+        </div>
+      )}
 
       {/* Sorting Options */}
       <div className="space-y-2">

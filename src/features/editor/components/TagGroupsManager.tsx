@@ -9,14 +9,14 @@ import { getTagsInGroup } from '@/core/services/tags.service';
 import type { TagGroup, Collection } from '@/core/types';
 import CreateTagGroupDialog from './CreateTagGroupDialog';
 import EditTagGroupDialog from './EditTagGroupDialog';
+import CreateTagDialog from './CreateTagDialog';
 
 // UI Components
 import { Button } from '@/core/components/ui/button';
-import { Input } from '@/core/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/core/components/ui/alert-dialog';
 
-import { Search, MoreHorizontal, Trash2, Edit, Tag as TagIcon } from 'lucide-react';
+import { MoreHorizontal, Trash2, Edit, Tag as TagIcon, Plus } from 'lucide-react';
 
 interface TagGroupsManagerProps {
   siteId: string;
@@ -24,12 +24,13 @@ interface TagGroupsManagerProps {
 
 export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
   const navigate = useNavigate();
-  const [searchFilter, setSearchFilter] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [tagGroupToDelete, setTagGroupToDelete] = useState<TagGroup | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [tagGroupToEdit, setTagGroupToEdit] = useState<TagGroup | null>(null);
+  const [createTagDialogOpen, setCreateTagDialogOpen] = useState(false);
+  const [selectedTagGroupForTag, setSelectedTagGroupForTag] = useState<TagGroup | null>(null);
 
   const getSiteById = useAppStore(state => state.getSiteById);
   const deleteTagGroup = useAppStore(state => state.deleteTagGroup);
@@ -37,18 +38,6 @@ export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
 
   const tagGroups = useMemo(() => siteData ? getTagGroups(siteData.manifest) : [], [siteData]);
   const collections = useMemo(() => siteData ? getCollections(siteData.manifest) : [], [siteData]);
-
-  const filteredTagGroups = useMemo(() => {
-    if (!searchFilter.trim()) return tagGroups;
-    const filter = searchFilter.toLowerCase();
-    return tagGroups.filter(tagGroup =>
-      tagGroup.name.toLowerCase().includes(filter) ||
-      tagGroup.description?.toLowerCase().includes(filter) ||
-      tagGroup.applicableCollections.some(collectionId => 
-        collections.find(c => c.id === collectionId)?.name.toLowerCase().includes(filter)
-      )
-    );
-  }, [tagGroups, searchFilter, collections]);
 
   const handleDeleteTagGroup = (tagGroup: TagGroup) => {
     setTagGroupToDelete(tagGroup);
@@ -62,6 +51,11 @@ export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
 
   const handleManageTags = (tagGroup: TagGroup) => {
     navigate(`/sites/${siteId}/taggroups/${tagGroup.id}`);
+  };
+
+  const handleAddTag = (tagGroup: TagGroup) => {
+    setSelectedTagGroupForTag(tagGroup);
+    setCreateTagDialogOpen(true);
   };
 
   const confirmDeleteTagGroup = async () => {
@@ -83,40 +77,28 @@ export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
 
   return (
     <div className="flex h-full flex-col">
-      
-      {tagGroups.length > 0 && (
-        <div className="p-2">
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search tag groups..." value={searchFilter} onChange={(e) => setSearchFilter(e.target.value)} className="pl-8 h-8 text-xs" />
-          </div>
-        </div>
-      )}
-      
       <div className="flex-1 overflow-y-auto">
-        {filteredTagGroups.length === 0 ? (
+        {tagGroups.length === 0 ? (
           <div className="p-4">
-            {tagGroups.length === 0 ? (
-              <div className="space-y-3">
-                <div className="text-muted-foreground">
-                  <p className="text-xs">No tag groups yet. Click the plus button above to create one.</p>
-                </div>
+            <div className="space-y-3">
+              <div className="text-muted-foreground">
+                <p className="text-xs">No tag groups yet. Click the plus button above to create one.</p>
               </div>
-            ) : (
-              <div className="text-muted-foreground"><p className="text-sm">No tag groups match</p></div>
-            )}
+            </div>
           </div>
         ) : (
           <div className="space-y-1 p-2">
-            {filteredTagGroups.map((tagGroup) => (
+            {tagGroups.map((tagGroup) => (
               <TagGroupItem
                 key={tagGroup.id}
                 tagGroup={tagGroup}
                 siteData={siteData}
+                siteId={siteId}
                 collections={collections}
                 onEdit={() => handleEditTagGroup(tagGroup)}
                 onDelete={() => handleDeleteTagGroup(tagGroup)}
                 onManageTags={() => handleManageTags(tagGroup)}
+                onAddTag={() => handleAddTag(tagGroup)}
               />
             ))}
           </div>
@@ -142,6 +124,12 @@ export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
       
       <CreateTagGroupDialog siteId={siteId} open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
       <EditTagGroupDialog siteId={siteId} tagGroup={tagGroupToEdit} open={editDialogOpen} onOpenChange={setEditDialogOpen} />
+      <CreateTagDialog 
+        siteId={siteId} 
+        tagGroup={selectedTagGroupForTag} 
+        open={createTagDialogOpen} 
+        onOpenChange={setCreateTagDialogOpen} 
+      />
     </div>
   );
 }
@@ -149,13 +137,15 @@ export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
 interface TagGroupItemProps {
   tagGroup: TagGroup;
   siteData: import('@/core/types').LocalSiteData;
+  siteId: string;
   collections: Collection[];
   onEdit: () => void;
   onDelete: () => void;
   onManageTags: () => void;
+  onAddTag: () => void;
 }
 
-function TagGroupItem({ tagGroup, siteData, collections, onEdit, onDelete, onManageTags }: TagGroupItemProps) {
+function TagGroupItem({ tagGroup, siteData, siteId, collections, onEdit, onDelete, onManageTags, onAddTag }: TagGroupItemProps) {
   const tagCount = useMemo(() => {
     return getTagsInGroup(siteData.manifest, tagGroup.id).length;
   }, [siteData.manifest, tagGroup.id]);
@@ -166,6 +156,7 @@ function TagGroupItem({ tagGroup, siteData, collections, onEdit, onDelete, onMan
       .filter(Boolean)
       .join(', ');
   }, [tagGroup.applicableCollections, collections]);
+
 
   return (
     <div className="group flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-accent">
@@ -180,24 +171,35 @@ function TagGroupItem({ tagGroup, siteData, collections, onEdit, onDelete, onMan
           {applicableCollectionNames || 'No collections selected'}
         </div>
       </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0">
-            <MoreHorizontal className="h-3 w-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onManageTags}>
-            <TagIcon className="h-4 w-4 mr-2" />Manage Tags
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onEdit}>
-            <Edit className="h-4 w-4 mr-2" />Edit Group
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onDelete} className="text-destructive">
-            <Trash2 className="h-4 w-4 mr-2" />Delete Group
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div className="flex items-center gap-1">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <MoreHorizontal className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onManageTags}>
+              <TagIcon className="h-4 w-4 mr-2" />Manage Tags
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onEdit}>
+              <Edit className="h-4 w-4 mr-2" />Edit Group
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onDelete} className="text-destructive">
+              <Trash2 className="h-4 w-4 mr-2" />Delete Group
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-6 w-6 p-0"
+          title="Add new tag"
+          onClick={onAddTag}
+        >
+          <Plus className="h-3 w-3" />
+        </Button>
+      </div>
     </div>
   );
 }

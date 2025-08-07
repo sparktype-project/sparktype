@@ -1,15 +1,29 @@
 {
-  "name": "Blog Listing",
+  "name": "Blog listing",
   "version": "1.0.0",
   "description": "Displays a paginated list of items from a 'Blog' collection.",
   "layoutType": "collection",
   "files": [
     { "path": "layout.json", "type": "manifest" },
     { "path": "index.hbs", "type": "template" },
-    { "path": "partials/post-card.hbs", "type": "partial" }
+    { "path": "partials/post-card.hbs", "type": "partial" },
+    { "path": "partials/post-full.hbs", "type": "partial" }
+  ],
+  "partials": [
+    {
+      "path": "partials/post-card.hbs",
+      "name": "Card View",
+      "description": "Compact cards with title, excerpt, and read more links",
+      "isDefault": true
+    },
+    {
+      "path": "partials/post-full.hbs",
+      "name": "Full Content",
+      "description": "Complete posts with full content displayed"
+    }
   ],
   "schema": {
-    "title": "Blog Listing Options",
+    "title": "Blog listing options",
     "type": "object",
     "properties": {
       "listing_title": {
@@ -30,7 +44,7 @@
     }
   },
   "itemSchema": {
-    "title": "Blog Post",
+    "title": "Blog post",
     "description": "This layout displays items that conform to the 'Blog Post' schema.",
     "type": "object",
     "properties": {

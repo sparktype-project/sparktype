@@ -628,6 +628,7 @@
 .border-r { border-right-width: 1px; }
 
 .border-b-0 { border-bottom-width: 0px; }
+.border-b-1 { border-bottom-width: 1px; }
 .border-b-2 { border-bottom-width: 2px; }
 .border-b-4 { border-bottom-width: 4px; }
 .border-b-8 { border-bottom-width: 8px; }
@@ -1161,8 +1162,7 @@ blockquote {
   margin-left: 0;
   margin-right: 0;
   padding-left: 1rem;
-  border-left: 4px solid var(--color-primary);
-  color: var(--color-muted);
+  border-left: 4px solid var(--color-muted);
 }
 
 blockquote p {

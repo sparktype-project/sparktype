@@ -1,10 +1,11 @@
 // src/features/editor/components/CollectionsManager.tsx
 
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getCollections, deleteCollection } from '@/core/services/collections.service';
 import type { Collection, ParsedMarkdownFile } from '@/core/types';
+import { NEW_FILE_SLUG_MARKER } from '@/config/editorConfig';
 import CreateCollectionDialog from './CreateCollectionDialog';
 import EditCollectionDialog from './EditCollectionDialog';
 import { CollectionErrorBoundary, CollectionErrorFallback } from './ErrorBoundary';
@@ -14,7 +15,7 @@ import { Button } from '@/core/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/core/components/ui/alert-dialog';
 
-import { MoreHorizontal, Trash2, Edit } from 'lucide-react';
+import { MoreHorizontal, Trash2, Edit, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CollectionsManagerProps {
@@ -23,7 +24,6 @@ interface CollectionsManagerProps {
 
 export default function CollectionsManager({ siteId }: CollectionsManagerProps) {
   const navigate = useNavigate();
-  const [searchFilter] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [collectionToDelete, setCollectionToDelete] = useState<Collection | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -35,15 +35,6 @@ export default function CollectionsManager({ siteId }: CollectionsManagerProps) 
   const siteData = getSiteById(siteId);
 
   const collections = useMemo(() => siteData ? getCollections(siteData.manifest) : [], [siteData]);
-
-  const filteredCollections = useMemo(() => {
-    if (!searchFilter.trim()) return collections;
-    const filter = searchFilter.toLowerCase();
-    return collections.filter(collection =>
-      collection.name.toLowerCase().includes(filter) ||
-      collection.defaultItemLayout.toLowerCase().includes(filter)
-    );
-  }, [collections, searchFilter]);
 
   const handleDeleteCollection = (collection: Collection) => {
     setCollectionToDelete(collection);
@@ -82,25 +73,22 @@ export default function CollectionsManager({ siteId }: CollectionsManagerProps) 
       <div className="flex h-full flex-col">
         
         <div className="flex-1 overflow-y-auto">
-          {filteredCollections.length === 0 ? (
+          {collections.length === 0 ? (
             <div className="p-4">
-              {collections.length === 0 ? (
-                <div className="space-y-3">
-                  <div className="text-muted-foreground">
-                    <p className="text-xs">No collections yet. Click the plus button above to create one.</p>
-                  </div>
+              <div className="space-y-3">
+                <div className="text-muted-foreground">
+                  <p className="text-xs">No collections yet. Click the plus button above to create one.</p>
                 </div>
-              ) : (
-                <div className="text-muted-foreground"><p className="text-sm">No collections match</p></div>
-              )}
+              </div>
             </div>
           ) : (
             <div className="space-y-1">
-              {filteredCollections.map((collection) => (
+              {collections.map((collection) => (
                 <CollectionItem
                   key={collection.id}
                   collection={collection}
                   siteData={siteData}
+                  siteId={siteId}
                   onClick={() => handleCollectionClick(collection)}
                   onEdit={() => handleEditCollection(collection)}
                   onDelete={() => handleDeleteCollection(collection)}
@@ -131,16 +119,22 @@ export default function CollectionsManager({ siteId }: CollectionsManagerProps) 
 interface CollectionItemProps {
   collection: Collection;
   siteData: import('@/core/types').LocalSiteData;
+  siteId: string;
   onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-function CollectionItem({ collection, siteData, onClick, onEdit, onDelete }: CollectionItemProps) {
+function CollectionItem({ collection, siteData, siteId, onClick, onEdit, onDelete }: CollectionItemProps) {
   // CORRECTED: Calculate item count directly instead of using an obsolete service.
   const itemCount = useMemo(() => {
     return (siteData.contentFiles || []).filter((file: ParsedMarkdownFile) => file.path.startsWith(collection.contentPath)).length;
   }, [siteData.contentFiles, collection.contentPath]);
+
+  const newItemPath = useMemo(() => {
+    const contentPathSlug = collection.contentPath.replace('content/', '').replace(/\/$/, '');
+    return `/sites/${siteId}/edit/content/${contentPathSlug}/${NEW_FILE_SLUG_MARKER}`;
+  }, [collection, siteId]);
 
   return (
     <div className="group flex items-center justify-between rounded-md">
@@ -150,15 +144,28 @@ function CollectionItem({ collection, siteData, onClick, onEdit, onDelete }: Col
           <div className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{itemCount} items</div>
         </div>
       </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"><MoreHorizontal className="h-3 w-3" /></Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onEdit}><Edit className="h-4 w-4 mr-2" />Edit Collection</DropdownMenuItem>
-          <DropdownMenuItem onClick={onDelete} className="text-destructive"><Trash2 className="h-4 w-4 mr-2" />Delete Collection</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div className="flex items-center gap-1">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0"><MoreHorizontal className="h-3 w-3" /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onEdit}><Edit className="h-4 w-4 mr-2" />Edit Collection</DropdownMenuItem>
+            <DropdownMenuItem onClick={onDelete} className="text-destructive"><Trash2 className="h-4 w-4 mr-2" />Delete Collection</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button 
+          asChild
+          variant="ghost" 
+          size="sm" 
+          className="h-6 w-6 p-0"
+          title="Add new item"
+        >
+          <Link to={newItemPath}>
+            <Plus className="h-3 w-3" />
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }

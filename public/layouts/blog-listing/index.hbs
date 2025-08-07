@@ -2,7 +2,7 @@
   Template for the blog listing page using SparkType Design System utilities.
   It receives `collectionItems` and `pagination` data from the page resolver.
 }}
-<div class="container max-w-4xl mx-auto px-4 py-8 lg:px-8">
+<div class="max-w-4xl mx-auto px-4 py-8 lg:px-8">
     <header class="mb-12">
         <h1 class="text-4xl lg:text-5xl font-bold text-heading mb-4 leading-tight">
             {{contentFile.frontmatter.title}}
@@ -20,7 +20,12 @@
             {{#each collectionItems}}
                 {{! Render a partial for each item. This keeps the code clean. }}
                 {{! The partial name is namespaced to this layout: 'blog-listing/...' }}
-                {{> blog-listing/partials/post-card this}}
+                {{! Use the selected displayType from layoutConfig, fallback to post-card }}
+                {{#if ../contentFile.frontmatter.layoutConfig.displayType}}
+                    {{> (concat "blog-listing/partials/" ../contentFile.frontmatter.layoutConfig.displayType) this}}
+                {{else}}
+                    {{> blog-listing/partials/post-card this}}
+                {{/if}}
             {{/each}}
         </div>
 

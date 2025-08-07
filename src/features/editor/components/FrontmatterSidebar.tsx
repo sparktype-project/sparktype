@@ -181,12 +181,13 @@ export default function FrontmatterSidebar({
           {/* Collection Configuration - Shown only for pages using a 'collection' layout. */}
           {currentLayoutManifest?.layoutType === 'collection' && (
             <AccordionItem value="collection-config">
-              <AccordionTrigger>Collection Display</AccordionTrigger>
+              <AccordionTrigger>Collection display</AccordionTrigger>
               <AccordionContent>
                 <CollectionConfigForm
                   siteId={siteId}
                   layoutConfig={frontmatter.layoutConfig}
                   onLayoutConfigChange={handleLayoutConfigChange}
+                  currentLayout={currentLayoutManifest}
                 />
               </AccordionContent>
             </AccordionItem>

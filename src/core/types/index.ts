@@ -55,6 +55,14 @@ export interface LayoutManifest extends BaseAssetManifest {
   itemSchema?: import('@rjsf/utils').RJSFSchema;
   itemUiSchema?: StrictUiSchema;
 
+  // Available partials for collection layouts
+  partials?: {
+    path: string;
+    name: string;
+    description?: string;
+    isDefault?: boolean;
+  }[];
+
   display_options?: Record<string, DisplayOption>;
   image_presets?: Record<string, ImagePreset>;
   data_files?: DataFileDefinition[];
@@ -190,6 +198,7 @@ export interface CollectionItemRef {
 export interface LayoutConfig {
   collectionId: string;
   layout: string;
+  displayType?: string; // Controls which partial to use for rendering items
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   maxItems?: number;
