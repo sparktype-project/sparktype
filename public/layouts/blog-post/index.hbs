@@ -1,34 +1,42 @@
 {{! 
-  Template for a single blog post.
+  Template for a single blog post using SparkType Design System utilities.
   It receives the full `pageContext` object, which includes `contentFile`.
 }}
-<article class="content-container py-4 prose">
+<article class="container max-w-4xl mx-auto px-4 py-8 lg:px-8">
     {{! Display the banner image if one is set in the frontmatter }}
     {{#if images.banner}}
-        <div class="banner-image mb-4">
-            <img src="{{images.banner.url}}" class="w-full" alt="{{contentFile.frontmatter.title}} banner" style="border-radius: 8px;">
+        <div class="mb-8">
+            <img 
+                src="{{images.banner.url}}" 
+                class="w-full h-64 object-cover rounded-lg" 
+                alt="{{contentFile.frontmatter.title}} banner"
+            >
         </div>
     {{/if}}
 
     {{! Post Header: Title and Metadata }}
-    <header class="post-header">
-        <h1 class="mb-2">{{contentFile.frontmatter.title}}</h1>
-        <div class="post-meta text-small text-muted mb-4">
+    <header class="mb-8">
+        <h1 class="text-4xl lg:text-5xl font-bold text-heading mb-4 leading-tight">
+            {{contentFile.frontmatter.title}}
+        </h1>
+        <div class="flex flex-wrap items-center gap-2 text-sm text-muted">
             {{#if contentFile.frontmatter.date}}
-                <time datetime="{{contentFile.frontmatter.date}}">
+                <time datetime="{{contentFile.frontmatter.date}}" class="font-medium">
                     Published on {{formatDate contentFile.frontmatter.date}}
                 </time>
             {{/if}}
             
             {{#if contentFile.frontmatter.author}}
-                <span style="margin: 0 0.5rem;">|</span>
-                <span>By {{contentFile.frontmatter.author}}</span>
+                {{#if contentFile.frontmatter.date}}
+                    <span class="text-border">•</span>
+                {{/if}}
+                <span class="font-medium">By {{contentFile.frontmatter.author}}</span>
             {{/if}}
         </div>
     </header>
 
     {{! The main content of the post, rendered from Markdown or Blocks }}
-    <section class="post-content">
+    <section class="max-w-none">
         {{#if blocks}}
             {{{render_blocks blocks}}}
         {{else}}
@@ -38,11 +46,13 @@
 
     {{! Display tags at the bottom of the post }}
     {{#if contentFile.frontmatter.tags}}
-        <footer class="post-footer mt-4" style="border-top: 1px solid var(--color-border); padding-top: 1rem;">
-            <p class="text-small font-bold">Tagged In:</p>
-            <div class="tags-list">
+        <footer class="mt-12 pt-8 border-t border-border">
+            <p class="text-sm font-semibold text-heading mb-3">Tagged In:</p>
+            <div class="flex flex-wrap gap-2">
                 {{#each contentFile.frontmatter.tags}}
-                    <span class="inline-block text-small" style="background: #f8f9fa; border-radius: 4px; padding: 0.25rem 0.5rem; margin-right: 0.5rem; margin-bottom: 0.5rem;">{{this}}</span>
+                    <span class="inline-flex items-center px-3 py-1 text-xs font-medium bg-muted text-text rounded-full">
+                        {{this}}
+                    </span>
                 {{/each}}
             </div>
         </footer>

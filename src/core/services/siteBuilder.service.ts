@@ -18,6 +18,8 @@ export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBund
         throw new Error("Cannot build site: content files are not loaded.");
     }
 
+    console.log(`[SiteBuilder] Building site bundle for: ${siteData.siteId}`);
+
     // 1. Prepare a synchronized version of the site data for a consistent build.
     const { initialConfig: finalMergedConfig } = await getMergedThemeDataForForm(
         siteData.manifest.theme.name,
@@ -36,11 +38,23 @@ export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBund
     await bundleSourceFiles(bundle, synchronizedSiteData);
 
     // 4. Bundle all assets (images, themes, layouts).
-    await bundleAllAssets(bundle, synchronizedSiteData);
+    try {
+        await bundleAllAssets(bundle, synchronizedSiteData);
+        console.log(`[SiteBuilder] Assets bundled successfully`);
+    } catch (error) {
+        console.error(`[SiteBuilder] Failed to bundle assets:`, error);
+        throw new Error(`Asset bundling failed: ${error}`);
+    }
 
     // 5. Generate metadata files (RSS, sitemap).
-    // CORRECTED: The call now correctly passes only the two required arguments.
-    generateMetadataFiles(bundle, synchronizedSiteData);
+    try {
+        generateMetadataFiles(bundle, synchronizedSiteData);
+        console.log(`[SiteBuilder] Metadata files generated`);
+    } catch (error) {
+        console.error(`[SiteBuilder] Failed to generate metadata:`, error);
+        throw new Error(`Metadata generation failed: ${error}`);
+    }
 
+    console.log(`[SiteBuilder] Site bundle completed with ${Object.keys(bundle).length} files`);
     return bundle;
 }

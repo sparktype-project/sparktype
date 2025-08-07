@@ -281,30 +281,69 @@ class LocalImageService implements ImageService {
    */
   public async getExportableAssets(siteId: string, allImageRefs: ImageRef[]): Promise<{ path: string; data: Blob; }[]> {
     const exportableMap = new Map<string, Blob>();
+    const errors: string[] = [];
+    
+    console.log(`[LocalImageService] Starting export for ${allImageRefs.length} image references`);
     
     // 1. Add all original source images for this site to the export map.
     for (const ref of allImageRefs) {
       if (ref.serviceId === 'local' && !exportableMap.has(ref.src)) {
-        const sourceBlob = await localSiteFs.getImageAsset(siteId, ref.src);
-        if (sourceBlob) {
-          exportableMap.set(ref.src, sourceBlob);
+        try {
+          const sourceBlob = await localSiteFs.getImageAsset(siteId, ref.src);
+          if (sourceBlob) {
+            exportableMap.set(ref.src, sourceBlob);
+            console.log(`[LocalImageService] Added source image: ${ref.src}`);
+          } else {
+            const error = `Source image not found: ${ref.src}`;
+            console.warn(`[LocalImageService] ${error}`);
+            errors.push(error);
+          }
+        } catch (error) {
+          const errorMsg = `Failed to load source image ${ref.src}: ${error}`;
+          console.error(`[LocalImageService] ${errorMsg}`);
+          errors.push(errorMsg);
         }
       }
     }
     
     // 2. Add all of this site's existing derivatives from the cache to the export map.
-    const derivativeKeys = await getAllCacheKeys(siteId);
-    for (const key of derivativeKeys) {
-      const filename = key.substring(siteId.length + 1);
-      if (!exportableMap.has(filename)) {
-        const derivativeBlob = await getCachedDerivative(key);
-        if (derivativeBlob) {
-          exportableMap.set(filename, derivativeBlob);
+    try {
+      const derivativeKeys = await getAllCacheKeys(siteId);
+      console.log(`[LocalImageService] Found ${derivativeKeys.length} derivative keys`);
+      
+      for (const key of derivativeKeys) {
+        const filename = key.substring(siteId.length + 1);
+        if (!exportableMap.has(filename)) {
+          try {
+            const derivativeBlob = await getCachedDerivative(key);
+            if (derivativeBlob) {
+              exportableMap.set(filename, derivativeBlob);
+              console.log(`[LocalImageService] Added derivative: ${filename}`);
+            } else {
+              console.warn(`[LocalImageService] Derivative blob is null for key: ${key}`);
+            }
+          } catch (error) {
+            const errorMsg = `Failed to load derivative ${key}: ${error}`;
+            console.error(`[LocalImageService] ${errorMsg}`);
+            errors.push(errorMsg);
+          }
         }
       }
+    } catch (error) {
+      const errorMsg = `Failed to get derivative keys: ${error}`;
+      console.error(`[LocalImageService] ${errorMsg}`);
+      errors.push(errorMsg);
     }
     
-    return Array.from(exportableMap.entries()).map(([path, data]) => ({ path, data }));
+    const exportableAssets = Array.from(exportableMap.entries()).map(([path, data]) => ({ path, data }));
+    console.log(`[LocalImageService] Export completed: ${exportableAssets.length} assets, ${errors.length} errors`);
+    
+    if (errors.length > 0) {
+      console.warn(`[LocalImageService] Export errors:`, errors);
+      // Don't throw here - allow export to continue with available assets
+    }
+    
+    return exportableAssets;
   }
 }
 

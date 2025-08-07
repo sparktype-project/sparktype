@@ -9,6 +9,7 @@ import { slugify } from '@/core/libraries/utils';
 import { toast } from 'sonner';
 import { type MarkdownFrontmatter } from '@/core/types';
 import { DEFAULT_PAGE_LAYOUT_PATH } from '@/config/editorConfig';
+import { type CollectionContext } from '@/core/services/collectionContext.service';
 
 /**
  * Manages the content state for the editor.
@@ -29,7 +30,7 @@ import { DEFAULT_PAGE_LAYOUT_PATH } from '@/config/editorConfig';
 export type FileStatus = 'initializing' | 'loading' | 'converting' | 'ready' | 'not_found';
 interface PageFrontmatter extends MarkdownFrontmatter { menuTitle?: string; }
 
-export function useFileContent(siteId: string, filePath: string, isNewFileMode: boolean) {
+export function useFileContent(siteId: string, filePath: string, isNewFileMode: boolean, collectionContext: CollectionContext) {
   const navigate = useNavigate(); // <--- Use the navigate hook
   const site = useAppStore(state => state.getSiteById(siteId));
   const { setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave } = useEditor();
@@ -56,17 +57,14 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
       let fileData: any = null;
       
       if (isNewFileMode) {
-        // Check if this is a collection item by looking at the parent directory
-        const parentPath = `${filePath}.md`; // Convert parent dir to collection page path
-        const parentFile = site.contentFiles.find(f => f.path === parentPath);
-        const isCollectionItem = !!parentFile?.frontmatter.collection;
-        
-        if (isCollectionItem) {
-          // Setup for a new collection item - use default layout
+        // Use collection context to determine proper initialization
+        if (collectionContext.isCollectionItem && collectionContext.collectionItemLayout) {
+          // Setup for a new collection item - use collection's default layout
           setFrontmatter({
             title: '',
-            layout: 'page', // Default layout for collection items
+            layout: collectionContext.collectionItemLayout,
             date: new Date().toISOString().split('T')[0],
+            // Add any collection-specific defaults here
           });
         } else {
           // Setup for a brand new regular page
@@ -108,7 +106,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
 
     loadData();
     
-  }, [site, filePath, isNewFileMode, siteId, navigate, setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave]);
+  }, [site, filePath, isNewFileMode, collectionContext, siteId, navigate, setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave]);
 
   // Callback to signal that some content (either body or frontmatter) has changed.
   const onContentModified = useCallback(() => {

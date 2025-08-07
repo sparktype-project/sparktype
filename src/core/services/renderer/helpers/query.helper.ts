@@ -1,6 +1,7 @@
 // src/core/services/theme-engine/helpers/query.helper.ts
 import Handlebars from 'handlebars';
 import type { SparktypeHelper } from './types';
+import { sortContentItems } from '@/core/services/contentSorting.service';
 
 // The helper factory receives the full siteData object, which it can use.
 export const queryHelper: SparktypeHelper = (siteData) => ({
@@ -44,27 +45,10 @@ export const queryHelper: SparktypeHelper = (siteData) => ({
         return isPublished;
     });
 
+    // Use centralized sorting logic
     const sortBy = config.sort_by || 'date';
     const sortOrder = config.sort_order || 'desc';
-    const orderModifier = sortOrder === 'desc' ? -1 : 1;
-
-    items.sort((a, b) => {
-      const valA = a.frontmatter[sortBy];
-      const valB = b.frontmatter[sortBy];
-      if (sortBy === 'date') {
-        const dateA = valA ? new Date(valA as string).getTime() : 0;
-        const dateB = valB ? new Date(valB as string).getTime() : 0;
-        if (isNaN(dateA) || isNaN(dateB)) return 0;
-        return (dateA - dateB) * orderModifier;
-      }
-      if (typeof valA === 'string' && typeof valB === 'string') {
-        return valA.localeCompare(valB) * orderModifier;
-      }
-      if (typeof valA === 'number' && typeof valB === 'number') {
-        return (valA - valB) * orderModifier;
-      }
-      return 0;
-    });
+    items = sortContentItems(items, { sortBy, sortOrder });
 
     if (config.limit) {
       const limit = parseInt(config.limit, 10);

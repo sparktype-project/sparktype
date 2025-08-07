@@ -1,26 +1,44 @@
 {{!
-  Partial for a single blog post card.
+  Partial for a single blog post card using SparkType Design System utilities.
   'this' refers to one item from the `collectionItems` array.
 }}
-<article class="post-card flex flex-column">
+<article class="border-b">
     {{#if this.frontmatter.featured_image}}
-        <a href="{{getCollectionItemUrl this}}" class="block">
-            {{{image src=this.frontmatter.featured_image alt=this.frontmatter.title class="post-card-image"}}}
+        <a href="{{getCollectionItemUrl this}}" class="block mb-4">
+            {{{image 
+                src=this.frontmatter.featured_image 
+                alt=this.frontmatter.title 
+                class="w-full h-48 object-cover rounded-lg"
+            }}}
         </a>
     {{/if}}
 
-    <div class="post-card-content">
-        <h3 class="post-card-title" style="color: var(--color-headings); font-family: var(--font-headings);">
-            <a href="{{getCollectionItemUrl this}}" class="post-card-title-link">{{this.frontmatter.title}}</a>
-        </h3>
-        <p class="post-card-date" style="color: var(--color-text); opacity: 0.7; font-family: var(--font-text);">
+    <div class="flex flex-col h-full pb-6 border-b">
+        <h2 class="mt-0 mb-2 leading-tight">
+            <a 
+                href="{{getCollectionItemUrl this}}" 
+                class=""
+            >
+                {{this.frontmatter.title}}
+            </a>
+        </h2>
+        
+        <p class="text-sm text-muted mb-3 font-medium">
             {{formatDate this.frontmatter.date}}
         </p>
+        
         {{#if this.frontmatter.excerpt}}
-            <p class="post-card-excerpt" style="color: var(--color-text); font-family: var(--font-text);">
+            <p class="text-text mb-4 leading-relaxed flex-1">
                 {{this.frontmatter.excerpt}}
             </p>
         {{/if}}
-        <a href="{{getCollectionItemUrl this}}" class="post-card-link" style="color: var(--color-primary); font-family: var(--font-text);">Read More →</a>
+        
+        <a 
+            href="{{getCollectionItemUrl this}}" 
+            class="inline-flex items-center text-primary font-medium hover:underline transition-colors duration-200 mt-auto"
+        >
+            Read More 
+            <span class="ml-1">→</span>
+        </a>
     </div>
 </article>

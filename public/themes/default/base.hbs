@@ -6,9 +6,9 @@
     {{> head headContext}}
 </head>
 <body>
-    <div x-data="{ isMobileMenuOpen: false }" class="flex flex-column min-h-screen">
+    <div x-data="{ isMobileMenuOpen: false }" class="flex flex-col min-h-screen">
         {{> header}}
-        <main class="flex-auto">
+        <main class="flex-1">
             {{!-- The body content is pre-rendered by the render service --}}
             {{{body}}}
         </main>

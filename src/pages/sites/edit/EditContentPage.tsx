@@ -63,8 +63,8 @@ function EditContentPageInternal() {
   const allContentFiles = useMemo(() => site?.contentFiles || [], [site?.contentFiles]);
   const siteCollections = useMemo(() => site?.manifest.collections || [], [site?.manifest.collections]);
   
-  const { isNewFileMode, filePath } = usePageIdentifier({ siteStructure, allContentFiles });
-  const { status, frontmatter, slug, setSlug, handleFrontmatterChange, onContentModified } = useFileContent(siteId, filePath, isNewFileMode);
+  const { isNewFileMode, filePath, collectionContext } = usePageIdentifier({ siteStructure, allContentFiles, siteData: site || null });
+  const { status, frontmatter, slug, setSlug, handleFrontmatterChange, onContentModified } = useFileContent(siteId, filePath, isNewFileMode, collectionContext);
   const editorRef = useRef<PlateEditorRef>(null);
   const [editorValue, setEditorValue] = useState<Value>(defaultInitialValue);
   
@@ -117,16 +117,16 @@ function EditContentPageInternal() {
         manifest={siteManifest}
         layoutFiles={layoutFiles}
         themeFiles={themeFiles}
-        allContentFiles={allContentFiles}
         frontmatter={frontmatter}
         onFrontmatterChange={handleFrontmatterChange}
         isNewFileMode={isNewFileMode}
         slug={slug}
         onSlugChange={setSlug}
         onDelete={handleDelete}
+        collectionContext={collectionContext}
       />
     );
-  }, [status, frontmatter, siteManifest, layoutFiles, themeFiles, siteId, filePath, allContentFiles, handleFrontmatterChange, isNewFileMode, slug, setSlug, handleDelete]);
+  }, [status, frontmatter, siteManifest, layoutFiles, themeFiles, siteId, filePath, handleFrontmatterChange, isNewFileMode, slug, setSlug, handleDelete, collectionContext]);
 
   useEffect(() => {
     setLeftAvailable(true);
@@ -191,6 +191,21 @@ function EditContentPageInternal() {
               <div className='flex h-full w-full flex-col'>
                 <div className='container mx-auto flex h-full max-w-[900px] flex-col p-6'>
                   <div className="shrink-0">
+                    {/* Context Indicator */}
+                    <div className="mb-4 px-3 py-2 bg-muted/30 rounded-lg border">
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-2 h-2 rounded-full ${collectionContext.isCollectionItem ? 'bg-blue-500' : 'bg-green-500'}`}></div>
+                        <span className="text-sm font-medium text-foreground">
+                          {collectionContext.displayName}
+                        </span>
+                      </div>
+                      {collectionContext.isCollectionItem && collectionContext.collection && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Collection: {collectionContext.collection.name} | Layout: {collectionContext.collectionItemLayout}
+                        </p>
+                      )}
+                    </div>
+                    
                     <PrimaryContentFields 
                       frontmatter={{ 
                         title: frontmatter.title, 

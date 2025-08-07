@@ -4,7 +4,7 @@
   "files": [
     { "path": "theme.json", "type": "manifest" },
     { "path": "base.hbs", "type": "base" },
-    { "path": "css/theme.css", "type": "stylesheet" },
+    { "path": "variables.css", "type": "stylesheet" },
     { "path": "partials/head.hbs", "type": "partial", "name": "head" },
     { "path": "partials/header.hbs", "type": "partial", "name": "header" },
     { "path": "partials/sidebar.hbs", "type": "partial", "name": "sidebar" },

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Manifest, RawFile, MarkdownFrontmatter, LayoutConfig, Collection } from '@/core/types';
+import { type CollectionContext } from '@/core/services/collectionContext.service';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getAvailableLayouts } from '@/core/services/config/configHelpers.service';
 import { type LayoutManifest } from '@/core/types';
@@ -34,6 +35,7 @@ interface FrontmatterSidebarProps {
   slug: string;
   onSlugChange: (newSlug: string) => void;
   onDelete: () => Promise<void>;
+  collectionContext: CollectionContext;
 }
 
 /**
@@ -43,7 +45,7 @@ interface FrontmatterSidebarProps {
  */
 export default function FrontmatterSidebar({
   siteId, filePath, manifest, layoutFiles, themeFiles,
-  frontmatter, onFrontmatterChange, isNewFileMode, slug, onSlugChange, onDelete,
+  frontmatter, onFrontmatterChange, isNewFileMode, slug, onSlugChange, onDelete, collectionContext
 }: FrontmatterSidebarProps) {
 
   const setAsHomepage = useAppStore(state => state.setAsHomepage);
@@ -81,15 +83,9 @@ export default function FrontmatterSidebar({
     fetchAllLayouts();
   }, [manifest, layoutFiles, themeFiles]);
 
-  const { isCollectionItem, parentCollection } = useMemo(() => {
-    // Determine if the current file is an item within a collection by checking its path.
-    const collections = manifest.collections || [];
-    const parent = collections.find((c: Collection) => filePath.startsWith(c.contentPath));
-    return {
-      isCollectionItem: !!parent,
-      parentCollection: parent || null,
-    };
-  }, [filePath, manifest.collections]);
+  // Use the collection context passed from the parent component
+  const isCollectionItem = collectionContext.isCollectionItem;
+  const parentCollection = collectionContext.collection || null;
 
   const currentLayoutManifest = useMemo(() => {
     if (!frontmatter.layout) return null;
@@ -150,6 +146,21 @@ export default function FrontmatterSidebar({
 
   return (
     <div className="h-full flex flex-col">
+      {/* Context Indicator */}
+      <div className="px-4 py-3 border-b border-border bg-muted/30">
+        <div className="flex items-center space-x-2">
+          <div className={`w-2 h-2 rounded-full ${collectionContext.isCollectionItem ? 'bg-blue-500' : 'bg-green-500'}`}></div>
+          <span className="text-sm font-medium text-foreground">
+            {collectionContext.displayName}
+          </span>
+        </div>
+        {collectionContext.isCollectionItem && collectionContext.collection && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Layout: {collectionContext.collectionItemLayout}
+          </p>
+        )}
+      </div>
+      
       <div className="flex-grow overflow-y-auto">
         <Accordion type="multiple" defaultValue={defaultOpenSections} className="w-full">
 

@@ -51,8 +51,13 @@
 {{/if}}
 
  {{!-- STYLESHEETS --}}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
-<link rel="stylesheet" href="{{#if @root.options.isExport}}{{@root.options.relativeAssetPath}}_site/themes/{{manifest.theme.name}}/css/theme.css{{else}}/themes/{{manifest.theme.name}}/css/theme.css{{/if}}">
+{{#if @root.options.isExport}}
+    <link rel="stylesheet" href="{{@root.options.relativeAssetPath}}_site/css/styles.css">
+    <link rel="stylesheet" href="{{@root.options.relativeAssetPath}}_site/themes/{{manifest.theme.name}}/variables.css">
+{{else}}
+    <link rel="stylesheet" href="_site/css/styles.css">
+    <link rel="stylesheet" href="/themes/{{manifest.theme.name}}/variables.css">
+{{/if}}
 
 {{!-- Alpine.js for interactivity --}}
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>

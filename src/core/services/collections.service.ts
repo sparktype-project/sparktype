@@ -103,55 +103,8 @@ export function getCollectionContent(siteData: { manifest: Manifest; contentFile
   return result;
 }
 
-/**
- * Optimized sorting function for collection items
- * Shared across all collection rendering helpers to avoid duplication
- */
-export function sortCollectionItems(
-  items: ParsedMarkdownFile[], 
-  sortBy: string, 
-  sortOrder: 'asc' | 'desc' = 'desc'
-): ParsedMarkdownFile[] {
-  if (!items.length || !sortBy) return items;
-
-  return [...items].sort((a, b) => {
-    let aValue: unknown;
-    let bValue: unknown;
-
-    // Get values to compare
-    switch (sortBy) {
-      case 'date':
-        aValue = a.frontmatter.date ? new Date(a.frontmatter.date) : new Date(0);
-        bValue = b.frontmatter.date ? new Date(b.frontmatter.date) : new Date(0);
-        break;
-      case 'title':
-        aValue = (a.frontmatter.title || '').toLowerCase();
-        bValue = (b.frontmatter.title || '').toLowerCase();
-        break;
-      case 'order':
-        aValue = (a.frontmatter as any).order ?? 999999;
-        bValue = (b.frontmatter as any).order ?? 999999;
-        break;
-      default:
-        aValue = ((a.frontmatter as any)[sortBy] || '').toString().toLowerCase();
-        bValue = ((b.frontmatter as any)[sortBy] || '').toString().toLowerCase();
-        break;
-    }
-
-    // Compare values efficiently
-    let comparison = 0;
-    
-    if (aValue instanceof Date && bValue instanceof Date) {
-      comparison = aValue.getTime() - bValue.getTime();
-    } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-      comparison = aValue - bValue;
-    } else {
-      comparison = String(aValue).localeCompare(String(bValue));
-    }
-
-    return sortOrder === 'desc' ? -comparison : comparison;
-  });
-}
+// Import the centralized sorting logic
+export { sortCollectionItems } from './contentSorting.service';
 
 
 // --- VALIDATION & UTILITY HELPERS ---

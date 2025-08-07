@@ -3,18 +3,20 @@
 import { useMemo } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { NEW_FILE_SLUG_MARKER } from '@/config/editorConfig';
-import { type ParsedMarkdownFile, type StructureNode } from '@/core/types';
+import { type ParsedMarkdownFile, type StructureNode, type LocalSiteData } from '@/core/types';
+import { getCollectionContext, type CollectionContext } from '@/core/services/collectionContext.service';
 
 interface PageIdentifierParams {
   siteStructure: StructureNode[];
   allContentFiles: ParsedMarkdownFile[];
+  siteData: LocalSiteData | null;
 }
 
 /**
  * A data-aware hook that parses the URL to identify the site and the specific
  * file path being targeted for editing, using react-router-dom hooks.
  */
-export function usePageIdentifier({ allContentFiles }: PageIdentifierParams) {
+export function usePageIdentifier({ allContentFiles, siteData }: PageIdentifierParams) {
   // Get routing information from react-router-dom
   const { siteId = '' } = useParams<{ siteId: string }>();
   const location = useLocation();
@@ -57,5 +59,15 @@ export function usePageIdentifier({ allContentFiles }: PageIdentifierParams) {
     return ''; // Return empty string if no path can be determined
   }, [slugSegments, isNewFileMode, allContentFiles]);
 
-  return { siteId, isNewFileMode, filePath };
+  // Compute collection context based on the file path
+  const collectionContext = useMemo((): CollectionContext => {
+    return getCollectionContext(filePath, siteData, isNewFileMode);
+  }, [filePath, siteData, isNewFileMode]);
+
+  return { 
+    siteId, 
+    isNewFileMode, 
+    filePath,
+    collectionContext
+  };
 }

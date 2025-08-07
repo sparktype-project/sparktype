@@ -64,6 +64,14 @@ export async function clearSiteDerivativeCache(siteId: string): Promise<void> {
 }
 
 /**
+ * Removes a specific cached derivative by its key.
+ * @param key The unique key for the derivative to remove.
+ */
+export async function removeCachedDerivative(key: string): Promise<void> {
+  await derivativeCacheStore.removeItem(key);
+}
+
+/**
  * Clears the entire derivative cache. Used for IndexedDB recovery.
  */
 export async function clearAllDerivativeCache(): Promise<void> {

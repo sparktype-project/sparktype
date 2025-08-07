@@ -111,6 +111,19 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
 
     const newManifest = produce(siteData.manifest, draft => {
         draft.collectionItems = buildCollectionItemRefs(siteData as LocalSiteData);
+        
+        // Sync frontmatter changes to structure nodes
+        const findAndUpdateStructureNode = (nodes: StructureNode[]): void => {
+          for (const node of nodes) {
+            if (node.path === savedFile.path) {
+              node.title = savedFile.frontmatter.title;
+              node.menuTitle = typeof savedFile.frontmatter.menuTitle === 'string' ? savedFile.frontmatter.menuTitle : undefined;
+              return;
+            }
+            if (node.children) findAndUpdateStructureNode(node.children);
+          }
+        };
+        findAndUpdateStructureNode(draft.structure);
     });
 
     await get().updateManifest(siteId, newManifest);
@@ -151,6 +164,7 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
           const newNode: StructureNode = {
             type: 'page',
             title: savedFile.frontmatter.title,
+            menuTitle: typeof savedFile.frontmatter.menuTitle === 'string' ? savedFile.frontmatter.menuTitle : undefined,
             path: filePath,
             slug: savedFile.slug,
             navOrder: draft.structure.length,
@@ -159,10 +173,14 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
           draft.structure.push(newNode);
         }
       } else {
-        // If it's an existing file, update its title in the structure.
+        // If it's an existing file, update its title and menuTitle in the structure.
         const findAndUpdate = (nodes: StructureNode[]): void => {
           for (const node of nodes) {
-            if (node.path === filePath) { node.title = savedFile.frontmatter.title; return; }
+            if (node.path === filePath) { 
+              node.title = savedFile.frontmatter.title; 
+              node.menuTitle = typeof savedFile.frontmatter.menuTitle === 'string' ? savedFile.frontmatter.menuTitle : undefined;
+              return; 
+            }
             if (node.children) findAndUpdate(node.children);
           }
         };
