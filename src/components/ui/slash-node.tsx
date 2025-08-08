@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+
 
 import type { PlateEditor, PlateElementProps } from 'platejs/react';
 

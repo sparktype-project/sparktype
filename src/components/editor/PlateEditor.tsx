@@ -14,15 +14,7 @@ import { FloatingToolbar } from '@/components/ui/floating-toolbar';
 import { FloatingToolbarButtons } from '@/components/ui/floating-toolbar-buttons';
 
 import { MarkdownKit } from '@/components/editor/plugins/markdown-kit';
-import { ExitBreakKit } from '@/components/editor/plugins/exit-break-kit';
-import { AutoformatKit } from '@/components/editor/plugins/autoformat-kit';
-import { BlockSelectionKit } from '@/components/editor/plugins/block-selection-kit';
-import { SlashKit } from '@/components/editor/plugins/slash-kit';
-import { DndKit } from '@/components/editor/plugins/dnd-kit';
-import { LinkKit } from '@/components/editor/plugins/link-kit';
-import { ColumnKit } from '@/components/editor/plugins/column-kit';
-import { FloatingToolbarKit } from '@/components/editor/plugins/floating-toolbar-kit';
-import { CursorOverlayKit } from '@/components/editor/plugins/cursor-overlay-kit';
+
 import { createSparkTypeMediaKit } from '@/components/editor/plugins/sparktype-media-kit';
 import { createCollectionViewKit } from '@/components/editor/plugins/collection-view-kit';
 
@@ -75,15 +67,7 @@ export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
       
       // Core functionality
       ...(siteId ? [] : MarkdownKit), // MarkdownKit is included in sparkTypeMediaKit when siteId is available
-      ...ExitBreakKit,
-      ...AutoformatKit,
-      ...BlockSelectionKit,
-      ...SlashKit,
-      ...DndKit,
-      ...LinkKit,
-      ...ColumnKit,
-      ...FloatingToolbarKit,
-      ...CursorOverlayKit,
+
       ...sparkTypeMediaKit,
       ...collectionViewKit,
     ],

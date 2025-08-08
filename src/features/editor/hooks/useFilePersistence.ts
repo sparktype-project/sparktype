@@ -35,7 +35,7 @@ export function useFilePersistence({
   
   // These app state interactions do not need to change
   const { addOrUpdateContentFile, updateContentFileOnly, deleteContentFileAndState, getSiteById } = useAppStore.getState();
-  const { hasUnsavedChanges, setHasUnsavedChanges, setSaveState, registerSaveAction } = useEditor();
+  const { hasUnsavedChanges, registerSaveAction } = useEditor();
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Autosave that updates state properly but doesn't trigger re-renders

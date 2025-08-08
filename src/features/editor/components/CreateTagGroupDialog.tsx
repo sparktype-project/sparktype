@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getCollections } from '@/core/services/collections.service';
-import type { TagGroup, Collection } from '@/core/types';
+import type { TagGroup } from '@/core/types';
 
 // UI Components
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/core/components/ui/dialog';

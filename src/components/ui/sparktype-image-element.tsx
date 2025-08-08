@@ -1,15 +1,17 @@
 'use client';
 
-import * as React from 'react';
+import React from 'react';
+
+
 
 import type { TImageElement } from 'platejs';
 import type { PlateElementProps } from 'platejs/react';
 import type { ImageRef } from '@/core/types';
 
 import { useDraggable } from '@platejs/dnd';
-import { Image, ImagePlugin, useMediaState } from '@platejs/media/react';
+import { ImagePlugin, useMediaState } from '@platejs/media/react';
 import { ResizableProvider, useResizableValue } from '@platejs/resizable';
-import { PlateElement, withHOC, useEditorRef } from 'platejs/react';
+import { PlateElement, withHOC } from 'platejs/react';
 
 import { cn } from '@/lib/utils';
 import { getActiveImageService } from '@/core/services/images/images.service';
@@ -33,7 +35,6 @@ export const SparkTypeImageElement = withHOC(
   function SparkTypeImageElement(props: PlateElementProps<SparkTypeImageElement>) {
     const { align = 'center', focused, readOnly, selected } = useMediaState();
     const width = useResizableValue('width');
-    const editor = useEditorRef();
 
     const { isDragging, handleRef } = useDraggable({
       element: props.element,

@@ -1,6 +1,7 @@
 'use client';
 
-import * as React from 'react';
+import React from 'react';
+
 
 import { useAIChatEditor } from '@platejs/ai/react';
 import { usePlateEditor } from 'platejs/react';

@@ -1,6 +1,8 @@
 'use client';
 
-import * as React from 'react';
+import React from 'react';
+
+
 
 import type { TComboboxInputElement, TMentionElement } from 'platejs';
 import type { PlateElementProps } from 'platejs/react';

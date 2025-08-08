@@ -1,7 +1,7 @@
 // src/core/services/renderer/render.service.ts
 
 import Handlebars from 'handlebars';
-import type { LocalSiteData, PageResolutionResult, ParsedMarkdownFile } from '@/core/types';
+import type { LocalSiteData, PageResolutionResult } from '@/core/types';
 import { PageType } from '@/core/types';
 import { getAssetContent, getLayoutManifest } from '@/core/services/config/configHelpers.service';
 import { getActiveImageService } from '@/core/services/images/images.service';

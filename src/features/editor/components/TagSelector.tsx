@@ -3,8 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getTagsInGroup } from '@/core/services/tags.service';
-import { setContentTagsForGroup } from '@/core/services/tags.service';
-import type { TagGroup, Tag, ParsedMarkdownFile } from '@/core/types';
+import type { TagGroup } from '@/core/types';
 
 // UI Components
 import { Label } from '@/core/components/ui/label';

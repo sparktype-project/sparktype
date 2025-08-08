@@ -1,6 +1,7 @@
 // React import removed - not needed with react-jsx
 'use client';
 import LiteYouTubeEmbed from 'react-lite-youtube-embed';
+import ReactPlayer from 'react-player';
 
 import type { TResizableProps, TVideoElement } from 'platejs';
 import type { PlateElementProps } from 'platejs/react';

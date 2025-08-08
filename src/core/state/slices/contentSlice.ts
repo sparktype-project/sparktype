@@ -83,7 +83,7 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
     }
     
     // Get site data for manifest and serialization options
-    const site = get().getSiteById(siteId);
+    // const _site = get().getSiteById(siteId); // Not currently used
     let markdownContent: string;
     
     // Serialize to markdown (blocks are empty in our current implementation)

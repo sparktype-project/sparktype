@@ -21,10 +21,8 @@ import { FloatingToolbarKit } from './plugins/floating-toolbar-kit';
 import { LinkKit } from './plugins/link-kit';
 import { ListKit } from './plugins/list-kit';
 import { MarkdownKit } from './plugins/markdown-kit';
-import { MediaKit } from './plugins/media-kit';
 import { SlashKit } from './plugins/slash-kit';
 import { TableKit } from './plugins/table-kit';
-import { EmojiKit } from './plugins/emoji-kit';
 
 export const EditorKit = [
   ...BlockMenuKit,
@@ -33,7 +31,6 @@ export const EditorKit = [
   ...BasicBlocksKit,
   ...CodeBlockKit,
   ...TableKit,
-  ...MediaKit,
   ...ColumnKit,
   ...DateKit,
   ...LinkKit,
@@ -50,7 +47,6 @@ export const EditorKit = [
   ...AutoformatKit,
   ...CursorOverlayKit,
   ...DndKit,
-  ...EmojiKit,
   ...ExitBreakKit,
   TrailingBlockPlugin,
 

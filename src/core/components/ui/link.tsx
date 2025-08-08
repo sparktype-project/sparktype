@@ -1,6 +1,7 @@
 // src/core/components/ui/link.tsx
 
 // React import removed - not needed with react-jsx
+import { forwardRef } from 'react';
 import { Link as RouterLink, type LinkProps } from 'react-router-dom';
 
 /**
@@ -14,7 +15,7 @@ import { Link as RouterLink, type LinkProps } from 'react-router-dom';
  * underlying router link. The `ref` is also forwarded for compatibility with
  * other UI libraries and direct DOM access.
  */
-export const Link = React.forwardRef<HTMLAnchorElement, LinkProps>(
+export const Link = forwardRef<HTMLAnchorElement, LinkProps>(
   ({ to, ...props }, ref) => {
     // The underlying component from react-router-dom handles the navigation logic.
     // All other props, including `className` and `children`, are passed through.

@@ -1,4 +1,5 @@
 // React import removed - not needed with react-jsx
+import { Fragment } from 'react';
 
 import type { SlateElementProps, TMentionElement } from 'platejs';
 
@@ -28,11 +29,11 @@ export function MentionElementStatic(
         'data-slate-value': element.value,
       }}
     >
-      <React.Fragment>
+      <Fragment>
         {props.children}
         {prefix}
         {element.value}
-      </React.Fragment>
+      </Fragment>
     </SlateElement>
   );
 }

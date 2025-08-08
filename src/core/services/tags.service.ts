@@ -1,6 +1,6 @@
 // src/core/services/tags.service.ts
 
-import type { Manifest, Tag, TagGroup, ParsedMarkdownFile } from '@/core/types';
+import type { Manifest, Tag, ParsedMarkdownFile } from '@/core/types';
 import { getTagGroup } from './tagGroups.service';
 
 /**

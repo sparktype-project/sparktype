@@ -53,7 +53,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         setStatus('loading');
         return;
       }
-      let markdownContent = '';
+      // let _markdownContent = ''; // Not currently used
       let fileData: any = null;
       
       if (isNewFileMode) {
@@ -75,7 +75,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
           });
         }
         
-        markdownContent = 'Start writing...';
+        // _markdownContent = 'Start writing...'; // Not currently used
         setSlug('');
        } else {
         console.log('useFileContent - looking for existing file at path:', filePath);
@@ -92,7 +92,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         console.log('useFileContent - found file with content length:', fileData.content?.length);
         console.log('useFileContent - file content preview:', fileData.content?.substring(0, 100) + (fileData.content && fileData.content.length > 100 ? '...' : ''));
         setFrontmatter(fileData.frontmatter);
-        markdownContent = fileData.content;
+        // _markdownContent = fileData.content; // Not currently used
         setSlug(fileData.slug);
       }
 

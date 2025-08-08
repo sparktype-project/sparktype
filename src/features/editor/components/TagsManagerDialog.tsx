@@ -13,8 +13,7 @@ import { Label } from '@/core/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/core/components/ui/alert-dialog';
 
-import { Plus, Search, MoreHorizontal, Trash2, Edit, X } from 'lucide-react';
-import { toast } from 'sonner';
+import { Plus, Search, MoreHorizontal, Trash2, Edit } from 'lucide-react';
 
 interface TagsManagerDialogProps {
   siteId: string;
@@ -102,13 +101,13 @@ export default function TagsManagerDialog({ siteId, tagGroup, open, onOpenChange
     }
   };
 
-  const handleCancel = () => {
-    setIsCreating(false);
-    setNewTagName('');
-    setNewTagDescription('');
-    setEditingTag(null);
-    setSearchFilter('');
-  };
+  // const _handleCancel = () => {
+  //   setIsCreating(false);
+  //   setNewTagName('');
+  //   setNewTagDescription('');
+  //   setEditingTag(null);
+  //   setSearchFilter('');
+  // };
 
   if (!tagGroup) return null;
 
@@ -249,7 +248,7 @@ interface TagItemProps {
   onDelete: () => void;
 }
 
-function TagItem({ tag, tagGroup, isEditing, onEdit, onCancelEdit, onUpdate, onDelete }: TagItemProps) {
+function TagItem({ tag, tagGroup: _tagGroup, isEditing, onEdit, onCancelEdit, onUpdate, onDelete }: TagItemProps) {
   const [editName, setEditName] = useState(tag.name);
   const [editDescription, setEditDescription] = useState(tag.description || '');
 

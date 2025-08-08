@@ -34,7 +34,7 @@ export const isCoreTheme = (path: string) => CORE_THEMES.some((t: ThemeInfo) => 
 export const isCoreLayout = (path: string) => CORE_LAYOUTS.some((l: LayoutInfo) => l.id === path);
 
 /** Checks if a given block path corresponds to a core (built-in) block. */
-export const isCoreBlock = (path: string) => false; // No core blocks anymore - using layout partials
+export const isCoreBlock = (_path: string) => false; // No core blocks anymore - using layout partials
 
 /** Merges multiple JSON Schemas into one. */
 export function mergeSchemas(...schemas: (RJSFSchema | null | undefined)[]): RJSFSchema {
