@@ -1,6 +1,6 @@
 // src/features/editor/contexts/EditorProvider.tsx
 
-import { useState, useMemo, useRef, useCallback, type ReactNode } from 'react';
+import { useState, useMemo, useRef, useCallback, type ReactNode, startTransition } from 'react';
 import { toast } from 'sonner';
 
 // Import the context object and types from its dedicated file
@@ -15,9 +15,12 @@ interface EditorProviderProps {
  * provides it to its children via the EditorContext.
  */
 export function EditorProvider({ children }: EditorProviderProps) {
-  const [saveState, setSaveState] = useState<SaveState>('no_changes');
+  const [saveState, setSaveState] = useState<SaveState>('saved');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [hasUnsavedChangesSinceManualSave, setHasUnsavedChangesSinceManualSave] = useState(false);
+  const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
+  const [contentHash, setContentHash] = useState<string>('');
+  const [lastSavedHash, setLastSavedHash] = useState<string>('');
   
   // A ref to hold the current save function, registered by the active page.
   const saveActionRef = useRef<(() => Promise<void>) | null>(null);
@@ -37,20 +40,24 @@ export function EditorProvider({ children }: EditorProviderProps) {
       setSaveState('saving');
       try {
         await saveActionRef.current();
-        setSaveState('saved');
-        setHasUnsavedChanges(false);
-        setHasUnsavedChangesSinceManualSave(false); // Reset manual save tracking
-        // Reset to idle state after a delay for user feedback
-        setTimeout(() => setSaveState('no_changes'), 2000);
+        
+        // Batch all the success state updates together to reduce re-renders
+        startTransition(() => {
+          setSaveState('saved');
+          setHasUnsavedChanges(false);
+          setHasUnsavedChangesSinceManualSave(false);
+          setLastSaveTime(new Date());
+          setLastSavedHash(contentHash); // Mark current content as saved
+        });
       } catch (error) {
         console.error("Save failed:", error);
         toast.error((error as Error).message || "Failed to save.");
-        setSaveState('idle'); // Revert to idle on error to allow another save attempt
+        setSaveState('error'); // Set error state on failure
       }
     } else {
       console.warn("Save triggered, but no save action is registered.");
     }
-  }, []);
+  }, [contentHash]);
 
   /**
    * Memoizes the context value to prevent unnecessary re-renders in consumer components.
@@ -64,7 +71,16 @@ export function EditorProvider({ children }: EditorProviderProps) {
     setHasUnsavedChangesSinceManualSave,
     triggerSave,
     registerSaveAction,
-  }), [saveState, setSaveState, hasUnsavedChanges, setHasUnsavedChanges, hasUnsavedChangesSinceManualSave, setHasUnsavedChangesSinceManualSave, triggerSave, registerSaveAction]);
+    lastSaveTime,
+    setLastSaveTime,
+    contentHash,
+    setContentHash,
+    lastSavedHash,
+    setLastSavedHash,
+  }), [
+    saveState, hasUnsavedChanges, hasUnsavedChangesSinceManualSave, 
+    triggerSave, registerSaveAction, lastSaveTime, contentHash, lastSavedHash
+  ]);
 
   return (
     <EditorContext.Provider value={contextValue}>

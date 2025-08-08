@@ -19,7 +19,6 @@ import NewPageDialog from '@/features/editor/components/NewPageDialog';
 
 import type { Value } from 'platejs';
 import { PlateEditor, type PlateEditorRef } from '@/components/editor/PlateEditor';
-import AutosaveIndicator from '@/features/editor/components/AutosaveIndicator';
 
 import FrontmatterSidebar from '@/features/editor/components/FrontmatterSidebar';
 import PrimaryContentFields from '@/features/editor/components/PrimaryContentFields';
@@ -69,7 +68,7 @@ function EditContentPageInternal() {
   const editorRef = useRef<PlateEditorRef>(null);
   const [editorValue, setEditorValue] = useState<Value>(defaultInitialValue);
   
-  const { handleDelete, autosaveState } = useFilePersistence({ 
+  const { handleDelete } = useFilePersistence({ 
     siteId, 
     filePath, 
     isNewFileMode, 
@@ -156,9 +155,6 @@ function EditContentPageInternal() {
 
   const headerActions = isSiteEmpty ? null : (
     <div className="flex items-center gap-3">
-      <AutosaveIndicator 
-        state={autosaveState} 
-      />
       <SaveButton />
     </div>
   );

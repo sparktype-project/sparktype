@@ -3,7 +3,7 @@
 import { createContext } from 'react';
 
 // Define the shape of the save state
-export type SaveState = 'idle' | 'saving' | 'saved' | 'no_changes';
+export type SaveState = 'saved' | 'pending' | 'saving' | 'error';
 
 // Define the type for the context's value
 export interface EditorContextType {
@@ -15,6 +15,12 @@ export interface EditorContextType {
   setHasUnsavedChangesSinceManualSave: (hasChanges: boolean) => void;
   triggerSave: () => Promise<void>;
   registerSaveAction: (saveFn: () => Promise<void>) => void;
+  lastSaveTime: Date | null;
+  setLastSaveTime: (time: Date | null) => void;
+  contentHash: string;
+  setContentHash: (hash: string) => void;
+  lastSavedHash: string;
+  setLastSavedHash: (hash: string) => void;
 }
 
 // Create and export the context object itself

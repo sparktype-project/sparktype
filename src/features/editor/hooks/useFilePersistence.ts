@@ -1,6 +1,6 @@
 // src/features/editor/hooks/useFilePersistence.ts
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate from react-router-dom
 import { useAppStore } from '@/core/state/useAppStore';
 import { useEditor } from '@/features/editor/contexts/useEditor';
@@ -12,8 +12,8 @@ import { useUnloadPrompt } from './useUnloadPrompt';
 // Type imports
 import { type MarkdownFrontmatter } from '@/core/types';
 
-// Autosave state type
-type AutosaveState = 'idle' | 'saving' | 'saved' | 'error';
+// Import utils for content hashing
+import { generateContentHash } from '@/core/libraries/utils';
 
 interface PersistenceParams {
   siteId: string;
@@ -22,7 +22,7 @@ interface PersistenceParams {
   frontmatter: MarkdownFrontmatter | null;
   slug: string;
   getEditorContent: () => string;
-  applyPendingSlugChange?: () => Promise<{ success: boolean; newFilePath?: string; error?: string }>;
+  applyPendingSlugChange?: (getCurrentContent: () => string, getCurrentFrontmatter: () => MarkdownFrontmatter | null) => Promise<{ success: boolean; newFilePath?: string; error?: string }>;
 }
 
 export function useFilePersistence({
@@ -31,21 +31,24 @@ export function useFilePersistence({
   // Use the navigate hook from react-router-dom
   const navigate = useNavigate(); 
   
-  // Local autosave state - separate from shared editor context
-  const [autosaveState, setAutosaveState] = useState<AutosaveState>('idle');
-  
   // These app state interactions do not need to change
   const { addOrUpdateContentFile, updateContentFileOnly, deleteContentFileAndState, getSiteById } = useAppStore.getState();
-  const { hasUnsavedChanges, registerSaveAction } = useEditor();
+  const { 
+    saveState, hasUnsavedChanges, registerSaveAction, 
+    contentHash, setContentHash, lastSavedHash, setLastSavedHash,
+    setSaveState, setHasUnsavedChanges
+  } = useEditor();
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Autosave that updates state properly but doesn't trigger re-renders
   const handleAutosave = useCallback(async () => {
     if (!frontmatter) return;
     if (!frontmatter.title.trim()) return; // Don't autosave without title
+    if (isNewFileMode) return; // Never autosave new files
+    if (!hasUnsavedChanges) return; // Don't autosave if no changes
     
     try {
-      setAutosaveState('saving');
+      setSaveState('saving');
       
       const markdownContent = getEditorContent();
       
@@ -60,14 +63,18 @@ export function useFilePersistence({
       
       await updateContentFileOnly(siteId, fileToUpdate, true); // Silent mode for autosave
       
-      setAutosaveState('saved');
+      // Update hash tracking - content is now saved
+      const newHash = generateContentHash(frontmatter, markdownContent);
+      setLastSavedHash(newHash);
+      setSaveState('saved');
+      setHasUnsavedChanges(false);
       
     } catch (error) {
       console.error('Autosave failed:', error);
-      setAutosaveState('error');
-      setTimeout(() => setAutosaveState('idle'), 3000);
+      setSaveState('error');
+      setTimeout(() => setSaveState('pending'), 3000); // Return to pending after error
     }
-  }, [siteId, filePath, frontmatter, getEditorContent, updateContentFileOnly]);
+  }, [siteId, filePath, isNewFileMode, frontmatter, getEditorContent, updateContentFileOnly, setSaveState, setLastSavedHash, setHasUnsavedChanges, hasUnsavedChanges]);
 
   const handleSave = useCallback(async () => {
     if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
@@ -76,16 +83,16 @@ export function useFilePersistence({
 
     // For existing files, apply pending slug changes first
     if (!isNewFileMode && applyPendingSlugChange) {
-      const slugResult = await applyPendingSlugChange();
+      const slugResult = await applyPendingSlugChange(getEditorContent, () => frontmatter);
       if (!slugResult.success) {
         throw new Error(slugResult.error || "Failed to apply slug change");
       }
       
       // If slug change succeeded and we have a new file path, the save is complete
-      // (the slug change process already saved the content)
+      // (the slug change process already saved the content with current frontmatter and editor content)
       if (slugResult.newFilePath) {
-        console.log('Page slug changed and content saved during slug change process');
-        return;
+        console.log('Page slug changed and content saved during slug change process - skipping duplicate save');
+        return; // Exit early - no need to save again
       }
     }
 
@@ -141,18 +148,34 @@ export function useFilePersistence({
     registerSaveAction(handleSave);
   }, [handleSave, registerSaveAction]);
 
-  // Reset autosave state when new changes are detected
+  // Effect to update content hash and trigger state changes when content changes
   useEffect(() => {
-    if (hasUnsavedChanges && autosaveState === 'saved') {
-      setAutosaveState('idle');
+    if (!frontmatter) return;
+    
+    const currentContent = getEditorContent();
+    const newHash = generateContentHash(frontmatter, currentContent);
+    
+    if (newHash !== contentHash) {
+      setContentHash(newHash);
+      
+      // Check if we have changes compared to last saved content
+      const hasChanges = newHash !== lastSavedHash;
+      
+      if (hasChanges && saveState === 'saved') {
+        setSaveState('pending');
+        setHasUnsavedChanges(true);
+      } else if (!hasChanges && saveState === 'pending') {
+        setSaveState('saved');
+        setHasUnsavedChanges(false);
+      }
     }
-  }, [hasUnsavedChanges, autosaveState]);
+  }, [frontmatter, getEditorContent, contentHash, lastSavedHash, saveState, setContentHash, setSaveState, setHasUnsavedChanges]);
 
-  // This effect handles the autosave logic - SILENTLY without UI state changes
+  // This effect handles the autosave logic - triggers only in 'pending' state
   useEffect(() => {
     if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
     
-    if (hasUnsavedChanges && !isNewFileMode) {
+    if (saveState === 'pending' && !isNewFileMode && frontmatter?.title?.trim()) {
       autosaveTimeoutRef.current = setTimeout(async () => {
         try {
           await handleAutosave();
@@ -162,13 +185,12 @@ export function useFilePersistence({
       }, AUTOSAVE_DELAY);
     }
     return () => { if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current); };
-  }, [hasUnsavedChanges, isNewFileMode, handleAutosave]);
+  }, [saveState, isNewFileMode, frontmatter?.title, handleAutosave]);
 
   // This hook handles the "Are you sure you want to leave?" prompt. No changes needed.
   useUnloadPrompt(hasUnsavedChanges);
 
   return { 
-    handleDelete,
-    autosaveState
+    handleDelete
   };
 }

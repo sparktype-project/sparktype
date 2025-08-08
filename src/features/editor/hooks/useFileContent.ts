@@ -147,7 +147,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
   }, [isNewFileMode, onContentModified]);
 
   // Function to apply pending slug changes when saving
-  const applyPendingSlugChange = useCallback(async () => {
+  const applyPendingSlugChange = useCallback(async (getCurrentContent: () => string, getCurrentFrontmatter: () => MarkdownFrontmatter | null) => {
     if (!pendingSlug || isNewFileMode || !filePath || !site) {
       return { success: true }; // No slug change needed
     }
@@ -164,8 +164,16 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
     }
 
     try {
-      const { changePageSlug } = useAppStore.getState();
-      const result = await changePageSlug(siteId, filePath, pendingSlug);
+      // Get current editor content and frontmatter for the slug change
+      const currentContent = getCurrentContent();
+      const currentFrontmatter = getCurrentFrontmatter();
+      
+      if (!currentFrontmatter) {
+        return { success: false, error: "Frontmatter not available for slug change" };
+      }
+
+      const { changePageSlugWithContent } = useAppStore.getState();
+      const result = await changePageSlugWithContent(siteId, filePath, pendingSlug, currentFrontmatter, currentContent);
       
       if (result.success) {
         setPendingSlug(null); // Clear pending change

@@ -3,7 +3,7 @@
 
 import { useEditor } from '@/features/editor/contexts/useEditor';
 import { Button } from '@/core/components/ui/button';
-import { Save, Check, Loader2 } from 'lucide-react';
+import { Save, Check, Loader2, AlertTriangle } from 'lucide-react';
 
 /**
  * A context-aware button that displays the current save state
@@ -13,45 +13,46 @@ import { Save, Check, Loader2 } from 'lucide-react';
  * as it relies on the `useEditor` hook for its state and actions.
  */
 export default function SaveButton() {
-  const { saveState, hasUnsavedChangesSinceManualSave, triggerSave } = useEditor();
+  const { saveState, hasUnsavedChanges, triggerSave } = useEditor();
 
   // Define the visual states for the button
   const buttonStates = {
-    idle: {
+    pending: {
       icon: <Save className="h-4 w-4" />,
       text: 'Save',
+      variant: 'ghost' as const,
+      disabled: false,
     },
     saving: {
       icon: <Loader2 className="h-4 w-4 animate-spin" />,
       text: 'Saving...',
+      variant: 'ghost' as const,
+      disabled: true,
     },
     saved: {
       icon: <Check className="h-4 w-4" />,
       text: 'Saved',
+      variant: 'secondary' as const,
+      disabled: false,
+    },
+    error: {
+      icon: <AlertTriangle className="h-4 w-4" />,
+      text: 'Retry',
+      variant: 'destructive' as const,
+      disabled: false,
     },
   };
 
-  // Determine the current display state and if the button should be disabled
-  let currentDisplayState: 'idle' | 'saving' | 'saved';
-  let isDisabled = false;
-
-  if (saveState === 'saving') {
-    currentDisplayState = 'saving';
-    isDisabled = true;
-  } else if (hasUnsavedChangesSinceManualSave) {
-    currentDisplayState = 'idle';
-    isDisabled = false;
-  } else {
-    // This covers both 'saved' and 'no_changes' states.
-    // In both cases, the content is considered saved and there's nothing to do.
-    currentDisplayState = 'saved';
-    isDisabled = true;
+  // Use the current save state directly, but show 'pending' if there are unsaved changes
+  let currentState = saveState;
+  if (hasUnsavedChanges && saveState === 'saved') {
+    currentState = 'pending';
   }
 
-  const current = buttonStates[currentDisplayState];
+  const current = buttonStates[currentState];
 
   return (
-    <Button variant='ghost' onClick={triggerSave} disabled={isDisabled}>
+    <Button variant={current.variant} onClick={triggerSave} disabled={current.disabled}>
       {current.icon}
       <span className='hidden md:block'>{current.text}</span>
     </Button>

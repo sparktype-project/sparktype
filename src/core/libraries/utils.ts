@@ -27,3 +27,16 @@ export function generateSiteId(title: string): string {
   const truncatedSlugBase = slugBase.substring(0, maxBaseLength);
   return `${truncatedSlugBase}-${randomString}`;
 }
+
+export function generateContentHash(frontmatter: unknown, content: string): string {
+  // Create a hash of the frontmatter + content to detect changes
+  const combined = JSON.stringify(frontmatter) + content;
+  // Simple hash function (good enough for change detection)
+  let hash = 0;
+  for (let i = 0; i < combined.length; i++) {
+    const char = combined.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString(36);
+}

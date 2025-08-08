@@ -5,7 +5,7 @@ import { produce } from 'immer';
 import { toast } from 'sonner';
 
 // Core Types and Services
-import { type ParsedMarkdownFile, type StructureNode, type LocalSiteData, type CollectionItemRef } from '@/core/types';
+import { type ParsedMarkdownFile, type StructureNode, type LocalSiteData, type CollectionItemRef, type MarkdownFrontmatter } from '@/core/types';
 import * as localSiteFs from '@/core/services/localFileSystem.service';
 import { saveContentFile } from '@/core/services/localFileSystem.service';
 import { findAndRemoveNode, updatePathsRecursively, findNodeByPath, getDescendantIds } from '@/core/services/fileTree.service';
@@ -21,7 +21,7 @@ function buildCollectionItemRefs(siteData: LocalSiteData): CollectionItemRef[] {
   const collections = getCollections(siteData.manifest);
   const newCollectionItems: CollectionItemRef[] = [];
   for (const collection of collections) {
-    const items = (siteData.contentFiles || []).filter(file => file.path.startsWith(collection.contentPath));
+    const items = (siteData.contentFiles || []).filter((file: ParsedMarkdownFile) => file.path.startsWith(collection.contentPath));
     for (const item of items) {
       // Extract just the filename part of the slug, removing the collection path
       const collectionPathSlug = collection.contentPath.replace(/^content\//, '').replace(/\/$/, '');
@@ -55,12 +55,13 @@ const updateContentFilePaths = (files: ParsedMarkdownFile[], pathsToMove: { oldP
 };
 
 export interface ContentSlice {
-  addOrUpdateContentFile: (siteId: string, filePath: string, rawMarkdownContent: string) => Promise<boolean>;
+  addOrUpdateContentFile: (siteId: string, filePath: string, rawMarkdownContent: string, silent?: boolean) => Promise<boolean>;
   deleteContentFileAndState: (siteId: string, filePath: string) => Promise<void>;
   repositionNode: (siteId: string, activeNodePath: string, newParentPath: string | null, newIndex: number) => Promise<void>;
   updateContentFileOnly: (siteId: string, savedFile: ParsedMarkdownFile, silent?: boolean) => Promise<void>;
   setAsHomepage: (siteId: string, filePath: string) => Promise<void>;
   changePageSlug: (siteId: string, currentFilePath: string, newSlug: string) => Promise<{ success: boolean; newFilePath?: string; error?: string }>;
+  changePageSlugWithContent: (siteId: string, currentFilePath: string, newSlug: string, frontmatter: MarkdownFrontmatter, content: string) => Promise<{ success: boolean; newFilePath?: string; error?: string }>;
   
   // Tag Group operations
   createTagGroup: (siteId: string, tagGroupData: Omit<TagGroup, 'id'>) => Promise<void>;
@@ -110,7 +111,7 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
     const siteData = get().getSiteById(siteId);
     if (!siteData) return;
 
-    const newManifest = produce(siteData.manifest, draft => {
+    const newManifest = produce(siteData.manifest, (draft: any) => {
         draft.collectionItems = buildCollectionItemRefs(siteData as LocalSiteData);
         
         // Sync frontmatter changes to structure nodes
@@ -130,7 +131,7 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
     await get().updateManifest(siteId, newManifest);
   },
 
-  addOrUpdateContentFile: async (siteId, filePath, rawMarkdownContent) => {
+  addOrUpdateContentFile: async (siteId, filePath, rawMarkdownContent, silent = false) => {
     const site = get().getSiteById(siteId);
     if (!site) return false;
 
@@ -189,23 +190,25 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
       }
     });
 
-    // Update both manifest and contentFiles atomically in a single state update
-    set(produce((draft: SiteSlice) => {
-      const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
-      if (!siteToUpdate) return;
-      if (!siteToUpdate.contentFiles) siteToUpdate.contentFiles = [];
+    // Update both manifest and contentFiles atomically in a single state update (unless silent)
+    if (!silent) {
+      set(produce((draft: SiteSlice) => {
+        const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
+        if (!siteToUpdate) return;
+        if (!siteToUpdate.contentFiles) siteToUpdate.contentFiles = [];
 
-      // Update the manifest structure (copy the structure from newManifest)
-      siteToUpdate.manifest.structure = newManifest.structure;
+        // Update the manifest structure (copy the structure from newManifest)
+        siteToUpdate.manifest.structure = newManifest.structure;
 
-      // Update contentFiles array
-      const fileIndex = siteToUpdate.contentFiles.findIndex(f => f.path === savedFile.path);
-      if (fileIndex !== -1) siteToUpdate.contentFiles[fileIndex] = savedFile;
-      else siteToUpdate.contentFiles.push(savedFile);
-      
-      // Rebuild the collection item index based on the latest contentFiles.
-      siteToUpdate.manifest.collectionItems = buildCollectionItemRefs(siteToUpdate as LocalSiteData);
-    }));
+        // Update contentFiles array
+        const fileIndex = siteToUpdate.contentFiles.findIndex(f => f.path === savedFile.path);
+        if (fileIndex !== -1) siteToUpdate.contentFiles[fileIndex] = savedFile;
+        else siteToUpdate.contentFiles.push(savedFile);
+        
+        // Rebuild the collection item index based on the latest contentFiles.
+        siteToUpdate.manifest.collectionItems = buildCollectionItemRefs(siteToUpdate as LocalSiteData);
+      }));
+    }
 
     // Persist the final manifest to disk (including updated collectionItems)
     const finalManifest = get().getSiteById(siteId)!.manifest;
@@ -600,6 +603,150 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
     return getTagsInGroup(siteData.manifest, groupId);
   },
 
+  changePageSlugWithContent: async (siteId: string, currentFilePath: string, newSlug: string, frontmatter: MarkdownFrontmatter, content: string) => {
+    try {
+      const siteData = get().getSiteById(siteId);
+      if (!siteData) {
+        return { success: false, error: "Site not found" };
+      }
+
+      // Validate new slug
+      if (!newSlug || newSlug.trim() === '') {
+        return { success: false, error: "Slug cannot be empty" };
+      }
+
+      // Get current file
+      const currentFile = siteData.contentFiles?.find(f => f.path === currentFilePath);
+      if (!currentFile) {
+        return { success: false, error: "Current file not found" };
+      }
+
+      const currentSlug = currentFile.slug;
+      
+      // If slug hasn't changed, do nothing
+      if (currentSlug === newSlug) {
+        return { success: true, newFilePath: currentFilePath };
+      }
+
+      // Check for homepage - cannot change homepage slug
+      if (currentFile.frontmatter.homepage === true) {
+        return { success: false, error: "Cannot change the slug of the homepage" };
+      }
+
+      // Check if new slug already exists
+      const newFilePath = `content/${newSlug}.md`;
+      const slugExists = siteData.contentFiles?.some(f => f.slug === newSlug);
+      if (slugExists) {
+        return { success: false, error: `A page with the slug "${newSlug}" already exists` };
+      }
+
+      // Find current node in structure
+      const currentNode = findNodeByPath(siteData.manifest.structure, currentFilePath);
+      if (!currentNode) {
+        return { success: false, error: "Page not found in site structure" };
+      }
+
+      // Collect all affected pages (current page + any descendants)
+      const affectedPaths = [currentFilePath];
+      if (currentNode.children) {
+        affectedPaths.push(...getDescendantIds([currentNode]));
+      }
+
+      // Backup all affected content before deletion, using current content for main file
+      const contentBackup = [];
+      for (const path of affectedPaths) {
+        if (path === currentFilePath) {
+          // Use current editor content and frontmatter for the main file
+          contentBackup.push({
+            originalPath: path,
+            newPath: newFilePath,
+            frontmatter: { ...frontmatter },
+            content,
+            blocknoteBlocks: undefined
+          });
+        } else {
+          // Use stored content for descendant files
+          const file = siteData.contentFiles?.find(f => f.path === path);
+          if (file) {
+            const relativePath = path.replace(`content/${currentSlug}`, '');
+            const newPath = `content/${newSlug}${relativePath}`;
+            
+            contentBackup.push({
+              originalPath: path,
+              newPath,
+              frontmatter: { ...file.frontmatter },
+              content: file.content,
+              blocknoteBlocks: file.blocknoteBlocks ? [...file.blocknoteBlocks] : undefined
+            });
+          }
+        }
+      }
+
+      // Validate all new paths don't already exist
+      for (const backup of contentBackup) {
+        if (backup.newPath !== newFilePath) { // We already checked the main file
+          const pathExists = siteData.contentFiles?.some((f: ParsedMarkdownFile) => f.path === backup.newPath);
+          if (pathExists) {
+            return { success: false, error: `Cannot recreate page - path "${backup.newPath}" already exists` };
+          }
+        }
+      }
+
+      // Delete all affected pages (in reverse order to avoid structure issues)
+      for (let i = affectedPaths.length - 1; i >= 0; i--) {
+        await get().deleteContentFileAndState(siteId, affectedPaths[i]);
+      }
+
+      // Recreate all pages with new paths using silent mode to prevent re-renders during the process
+      const results = [];
+      for (const backup of contentBackup) {
+        const markdownContent = stringifyToMarkdown(backup.frontmatter, backup.content);
+        const success = await get().addOrUpdateContentFile(siteId, backup.newPath, markdownContent, true); // silent: true
+        results.push({ path: backup.newPath, success });
+        
+        if (!success) {
+          console.error(`Failed to recreate file: ${backup.newPath}`);
+        }
+      }
+
+      // Trigger a single state update after all files are recreated
+      const updatedSiteData = get().getSiteById(siteId);
+      if (updatedSiteData) {
+        set(produce((draft: SiteSlice) => {
+          const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
+          if (!siteToUpdate) return;
+          
+          // Reload site data to get all the new files
+          siteToUpdate.contentFiles = get().getSiteById(siteId)?.contentFiles || [];
+          
+          // Rebuild the collection item index
+          siteToUpdate.manifest.collectionItems = buildCollectionItemRefs(siteToUpdate as LocalSiteData);
+        }));
+      }
+
+      // Check if all recreations were successful
+      const allSuccessful = results.every(r => r.success);
+      if (!allSuccessful) {
+        const failedPaths = results.filter(r => !r.success).map(r => r.path);
+        toast.error(`Some pages could not be recreated: ${failedPaths.join(', ')}`);
+      }
+
+      toast.success(`Page slug changed from "${currentSlug}" to "${newSlug}"`);
+      
+      return { 
+        success: true, 
+        newFilePath,
+        error: allSuccessful ? undefined : "Some descendant pages failed to recreate"
+      };
+      
+    } catch (error) {
+      console.error("Failed to change page slug:", error);
+      const errorMessage = `Failed to change slug: ${(error as Error).message}`;
+      toast.error(errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  },
+
   changePageSlug: async (siteId: string, currentFilePath: string, newSlug: string) => {
     try {
       const site = get().getSiteById(siteId);
@@ -678,7 +825,7 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
       // Validate all new paths don't already exist
       for (const backup of contentBackup) {
         if (backup.newPath !== newFilePath) { // We already checked the main file
-          const pathExists = site.contentFiles?.some(f => f.path === backup.newPath);
+          const pathExists = site.contentFiles?.some((f: ParsedMarkdownFile) => f.path === backup.newPath);
           if (pathExists) {
             return { success: false, error: `Cannot recreate page - path "${backup.newPath}" already exists` };
           }
