@@ -55,10 +55,11 @@ export async function render(
       if (layoutConfig && layoutConfig.collectionId) {
         let collectionItems = getCollectionContent(synchronizedSiteData, layoutConfig.collectionId);
         
-        // Apply sorting if specified in layoutConfig
-        if (layoutConfig.sortBy) {
-          collectionItems = sortCollectionItems(collectionItems, layoutConfig.sortBy, layoutConfig.sortOrder || 'desc');
-        }
+        // Apply sorting - always sort by date if no sortBy specified
+        const sortBy = layoutConfig.sortBy || 'date';
+        const sortOrder = layoutConfig.sortOrder || 'desc';
+        
+        collectionItems = sortCollectionItems(collectionItems, sortBy, sortOrder);
         
         enrichedResolution = {
           ...resolution,

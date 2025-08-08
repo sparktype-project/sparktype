@@ -111,8 +111,41 @@ export function getUrlForNode(
     return isExport ? 'index.html' : '';
   }
 
-  // All other pages get a clean URL structure based on their slug.
-  const baseSlug = node.slug;
+  // Check if this is a collection page - collection pages should use collection ID for URLs
+  // to maintain consistency with their collection items
+  let baseSlug = node.slug;
+  
+  if (siteData?.contentFiles) {
+    const nodeFile = siteData.contentFiles.find(f => f.path === node.path);
+    const collectionConfig = (nodeFile?.frontmatter as any)?.collection;
+    
+    // If this page has a collection configuration, it's a collection page
+    if (collectionConfig) {
+      // Find the collection this page manages
+      let collectionId: string | undefined;
+      
+      if (typeof collectionConfig === 'string') {
+        // Collection config is just the collection ID
+        collectionId = collectionConfig;
+      } else if (typeof collectionConfig === 'object' && collectionConfig !== null) {
+        // Collection config is an object - look for the collection ID in the manifest
+        // that matches this page's purpose
+        const collections = manifest.collections || [];
+        const matchingCollection = collections.find(c => {
+          // A collection page should have matching slug or be explicitly configured
+          return c.id === node.slug;
+        });
+        collectionId = matchingCollection?.id;
+      }
+      
+      // Use collection ID for URL consistency with collection items
+      if (collectionId) {
+        baseSlug = collectionId;
+      }
+    }
+  }
+
+  // All pages get a clean URL structure based on their slug.
   if (pageNumber && pageNumber > 1) {
     return isExport ? `${baseSlug}/page/${pageNumber}/index.html` : `${baseSlug}/page/${pageNumber}`;
   }

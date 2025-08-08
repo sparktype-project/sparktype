@@ -44,14 +44,28 @@ export default function EditorHeader({ actions }: EditorHeaderProps) {
     if (location.pathname.startsWith(editorRootPath)) {
       // We're on a content page, extract the content path for preview
       const contentPath = location.pathname.substring(editorRootPath.length).replace(/^\//, '');
+      
       if (contentPath) {
+        // Check if this is the homepage by examining site content files
+        const homepageFile = site?.contentFiles?.find(f => f.frontmatter.homepage === true);
+        if (homepageFile) {
+          // Extract the slug from the homepage file path (e.g., content/kevantv.md -> kevantv)
+          const homepageSlug = homepageFile.path.replace(/^content\//, '').replace(/\.md$/, '');
+          
+          // If the current content path matches the homepage slug, this is the homepage
+          if (contentPath === homepageSlug) {
+            return `/sites/${siteId}/view`; // Homepage preview without path
+          }
+        }
+        
+        // Not homepage, use the content path for preview
         return `/sites/${siteId}/view/${contentPath}`;
       }
     }
     
-    // Default to homepage view for non-content pages or homepage content
+    // Default to homepage view for non-content pages or empty content path
     return `/sites/${siteId}/view`;
-  }, [location.pathname, siteId]);
+  }, [location.pathname, siteId, site]);
 
   const handlePublishSite = async () => {
     if (!site) {

@@ -1,7 +1,6 @@
 // src/core/services/navigationStructure.service.ts
 import { type LocalSiteData, type NavLinkItem, type StructureNode } from '@/core/types';
 import { getUrlForNode } from '@/core/services/urlUtils.service';
-import { getRelativePath } from '@/core/services/relativePaths.service';
 import { type RenderOptions } from '@/core/services/renderer/render.service';
 
 /**
@@ -27,8 +26,9 @@ function buildNavLinks(
       let href: string;
 
       if (options.isExport) {
-        // Export logic remains the same
-        href = getRelativePath(currentPagePath, urlSegment);
+        // For export mode, navigation links should be absolute paths from site root
+        // This ensures navigation works correctly regardless of the current page depth
+        href = urlSegment ? `/${urlSegment}` : '/';
       } else {
         // 1. Get the base path from options (e.g., "#/sites/123").
         // 2. The urlSegment is the page-specific part (e.g., "about" or "blog/post-1").

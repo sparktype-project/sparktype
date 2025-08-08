@@ -48,9 +48,6 @@ export default function AdvancedSettingsForm({
         id="slug-input"
         value={slug}
         onChange={(e) => onSlugChange(e.target.value)}
-        // The input is disabled if the page is NOT in new file mode.
-        // This prevents users from changing the URL of an existing page.
-        disabled={!isNewFileMode}
         placeholder="e.g., a-great-blog-post"
         // This accessibility attribute links the input to its description.
         aria-describedby="slug-description"
@@ -62,7 +59,7 @@ export default function AdvancedSettingsForm({
       <p id="slug-description" className="text-xs text-muted-foreground">
         {isNewFileMode
           ? 'The URL-friendly version of the title. Auto-generated, but can be edited here before the first save.'
-          : 'The URL for this page cannot be changed after it has been saved.'}
+          : 'The URL-friendly version of the title. Changes will be applied when you save the page.'}
       </p>
     </div>
   );

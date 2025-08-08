@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { type ParsedMarkdownFile, type StructureNode, type LocalSiteData, type CollectionItemRef } from '@/core/types';
 import * as localSiteFs from '@/core/services/localFileSystem.service';
 import { saveContentFile } from '@/core/services/localFileSystem.service';
-import { findAndRemoveNode, updatePathsRecursively, findNodeByPath } from '@/core/services/fileTree.service';
+import { findAndRemoveNode, updatePathsRecursively, findNodeByPath, getDescendantIds } from '@/core/services/fileTree.service';
 import { getCollections } from '@/core/services/collections.service';
 import { stringifyToMarkdown, parseMarkdownString } from '@/core/libraries/markdownParser';
 import { type SiteSlice } from '@/core/state/slices/siteSlice';
@@ -60,6 +60,7 @@ export interface ContentSlice {
   repositionNode: (siteId: string, activeNodePath: string, newParentPath: string | null, newIndex: number) => Promise<void>;
   updateContentFileOnly: (siteId: string, savedFile: ParsedMarkdownFile, silent?: boolean) => Promise<void>;
   setAsHomepage: (siteId: string, filePath: string) => Promise<void>;
+  changePageSlug: (siteId: string, currentFilePath: string, newSlug: string) => Promise<{ success: boolean; newFilePath?: string; error?: string }>;
   
   // Tag Group operations
   createTagGroup: (siteId: string, tagGroupData: Omit<TagGroup, 'id'>) => Promise<void>;
@@ -597,5 +598,131 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
     if (!siteData) return [];
     
     return getTagsInGroup(siteData.manifest, groupId);
+  },
+
+  changePageSlug: async (siteId: string, currentFilePath: string, newSlug: string) => {
+    try {
+      const site = get().getSiteById(siteId);
+      if (!site) {
+        return { success: false, error: "Site not found" };
+      }
+
+      // Validate new slug
+      if (!newSlug || newSlug.trim() === '') {
+        return { success: false, error: "Slug cannot be empty" };
+      }
+
+      // Get current file
+      const currentFile = site.contentFiles?.find(f => f.path === currentFilePath);
+      if (!currentFile) {
+        return { success: false, error: "Current file not found" };
+      }
+
+      const currentSlug = currentFile.slug;
+      
+      // If slug hasn't changed, do nothing
+      if (currentSlug === newSlug) {
+        return { success: true, newFilePath: currentFilePath };
+      }
+
+      // Check for homepage - cannot change homepage slug
+      if (currentFile.frontmatter.homepage === true) {
+        return { success: false, error: "Cannot change the slug of the homepage" };
+      }
+
+      // Check if new slug already exists
+      const newFilePath = `content/${newSlug}.md`;
+      const slugExists = site.contentFiles?.some(f => f.slug === newSlug);
+      if (slugExists) {
+        return { success: false, error: `A page with the slug "${newSlug}" already exists` };
+      }
+
+      // Find current node in structure
+      const currentNode = findNodeByPath(site.manifest.structure, currentFilePath);
+      if (!currentNode) {
+        return { success: false, error: "Page not found in site structure" };
+      }
+
+      // Collect all affected pages (current page + any descendants)
+      const affectedPaths = [currentFilePath];
+      if (currentNode.children) {
+        affectedPaths.push(...getDescendantIds([currentNode]));
+      }
+
+      // Backup all affected content before deletion
+      const contentBackup = [];
+      for (const path of affectedPaths) {
+        const file = site.contentFiles?.find(f => f.path === path);
+        if (file) {
+          // Calculate new path for this file
+          let newPath: string;
+          if (path === currentFilePath) {
+            // This is the main file being changed
+            newPath = newFilePath;
+          } else {
+            // This is a descendant - update its path to use the new slug
+            const relativePath = path.replace(`content/${currentSlug}`, '');
+            newPath = `content/${newSlug}${relativePath}`;
+          }
+          
+          contentBackup.push({
+            originalPath: path,
+            newPath,
+            frontmatter: { ...file.frontmatter },
+            content: file.content,
+            blocknoteBlocks: file.blocknoteBlocks ? [...file.blocknoteBlocks] : undefined
+          });
+        }
+      }
+
+      // Validate all new paths don't already exist
+      for (const backup of contentBackup) {
+        if (backup.newPath !== newFilePath) { // We already checked the main file
+          const pathExists = site.contentFiles?.some(f => f.path === backup.newPath);
+          if (pathExists) {
+            return { success: false, error: `Cannot recreate page - path "${backup.newPath}" already exists` };
+          }
+        }
+      }
+
+      // Delete all affected pages (in reverse order to avoid structure issues)
+      for (let i = affectedPaths.length - 1; i >= 0; i--) {
+        await get().deleteContentFileAndState(siteId, affectedPaths[i]);
+      }
+
+      // Recreate all pages with new paths
+      const results = [];
+      for (const backup of contentBackup) {
+        const markdownContent = stringifyToMarkdown(backup.frontmatter, backup.content);
+        const success = await get().addOrUpdateContentFile(siteId, backup.newPath, markdownContent);
+        results.push({ path: backup.newPath, success });
+        
+        if (!success) {
+          console.error(`Failed to recreate file: ${backup.newPath}`);
+          // Continue with other files rather than failing completely
+        }
+      }
+
+      // Check if all recreations were successful
+      const allSuccessful = results.every(r => r.success);
+      if (!allSuccessful) {
+        const failedPaths = results.filter(r => !r.success).map(r => r.path);
+        toast.error(`Some pages could not be recreated: ${failedPaths.join(', ')}`);
+      }
+
+      toast.success(`Page slug changed from "${currentSlug}" to "${newSlug}"`);
+      
+      return { 
+        success: true, 
+        newFilePath,
+        error: allSuccessful ? undefined : "Some descendant pages failed to recreate"
+      };
+      
+    } catch (error) {
+      console.error("Failed to change page slug:", error);
+      const errorMessage = `Failed to change slug: ${(error as Error).message}`;
+      toast.error(errorMessage);
+      return { success: false, error: errorMessage };
+    }
   },
 });

@@ -87,7 +87,7 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
 
     // If it's a CollectionItemRef (has collectionId and slug)
     if ('collectionId' in item && 'slug' in item) {
-      baseUrl = getUrlUtil(item as StructureNode, siteData.manifest, isExport, undefined, siteData, false);
+      baseUrl = getUrlUtil(item as StructureNode, siteData.manifest, isExport, undefined, siteData, isExport);
     }
     // If it's a ParsedMarkdownFile (has path and slug), convert to CollectionItemRef format
     else if ('path' in item && 'slug' in item && typeof item.path === 'string') {
@@ -103,7 +103,7 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
           title: item.frontmatter?.title || item.slug,
           url: '' // Let URL service handle this properly
         };
-        baseUrl = getUrlUtil(collectionItemRef, siteData.manifest, isExport, undefined, siteData, false);
+        baseUrl = getUrlUtil(collectionItemRef, siteData.manifest, isExport, undefined, siteData, isExport);
       } else {
         console.warn('Handlebars "getCollectionItemUrl" helper called with an invalid item object:', item);
         return '#error-invalid-item';
@@ -111,6 +111,12 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
     } else {
       console.warn('Handlebars "getCollectionItemUrl" helper called with an invalid item object:', item);
       return '#error-invalid-item';
+    }
+
+    // For export mode, collection item links should be absolute paths from site root
+    // This ensures collection links work correctly regardless of the current page depth
+    if (isExport) {
+      return baseUrl ? `/${baseUrl.replace(/\/index\.html$/, '/').replace(/\.html$/, '/')}` : '/';
     }
 
     // For preview mode with iframe routing, use relative URLs like export mode

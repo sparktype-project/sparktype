@@ -37,7 +37,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
 
   const [status, setStatus] = useState<FileStatus>('initializing');
   const [frontmatter, setFrontmatter] = useState<PageFrontmatter | null>(null);
-  const [slug, setSlug] = useState('');
+  const [slug, setSlugState] = useState('');
   // Remove BlockNote-specific state since we're using Plate now
 
   useEffect(() => {
@@ -76,7 +76,8 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         }
         
         // _markdownContent = 'Start writing...'; // Not currently used
-        setSlug('');
+        setSlugState('');
+        setPendingSlug(null); // Clear any pending changes for new file
        } else {
         console.log('useFileContent - looking for existing file at path:', filePath);
         console.log('useFileContent - available contentFiles:', site.contentFiles?.map(f => f.path));
@@ -93,7 +94,8 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         console.log('useFileContent - file content preview:', fileData.content?.substring(0, 100) + (fileData.content && fileData.content.length > 100 ? '...' : ''));
         setFrontmatter(fileData.frontmatter);
         // _markdownContent = fileData.content; // Not currently used
-        setSlug(fileData.slug);
+        setSlugState(fileData.slug);
+        setPendingSlug(null); // Clear any pending changes when loading existing file
       }
 
       // Content is ready - no conversion needed for Plate editor
@@ -121,12 +123,74 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
       const newFm = { ...prev, ...update };
       // Auto-generate the slug from the title, but only for new files.
       if (isNewFileMode && update.title !== undefined) {
-        setSlug(slugify(update.title));
+        setSlugState(slugify(update.title));
       }
       return newFm;
     });
     onContentModified();
   }, [isNewFileMode, onContentModified]);
+
+  // Store pending slug changes (for existing files, only applied on save)
+  const [pendingSlug, setPendingSlug] = useState<string | null>(null);
+
+  // Simple setSlug function that just updates local state
+  const setSlug = useCallback((newSlug: string) => {
+    if (isNewFileMode) {
+      // For new files, just update the state immediately
+      setSlugState(newSlug);
+    } else {
+      // For existing files, store as pending change
+      setSlugState(newSlug);
+      setPendingSlug(newSlug);
+      onContentModified(); // Mark as having unsaved changes
+    }
+  }, [isNewFileMode, onContentModified]);
+
+  // Function to apply pending slug changes when saving
+  const applyPendingSlugChange = useCallback(async () => {
+    if (!pendingSlug || isNewFileMode || !filePath || !site) {
+      return { success: true }; // No slug change needed
+    }
+
+    const currentFile = site.contentFiles?.find(f => f.path === filePath);
+    if (!currentFile) {
+      return { success: false, error: "Current file not found" };
+    }
+
+    // If slug hasn't actually changed, no need to do anything
+    if (currentFile.slug === pendingSlug) {
+      setPendingSlug(null);
+      return { success: true };
+    }
+
+    try {
+      const { changePageSlug } = useAppStore.getState();
+      const result = await changePageSlug(siteId, filePath, pendingSlug);
+      
+      if (result.success) {
+        setPendingSlug(null); // Clear pending change
+        
+        // Navigate to the new path if it changed
+        if (result.newFilePath && result.newFilePath !== filePath) {
+          const newSlugFromPath = result.newFilePath.replace(/^content\//, '').replace(/\.md$/, '');
+          navigate(`/sites/${siteId}/edit/content/${newSlugFromPath}`);
+        }
+        
+        return { success: true, newFilePath: result.newFilePath };
+      } else {
+        // Reset slug to original value on error
+        setSlugState(currentFile.slug);
+        setPendingSlug(null);
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      console.error('Error applying slug change:', error);
+      // Reset slug to original value on error
+      setSlugState(currentFile.slug);
+      setPendingSlug(null);
+      return { success: false, error: 'Failed to change slug' };
+    }
+  }, [pendingSlug, isNewFileMode, filePath, site, siteId, navigate]);
 
   return { 
     status, 
@@ -134,6 +198,8 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
     slug, 
     setSlug, 
     handleFrontmatterChange, 
-    onContentModified 
+    onContentModified,
+    applyPendingSlugChange,
+    hasPendingSlugChange: !!pendingSlug
   };
 }

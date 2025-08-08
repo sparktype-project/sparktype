@@ -65,7 +65,7 @@ function EditContentPageInternal() {
   const siteCollections = useMemo(() => site?.manifest.collections || [], [site?.manifest.collections]);
   
   const { isNewFileMode, filePath, collectionContext } = usePageIdentifier({ siteStructure, allContentFiles, siteData: site || null });
-  const { status, frontmatter, slug, setSlug, handleFrontmatterChange, onContentModified } = useFileContent(siteId, filePath, isNewFileMode, collectionContext);
+  const { status, frontmatter, slug, setSlug, handleFrontmatterChange, onContentModified, applyPendingSlugChange } = useFileContent(siteId, filePath, isNewFileMode, collectionContext);
   const editorRef = useRef<PlateEditorRef>(null);
   const [editorValue, setEditorValue] = useState<Value>(defaultInitialValue);
   
@@ -75,7 +75,8 @@ function EditContentPageInternal() {
     isNewFileMode, 
     frontmatter, 
     slug, 
-    getEditorContent: () => editorRef.current?.getMarkdown() ?? '' 
+    getEditorContent: () => editorRef.current?.getMarkdown() ?? '',
+    applyPendingSlugChange
   });
 
   // Load initial content when file data is ready

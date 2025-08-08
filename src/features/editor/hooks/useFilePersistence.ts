@@ -22,10 +22,11 @@ interface PersistenceParams {
   frontmatter: MarkdownFrontmatter | null;
   slug: string;
   getEditorContent: () => string;
+  applyPendingSlugChange?: () => Promise<{ success: boolean; newFilePath?: string; error?: string }>;
 }
 
 export function useFilePersistence({
-  siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent,
+  siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent, applyPendingSlugChange,
 }: PersistenceParams) {
   // Use the navigate hook from react-router-dom
   const navigate = useNavigate(); 
@@ -73,6 +74,21 @@ export function useFilePersistence({
     if (!frontmatter) throw new Error("Frontmatter not ready for saving.");
     if (!frontmatter.title.trim()) throw new Error("A title is required before saving.");
 
+    // For existing files, apply pending slug changes first
+    if (!isNewFileMode && applyPendingSlugChange) {
+      const slugResult = await applyPendingSlugChange();
+      if (!slugResult.success) {
+        throw new Error(slugResult.error || "Failed to apply slug change");
+      }
+      
+      // If slug change succeeded and we have a new file path, the save is complete
+      // (the slug change process already saved the content)
+      if (slugResult.newFilePath) {
+        console.log('Page slug changed and content saved during slug change process');
+        return;
+      }
+    }
+
     const markdownContent = getEditorContent();
     console.log('useFilePersistence - saving markdown to filePath:', filePath, 'isNewFileMode:', isNewFileMode, 'content length:', markdownContent.length);
     
@@ -103,7 +119,7 @@ export function useFilePersistence({
       // --- UPDATE LOGIC (Subsequent Saves) ---
       await addOrUpdateContentFile(siteId, filePath, rawMarkdown);
     }
-  }, [siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent, addOrUpdateContentFile, getSiteById, navigate]);
+  }, [siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent, addOrUpdateContentFile, getSiteById, navigate, applyPendingSlugChange]);
 
   const handleDelete = useCallback(async () => {
     if (isNewFileMode || !frontmatter) return;
