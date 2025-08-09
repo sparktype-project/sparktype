@@ -7,10 +7,11 @@ import { Input } from '@/core/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/core/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/core/components/ui/card';
 import { Separator } from '@/core/components/ui/separator';
+// Switch component not currently used
 import { toast } from 'sonner';
-import { Download, Globe, Settings } from 'lucide-react';
+import { Download, Globe, Settings, Github } from 'lucide-react';
 
-type PublishingProvider = 'zip' | 'netlify';
+type PublishingProvider = 'zip' | 'netlify' | 'github';
 
 interface NetlifyConfigUI {
   apiToken: string;
@@ -23,9 +24,23 @@ interface NetlifyConfigPublic {
   siteName?: string;
 }
 
+interface GitHubConfigUI {
+  accessToken: string;
+  owner: string;
+  repo: string;
+  branch?: string;
+}
+
+interface GitHubConfigPublic {
+  owner: string;
+  repo: string;
+  branch?: string;
+}
+
 interface PublishingConfig {
   provider: PublishingProvider;
   netlify?: NetlifyConfigPublic;
+  github?: GitHubConfigPublic;
 }
 
 export default function PublishingSettingsPage() {
@@ -39,6 +54,12 @@ export default function PublishingSettingsPage() {
     apiToken: '',
     siteId: '',
     siteName: ''
+  });
+  const [githubConfig, setGithubConfig] = useState<GitHubConfigUI>({
+    accessToken: '',
+    owner: '',
+    repo: '',
+    branch: 'main'
   });
 
   const site = siteId ? getSiteById(siteId) : null;
@@ -57,6 +78,7 @@ export default function PublishingSettingsPage() {
       hasSecrets: !!site?.secrets,
       hasPublishingSecrets: !!site?.secrets?.publishing,
       hasNetlifyToken: !!site?.secrets?.publishing?.netlify?.apiToken,
+      hasGitHubToken: !!site?.secrets?.publishing?.github?.accessToken,
       publishingConfig: site?.manifest.publishingConfig
     });
 
@@ -64,29 +86,51 @@ export default function PublishingSettingsPage() {
       const config = site.manifest.publishingConfig;
       setProvider(config.provider);
       
-      // Always load the API token from secrets if available
-      const apiToken = site.secrets?.publishing?.netlify?.apiToken || '';
-      
+      // Load Netlify configuration
+      const netlifyApiToken = site.secrets?.publishing?.netlify?.apiToken || '';
       if (config.netlify) {
         setNetlifyConfig({
           siteId: config.netlify?.siteId || '',
           siteName: config.netlify?.siteName || '',
-          apiToken
+          apiToken: netlifyApiToken
         });
-      } else if (apiToken) {
-        // If we have an API token but no netlify config yet, still load the token
+      } else if (netlifyApiToken) {
         setNetlifyConfig(prev => ({
           ...prev,
-          apiToken
+          apiToken: netlifyApiToken
+        }));
+      }
+
+      // Load GitHub configuration
+      const githubAccessToken = site.secrets?.publishing?.github?.accessToken || '';
+      if (config.github) {
+        setGithubConfig({
+          owner: config.github.owner || '',
+          repo: config.github.repo || '',
+          branch: config.github.branch || 'main',
+          accessToken: githubAccessToken
+        });
+      } else if (githubAccessToken) {
+        setGithubConfig(prev => ({
+          ...prev,
+          accessToken: githubAccessToken
         }));
       }
     }
-    // If no publishing config but we have secrets, load the API token
-    else if (site?.secrets?.publishing?.netlify?.apiToken) {
-      setNetlifyConfig(prev => ({
-        ...prev,
-        apiToken: site.secrets?.publishing?.netlify?.apiToken || ''
-      }));
+    // If no publishing config but we have secrets, load the tokens
+    else {
+      if (site?.secrets?.publishing?.netlify?.apiToken) {
+        setNetlifyConfig(prev => ({
+          ...prev,
+          apiToken: site.secrets?.publishing?.netlify?.apiToken || ''
+        }));
+      }
+      if (site?.secrets?.publishing?.github?.accessToken) {
+        setGithubConfig(prev => ({
+          ...prev,
+          accessToken: site.secrets?.publishing?.github?.accessToken || ''
+        }));
+      }
     }
   }, [site]);
 
@@ -95,12 +139,14 @@ export default function PublishingSettingsPage() {
 
     setIsLoading(true);
     try {
-      // Separate public config from secrets
+      // Separate public config from secrets for both providers
       const { apiToken, ...publicNetlifyConfig } = netlifyConfig;
+      const { accessToken, ...publicGithubConfig } = githubConfig;
       
       const publishingConfig: PublishingConfig = {
         provider,
-        ...(provider === 'netlify' && { netlify: publicNetlifyConfig })
+        ...(provider === 'netlify' && { netlify: publicNetlifyConfig }),
+        ...(provider === 'github' && { github: publicGithubConfig })
       };
 
       const updatedManifest = {
@@ -111,18 +157,27 @@ export default function PublishingSettingsPage() {
       // Save public config to manifest
       await updateManifest(siteId, updatedManifest);
 
-      // Save secrets separately if provider is Netlify and we have an API token
-      if (provider === 'netlify' && apiToken) {
-        const updatedSecrets = {
-          ...site.secrets,
-          publishing: {
-            ...site.secrets?.publishing,
+      // Save secrets separately based on provider
+      const updatedSecrets = {
+        ...site.secrets,
+        publishing: {
+          ...site.secrets?.publishing,
+          ...(provider === 'netlify' && apiToken && {
             netlify: {
               ...site.secrets?.publishing?.netlify,
               apiToken
             }
-          }
-        };
+          }),
+          ...(provider === 'github' && accessToken && {
+            github: {
+              ...site.secrets?.publishing?.github,
+              accessToken
+            }
+          })
+        }
+      };
+
+      if ((provider === 'netlify' && apiToken) || (provider === 'github' && accessToken)) {
         await updateSiteSecrets(siteId, updatedSecrets);
       }
 
@@ -177,6 +232,12 @@ export default function PublishingSettingsPage() {
                   <div className="flex items-center gap-2">
                     <Globe className="h-4 w-4" />
                     Deploy to Netlify
+                  </div>
+                </SelectItem>
+                <SelectItem value="github">
+                  <div className="flex items-center gap-2">
+                    <Github className="h-4 w-4" />
+                    Deploy via GitHub
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -235,6 +296,104 @@ export default function PublishingSettingsPage() {
             </>
           )}
 
+          {provider === 'github' && (
+            <>
+              <Separator />
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">GitHub Configuration</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="github-token">Personal Access Token</Label>
+                  <Input
+                    id="github-token"
+                    type="password"
+                    value={githubConfig.accessToken}
+                    onChange={(e) => setGithubConfig({ ...githubConfig, accessToken: e.target.value })}
+                    placeholder="ghp_xxxxxxxxxxxx"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Create a personal access token at{' '}
+                    <a 
+                      href="https://github.com/settings/tokens" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline"
+                    >
+                      github.com/settings/tokens
+                    </a>{' '}
+                    with "repo" permissions. Stored securely and not exported with your site.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="github-owner">Repository Owner</Label>
+                    <Input
+                      id="github-owner"
+                      value={githubConfig.owner}
+                      onChange={(e) => setGithubConfig({ ...githubConfig, owner: e.target.value })}
+                      placeholder="username"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Your GitHub username or organization
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="github-repo">Repository Name</Label>
+                    <Input
+                      id="github-repo"
+                      value={githubConfig.repo}
+                      onChange={(e) => setGithubConfig({ ...githubConfig, repo: e.target.value })}
+                      placeholder="my-website"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      The repository name to deploy to
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="github-branch">Branch (Optional)</Label>
+                  <Input
+                    id="github-branch"
+                    value={githubConfig.branch}
+                    onChange={(e) => setGithubConfig({ ...githubConfig, branch: e.target.value })}
+                    placeholder="main"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Git branch to deploy to (defaults to "main")
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+                    <h4 className="font-semibold text-green-900 mb-2">📂 Repository Support</h4>
+                    <div className="text-sm text-green-800 space-y-2">
+                      <p><strong>✅ New Repository:</strong> Will create initial commit and branch</p>
+                      <p><strong>✅ Existing Repository:</strong> Will add commits to your existing history</p>
+                      <p><strong>✅ New Branch:</strong> Will create the branch if it doesn't exist</p>
+                      <p><strong>✅ Existing Branch:</strong> Will add new commits on top of existing ones</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                    <h4 className="font-semibold text-blue-900 mb-2">🚀 Connect to Netlify</h4>
+                    <p className="text-sm text-blue-800">
+                      After setting up GitHub deployment, connect your repository to Netlify for automatic builds:
+                    </p>
+                    <ol className="text-sm text-blue-800 mt-2 ml-4 space-y-1">
+                      <li>1. Go to Netlify and click "Add new site"</li>
+                      <li>2. Choose "Import an existing project"</li>
+                      <li>3. Select your GitHub repository</li>
+                      <li>4. Netlify will automatically deploy when you publish</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
           <div className="flex gap-2 pt-4">
             <Button onClick={handleSaveSettings} disabled={isLoading}>
               {isLoading ? 'Saving...' : 'Save Settings'}
@@ -244,6 +403,11 @@ export default function PublishingSettingsPage() {
           <div className="bg-muted/50 p-4 rounded-lg">
             <p className="text-sm text-muted-foreground">
               <strong>Note:</strong> After saving your settings, use the "Publish" button in the editor header to publish your site using the configured provider.
+              {provider === 'github' && (
+                <span className="block mt-2">
+                  <strong>GitHub + Netlify:</strong> This approach bypasses size limitations and provides automatic deployments with version control.
+                </span>
+              )}
             </p>
           </div>
         </CardContent>

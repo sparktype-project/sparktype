@@ -3,9 +3,10 @@
 import type { LocalSiteData } from '@/core/types';
 import { exportSiteToZip } from './siteExporter.service';
 import { NetlifyProvider } from './publishing/NetlifyProvider';
+import { GitHubProvider } from './publishing/GitHubProvider';
 import { slugify } from '@/core/libraries/utils';
 
-export type PublishingProvider = 'zip' | 'netlify';
+export type PublishingProvider = 'zip' | 'netlify' | 'github';
 
 export interface PublishingResult {
   success: boolean;
@@ -44,6 +45,9 @@ export async function publishSite(siteData: LocalSiteData): Promise<PublishingRe
     
     case 'netlify':
       return await publishToNetlify(siteData);
+    
+    case 'github':
+      return await publishToGitHub(siteData);
     
     default:
       return {
@@ -115,6 +119,54 @@ async function publishToNetlify(siteData: LocalSiteData): Promise<PublishingResu
     return {
       success: false,
       message: `Netlify deployment failed: ${(error as Error).message}`
+    };
+  }
+}
+
+/**
+ * Publishes site to GitHub using the configured provider
+ */
+async function publishToGitHub(siteData: LocalSiteData): Promise<PublishingResult> {
+  try {
+    const publishingConfig = siteData.manifest.publishingConfig;
+    const githubConfig = publishingConfig?.github;
+    const accessToken = siteData.secrets?.publishing?.github?.accessToken;
+    
+    if (!accessToken) {
+      return {
+        success: false,
+        message: 'GitHub access token not found. Please configure publishing settings.'
+      };
+    }
+    
+    if (!githubConfig?.owner || !githubConfig?.repo) {
+      return {
+        success: false,
+        message: 'GitHub repository not configured. Please set owner and repo in publishing settings.'
+      };
+    }
+    
+    // Prepare config for GitHub provider
+    const config = {
+      accessToken,
+      owner: githubConfig.owner,
+      repo: githubConfig.repo,
+      branch: githubConfig.branch || 'main'
+    };
+    
+    const githubProvider = new GitHubProvider();
+    const result = await githubProvider.deploy(siteData, config);
+    
+    return {
+      success: result.success,
+      message: result.message,
+      url: result.url
+    };
+  } catch (error) {
+    console.error('[Publishing Service] GitHub deployment failed:', error);
+    return {
+      success: false,
+      message: `GitHub deployment failed: ${(error as Error).message}`
     };
   }
 }

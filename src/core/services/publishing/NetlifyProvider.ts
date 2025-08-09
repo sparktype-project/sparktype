@@ -38,6 +38,30 @@ export class NetlifyProvider extends BaseProvider {
       // Create a ZIP archive of the files
       const zipBlob = await this.createZipFromFiles(files);
       
+      // Check if ZIP is too large for Netlify Functions (6MB limit)
+      const zipSizeMB = zipBlob.size / 1024 / 1024;
+      console.log(`[NetlifyProvider] ZIP file size: ${zipSizeMB.toFixed(2)}MB`);
+      
+      if (zipBlob.size > 5.5 * 1024 * 1024) { // 5.5MB threshold to account for base64 encoding overhead
+        console.warn(`[NetlifyProvider] ZIP file (${zipSizeMB.toFixed(2)}MB) exceeds Netlify Functions 6MB limit`);
+        // Try optimized compression first
+        console.log(`[NetlifyProvider] Attempting optimized compression...`);
+        const optimizedZip = await this.createOptimizedZip(files);
+        const optimizedSizeMB = optimizedZip.size / 1024 / 1024;
+        console.log(`[NetlifyProvider] Optimized ZIP size: ${optimizedSizeMB.toFixed(2)}MB`);
+        
+        if (optimizedZip.size > 5.5 * 1024 * 1024) {
+          return {
+            success: false,
+            message: `Bundle too large (${optimizedSizeMB.toFixed(2)}MB even after optimization). Netlify Functions have a 6MB limit. Try reducing image count/sizes.`
+          };
+        }
+        
+        // Use the optimized ZIP
+        const zipBase64 = await this.blobToBase64(optimizedZip);
+        return await this.deployViaProxy(proxyUrl, netlifyConfig.apiToken, netlifyConfig.siteId!, zipBase64);
+      }
+      
       // Convert blob to base64 for proxy transmission
       const zipBase64 = await this.blobToBase64(zipBlob);
       
@@ -286,7 +310,7 @@ export class NetlifyProvider extends BaseProvider {
   }
 
   private async createZipFromFiles(files: Map<string, string | Uint8Array>): Promise<Blob> {
-    // Use JSZip to create a zip file
+    // Use JSZip to create a zip file with default compression
     const JSZip = (await import('jszip')).default;
     const zip = new JSZip();
     
@@ -298,7 +322,46 @@ export class NetlifyProvider extends BaseProvider {
       }
     }
     
-    return await zip.generateAsync({ type: 'blob' });
+    return await zip.generateAsync({ 
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 } // Default compression
+    });
+  }
+
+  private async createOptimizedZip(files: Map<string, string | Uint8Array>): Promise<Blob> {
+    // Use maximum compression for oversized bundles
+    const JSZip = (await import('jszip')).default;
+    const zip = new JSZip();
+    
+    let totalFiles = 0;
+    let skippedFiles = 0;
+    
+    for (const [path, content] of files) {
+      totalFiles++;
+      
+      // Skip very large individual files that might be causing the bloat
+      const size = typeof content === 'string' ? new Blob([content]).size : content.length;
+      if (size > 2 * 1024 * 1024) { // Skip files > 2MB
+        console.warn(`[NetlifyProvider] Skipping large file in optimized bundle: ${path} (${(size / 1024 / 1024).toFixed(2)}MB)`);
+        skippedFiles++;
+        continue;
+      }
+      
+      if (typeof content === 'string') {
+        zip.file(path, content);
+      } else {
+        zip.file(path, content);
+      }
+    }
+    
+    console.log(`[NetlifyProvider] Optimized bundle: ${totalFiles - skippedFiles}/${totalFiles} files (${skippedFiles} large files skipped)`);
+    
+    return await zip.generateAsync({ 
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 9 } // Maximum compression
+    });
   }
 
   /**

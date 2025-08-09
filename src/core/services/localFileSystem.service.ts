@@ -232,9 +232,41 @@ export async function moveContentFiles(siteId: string, pathsToMove: { oldPath: s
  * @param imageData The image data as a Blob.
  */
 export async function saveImageAsset(siteId: string, imagePath: string, imageData: Blob): Promise<void> {
-  const imageMap = await siteImageAssetsStore.getItem<Record<string, Blob>>(siteId) || {};
-  imageMap[imagePath] = imageData;
-  await siteImageAssetsStore.setItem(siteId, imageMap);
+  try {
+    const imageMap = await siteImageAssetsStore.getItem<Record<string, Blob>>(siteId) || {};
+    
+    // Ensure we have a valid Blob before storing
+    if (!(imageData instanceof Blob)) {
+      throw new Error(`Invalid image data: expected Blob, got ${typeof imageData}`);
+    }
+    
+    if (imageData.size === 0) {
+      throw new Error('Cannot save empty image data');
+    }
+    
+    // Try to store the Blob directly first
+    imageMap[imagePath] = imageData;
+    await siteImageAssetsStore.setItem(siteId, imageMap);
+  } catch (error) {
+    console.error('Error saving image asset:', error);
+    console.error('Site ID:', siteId);
+    console.error('Image path:', imagePath);
+    console.error('Image data type:', typeof imageData);
+    console.error('Image data size:', imageData instanceof Blob ? imageData.size : 'N/A');
+    
+    // If direct Blob storage fails, try converting to ArrayBuffer as fallback
+    try {
+      console.warn('Direct Blob storage failed, attempting ArrayBuffer fallback...');
+      const arrayBuffer = await imageData.arrayBuffer();
+      const imageMap = await siteImageAssetsStore.getItem<Record<string, Blob | ArrayBuffer>>(siteId) || {};
+      imageMap[imagePath] = arrayBuffer;
+      await siteImageAssetsStore.setItem(siteId, imageMap);
+      console.log('Successfully saved image as ArrayBuffer fallback');
+    } catch (fallbackError) {
+      console.error('ArrayBuffer fallback also failed:', fallbackError);
+      throw new Error(`Error preparing Blob/File data to be stored in object store: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
 }
 
 /**
@@ -246,12 +278,51 @@ export async function saveImageAsset(siteId: string, imagePath: string, imageDat
 export async function getImageAsset(siteId: string, imagePath: string): Promise<Blob | null> {
 
   // 1. Get the image map for the specific site.
-  const imageMap = await siteImageAssetsStore.getItem<Record<string, Blob>>(siteId);
+  const imageMap = await siteImageAssetsStore.getItem<Record<string, Blob | ArrayBuffer>>(siteId);
   if (!imageMap) {
     return null; // The site has no images.
   }
-  // 2. Return the image from the map, or null if it doesn't exist.
-  return imageMap[imagePath] || null;
+  
+  // 2. Get the image data from the map
+  const imageData = imageMap[imagePath];
+  if (!imageData) {
+    return null;
+  }
+  
+  // 3. If it's already a Blob, return it directly
+  if (imageData instanceof Blob) {
+    return imageData;
+  }
+  
+  // 4. If it's an ArrayBuffer (from fallback storage), convert back to Blob
+  if (imageData instanceof ArrayBuffer) {
+    // We need to determine the MIME type from the file path extension
+    const extension = imagePath.split('.').pop()?.toLowerCase();
+    let mimeType = 'application/octet-stream'; // default
+    
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        mimeType = 'image/jpeg';
+        break;
+      case 'png':
+        mimeType = 'image/png';
+        break;
+      case 'gif':
+        mimeType = 'image/gif';
+        break;
+      case 'webp':
+        mimeType = 'image/webp';
+        break;
+      case 'svg':
+        mimeType = 'image/svg+xml';
+        break;
+    }
+    
+    return new Blob([imageData], { type: mimeType });
+  }
+  
+  return null;
 }
 
 /**
@@ -260,7 +331,42 @@ export async function getImageAsset(siteId: string, imagePath: string): Promise<
  * @returns A promise that resolves to a record mapping image paths to their Blob data.
  */
 export async function getAllImageAssetsForSite(siteId: string): Promise<Record<string, Blob>> {
-    return await siteImageAssetsStore.getItem<Record<string, Blob>>(siteId) || {};
+    const imageMap = await siteImageAssetsStore.getItem<Record<string, Blob | ArrayBuffer>>(siteId) || {};
+    
+    // Convert any ArrayBuffers back to Blobs for consistency
+    const result: Record<string, Blob> = {};
+    for (const [path, data] of Object.entries(imageMap)) {
+      if (data instanceof Blob) {
+        result[path] = data;
+      } else if (data instanceof ArrayBuffer) {
+        // Convert ArrayBuffer back to Blob with appropriate MIME type
+        const extension = path.split('.').pop()?.toLowerCase();
+        let mimeType = 'application/octet-stream';
+        
+        switch (extension) {
+          case 'jpg':
+          case 'jpeg':
+            mimeType = 'image/jpeg';
+            break;
+          case 'png':
+            mimeType = 'image/png';
+            break;
+          case 'gif':
+            mimeType = 'image/gif';
+            break;
+          case 'webp':
+            mimeType = 'image/webp';
+            break;
+          case 'svg':
+            mimeType = 'image/svg+xml';
+            break;
+        }
+        
+        result[path] = new Blob([data], { type: mimeType });
+      }
+    }
+    
+    return result;
 }
 
 /**

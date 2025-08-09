@@ -106,7 +106,9 @@ class LocalImageService implements ImageService {
     const fileName = `${Date.now()}-${slugifiedBaseName}${extension}`;
     const relativePath = `assets/images/${fileName}`;
 
-    await localSiteFs.saveImageAsset(siteId, relativePath, file as Blob);
+    // Convert File to Blob to ensure proper storage in IndexedDB
+    const blob = new Blob([file], { type: file.type });
+    await localSiteFs.saveImageAsset(siteId, relativePath, blob);
 
     let width: number, height: number;
     try {
@@ -281,6 +283,7 @@ class LocalImageService implements ImageService {
 
   /**
    * Gathers all assets (source images and cached derivatives) needed for a full site export.
+   * Pre-generates commonly needed derivatives to prevent deployment race conditions.
    * @param {string} siteId The ID of the site to export.
    * @param {ImageRef[]} allImageRefs An array of all image references found in the site's content and manifest.
    * @returns {Promise<{ path: string; data: Blob; }[]>} A promise resolving to an array of assets to be zipped.
@@ -312,10 +315,56 @@ class LocalImageService implements ImageService {
       }
     }
     
-    // 2. Add all of this site's existing derivatives from the cache to the export map.
+    // 2. Pre-generate only essential derivatives to prevent race conditions while keeping bundle size reasonable.
+    // This ensures that derivatives required by the deployed site are available.
+    console.log(`[LocalImageService] Pre-generating essential derivatives for ${allImageRefs.filter(ref => ref.serviceId === 'local').length} local images`);
+    
+    const essentialTransforms: ImageTransformOptions[] = [
+      // Only generate social media images if they don't exist - these are the most critical for deployment
+      { width: 1200, height: 630, crop: 'fill' },
+    ];
+    
+    for (const ref of allImageRefs) {
+      if (ref.serviceId === 'local' && !ref.src.toLowerCase().endsWith('.svg')) {
+        for (const transformOptions of essentialTransforms) {
+          try {
+            // Generate the cache key the same way as in getDisplayUrl
+            const { width, height, crop = 'scale', gravity = 'center' } = transformOptions;
+            const extIndex = ref.src.lastIndexOf('.');
+            if (extIndex === -1) continue;
+            
+            const pathWithoutExt = ref.src.substring(0, extIndex);
+            const ext = ref.src.substring(extIndex);
+            const derivativeFileName = `${pathWithoutExt}_w${width || 'auto'}_h${height || 'auto'}_c-${crop}_g-${gravity}${ext}`;
+            const cacheKey = `${siteId}/${derivativeFileName}`;
+            
+            // Check if this derivative is already cached
+            const existingDerivative = await getCachedDerivative(cacheKey);
+            if (!existingDerivative) {
+              console.log(`[LocalImageService] Pre-generating essential derivative: ${derivativeFileName}`);
+              // Pre-generate the derivative by calling getOrProcessDerivative
+              const derivativeBlob = await this.getOrProcessDerivative(siteId, ref.src, cacheKey, transformOptions);
+              
+              // Add it to export map but don't duplicate if already cached
+              if (!exportableMap.has(derivativeFileName)) {
+                exportableMap.set(derivativeFileName, derivativeBlob);
+                console.log(`[LocalImageService] Added pre-generated essential derivative: ${derivativeFileName}`);
+              }
+            } else {
+              console.log(`[LocalImageService] Essential derivative already cached: ${derivativeFileName}`);
+            }
+          } catch (error) {
+            console.warn(`[LocalImageService] Failed to pre-generate essential derivative for ${ref.src}:`, error);
+            // Continue with other derivatives - don't let one failure stop the export
+          }
+        }
+      }
+    }
+    
+    // 3. Add all of this site's existing derivatives from the cache to the export map.
     try {
       const derivativeKeys = await getAllCacheKeys(siteId);
-      console.log(`[LocalImageService] Found ${derivativeKeys.length} derivative keys`);
+      console.log(`[LocalImageService] Found ${derivativeKeys.length} cached derivative keys`);
       
       for (const key of derivativeKeys) {
         const filename = key.substring(siteId.length + 1);
@@ -324,7 +373,7 @@ class LocalImageService implements ImageService {
             const derivativeBlob = await getCachedDerivative(key);
             if (derivativeBlob) {
               exportableMap.set(filename, derivativeBlob);
-              console.log(`[LocalImageService] Added derivative: ${filename}`);
+              console.log(`[LocalImageService] Added cached derivative: ${filename}`);
             } else {
               console.warn(`[LocalImageService] Derivative blob is null for key: ${key}`);
             }
@@ -342,7 +391,21 @@ class LocalImageService implements ImageService {
     }
     
     const exportableAssets = Array.from(exportableMap.entries()).map(([path, data]) => ({ path, data }));
-    console.log(`[LocalImageService] Export completed: ${exportableAssets.length} assets, ${errors.length} errors`);
+    
+    // Calculate total bundle size for debugging
+    const totalSize = exportableAssets.reduce((sum, asset) => sum + asset.data.size, 0);
+    const totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
+    
+    console.log(`[LocalImageService] Export completed: ${exportableAssets.length} assets, ${totalSizeMB}MB total, ${errors.length} errors`);
+    
+    // Log asset breakdown for debugging large bundles
+    if (totalSize > 5 * 1024 * 1024) { // > 5MB
+      console.warn(`[LocalImageService] Large bundle detected (${totalSizeMB}MB). Asset breakdown:`);
+      exportableAssets.forEach(asset => {
+        const sizeMB = (asset.data.size / 1024 / 1024).toFixed(2);
+        console.log(`  - ${asset.path}: ${sizeMB}MB`);
+      });
+    }
     
     if (errors.length > 0) {
       console.warn(`[LocalImageService] Export errors:`, errors);

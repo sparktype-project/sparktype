@@ -18,6 +18,14 @@ export interface SiteSecrets {
   cloudinary?: {
     uploadPreset?: string;
   };
+  publishing?: {
+    netlify?: {
+      apiToken?: string;
+    };
+    github?: {
+      accessToken?: string;
+    };
+  };
 }
 
 /**

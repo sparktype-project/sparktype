@@ -16,6 +16,9 @@ import { toast } from 'sonner';
 // Services
 import { publishSite } from '@/core/services/publishing.service';
 
+// Components
+import { SyncStatusIndicator } from './SyncStatusIndicator';
+
 /**
  * Props for the generic EditorHeader component.
  */
@@ -165,6 +168,9 @@ export default function EditorHeader({ actions }: EditorHeaderProps) {
           this will be null.
         */}
         {actions}
+
+        {/* GitHub sync status indicator */}
+        <SyncStatusIndicator siteId={siteId} site={site} />
 
         <Button variant="outline" asChild>
             <Link to={viewLink}>

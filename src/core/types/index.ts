@@ -379,10 +379,15 @@ export interface Manifest {
     [key: string]: unknown; 
   };
   publishingConfig?: {
-    provider: 'zip' | 'netlify';
+    provider: 'zip' | 'netlify' | 'github';
     netlify?: {
       siteId?: string;
       siteName?: string;
+    };
+    github?: {
+      owner: string;
+      repo: string;
+      branch?: string;
     };
   };
 }
@@ -525,6 +530,9 @@ export interface SiteSecrets {
   publishing?: {
     netlify?: {
       apiToken?: string;
+    };
+    github?: {
+      accessToken?: string;
     };
   };
 }
