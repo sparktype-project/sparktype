@@ -390,6 +390,13 @@ export interface Manifest {
       branch?: string;
     };
   };
+  auth?: {
+    publicKey: string;
+    credentialId: string;
+    requiresAuth: boolean;
+    userDisplayName?: string;
+    registeredAt: string;
+  };
 }
 
 /**

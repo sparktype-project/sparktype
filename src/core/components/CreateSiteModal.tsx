@@ -18,8 +18,10 @@ import { Label } from '@/core/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/core/components/ui/select';
 import { Input } from '@/core/components/ui/input';
 import { Textarea } from '@/core/components/ui/textarea';
+import { Switch } from '@/core/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/core/components/ui/dialog';
 import { toast } from 'sonner';
+import { Shield } from 'lucide-react';
 
 interface CreateSiteModalProps {
   open: boolean;
@@ -29,10 +31,12 @@ interface CreateSiteModalProps {
 export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalProps) {
   const navigate = useNavigate();
   const addSite = useAppStore((state) => state.addSite);
+  const registerSiteAuthentication = useAppStore((state) => state.registerSiteAuthentication);
 
   // Form state
   const [siteTitle, setSiteTitle] = useState('');
   const [siteDescription, setSiteDescription] = useState('');
+  const [enableEditProtection, setEnableEditProtection] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const availableThemes = useMemo(() => CORE_THEMES, []);
   const [selectedTheme, setSelectedTheme] = useState<ThemeInfo | null>(availableThemes[0] || null);
@@ -43,6 +47,7 @@ export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalP
       // Reset form when closing
       setSiteTitle('');
       setSiteDescription('');
+      setEnableEditProtection(true);
       setSelectedTheme(availableThemes[0] || null);
       setIsLoading(false);
     }
@@ -81,7 +86,38 @@ export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalP
       };
       
       await addSite(newSiteData);
-      toast.success(`Site "${siteTitle}" created successfully!`);
+      
+      // Handle edit protection setup
+      if (enableEditProtection) {
+        try {
+          const authResult = await registerSiteAuthentication(
+            newSiteId, 
+            siteTitle.trim(),
+            'Site Owner'
+          );
+          
+          if (authResult.success && authResult.authConfig) {
+            // Update the manifest with auth config
+            const updatedManifest = {
+              ...newManifest,
+              auth: authResult.authConfig
+            };
+            
+            // Save the updated manifest with auth
+            const updateManifest = useAppStore.getState().updateManifest;
+            await updateManifest(newSiteId, updatedManifest);
+            
+            toast.success(`Site "${siteTitle}" created with edit protection!`);
+          } else {
+            toast.warning(`Site created but edit protection setup failed: ${authResult.error}`);
+          }
+        } catch (error) {
+          console.error('Failed to setup edit protection:', error);
+          toast.warning('Site created but edit protection setup failed');
+        }
+      } else {
+        toast.success(`Site "${siteTitle}" created successfully!`);
+      }
       
       // Close modal and navigate to the new site's editor page
       handleOpenChange(false);
@@ -103,7 +139,7 @@ export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalP
         <DialogHeader>
           <DialogTitle>Create a New Site</DialogTitle>
           <DialogDescription>
-            Set up your new site with a title, description, and theme. You can change these settings later.
+            Set up your new site with a title, description, theme, and security settings.
           </DialogDescription>
         </DialogHeader>
         
@@ -153,6 +189,33 @@ export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalP
             <p className="text-xs text-muted-foreground">
               Choose the overall design for your site. You can change this later.
             </p>
+          </div>
+          
+          <div className="space-y-3 pt-2 border-t">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label 
+                  htmlFor="edit-protection" 
+                  className="text-sm font-medium flex items-center gap-2"
+                >
+                  <Shield className="h-4 w-4" />
+                  Edit protection
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Require authentication to edit this site
+                </p>
+              </div>
+              <Switch
+                id="edit-protection"
+                checked={enableEditProtection}
+                onCheckedChange={setEnableEditProtection}
+              />
+            </div>
+            {enableEditProtection && (
+              <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                You'll be prompted to set up a passkey after creating the site.
+              </p>
+            )}
           </div>
         </div>
 

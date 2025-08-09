@@ -64,6 +64,23 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
       
       console.log(`[loadSite] Manifest loaded for: ${siteId}`, rawManifest);
       const manifest = rawManifest;
+
+      // Check if authentication is required for this site
+      if (manifest.auth?.requiresAuth) {
+        const appStore = get() as any; // Cast to access auth slice methods
+        const authStatus = appStore.getSiteAuthStatus(siteId, manifest);
+        
+        if (!authStatus.isAuthenticated) {
+          console.log(`[loadSite] Authentication required for site: ${siteId}`);
+          const authResult = await appStore.authenticateForSite(siteId, manifest.auth);
+          
+          if (!authResult.success) {
+            throw new Error(`Authentication failed: ${authResult.error || 'Access denied'}`);
+          }
+          
+          console.log(`[loadSite] Authentication successful for site: ${siteId}`);
+        }
+      }
       
       const [contentFiles, layoutFiles, themeFiles, secrets] = await Promise.all([
         localSiteFs.getSiteContentFiles(siteId),

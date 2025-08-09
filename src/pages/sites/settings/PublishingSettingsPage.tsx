@@ -5,11 +5,11 @@ import { Button } from '@/core/components/ui/button';
 import { Label } from '@/core/components/ui/label';
 import { Input } from '@/core/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/core/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/core/components/ui/card';
+// Card components imported but may be used conditionally
 import { Separator } from '@/core/components/ui/separator';
 // Switch component not currently used
 import { toast } from 'sonner';
-import { Download, Globe, Settings, Github } from 'lucide-react';
+import { Download, Globe, Github } from 'lucide-react';
 
 type PublishingProvider = 'zip' | 'netlify' | 'github';
 
@@ -195,28 +195,32 @@ export default function PublishingSettingsPage() {
     return <div>Site not found</div>;
   }
 
+   const pageTitle = `Publishing settings - ${site?.manifest?.title || 'Loading...'}`;
+
+  if (isLoading || !site) {
+    return (
+      <>
+        <title>{pageTitle}</title>
+        <div className="p-6">Loading publishing settings...</div>
+      </>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <>
+    <title>{pageTitle}</title>
+
+    <div className="space-y-6 max-w-2xl p-6">
       <div>
-        <h1 className="text-2xl font-bold">Publishing Settings</h1>
+        <h1 className="text-2xl font-bold">Publishing settings</h1>
         <p className="text-muted-foreground">
           Configure how you want to publish your site
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Publishing Configuration
-          </CardTitle>
-          <CardDescription>
-            Choose your preferred publishing method and configure the settings
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="provider-select">Publishing Provider</Label>
+            <Label htmlFor="provider-select">Publishing provider</Label>
             <Select value={provider} onValueChange={(value: PublishingProvider) => setProvider(value)}>
               <SelectTrigger id="provider-select">
                 <SelectValue />
@@ -237,14 +241,12 @@ export default function PublishingSettingsPage() {
                 <SelectItem value="github">
                   <div className="flex items-center gap-2">
                     <Github className="h-4 w-4" />
-                    Deploy via GitHub
+                    Deploy to GitHub
                   </div>
                 </SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              Select how you want to publish your site
-            </p>
+
           </div>
 
           {provider === 'netlify' && (
@@ -300,10 +302,10 @@ export default function PublishingSettingsPage() {
             <>
               <Separator />
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">GitHub Configuration</h3>
+                <h3 className="text-lg font-semibold">GitHub configuration</h3>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="github-token">Personal Access Token</Label>
+                  <Label htmlFor="github-token">Personal access token</Label>
                   <Input
                     id="github-token"
                     type="password"
@@ -410,8 +412,8 @@ export default function PublishingSettingsPage() {
               )}
             </p>
           </div>
-        </CardContent>
-      </Card>
+      </div>
     </div>
+    </>
   );
 }

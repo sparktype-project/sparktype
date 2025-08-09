@@ -7,6 +7,7 @@ import { Routes, Route } from 'react-router-dom';
 import { useAppStore } from './core/state/useAppStore';
 import { useInitialiseUIStore } from './core/hooks/useInitialiseUIStore';
 import { Toaster } from "./core/components/ui/sonner";
+import AuthGuard from './core/components/AuthGuard';
 
 // --- Code-Splitting Page Imports using React.lazy ---
 // This is a best practice to keep the initial bundle size small.
@@ -26,6 +27,7 @@ const SiteSettingsPage = lazy(() => import('@/pages/sites/settings/SiteSettingsP
 const ThemeSettingsPage = lazy(() => import('@/pages/sites/settings/ThemeSettingsPage'));       // app/sites/[siteId]/settings/theme/page.tsx
 const ImageSettingsPage = lazy(() => import('@/pages/sites/settings/ImageSettingsPage'));       // app/sites/[siteId]/settings/images/page.tsx
 const PublishingSettingsPage = lazy(() => import('@/pages/sites/settings/PublishingSettingsPage')); // app/sites/[siteId]/settings/publishing/page.tsx
+const SecuritySettingsPage = lazy(() => import('@/pages/sites/settings/SecuritySettingsPage')); // app/sites/[siteId]/settings/security/page.tsx
 const ViewSitePage = lazy(() => import('@/pages/sites/view/ViewSitePage'));                     // app/sites/[siteId]/view/[[...slug]]/page.tsx
 
 /**
@@ -77,19 +79,20 @@ export default function App() {
 
           <Route path="view/*" element={<ViewSitePage />} />
             
-          <Route path="edit/*" element={<EditContentPage />} />
+          <Route path="edit/*" element={<AuthGuard><EditContentPage /></AuthGuard>} />
 
-          <Route path="collections/:collectionId" element={<CollectionManagementPage />} />
+          <Route path="collections/:collectionId" element={<AuthGuard><CollectionManagementPage /></AuthGuard>} />
           
-          <Route path="taggroups/:tagGroupId" element={<TagGroupManagementPage />} />
+          <Route path="taggroups/:tagGroupId" element={<AuthGuard><TagGroupManagementPage /></AuthGuard>} />
             
           <Route path="collection/:collectionId/:slug" element={<ViewSitePage />} />
 
-            <Route path="settings" element={<SettingsSectionLayout />}>
+            <Route path="settings" element={<AuthGuard><SettingsSectionLayout /></AuthGuard>}>
               <Route index element={<SiteSettingsPage />} />
               <Route path="theme" element={<ThemeSettingsPage />} />
               <Route path="images" element={<ImageSettingsPage />} />
               <Route path="publishing" element={<PublishingSettingsPage />} />
+              <Route path="security" element={<SecuritySettingsPage />} />
             </Route>
           </Route>
           

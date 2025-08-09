@@ -17,7 +17,8 @@ import TagGroupsManager from '@/features/editor/components/TagGroupsManager';
 import CreateCollectionDialog from '@/features/editor/components/CreateCollectionDialog';
 import CreateTagGroupDialog from '@/features/editor/components/CreateTagGroupDialog';
 // import CreateCollectionPageDialog from '@/features/editor/components/CreateCollectionPageDialog';
-import { FilePlus, GripVertical, Archive, CirclePlus } from 'lucide-react';
+import { FilePlus, GripVertical, Archive, CirclePlus, Shield, AlertTriangle } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/core/components/ui/alert-dialog';
 import {
   DndContext,
   type DragEndEvent,
@@ -61,6 +62,8 @@ export default function LeftSidebar() {
   const repositionNode = useAppStore(state => state.repositionNode);
   const loadSite = useAppStore(state => state.loadSite);
   const getSiteById = useAppStore(state => state.getSiteById);
+  const authenticateForSite = useAppStore(state => state.authenticateForSite);
+  const getSiteAuthStatus = useAppStore(state => state.getSiteAuthStatus);
   
   const site = useAppStore(useCallback(state => state.getSiteById(siteId), [siteId]));
 
@@ -73,6 +76,7 @@ export default function LeftSidebar() {
   // Dialog states
   const [isCreateCollectionDialogOpen, setIsCreateCollectionDialogOpen] = useState(false);
   const [isCreateTagGroupDialogOpen, setIsCreateTagGroupDialogOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const { setNodeRef: setRootDroppableRef } = useDroppable({ id: '__root_droppable__' });
@@ -101,8 +105,31 @@ export default function LeftSidebar() {
   const activeItem = activeId ? flattenedItems.find(i => i.path === activeId) : null;
 
   const handleExportBackup = async () => {
-    toast.info("Preparing site backup...");
+    if (!site) return;
+
+    setIsExporting(true);
     try {
+      // Check if authentication is required for this site
+      const authStatus = getSiteAuthStatus(siteId, site.manifest);
+      
+      if (authStatus.requiresAuth && !authStatus.isAuthenticated) {
+        if (!site.manifest.auth) {
+          toast.error('Site requires authentication but no credentials found');
+          return;
+        }
+        
+        const authResult = await authenticateForSite(siteId, site.manifest.auth);
+        
+        if (!authResult.success) {
+          toast.error(`Authentication required for export: ${authResult.error}`);
+          return;
+        }
+        
+        toast.success('Authentication successful, preparing backup...');
+      }
+
+      toast.info("Preparing site backup...");
+      
       // Re-fetch site data to ensure it's the latest before exporting
       await loadSite(siteId); 
       const siteToExport = getSiteById(siteId);
@@ -120,6 +147,8 @@ export default function LeftSidebar() {
     } catch (error) {
       console.error("Failed to export site:", error);
       toast.error(`Export failed: ${(error as Error).message}`);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -302,9 +331,51 @@ export default function LeftSidebar() {
         </div>
 
         <div className="mt-auto shrink-0 border-t p-2 space-y-1">
-            <Button variant="ghost" onClick={handleExportBackup} className="w-full justify-start gap-2">
-                <Archive className="h-4 w-4" /> Export site backup
-            </Button>
+            {site?.manifest.auth?.requiresAuth ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-start gap-2" disabled={isExporting}>
+                    <Archive className="h-4 w-4" /> 
+                    {isExporting ? 'Preparing...' : 'Export site backup'}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-amber-500" />
+                      Export Protected Site Backup
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-3">
+                      <p>
+                        This backup will include your site's authentication credentials and publishing secrets.
+                      </p>
+                      <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
+                        <div className="text-sm text-amber-800">
+                          <p className="font-medium">Keep this backup secure:</p>
+                          <ul className="mt-1 space-y-1 text-xs">
+                            <li>• Contains credentials that can access your site</li>
+                            <li>• Store in a secure location</li>
+                            <li>• Don't share with others</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleExportBackup}>
+                      I Understand, Export Backup
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <Button variant="ghost" onClick={handleExportBackup} className="w-full justify-start gap-2" disabled={isExporting}>
+                <Archive className="h-4 w-4" /> 
+                {isExporting ? 'Preparing...' : 'Export site backup'}
+              </Button>
+            )}
         </div>
       </div>
       

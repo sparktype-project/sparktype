@@ -119,7 +119,7 @@ export default function ImageSettingsPage() {
 
         <div className="border-t pt-6 space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="service-select">Image Storage Backend</Label>
+            <Label htmlFor="service-select">Image storage backend</Label>
             <Select value={selectedService} onValueChange={handleServiceChange}>
               <SelectTrigger id="service-select" className="mt-1">
                 <SelectValue placeholder="Select a service..." />
