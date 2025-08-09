@@ -43,6 +43,9 @@ export const useAppStore = create<AppStore>()((set, get, api) => ({
 
     console.log('[AppStore] Initializing application state...');
     
+    // Load persisted authentication sessions
+    get().loadPersistedAuthSessions();
+    
     // Call the hydration action to load sites from storage.
     get().initializeSites().then(() => {
         set({ isInitialized: true });

@@ -2,6 +2,61 @@
 
 import { type StateCreator } from 'zustand';
 import { webAuthnService, type SiteAuthConfig, type AuthenticationResult, type RegistrationResult } from '@/core/services/webauthn.service';
+import { AUTH_CONFIG } from '@/config/editorConfig';
+
+const AUTH_SESSION_STORAGE_KEY = 'sparktype_auth_sessions';
+
+interface AuthSession {
+  siteId: string;
+  authenticatedAt: number;
+  expiresAt: number;
+}
+
+function saveAuthSessions(authenticatedSites: Set<string>): void {
+  try {
+    const now = Date.now();
+    const sessions: AuthSession[] = Array.from(authenticatedSites).map(siteId => ({
+      siteId,
+      authenticatedAt: now,
+      expiresAt: now + AUTH_CONFIG.SESSION_EXPIRY_MS
+    }));
+    
+    localStorage.setItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify(sessions));
+  } catch (error) {
+    console.warn('Failed to save auth sessions:', error);
+  }
+}
+
+function loadAuthSessions(): Set<string> {
+  try {
+    const stored = localStorage.getItem(AUTH_SESSION_STORAGE_KEY);
+    if (!stored) return new Set();
+    
+    const sessions: AuthSession[] = JSON.parse(stored);
+    const now = Date.now();
+    
+    // Filter out expired sessions
+    const validSessions = sessions.filter(session => session.expiresAt > now);
+    
+    // Save back the cleaned sessions
+    if (validSessions.length !== sessions.length) {
+      localStorage.setItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify(validSessions));
+    }
+    
+    return new Set(validSessions.map(session => session.siteId));
+  } catch (error) {
+    console.warn('Failed to load auth sessions:', error);
+    return new Set();
+  }
+}
+
+function clearAuthSessions(): void {
+  try {
+    localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+  } catch (error) {
+    console.warn('Failed to clear auth sessions:', error);
+  }
+}
 
 export interface AuthSlice {
   // State
@@ -20,6 +75,7 @@ export interface AuthSlice {
   };
   clearAuthentication: (siteId: string) => void;
   clearAllAuthentication: () => void;
+  loadPersistedAuthSessions: () => void;
   
   // Rate limiting
   canAttemptAuthentication: (siteId: string) => boolean;
@@ -36,7 +92,7 @@ export const createAuthSlice: StateCreator<
   AuthSlice
 > = (set, get) => ({
   // --- State ---
-  authenticatedSites: new Set<string>(),
+  authenticatedSites: loadAuthSessions(),
   authenticationAttempts: new Map(),
 
   // --- Actions ---
@@ -63,9 +119,11 @@ export const createAuthSlice: StateCreator<
       
       if (result.success) {
         // Add to authenticated sites
-        set((state) => ({
-          authenticatedSites: new Set([...state.authenticatedSites, siteId])
-        }));
+        set((state) => {
+          const newAuthenticatedSites = new Set([...state.authenticatedSites, siteId]);
+          saveAuthSessions(newAuthenticatedSites);
+          return { authenticatedSites: newAuthenticatedSites };
+        });
       }
       
       return result;
@@ -91,9 +149,11 @@ export const createAuthSlice: StateCreator<
       
       if (result.success && result.authConfig) {
         // Automatically authenticate after successful registration
-        set((state) => ({
-          authenticatedSites: new Set([...state.authenticatedSites, siteId])
-        }));
+        set((state) => {
+          const newAuthenticatedSites = new Set([...state.authenticatedSites, siteId]);
+          saveAuthSessions(newAuthenticatedSites);
+          return { authenticatedSites: newAuthenticatedSites };
+        });
       }
       
       return result;
@@ -116,6 +176,7 @@ export const createAuthSlice: StateCreator<
         set((state) => {
           const newAuthenticatedSites = new Set(state.authenticatedSites);
           newAuthenticatedSites.delete(siteId);
+          saveAuthSessions(newAuthenticatedSites);
           return { authenticatedSites: newAuthenticatedSites };
         });
       }
@@ -138,7 +199,16 @@ export const createAuthSlice: StateCreator<
    * Get comprehensive authentication status for a site
    */
   getSiteAuthStatus: (siteId: string, manifest: { auth?: SiteAuthConfig }) => {
-    return webAuthnService.getSiteAuthStatus(siteId, manifest);
+    const authConfig = manifest.auth;
+    const isPublic = !authConfig || !authConfig.requiresAuth;
+    const requiresAuth = !!authConfig?.requiresAuth;
+    const isAuthenticated = get().authenticatedSites.has(siteId);
+
+    return {
+      isPublic,
+      requiresAuth, 
+      isAuthenticated
+    };
   },
 
   /**
@@ -148,6 +218,7 @@ export const createAuthSlice: StateCreator<
     set((state) => {
       const newAuthenticatedSites = new Set(state.authenticatedSites);
       newAuthenticatedSites.delete(siteId);
+      saveAuthSessions(newAuthenticatedSites);
       return { authenticatedSites: newAuthenticatedSites };
     });
   },
@@ -157,10 +228,19 @@ export const createAuthSlice: StateCreator<
    */
   clearAllAuthentication: (): void => {
     webAuthnService.clearAllAuthentication();
+    clearAuthSessions();
     set({ 
       authenticatedSites: new Set(),
       authenticationAttempts: new Map()
     });
+  },
+
+  /**
+   * Load persisted authentication sessions from localStorage
+   */
+  loadPersistedAuthSessions: (): void => {
+    const persistedSessions = loadAuthSessions();
+    set({ authenticatedSites: persistedSessions });
   },
 
   /**

@@ -4,7 +4,7 @@ import { useState, useEffect, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '@/core/state/useAppStore';
 import { Button } from '@/core/components/ui/button';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Shield, KeyRound } from 'lucide-react';
 
 /**
  * Props for the AuthGuard component
@@ -47,6 +47,7 @@ interface AuthGuardProps {
 export default function AuthGuard({ children }: AuthGuardProps) {
   const { siteId } = useParams<{ siteId: string }>();
   const [loadError, setLoadError] = useState<string | undefined>();
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const getSiteById = useAppStore(state => state.getSiteById);
   const loadSite = useAppStore(state => state.loadSite);
@@ -54,6 +55,22 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   const site = siteId ? getSiteById(siteId) : null;
   const isLoading = siteId ? loadingSites.has(siteId) : false;
+
+  const handleRetryAuth = async () => {
+    if (!siteId) return;
+    
+    setIsRetrying(true);
+    setLoadError(undefined);
+    
+    try {
+      await loadSite(siteId);
+    } catch (error) {
+      console.error('Failed to load site:', error);
+      setLoadError(error instanceof Error ? error.message : 'Failed to load site');
+    } finally {
+      setIsRetrying(false);
+    }
+  };
 
   useEffect(() => {
     if (!siteId) return;
@@ -82,20 +99,55 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   // Show error if site loading failed (including auth failure)
   if (loadError || (siteId && !site)) {
+    const isAuthError = loadError?.includes('Authentication failed') || loadError?.includes('Access denied');
+    
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-lg font-semibold mb-2">Unable to Access Site</h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            {loadError || 'The requested site could not be found.'}
+        <div className="text-center max-w-md mx-auto">
+          {isAuthError ? (
+            <Shield className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+          ) : (
+            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          )}
+          
+          <h2 className="text-lg font-semibold mb-2">
+            {isAuthError ? 'Authentication Required' : 'Unable to Access Site'}
+          </h2>
+          
+          <p className="text-sm text-muted-foreground mb-6">
+            {isAuthError 
+              ? 'This site is protected and requires a passkey to edit. Use your device\'s biometric authentication or security key to continue.'
+              : loadError || 'The requested site could not be found.'
+            }
           </p>
-          <Button 
-            variant="outline" 
-            onClick={() => window.history.back()}
-          >
-            Go Back
-          </Button>
+          
+          <div className="flex flex-col gap-3">
+            {isAuthError ? (
+              <Button 
+                onClick={handleRetryAuth}
+                disabled={isRetrying}
+                className="gap-2"
+              >
+                <KeyRound className="h-4 w-4" />
+                {isRetrying ? 'Authenticating...' : 'Authenticate with Passkey'}
+              </Button>
+            ) : (
+              <Button 
+                variant="outline" 
+                onClick={() => window.history.back()}
+              >
+                Go Back
+              </Button>
+            )}
+            
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => window.history.back()}
+            >
+              Return to Sites
+            </Button>
+          </div>
         </div>
       </div>
     );

@@ -223,3 +223,13 @@ export const CSS_CONFIG = {
     // Example: '/css/print.css' -> 'assets/css/print.css'
   ] as const,
 } as const;
+
+/**
+ * Configuration for authentication and security.
+ */
+export const AUTH_CONFIG = {
+  /**
+   * How long authentication sessions persist in localStorage (30 days)
+   */
+  SESSION_EXPIRY_MS: 30 * 24 * 60 * 60 * 1000,
+} as const;
