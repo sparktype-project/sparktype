@@ -9,9 +9,9 @@
         </header>
 
         {{! Featured Image }}
-        {{#if images.featured}}
+        {{#if contentFile.frontmatter.featured_image}}
             <figure class="featured-image-wrapper mv4">
-                <img src="{{images.featured.url}}" class="db center mw-100" alt="{{contentFile.frontmatter.title}}">
+                {{{image fieldname="featured_image" class="db center mw-100" alt=contentFile.frontmatter.title}}}
             </figure>
         {{/if}}
 

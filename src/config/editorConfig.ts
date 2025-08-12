@@ -2,6 +2,22 @@
 import type { ThemeInfo, LayoutInfo } from '@/core/types';
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 
+// Extended schema interface that includes our custom preset field
+interface ExtendedSchemaProperty {
+  type?: 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object' | 'null';
+  title?: string;
+  description?: string;
+  preset?: string;
+  format?: string;
+  default?: unknown;
+  [key: string]: unknown;
+}
+
+// Extended schema that supports our custom preset field
+interface ExtendedRJSFSchema extends Omit<RJSFSchema, 'properties'> {
+  properties?: Record<string, ExtendedSchemaProperty>;
+}
+
 /**
  * The official version of the Sparktype generator client.
  */
@@ -109,7 +125,7 @@ export const DEFAULT_HOMEPAGE_CONFIG = {
  * The universal base schema for all content frontmatter.
  * This object is imported directly, eliminating network requests.
  */
-export const BASE_SCHEMA: { schema: RJSFSchema; uiSchema: UiSchema } = {
+export const BASE_SCHEMA: { schema: ExtendedRJSFSchema; uiSchema: UiSchema } = {
   schema: {
     type: 'object',
     properties: {
@@ -117,11 +133,13 @@ export const BASE_SCHEMA: { schema: RJSFSchema; uiSchema: UiSchema } = {
         title: 'Featured image',
         description: 'The main image for this content, used in listings and social sharing.',
         type: 'string', // The type is string, but the widget handles the ImageRef object
+        preset: 'featured',
       },
       banner_image: {
         title: 'Banner image',
         description: 'A large, wide image for the top of the page.',
         type: 'string',
+        preset: 'banner',
       },
       slug: {
         type: 'string',
@@ -164,6 +182,103 @@ export const BASE_SCHEMA: { schema: RJSFSchema; uiSchema: UiSchema } = {
     },
   },
 };
+
+/**
+ * Default image presets that can be overridden by themes and layouts
+ */
+export const BASE_IMAGE_PRESETS = {
+  // Content presets
+  featured: {
+    width: 600,
+    height: 400,
+    crop: 'fill' as const,
+    gravity: 'center' as const,
+    description: 'Small thumbnail for cards and previews'
+  },
+  banner: {
+    width: 800,
+    height: 256,
+    crop: 'fill' as const,
+    gravity: 'center' as const,
+    description: 'Standard banner image for headers'
+  },
+  hero: {
+    width: 1200,
+    height: 600,
+    crop: 'fill' as const,
+    gravity: 'center' as const,
+    description: 'Large hero image for landing pages'
+  },
+  
+  // Social media presets
+  og: {
+    width: 1200,
+    height: 630,
+    crop: 'fill' as const,
+    gravity: 'center' as const,
+    description: 'Open Graph image for social sharing'
+  },
+  twitter_card: {
+    width: 1200,
+    height: 628,
+    crop: 'fill' as const,
+    gravity: 'center' as const,
+    description: 'Twitter Card image'
+  },
+  linkedin: {
+    width: 1200,
+    height: 627,
+    crop: 'fill' as const,
+    gravity: 'center' as const,
+    description: 'LinkedIn sharing image'
+  },
+  
+  // Layout presets
+  card: {
+    width: 400,
+    height: 300,
+    crop: 'fill' as const,
+    gravity: 'center' as const,
+    description: 'Card layout image'
+  },
+  gallery: {
+    width: 600,
+    height: 400,
+    crop: 'fill' as const,
+    gravity: 'center' as const,
+    description: 'Gallery grid image'
+  },
+  avatar: {
+    width: 150,
+    height: 150,
+    crop: 'fill' as const,
+    gravity: 'center' as const,
+    description: 'Profile or author avatar'
+  },
+  
+  // Responsive presets
+  mobile: {
+    width: 400,
+    height: 300,
+    crop: 'fill' as const,
+    gravity: 'center' as const,
+    description: 'Mobile-optimized image'
+  },
+  tablet: {
+    width: 800,
+    height: 600,
+    crop: 'fill' as const,
+    gravity: 'center' as const,
+    description: 'Tablet-optimized image'
+  },
+  desktop: {
+    width: 1200,
+    height: 800,
+    crop: 'fit' as const,
+    gravity: 'center' as const,
+    description: 'Desktop full-size image'
+  }
+} as const;
 
 /**
  * Configuration for image handling. This remains unchanged.

@@ -29,16 +29,20 @@
       }
     }
   },
-  "image_presets": {
+  "preset_overrides": {
     "banner": {
-      "source": "banner_image",
       "width": 900,
-      "crop": "scale"
+      "height": 300,
+      "crop": "fill",
+      "gravity": "center",
+      "description": "Blog post banner image"
     },
-    "featured": {
-      "source": "featured_image",
-      "width": 600,
-      "crop": "scale"
+     "featured": {
+      "width": 1200,
+      "height": 400,
+      "crop": "fill",
+      "gravity": "center",
+      "description": "Blog post featured image"
     }
   },
   "uiSchema": {

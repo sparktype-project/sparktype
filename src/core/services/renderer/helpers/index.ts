@@ -11,7 +11,6 @@ import { getUrlHelper } from './getUrl.helper';
 import { assignHelper } from './assign.helper';
 import { imageHelper } from './image.helper';
 import { concatHelper } from './concat.helper';
-import { imageUrlHelper } from './imageUrl.helper';
 import { renderLayoutHelper } from './renderLayout.helper';
 import { renderItemHelper } from './renderItem.helper';
 import { renderCollectionHelper } from './renderCollection.helper';
@@ -32,7 +31,6 @@ export const coreHelpers: SparktypeHelper[] = [
   assignHelper,
   imageHelper,
   concatHelper,
-  imageUrlHelper,
   renderLayoutHelper,
   themeDataHelper,
   rawThemeDataHelper,

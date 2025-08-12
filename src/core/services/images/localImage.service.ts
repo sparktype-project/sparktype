@@ -7,6 +7,7 @@ import { getCachedDerivative, setCachedDerivative, getAllCacheKeys } from './der
 import imageCompression from 'browser-image-compression';
 import { MEMORY_CONFIG } from '@/config/editorConfig';
 import { toast } from 'sonner';
+import { cropAndResizeImage, getImageDimensions as getImageDimensionsFromBlob } from './imageManipulation.service';
 
 /**
  * This service manages images stored locally within the browser's IndexedDB.
@@ -36,26 +37,7 @@ interface CompressionOptions {
   maxHeight?: number;
 }
 
-/**
- * A utility function to get the dimensions of an image from its Blob data.
- * @param blob The image Blob.
- * @returns A promise that resolves to the image's width and height.
- */
-const getImageDimensions = (blob: Blob): Promise<{ width: number; height: number }> => {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-      resolve({ width: img.width, height: img.height });
-      URL.revokeObjectURL(url);
-    };
-    img.onerror = (err) => {
-      reject(err);
-      URL.revokeObjectURL(url);
-    };
-    img.src = url;
-  });
-};
+// Using getImageDimensionsFromBlob from imageManipulation.service
 
 /**
  * Implements the ImageService interface for handling images stored locally
@@ -104,7 +86,7 @@ class LocalImageService implements ImageService {
     const extension = file.name.substring(extIndex);
     const slugifiedBaseName = slugify(baseName);
     const fileName = `${Date.now()}-${slugifiedBaseName}${extension}`;
-    const relativePath = `assets/images/${fileName}`;
+    const relativePath = `assets/originals/${fileName}`;
 
     // Convert File to Blob to ensure proper storage in IndexedDB
     const blob = new Blob([file], { type: file.type });
@@ -112,7 +94,7 @@ class LocalImageService implements ImageService {
 
     let width: number, height: number;
     try {
-      const dimensions = await getImageDimensions(file as Blob);
+      const dimensions = await getImageDimensionsFromBlob(file as Blob);
       width = dimensions.width;
       height = dimensions.height;
     } catch (error) {
@@ -142,29 +124,40 @@ class LocalImageService implements ImageService {
   public async getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions, isExport: boolean): Promise<string> {
     // SVGs are returned directly without processing.
     if (ref.src.toLowerCase().endsWith('.svg')) {
-      if (isExport) return `/${ref.src}`;
+      if (isExport) {
+        // For export, use _site prefix for originals
+        const filename = ref.src.split('/').pop();
+        return `/_site/assets/originals/${filename}`;
+      }
       const sourceBlob = await this.getSourceBlob(manifest.siteId, ref.src);
       return URL.createObjectURL(sourceBlob);
     }
 
-    // Construct a unique filename and cache key for the requested derivative.
+    // Generate derivative with proper path handling
     const { width, height, crop = 'scale', gravity = 'center' } = options;
     const extIndex = ref.src.lastIndexOf('.');
     if (extIndex === -1) throw new Error("Source image has no extension.");
     
     const pathWithoutExt = ref.src.substring(0, extIndex);
     const ext = ref.src.substring(extIndex);
-    const derivativeFileName = `${pathWithoutExt}_w${width || 'auto'}_h${height || 'auto'}_c-${crop}_g-${gravity}${ext}`;
-    const cacheKey = `${manifest.siteId}/${derivativeFileName}`;
+    
+    // Extract just the filename (remove assets/originals/ or assets/images/ prefix)
+    const baseFilename = pathWithoutExt.replace(/^assets\/(originals|images)\//, '');
+    const derivativeFilename = `${baseFilename}_w${width || 'auto'}_h${height || 'auto'}_c-${crop}_g-${gravity}${ext}`;
+    const cacheKey = `${manifest.siteId}/assets/derivatives/${derivativeFilename}`;
 
     const finalBlob = await this.getOrProcessDerivative(manifest.siteId, ref.src, cacheKey, options);
     
+    console.log(`[LocalImageService] getDisplayUrl - isExport: ${isExport}, cacheKey: ${cacheKey}, blobSize: ${finalBlob.size}`);
+    
     if (isExport) {
-      // For exports, ensure absolute path starting with /assets/images/
-      const filename = derivativeFileName.split('/').pop() || derivativeFileName;
-      return `/assets/images/${filename}`;
+      // For export, derivatives go to assets/derivatives/
+      return `/assets/derivatives/${derivativeFilename}`;
     } else {
-      return URL.createObjectURL(finalBlob);
+      // For preview, return blob URL
+      const blobUrl = URL.createObjectURL(finalBlob);
+      console.log(`[LocalImageService] Preview blob URL created: ${blobUrl}`);
+      return blobUrl;
     }
   }
 
@@ -181,8 +174,14 @@ class LocalImageService implements ImageService {
    */
   private async getOrProcessDerivative(siteId: string, srcPath: string, cacheKey: string, options: ImageTransformOptions): Promise<Blob> {
     // 1. Check persistent cache (IndexedDB) first.
+    console.log(`[ImageService] Looking for cached derivative: ${cacheKey}`);
     const cachedBlob = await getCachedDerivative(cacheKey);
-    if (cachedBlob) return cachedBlob;
+    if (cachedBlob) {
+      console.log(`[ImageService] Found cached derivative: ${cacheKey}, size: ${cachedBlob.size}`);
+      return cachedBlob;
+    } else {
+      console.log(`[ImageService] No cached derivative found, will generate: ${cacheKey}`);
+    }
 
     // 2. Check if this exact derivative is already being processed.
     if (processingPromises.has(cacheKey)) return processingPromises.get(cacheKey)!;
@@ -191,41 +190,67 @@ class LocalImageService implements ImageService {
     const processingPromise = (async (): Promise<Blob> => {
       try {
         const sourceBlob = await this.getSourceBlob(siteId, srcPath);
-        const sourceDimensions = await getImageDimensions(sourceBlob);
+        const sourceDimensions = await getImageDimensionsFromBlob(sourceBlob);
 
-        const compressionOptions: CompressionOptions = {
-            maxSizeMB: 1.5,
-            initialQuality: 0.85,
-            useWebWorker: true,
-            exifOrientation: -1,
-        };
-
+        console.log(`[ImageService] Processing new derivative: ${cacheKey}`);
+        console.log(`[ImageService] Source dimensions: ${sourceDimensions.width}x${sourceDimensions.height}`);
+        
         // Prevent upscaling by capping requested dimensions at the source's dimensions.
         const { width, height, crop } = options;
         const targetWidth = width ? Math.min(width, sourceDimensions.width) : undefined;
         const targetHeight = height ? Math.min(height, sourceDimensions.height) : undefined;
 
-        if (crop === 'fill' && targetWidth && targetHeight) {
-          compressionOptions.maxWidth = targetWidth;
-          compressionOptions.maxHeight = targetHeight;
-        } else {
-          const maxDim = Math.max(targetWidth || 0, targetHeight || 0);
-          if (maxDim > 0) compressionOptions.maxWidthOrHeight = maxDim;
+        console.log(`[ImageService] Target dimensions: ${targetWidth}x${targetHeight}, crop: ${crop}`);
+
+        // Use canvas-based cropping for precise control
+        let processedBlob: Blob;
+        try {
+          processedBlob = await cropAndResizeImage(sourceBlob, {
+            width: targetWidth,
+            height: targetHeight,
+            crop,
+            gravity: options.gravity
+          });
+          console.log(`[ImageService] Canvas processing complete: ${sourceBlob.size} -> ${processedBlob.size} bytes`);
+        } catch (canvasError) {
+          console.error(`[ImageService] Canvas processing failed, falling back to compression only:`, canvasError);
+          // Fallback to compression-only if canvas processing fails
+          // Note: browser-image-compression doesn't support proper cropping, only resizing
+          const compressionOptions: CompressionOptions = {
+            maxSizeMB: 1.5,
+            initialQuality: 0.85,
+            useWebWorker: true,
+            exifOrientation: -1,
+            // Only set maxWidth/maxHeight for 'fit' mode to avoid stretching
+            ...(crop === 'fit' ? { maxWidth: targetWidth, maxHeight: targetHeight } : {})
+          };
+          processedBlob = await imageCompression(sourceBlob as File, compressionOptions);
         }
 
-        console.log(`[ImageService] Processing new derivative: ${cacheKey}`);
-        
-        // Add timeout wrapper for imageCompression to prevent hanging
-        const compressionPromise = imageCompression(sourceBlob as File, compressionOptions);
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Image compression timed out after 30 seconds')), 30000);
-        });
-        
-        const derivativeBlob = await Promise.race([compressionPromise, timeoutPromise]);
+        // Apply additional compression if the result is still large
+        let finalBlob = processedBlob;
+        if (processedBlob.size > 1.5 * 1024 * 1024) { // > 1.5MB
+          console.log(`[ImageService] Applying additional compression to large derivative`);
+          
+          const compressionOptions: CompressionOptions = {
+            maxSizeMB: 1.5,
+            initialQuality: 0.85,
+            useWebWorker: true,
+            exifOrientation: -1,
+          };
+
+          // Add timeout wrapper for imageCompression to prevent hanging
+          const compressionPromise = imageCompression(processedBlob as File, compressionOptions);
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('Image compression timed out after 30 seconds')), 30000);
+          });
+          
+          finalBlob = await Promise.race([compressionPromise, timeoutPromise]);
+        }
         
         // 4. Store the result in the persistent cache.
-        await setCachedDerivative(cacheKey, derivativeBlob);
-        return derivativeBlob;
+        await setCachedDerivative(cacheKey, finalBlob);
+        return finalBlob;
       } catch (error) {
         console.error(`[ImageService] Failed to process derivative ${cacheKey}:`, error);
         throw error;
@@ -300,8 +325,11 @@ class LocalImageService implements ImageService {
         try {
           const sourceBlob = await localSiteFs.getImageAsset(siteId, ref.src);
           if (sourceBlob) {
-            exportableMap.set(ref.src, sourceBlob);
-            console.log(`[LocalImageService] Added source image: ${ref.src}`);
+            // Export originals to _site/assets/originals/
+            const filename = ref.src.split('/').pop();
+            const exportPath = `_site/assets/originals/${filename}`;
+            exportableMap.set(exportPath, sourceBlob);
+            console.log(`[LocalImageService] Added source image: ${exportPath}`);
           } else {
             const error = `Source image not found: ${ref.src}`;
             console.warn(`[LocalImageService] ${error}`);
@@ -335,23 +363,27 @@ class LocalImageService implements ImageService {
             
             const pathWithoutExt = ref.src.substring(0, extIndex);
             const ext = ref.src.substring(extIndex);
-            const derivativeFileName = `${pathWithoutExt}_w${width || 'auto'}_h${height || 'auto'}_c-${crop}_g-${gravity}${ext}`;
-            const cacheKey = `${siteId}/${derivativeFileName}`;
+            
+            // Extract just the filename (remove assets/originals/ or assets/images/ prefix)
+            const baseFilename = pathWithoutExt.replace(/^assets\/(originals|images)\//, '');
+            const derivativeFilename = `${baseFilename}_w${width || 'auto'}_h${height || 'auto'}_c-${crop}_g-${gravity}${ext}`;
+            const cacheKey = `${siteId}/assets/derivatives/${derivativeFilename}`;
             
             // Check if this derivative is already cached
             const existingDerivative = await getCachedDerivative(cacheKey);
             if (!existingDerivative) {
-              console.log(`[LocalImageService] Pre-generating essential derivative: ${derivativeFileName}`);
+              console.log(`[LocalImageService] Pre-generating essential derivative: ${derivativeFilename}`);
               // Pre-generate the derivative by calling getOrProcessDerivative
               const derivativeBlob = await this.getOrProcessDerivative(siteId, ref.src, cacheKey, transformOptions);
               
               // Add it to export map but don't duplicate if already cached
-              if (!exportableMap.has(derivativeFileName)) {
-                exportableMap.set(derivativeFileName, derivativeBlob);
-                console.log(`[LocalImageService] Added pre-generated essential derivative: ${derivativeFileName}`);
+              const exportPath = `assets/derivatives/${derivativeFilename}`;
+              if (!exportableMap.has(exportPath)) {
+                exportableMap.set(exportPath, derivativeBlob);
+                console.log(`[LocalImageService] Added pre-generated essential derivative: ${exportPath}`);
               }
             } else {
-              console.log(`[LocalImageService] Essential derivative already cached: ${derivativeFileName}`);
+              console.log(`[LocalImageService] Essential derivative already cached: ${derivativeFilename}`);
             }
           } catch (error) {
             console.warn(`[LocalImageService] Failed to pre-generate essential derivative for ${ref.src}:`, error);
@@ -367,13 +399,14 @@ class LocalImageService implements ImageService {
       console.log(`[LocalImageService] Found ${derivativeKeys.length} cached derivative keys`);
       
       for (const key of derivativeKeys) {
-        const filename = key.substring(siteId.length + 1);
-        if (!exportableMap.has(filename)) {
+        // Extract the path after siteId/ (should be assets/derivatives/filename)
+        const relativePath = key.substring(siteId.length + 1);
+        if (!exportableMap.has(relativePath)) {
           try {
             const derivativeBlob = await getCachedDerivative(key);
             if (derivativeBlob) {
-              exportableMap.set(filename, derivativeBlob);
-              console.log(`[LocalImageService] Added cached derivative: ${filename}`);
+              exportableMap.set(relativePath, derivativeBlob);
+              console.log(`[LocalImageService] Added cached derivative: ${relativePath}`);
             } else {
               console.warn(`[LocalImageService] Derivative blob is null for key: ${key}`);
             }

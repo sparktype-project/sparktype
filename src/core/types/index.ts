@@ -22,8 +22,12 @@ export interface ThemeManifest extends BaseAssetManifest {
   themeDataSchema?: import('@rjsf/utils').RJSFSchema;
 }
 
-interface ImagePreset extends ImageTransformOptions {
-    source: string;
+export interface ImagePreset {
+  width?: number;
+  height?: number;
+  crop?: 'fill' | 'fit' | 'scale';
+  gravity?: 'center' | 'north' | 'south' | 'east' | 'west';
+  description?: string;
 }
 
 interface DataFileDefinition {
@@ -65,6 +69,7 @@ export interface LayoutManifest extends BaseAssetManifest {
 
   display_options?: Record<string, DisplayOption>;
   image_presets?: Record<string, ImagePreset>;
+  preset_overrides?: Record<string, ImagePreset>;
   data_files?: DataFileDefinition[];
   dynamic_routes?: Record<string, DynamicRoute>;
 }

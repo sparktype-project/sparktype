@@ -19,49 +19,18 @@ import { generateStyleOverrides } from './asset.service';
 import { type RenderOptions } from './render.service';
 import { getRelativePath } from '@/core/services/relativePaths.service';
 
-// Define a reusable type for the resolved image presets.
-type ResolvedImagePresets = Record<string, { url: string; width?: number; height?: number }>;
-
 // The context object passed into the main body template.
 type EnrichedPageContext = (PageResolutionResult & {
     siteData?: LocalSiteData;
-    images?: ResolvedImagePresets;
-    collectionItems?: (ParsedMarkdownFile & { images?: ResolvedImagePresets; url: string })[];
+    collectionItems?: (ParsedMarkdownFile & { url: string })[];
     layoutManifest?: LayoutManifest | null;
     options?: RenderOptions;
 });
 
-/**
- * Asynchronously resolves all image preset URLs for a given content file.
- */
-async function resolveImagePresets(context: {
-    imageService: ImageService;
-    layoutManifest: LayoutManifest | null;
-    contentFile: ParsedMarkdownFile;
-    options: Pick<RenderOptions, 'isExport'>;
-    manifest: Manifest;
-}): Promise<ResolvedImagePresets> {
-    const { imageService, layoutManifest, contentFile, options, manifest } = context;
-    const presets = layoutManifest?.image_presets || {};
-    const resolved: ResolvedImagePresets = {};
-    for (const [name, preset] of Object.entries(presets)) {
-        const sourceRef = contentFile.frontmatter[preset.source] as ImageRef | undefined;
-        if (sourceRef?.serviceId && sourceRef?.src) {
-            try {
-                resolved[name] = {
-                    url: await imageService.getDisplayUrl(manifest, sourceRef, preset, options.isExport),
-                    width: preset.width,
-                    height: preset.height,
-                };
-            } catch (e) { console.warn(`Could not resolve image preset "${name}":`, e); }
-        }
-    }
-    return resolved;
-}
 
 /**
  * Assembles the complete context object for the main page body template.
- * This function enriches the initial page resolution with async data like image URLs.
+ * Images are now preprocessed before template rendering, so no async image resolution needed.
  */
 export async function assemblePageContext(
     siteData: LocalSiteData,
@@ -75,13 +44,11 @@ export async function assemblePageContext(
     }
 
     const { manifest } = siteData;
-    const imageContext = await resolveImagePresets({ imageService, layoutManifest: pageLayoutManifest, contentFile: resolution.contentFile, options, manifest });
 
     // When rendering a collection page, we need to process its items.
     const processedCollectionItems = resolution.collectionItems
         ? await Promise.all(resolution.collectionItems.map(async (item: ParsedMarkdownFile) => {
-            // CORRECTED: Create a lightweight `CollectionItemRef` on-the-fly to pass to the URL service.
-            // This ensures we're using the explicit data model for URL generation.
+            // Create a lightweight `CollectionItemRef` on-the-fly to pass to the URL service.
             const collectionId = manifest.collections?.find(c => item.path.startsWith(c.contentPath))?.id || '';
             const itemRef: CollectionItemRef = {
                 collectionId: collectionId,
@@ -93,7 +60,7 @@ export async function assemblePageContext(
             
             const urlSegment = getUrlForNode(itemRef, manifest, options.isExport, undefined, siteData);
             
-            // CORRECTED: Create a `StructureNode` for the current (parent) page to get its path.
+            // Create a `StructureNode` for the current (parent) page to get its path.
             const currentPageNode: StructureNode = {
               type: 'page',
               title: resolution.contentFile.frontmatter.title,
@@ -113,7 +80,6 @@ export async function assemblePageContext(
             return {
                 ...item,
                 url: itemUrl,
-                images: await resolveImagePresets({ imageService, layoutManifest: pageLayoutManifest, contentFile: item, options, manifest }),
             };
         }))
         : [];
@@ -121,7 +87,6 @@ export async function assemblePageContext(
     return {
         ...resolution,
         siteData,
-        images: imageContext,
         collectionItems: processedCollectionItems,
         layoutManifest: pageLayoutManifest,
         options: options, // Add render options to context for helpers
@@ -145,7 +110,7 @@ export async function assembleBaseContext(
     const { manifest } = siteData;
     const logoUrl = manifest.logo ? await imageService.getDisplayUrl(manifest, manifest.logo, { height: 32 }, options.isExport) : undefined;
     const faviconUrl = manifest.favicon ? await imageService.getDisplayUrl(manifest, manifest.favicon, { width: 32, height: 32 }, options.isExport) : undefined;
-    const openGraphImageUrl = pageContext.images?.og_image?.url || pageContext.images?.teaser_thumbnail?.url;
+    // OpenGraph image is now handled by the image helper in templates
     
     // CORRECTED: Create the appropriate `StructureNode` or `CollectionItemRef` before passing to `getUrlForNode`.
     // We check the manifest to see if the resolved content file is a known collection item.
@@ -178,7 +143,6 @@ export async function assembleBaseContext(
             styleOverrides: new Handlebars.SafeString(generateStyleOverrides(manifest.theme.config)),
             faviconUrl,
             logoUrl,
-            openGraphImageUrl,
         },
     };
 }

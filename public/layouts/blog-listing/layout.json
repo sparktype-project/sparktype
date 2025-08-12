@@ -38,6 +38,15 @@
       }
     }
   },
+  "preset_overrides": {
+    "featured": {
+      "width": 400,
+      "height": 192,
+      "crop": "fit",
+      "gravity": "center",
+      "description": "Blog listing card thumbnail"
+    }
+  },
   "uiSchema": {
     "listing_intro": {
       "ui:widget": "textarea"

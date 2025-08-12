@@ -106,5 +106,35 @@
         "default": ""
       }
     }
+  },
+  "image_presets": {
+    "social": {
+      "width": 1200,
+      "height": 630,
+      "crop": "fill",
+      "gravity": "center",
+      "description": "Social media sharing image (Open Graph)"
+    },
+    "thumbnail": {
+      "width": 300,
+      "height": 200,
+      "crop": "fill",
+      "gravity": "center",
+      "description": "Small thumbnail for cards and previews"
+    },
+    "banner": {
+      "width": 800,
+      "height": 256,
+      "crop": "fill",
+      "gravity": "center",
+      "description": "Standard banner image for headers"
+    },
+    "hero": {
+      "width": 1200,
+      "height": 600,
+      "crop": "fill",
+      "gravity": "center",
+      "description": "Large hero image for landing pages"
+    }
   }
 }

@@ -3,14 +3,14 @@
   It receives the full `pageContext` object, which includes `contentFile`.
 }}
 <article class="container max-w-4xl mx-auto px-4 py-8 lg:px-8">
-    {{! Display the banner image if one is set in the frontmatter }}
-    {{#if images.banner}}
+    {{! Display the featured image if one is set in the frontmatter }}
+    {{#if contentFile.frontmatter.featured_image}}
         <div class="mb-8">
-            <img 
-                src="{{images.banner.url}}" 
-                class="w-full h-64 object-cover rounded-lg" 
-                alt="{{contentFile.frontmatter.title}} banner"
-            >
+            {{{image 
+                fieldname="featured_image" 
+                class="w-full" 
+                alt="Featured image"
+            }}}
         </div>
     {{/if}}
 

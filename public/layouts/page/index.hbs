@@ -1,8 +1,8 @@
 {{! layouts/page/page.hbs }}
 
-{{#if images.banner}}
+{{#if contentFile.frontmatter.banner_image}}
         <div class="">
-            <img src="{{images.banner.url}}"  class="w-full h-72 cover bg-center" alt="{{contentFile.frontmatter.title}} banner">
+            {{{image fieldname="banner_image" class="w-full h-72 cover bg-center" alt=contentFile.frontmatter.title}}}
         </div>
     {{/if}}
 <article class="max-w-4xl mx-auto px-4 py-8 lg:px-8">
@@ -15,9 +15,9 @@
     
     <h1>{{contentFile.frontmatter.title}}</h1>
 
-    {{#if images.featured}}
+    {{#if contentFile.frontmatter.featured_image}}
         <figure class="featured-image-wrapper">
-            <img src="{{images.featured.url}}" width="{{images.featured.width}}" height="{{images.featured.height}}" class="db center" alt="{{contentFile.frontmatter.title}}">
+            {{{image fieldname="featured_image" class="db center" alt=contentFile.frontmatter.title}}}
         </figure>
     {{/if}}
     

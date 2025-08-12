@@ -6,7 +6,7 @@
     {{#if this.frontmatter.featured_image}}
         <a href="{{getCollectionItemUrl this}}" class="block mb-4">
             {{{image 
-                src=this.frontmatter.featured_image 
+                fieldname="featured_image" 
                 alt=this.frontmatter.title 
                 class="w-full h-48 object-cover rounded-lg"
             }}}

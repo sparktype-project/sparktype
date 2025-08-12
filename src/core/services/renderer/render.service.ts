@@ -10,6 +10,7 @@ import { prepareRenderEnvironment } from './asset.service';
 import { assemblePageContext, assembleBaseContext } from './context.service';
 import { getCollectionContent, sortCollectionItems } from '@/core/services/collections.service';
 import type { ImageService } from '@/core/types';
+import { imagePreprocessor } from '@/core/services/images/imagePreprocessor.service';
 
 /**
  * Defines the options passed to the main render function.
@@ -48,7 +49,12 @@ export async function render(
       throw new Error(`Layout manifest not found for layout: "${resolution.layoutPath}"`);
     }
 
-    // 2.5. Populate collection items for collection layout types
+    // 2.5. Pre-process all images based on manifest presets
+    console.log('[Render Service] Pre-processing images...');
+    await imagePreprocessor.preprocessImages(synchronizedSiteData, options.isExport);
+    console.log('[Render Service] Image pre-processing complete');
+
+    // 2.6. Populate collection items for collection layout types
     let enrichedResolution = resolution;
     if (pageLayoutManifest.layoutType === 'collection') {
       const layoutConfig = resolution.contentFile.frontmatter.layoutConfig;
@@ -117,7 +123,7 @@ export async function render(
               
               // Process images to mark Sparktype assets
               visit(tree, 'image', (node: any) => {
-                if (node.url && node.url.startsWith('assets/images/')) {
+                if (node.url && (node.url.startsWith('assets/originals/') || node.url.startsWith('assets/images/'))) {
                   console.log('[Render Service] Marking Sparktype asset for processing:', node.url);
                   // Convert to HTML node with data attribute
                   const htmlNode = {
@@ -165,14 +171,16 @@ export async function render(
         content: new Handlebars.SafeString(processedContent) 
     };
     
-    const bodyHtml = await Handlebars.compile(bodyTemplateSource)(contentContext);
+    const bodyTemplate = Handlebars.compile(bodyTemplateSource);
+    const bodyHtml = bodyTemplate(contentContext);
 
     // 5. Compile and Render the Final Page Shell (base.hbs)
     const baseTemplateSource = await getAssetContent(synchronizedSiteData, 'theme', synchronizedSiteData.manifest.theme.name, 'base.hbs');
     if (!baseTemplateSource) throw new Error('Base theme template (base.hbs) not found.');
 
     const finalContextWithBody = { ...baseContext, body: new Handlebars.SafeString(bodyHtml) };
-    return await Handlebars.compile(baseTemplateSource)(finalContextWithBody);
+    const baseTemplate = Handlebars.compile(baseTemplateSource);
+    return baseTemplate(finalContextWithBody);
 }
 
 /**
@@ -183,8 +191,8 @@ async function postProcessSparkTypeImages(
   siteData: LocalSiteData, 
   imageService: ImageService
 ): Promise<string> {
-  // Find all Sparktype asset images (simpler regex pattern)
-  const imageRegex = /<img[^>]*src="(assets\/images\/[^"]+)"[^>]*data-sparktype-asset="true"[^>]*>/g;
+  // Find all Sparktype asset images (support both legacy and new paths)
+  const imageRegex = /<img[^>]*src="(assets\/(originals|images)\/[^"]+)"[^>]*data-sparktype-asset="true"[^>]*>/g;
   
   let processedHtml = htmlContent;
   const matches = Array.from(htmlContent.matchAll(imageRegex));
@@ -233,8 +241,8 @@ async function postProcessSparkTypeImagesForExport(
   siteData: LocalSiteData, 
   imageService: ImageService
 ): Promise<string> {
-  // Find all Sparktype asset images
-  const imageRegex = /<img[^>]*src="(assets\/images\/[^"]+)"[^>]*data-sparktype-asset="true"[^>]*>/g;
+  // Find all Sparktype asset images (support both legacy and new paths)
+  const imageRegex = /<img[^>]*src="(assets\/(originals|images)\/[^"]+)"[^>]*data-sparktype-asset="true"[^>]*>/g;
   
   let processedHtml = htmlContent;
   const matches = Array.from(htmlContent.matchAll(imageRegex));
