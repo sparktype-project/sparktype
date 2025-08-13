@@ -548,7 +548,7 @@ export interface ImageService {
   id: string;
   name: string;
   upload(file: File, siteId: string): Promise<ImageRef>;
-  getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions, isExport: boolean): Promise<string>;
+  getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions, isExport: boolean, forIframe?: boolean): Promise<string>;
   getExportableAssets(siteId: string, allImageRefs: ImageRef[]): Promise<{ path: string; data: Blob; }[]>;
 }
 

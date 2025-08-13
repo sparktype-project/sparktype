@@ -11,6 +11,8 @@ import { assemblePageContext, assembleBaseContext } from './context.service';
 import { getCollectionContent, sortCollectionItems } from '@/core/services/collections.service';
 import type { ImageService } from '@/core/types';
 import { imagePreprocessor } from '@/core/services/images/imagePreprocessor.service';
+import { getUrlForNode } from '@/core/services/urlUtils.service';
+import { getRelativePath } from '@/core/services/relativePaths.service';
 
 /**
  * Defines the options passed to the main render function.
@@ -19,6 +21,7 @@ export interface RenderOptions {
     siteRootPath: string;
     isExport: boolean;
     relativeAssetPath?: string;
+    forIframe?: boolean;
 }
 
 /**
@@ -51,7 +54,7 @@ export async function render(
 
     // 2.5. Pre-process all images based on manifest presets
     console.log('[Render Service] Pre-processing images...');
-    await imagePreprocessor.preprocessImages(synchronizedSiteData, options.isExport);
+    await imagePreprocessor.preprocessImages(synchronizedSiteData, options.isExport, options.forIframe);
     console.log('[Render Service] Image pre-processing complete');
 
     // 2.6. Populate collection items for collection layout types
@@ -149,15 +152,24 @@ export async function render(
         processedContent = await postProcessCollectionDirectives(processedContent, synchronizedSiteData);
         console.log('[Render Service] After directive processing:', processedContent.substring(0, 500));
         
+        // Calculate current page path for relative asset paths
+        const currentPageNode = {
+          type: 'page' as const,
+          title: enrichedResolution.contentFile.frontmatter.title,
+          path: enrichedResolution.contentFile.path,
+          slug: enrichedResolution.contentFile.slug
+        };
+        const currentPagePath = getUrlForNode(currentPageNode, synchronizedSiteData.manifest, options.isExport, undefined, synchronizedSiteData);
+        
         if (!options.isExport) {
-          // For preview: convert asset paths to blob URLs
+          // For preview: convert asset paths to blob URLs or data URLs
           console.log('[Render Service] Processing images for preview, content before:', processedContent.substring(0, 500));
-          processedContent = await postProcessSparkTypeImages(processedContent, synchronizedSiteData, imageService);
+          processedContent = await postProcessSparkTypeImages(processedContent, synchronizedSiteData, imageService, options.forIframe);
           console.log('[Render Service] Content after image processing:', processedContent.substring(0, 500));
         } else {
-          // For export: convert asset paths to derivative filenames
+          // For export: convert asset paths to relative paths
           console.log('[Render Service] Processing images for export, content before:', processedContent.substring(0, 500));
-          processedContent = await postProcessSparkTypeImagesForExport(processedContent, synchronizedSiteData, imageService);
+          processedContent = await postProcessSparkTypeImagesForExport(processedContent, synchronizedSiteData, imageService, currentPagePath);
           console.log('[Render Service] Content after export image processing:', processedContent.substring(0, 500));
         }
         
@@ -189,7 +201,8 @@ export async function render(
 async function postProcessSparkTypeImages(
   htmlContent: string, 
   siteData: LocalSiteData, 
-  imageService: ImageService
+  imageService: ImageService,
+  forIframe?: boolean
 ): Promise<string> {
   // Find all Sparktype asset images (support both legacy and new paths)
   const imageRegex = /<img[^>]*src="(assets\/(originals|images)\/[^"]+)"[^>]*data-sparktype-asset="true"[^>]*>/g;
@@ -212,12 +225,13 @@ async function postProcessSparkTypeImages(
         height: 0
       };
       
-      // Generate blob URL for preview
+      // Generate blob URL or data URL for preview
       const blobUrl = await imageService.getDisplayUrl(
         siteData.manifest,
         imageRef,
         { width: imageRef.width, height: imageRef.height },
-        false // isExport = false for blob URL generation
+        false, // isExport = false for blob URL generation
+        forIframe // Use data URLs for iframe contexts
       );
       
       // Replace the entire img tag with blob URL version
@@ -234,12 +248,13 @@ async function postProcessSparkTypeImages(
 }
 
 /**
- * Post-processes HTML content to convert Sparktype asset paths to derivative filenames for export
+ * Post-processes HTML content to convert Sparktype asset paths to relative derivative paths for export
  */
 async function postProcessSparkTypeImagesForExport(
   htmlContent: string, 
   siteData: LocalSiteData, 
-  imageService: ImageService
+  imageService: ImageService,
+  currentPagePath: string
 ): Promise<string> {
   // Find all Sparktype asset images (support both legacy and new paths)
   const imageRegex = /<img[^>]*src="(assets\/(originals|images)\/[^"]+)"[^>]*data-sparktype-asset="true"[^>]*>/g;
@@ -270,11 +285,18 @@ async function postProcessSparkTypeImagesForExport(
         true // isExport = true for derivative filename
       );
       
-      // Replace the entire img tag with derivative filename
-      const newImg = fullMatch.replace(`src="${assetPath}"`, `src="${derivativeFilename}"`).replace(' data-sparktype-asset="true"', '');
+      // Generate relative path from current page to the asset
+      // Strip leading slash from derivative filename if present
+      const cleanDerivativeFilename = derivativeFilename.startsWith('/') 
+        ? derivativeFilename.substring(1) 
+        : derivativeFilename;
+      const relativePath = getRelativePath(currentPagePath, cleanDerivativeFilename);
+      
+      // Replace the entire img tag with relative derivative path
+      const newImg = fullMatch.replace(`src="${assetPath}"`, `src="${relativePath}"`).replace(' data-sparktype-asset="true"', '');
       processedHtml = processedHtml.replace(fullMatch, newImg);
       
-      console.log('[Render Service] Converted asset to derivative filename:', assetPath, '->', derivativeFilename);
+      console.log('[Render Service] Converted asset to relative derivative path:', assetPath, '->', relativePath);
     } catch (error) {
       console.error('[Render Service] Failed to convert asset to derivative filename:', assetPath, error);
     }

@@ -119,9 +119,10 @@ class LocalImageService implements ImageService {
    * @param {ImageRef} ref The reference to the source image.
    * @param {ImageTransformOptions} options The requested transformations (width, height, etc.).
    * @param {boolean} isExport If true, returns a relative path for static export. If false, returns a temporary `blob:` URL for live preview.
+   * @param {boolean} forIframe If true, returns data URLs that work in iframe contexts.
    * @returns {Promise<string>} A promise that resolves to the displayable URL or relative path.
    */
-  public async getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions, isExport: boolean): Promise<string> {
+  public async getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions, isExport: boolean, forIframe?: boolean): Promise<string> {
     // SVGs are returned directly without processing.
     if (ref.src.toLowerCase().endsWith('.svg')) {
       if (isExport) {
@@ -130,6 +131,15 @@ class LocalImageService implements ImageService {
         return `/_site/assets/originals/${filename}`;
       }
       const sourceBlob = await this.getSourceBlob(manifest.siteId, ref.src);
+      if (forIframe) {
+        // For iframe contexts, use data URLs
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(sourceBlob);
+        });
+      }
       return URL.createObjectURL(sourceBlob);
     }
 
@@ -148,11 +158,20 @@ class LocalImageService implements ImageService {
 
     const finalBlob = await this.getOrProcessDerivative(manifest.siteId, ref.src, cacheKey, options);
     
-    console.log(`[LocalImageService] getDisplayUrl - isExport: ${isExport}, cacheKey: ${cacheKey}, blobSize: ${finalBlob.size}`);
+    console.log(`[LocalImageService] getDisplayUrl - isExport: ${isExport}, forIframe: ${forIframe}, cacheKey: ${cacheKey}, blobSize: ${finalBlob.size}`);
     
     if (isExport) {
       // For export, derivatives go to assets/derivatives/
       return `/assets/derivatives/${derivativeFilename}`;
+    } else if (forIframe) {
+      // For iframe contexts, use data URLs
+      console.log(`[LocalImageService] Creating data URL for iframe: ${cacheKey}`);
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(finalBlob);
+      });
     } else {
       // For preview, return blob URL
       const blobUrl = URL.createObjectURL(finalBlob);
@@ -343,55 +362,11 @@ class LocalImageService implements ImageService {
       }
     }
     
-    // 2. Pre-generate only essential derivatives to prevent race conditions while keeping bundle size reasonable.
-    // This ensures that derivatives required by the deployed site are available.
-    console.log(`[LocalImageService] Pre-generating essential derivatives for ${allImageRefs.filter(ref => ref.serviceId === 'local').length} local images`);
-    
-    const essentialTransforms: ImageTransformOptions[] = [
-      // Only generate social media images if they don't exist - these are the most critical for deployment
-      { width: 1200, height: 630, crop: 'fill' },
-    ];
-    
-    for (const ref of allImageRefs) {
-      if (ref.serviceId === 'local' && !ref.src.toLowerCase().endsWith('.svg')) {
-        for (const transformOptions of essentialTransforms) {
-          try {
-            // Generate the cache key the same way as in getDisplayUrl
-            const { width, height, crop = 'scale', gravity = 'center' } = transformOptions;
-            const extIndex = ref.src.lastIndexOf('.');
-            if (extIndex === -1) continue;
-            
-            const pathWithoutExt = ref.src.substring(0, extIndex);
-            const ext = ref.src.substring(extIndex);
-            
-            // Extract just the filename (remove assets/originals/ or assets/images/ prefix)
-            const baseFilename = pathWithoutExt.replace(/^assets\/(originals|images)\//, '');
-            const derivativeFilename = `${baseFilename}_w${width || 'auto'}_h${height || 'auto'}_c-${crop}_g-${gravity}${ext}`;
-            const cacheKey = `${siteId}/assets/derivatives/${derivativeFilename}`;
-            
-            // Check if this derivative is already cached
-            const existingDerivative = await getCachedDerivative(cacheKey);
-            if (!existingDerivative) {
-              console.log(`[LocalImageService] Pre-generating essential derivative: ${derivativeFilename}`);
-              // Pre-generate the derivative by calling getOrProcessDerivative
-              const derivativeBlob = await this.getOrProcessDerivative(siteId, ref.src, cacheKey, transformOptions);
-              
-              // Add it to export map but don't duplicate if already cached
-              const exportPath = `assets/derivatives/${derivativeFilename}`;
-              if (!exportableMap.has(exportPath)) {
-                exportableMap.set(exportPath, derivativeBlob);
-                console.log(`[LocalImageService] Added pre-generated essential derivative: ${exportPath}`);
-              }
-            } else {
-              console.log(`[LocalImageService] Essential derivative already cached: ${derivativeFilename}`);
-            }
-          } catch (error) {
-            console.warn(`[LocalImageService] Failed to pre-generate essential derivative for ${ref.src}:`, error);
-            // Continue with other derivatives - don't let one failure stop the export
-          }
-        }
-      }
-    }
+    // 2. The imagePreprocessor already handles generating the required derivatives
+    // based on layout manifests and site configuration. No need to pre-generate
+    // hardcoded transforms here - we rely on the preprocessor to handle all
+    // necessary derivatives according to the actual presets used by the site.
+    console.log(`[LocalImageService] Skipping hardcoded pre-generation - relying on imagePreprocessor for all derivatives`);
     
     // 3. Add all of this site's existing derivatives from the cache to the export map.
     try {

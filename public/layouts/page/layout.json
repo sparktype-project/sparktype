@@ -9,13 +9,12 @@
   ],
   
   "image_presets": {
-    "banner": {
-      "source": "banner_image",
-      "width": 900,
+    "banner_image": {
+      "width": 1200,
+      "height": 360,
       "crop": "scale"
     },
-    "featured": {
-      "source": "featured_image",
+    "featured_image": {
       "width": 600,
       "crop": "scale"
     }

@@ -68,6 +68,7 @@ export default function SiteViewer() {
         // Generate relative URLs like in export mode for isolated iframe routing
         siteRootPath: '/',
         isExport: false,
+        forIframe: true, // Use data URLs instead of blob URLs for iframe compatibility
       });
 
       // Virtual site navigation: Handle routing within iframe but sync URL bar

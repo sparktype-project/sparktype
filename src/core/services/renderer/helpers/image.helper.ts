@@ -2,8 +2,10 @@
 
 import Handlebars from 'handlebars';
 import type { SparktypeHelper } from './types';
-import type { ImageRef, LocalSiteData } from '@/core/types';
+import type { ImageRef, LocalSiteData, StructureNode } from '@/core/types';
 import { imagePreprocessor } from '@/core/services/images/imagePreprocessor.service';
+import { getUrlForNode } from '@/core/services/urlUtils.service';
+import { getRelativePath } from '@/core/services/relativePaths.service';
 
 interface RootTemplateContext {
   contentFile?: {
@@ -131,10 +133,33 @@ export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => {
       // Try to get preprocessed URL with context awareness
       let processedUrl = imagePreprocessor.getProcessedImageUrlForField(contentPath, fieldName, context);
       
+      console.log(`[ImageHelper] Field '${fieldName}' in '${contentPath}' with context '${context}':`, processedUrl);
+      
       if (!processedUrl) {
         console.warn(`[ImageHelper] No preprocessed URL found for field '${fieldName}' in ${contentPath}`);
         console.warn(`[ImageHelper] Available processed paths:`, Array.from(imagePreprocessor.getProcessedImages().keys()));
         return new Handlebars.SafeString('<!-- Image not preprocessed -->');
+      }
+
+      // Convert to relative path for export mode
+      if (rootContext.options.isExport && rootContext.contentFile) {
+        // Calculate current page path (the page being rendered, not the content file containing the image)
+        const currentPageNode: StructureNode = {
+          type: 'page' as const,
+          title: rootContext.contentFile.frontmatter?.title || '',
+          path: rootContext.contentFile.path,
+          slug: rootContext.contentFile.path.split('/').pop()?.replace('.md', '') || ''
+        };
+        
+        const currentPagePath = getUrlForNode(currentPageNode, siteData.manifest, true, undefined, siteData);
+        // Strip leading slash from processed URL if present
+        const cleanProcessedUrl = processedUrl.startsWith('/') 
+          ? processedUrl.substring(1) 
+          : processedUrl;
+        const relativePath = getRelativePath(currentPagePath, cleanProcessedUrl);
+        
+        
+        processedUrl = relativePath;
       }
 
       // Context-aware output

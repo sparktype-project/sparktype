@@ -185,7 +185,8 @@ function extractSourcePathFromDerivative(derivativePath: string): string {
       throw new Error(`Failed to extract base path from derivative: ${derivativePath}`);
     }
     
-    const sourcePath = basePath + extension;
+    // Convert from assets/derivatives/ to assets/originals/ directory
+    const sourcePath = basePath.replace('assets/derivatives/', 'assets/originals/') + extension;
     console.debug(`[ImageCleanup] Extracted source path: ${derivativePath} -> ${sourcePath}`);
     
     return sourcePath;

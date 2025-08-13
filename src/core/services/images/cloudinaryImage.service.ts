@@ -76,7 +76,7 @@ class CloudinaryImageService implements ImageService {
     });
   }
 
-  async getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions): Promise<string> {
+  async getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions, _isExport?: boolean, _forIframe?: boolean): Promise<string> {
     const cloudName = manifest.settings?.cloudinary?.cloudName;
     if (!cloudName) return ''; // Return empty string or a placeholder if not configured
     
