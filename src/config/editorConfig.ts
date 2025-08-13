@@ -133,13 +133,11 @@ export const BASE_SCHEMA: { schema: ExtendedRJSFSchema; uiSchema: UiSchema } = {
         title: 'Featured image',
         description: 'The main image for this content, used in listings and social sharing.',
         type: 'string', // The type is string, but the widget handles the ImageRef object
-        preset: 'featured',
       },
       banner_image: {
         title: 'Banner image',
         description: 'A large, wide image for the top of the page.',
         type: 'string',
-        preset: 'banner',
       },
       slug: {
         type: 'string',
@@ -184,70 +182,48 @@ export const BASE_SCHEMA: { schema: ExtendedRJSFSchema; uiSchema: UiSchema } = {
 };
 
 /**
- * Default image presets that can be overridden by themes and layouts
+ * Default image presets for common use cases.
+ * These can be overridden or extended in site manifests.
  */
 export const BASE_IMAGE_PRESETS = {
-  // Content presets
-  featured: {
-    width: 600,
-    height: 400,
+  // Primary display presets
+  thumbnail: {
+    width: 300,
+    height: 200,
     crop: 'fill' as const,
     gravity: 'center' as const,
     description: 'Small thumbnail for cards and previews'
   },
-  banner: {
-    width: 800,
-    height: 256,
+  page_display: {
+    width: 960,
+    height: 360,
     crop: 'fill' as const,
     gravity: 'center' as const,
-    description: 'Standard banner image for headers'
+    description: 'Standard page image display'
   },
   hero: {
     width: 1200,
     height: 600,
     crop: 'fill' as const,
     gravity: 'center' as const,
-    description: 'Large hero image for landing pages'
+    description: 'Large hero image for headers and landing pages'
+  },
+  original: {
+    crop: 'scale' as const,
+    gravity: 'center' as const,
+    description: 'Original image with no resizing, only optimization'
   },
   
   // Social media presets
-  og: {
+  social: {
     width: 1200,
     height: 630,
     crop: 'fill' as const,
     gravity: 'center' as const,
-    description: 'Open Graph image for social sharing'
-  },
-  twitter_card: {
-    width: 1200,
-    height: 628,
-    crop: 'fill' as const,
-    gravity: 'center' as const,
-    description: 'Twitter Card image'
-  },
-  linkedin: {
-    width: 1200,
-    height: 627,
-    crop: 'fill' as const,
-    gravity: 'center' as const,
-    description: 'LinkedIn sharing image'
+    description: 'Social sharing image (Open Graph, Twitter Card)'
   },
   
-  // Layout presets
-  card: {
-    width: 400,
-    height: 300,
-    crop: 'fill' as const,
-    gravity: 'center' as const,
-    description: 'Card layout image'
-  },
-  gallery: {
-    width: 600,
-    height: 400,
-    crop: 'fill' as const,
-    gravity: 'center' as const,
-    description: 'Gallery grid image'
-  },
+  // Specialized presets
   avatar: {
     width: 150,
     height: 150,
@@ -255,28 +231,21 @@ export const BASE_IMAGE_PRESETS = {
     gravity: 'center' as const,
     description: 'Profile or author avatar'
   },
-  
-  // Responsive presets
-  mobile: {
+  gallery: {
     width: 400,
-    height: 300,
+    height: 400,
     crop: 'fill' as const,
     gravity: 'center' as const,
-    description: 'Mobile-optimized image'
+    description: 'Square gallery grid image'
   },
-  tablet: {
-    width: 800,
-    height: 600,
+  
+  // Additional context-specific presets
+  banner_small: {
+    width: 600,
+    height: 200,
     crop: 'fill' as const,
     gravity: 'center' as const,
-    description: 'Tablet-optimized image'
-  },
-  desktop: {
-    width: 1200,
-    height: 800,
-    crop: 'fit' as const,
-    gravity: 'center' as const,
-    description: 'Desktop full-size image'
+    description: 'Small banner for list views'
   }
 } as const;
 

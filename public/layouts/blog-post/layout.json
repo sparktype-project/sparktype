@@ -29,22 +29,6 @@
       }
     }
   },
-  "preset_overrides": {
-    "banner": {
-      "width": 900,
-      "height": 300,
-      "crop": "fill",
-      "gravity": "center",
-      "description": "Blog post banner image"
-    },
-     "featured": {
-      "width": 1200,
-      "height": 400,
-      "crop": "fill",
-      "gravity": "center",
-      "description": "Blog post featured image"
-    }
-  },
   "uiSchema": {
     "excerpt": {
       "ui:widget": "textarea",
@@ -52,5 +36,16 @@
         "rows": 4
       }
     }
+  },
+  "image_presets": {
+    "featured_image": {
+      "contexts": {
+        "card": "thumbnail",
+        "list": "banner_small",
+        "full": "page_display"
+      },
+      "default": "page_display"
+    },
+    "banner_image": "hero"
   }
 }

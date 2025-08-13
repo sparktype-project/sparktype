@@ -5,7 +5,6 @@ import type { WidgetProps } from '@rjsf/utils';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getActiveImageService } from '@/core/services/images/images.service';
 import { Button } from '@/core/components/ui/button';
-// import { Label } from '@/core/components/ui/label'; // Unused import
 import { UploadCloud, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { MEMORY_CONFIG } from '@/config/editorConfig';
@@ -124,6 +123,7 @@ export default function ImageUploadWidget(props: WidgetProps) {
           />
         </label>
       )}
+
 
       {isUploading && <p className="text-sm text-muted-foreground">Uploading...</p>}
     </div>

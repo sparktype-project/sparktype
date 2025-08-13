@@ -30,6 +30,23 @@ export interface ImagePreset {
   description?: string;
 }
 
+/**
+ * Declarative image field preset configuration supporting context-aware presets
+ */
+export interface ImageFieldPreset {
+  contexts?: Record<string, string>; // context -> preset name
+  default?: string; // fallback preset name
+}
+
+/**
+ * Display type configuration for collection layouts
+ */
+export interface DisplayTypeConfig {
+  partial: string; // partial template name
+  imageContext: string; // context name for image preset resolution
+  description?: string;
+}
+
 interface DataFileDefinition {
   id: string;
   path_template: string;
@@ -68,8 +85,8 @@ export interface LayoutManifest extends BaseAssetManifest {
   }[];
 
   display_options?: Record<string, DisplayOption>;
-  image_presets?: Record<string, ImagePreset>;
-  preset_overrides?: Record<string, ImagePreset>;
+  image_presets?: Record<string, ImageFieldPreset | string>;
+  displayTypes?: Record<string, DisplayTypeConfig>;
   data_files?: DataFileDefinition[];
   dynamic_routes?: Record<string, DynamicRoute>;
 }
@@ -376,6 +393,7 @@ export interface Manifest {
   tags?: Tag[];
   logo?: ImageRef;
   favicon?: ImageRef;
+  imagePresets?: Record<string, ImagePreset>;
   settings?: {
     imageService?: 'local' | 'cloudinary';
     cloudinary?: {

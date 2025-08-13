@@ -3,16 +3,7 @@
   It receives the full `pageContext` object, which includes `contentFile`.
 }}
 <article class="container max-w-4xl mx-auto px-4 py-8 lg:px-8">
-    {{! Display the featured image if one is set in the frontmatter }}
-    {{#if contentFile.frontmatter.featured_image}}
-        <div class="mb-8">
-            {{{image 
-                fieldname="featured_image" 
-                class="w-full" 
-                alt="Featured image"
-            }}}
-        </div>
-    {{/if}}
+    
 
     {{! Post Header: Title and Metadata }}
     <header class="mb-8">
@@ -33,7 +24,19 @@
                 <span class="font-medium">By {{contentFile.frontmatter.author}}</span>
             {{/if}}
         </div>
+
     </header>
+
+    {{! Display the featured image if one is set in the frontmatter }}
+    {{#if contentFile.frontmatter.featured_image}}
+        <div class="mb-8">
+            {{{image 
+                fieldname="featured_image" 
+                class="w-full" 
+                alt="Featured image"
+            }}}
+        </div>
+    {{/if}}
 
     {{! The main content of the post, rendered from Markdown or Blocks }}
     <section class="max-w-none">

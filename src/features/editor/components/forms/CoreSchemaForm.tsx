@@ -24,7 +24,7 @@ export default function CoreSchemaForm({
 }: CoreSchemaFormProps) {
   
   // Use the base schema without modification - date field is always visible
-  const schema: RJSFSchema = { ...BASE_SCHEMA.schema };
+  const schema: RJSFSchema = { ...BASE_SCHEMA.schema } as RJSFSchema;
   const uiSchema: UiSchema = { ...BASE_SCHEMA.uiSchema };
     const customWidgets = { 
       imageUploader: ImageUploadWidget,

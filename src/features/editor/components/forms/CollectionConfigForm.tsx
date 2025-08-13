@@ -79,6 +79,7 @@ export default function CollectionConfigForm({
     onLayoutConfigChange(newConfig);
   };
 
+
   return (
     <div className="space-y-4">
       {/* Collection Data Source Selection */}
@@ -129,6 +130,7 @@ export default function CollectionConfigForm({
           <p className="text-xs text-muted-foreground">Choose how collection items are displayed on the page.</p>
         </div>
       )}
+
 
       {/* Sorting Options */}
       <div className="space-y-2">

@@ -38,15 +38,6 @@
       }
     }
   },
-  "preset_overrides": {
-    "featured": {
-      "width": 400,
-      "height": 192,
-      "crop": "fit",
-      "gravity": "center",
-      "description": "Blog listing card thumbnail"
-    }
-  },
   "uiSchema": {
     "listing_intro": {
       "ui:widget": "textarea"
@@ -63,6 +54,18 @@
       "excerpt": { "type": "string" },
       "tags": { "type": "array", "items": { "type": "string" } },
       "featured_image": { "type": "string" }
+    }
+  },
+  "displayTypes": {
+    "post-card": {
+      "partial": "post-card",
+      "imageContext": "card",
+      "description": "Compact cards with title, excerpt, and read more links"
+    },
+    "post-full": {
+      "partial": "post-full", 
+      "imageContext": "full",
+      "description": "Complete posts with full content displayed"
     }
   }
 }

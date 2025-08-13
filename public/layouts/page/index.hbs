@@ -15,14 +15,16 @@
     
     <h1>{{contentFile.frontmatter.title}}</h1>
 
-    {{#if contentFile.frontmatter.featured_image}}
-        <figure class="featured-image-wrapper">
-            {{{image fieldname="featured_image" class="db center" alt=contentFile.frontmatter.title}}}
-        </figure>
-    {{/if}}
+   
     
 
     <p class="f4">{{contentFile.frontmatter.description}} </p>
+
+     {{#if contentFile.frontmatter.featured_image}}
+        <div class="mb-6">
+            {{{image fieldname="featured_image" class="w-full" alt=contentFile.frontmatter.title}}}
+        </div>
+    {{/if}}
     
     {{!-- Render processed content (markdown + directives converted to HTML) --}}
     {{{content}}}

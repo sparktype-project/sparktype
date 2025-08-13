@@ -113,8 +113,8 @@ export default function PageMetadataForm({
       onFormChange={(data) => onFrontmatterChange(data as Partial<MarkdownFrontmatter>)}
       // Register custom widgets.
       widgets={customWidgets}
-      // Provide the siteId in the form's context so custom widgets can access it.
-      formContext={{ siteId }}
+      // Provide the siteId and collection item flag in the form's context so custom widgets can access it.
+      formContext={{ siteId, isCollectionItem }}
     />
   );
 }

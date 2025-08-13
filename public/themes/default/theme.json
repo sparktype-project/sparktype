@@ -52,13 +52,16 @@
           "IBM Plex Serif",
           "Instrument Serif",
           "Inter"
-          
-
         ],
         "enumNames": [
-          "Serif",
-          "Sans-Serif",
-          "Monospace"
+          "Geist (Sans)",
+          "Geist Mono (Monospace)",
+          "Gentium Book Plus (Serif)",
+          "IBM Plex Mono (Monospace)",
+          "IBM Plex Sans (Sans)",
+          "IBM Plex Serif (Serif)",
+          "Instrument Serif (Serif)",
+          "Inter (Sans)"
         ],
         "default": "Inter"
       },
@@ -78,9 +81,14 @@
           "Inter"
         ],
         "enumNames": [
-          "Serif",
-          "Sans-Serif",
-          "Monospace"
+          "Geist (Sans)",
+          "Geist Mono (Monospace)",
+          "Gentium Book Plus (Serif)",
+          "IBM Plex Mono (Monospace)",
+          "IBM Plex Sans (Sans)",
+          "IBM Plex Serif (Serif)",
+          "Instrument Serif (Serif)",
+          "Inter (Sans)"
         ],
         "default": "Gentium Book Plus"
       }

@@ -216,6 +216,7 @@ function EditContentPageInternal() {
                   <div className="mt-6 flex-grow min-h-0">
                      {frontmatter.layoutConfig?.collectionId ? (
                       <CollectionItemList siteId={siteId} collectionId={frontmatter.layoutConfig.collectionId as string} />
+                      
                     ) : (
                     <PlateEditor 
                       ref={editorRef}

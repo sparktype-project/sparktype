@@ -6,7 +6,7 @@
     {{#if this.frontmatter.featured_image}}
         <div class="mb-8">
             {{{image 
-                src=this.frontmatter.featured_image 
+                fieldname="featured_image" 
                 alt=this.frontmatter.title 
                 class="w-full h-64 md:h-80 object-cover rounded-lg"
             }}}

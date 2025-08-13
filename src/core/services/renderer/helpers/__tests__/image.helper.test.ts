@@ -1,17 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-require-imports */
 import { imageHelper } from '../image.helper';
-import { getActiveImageService } from '@/core/services/images/images.service';
+import { imagePreprocessor } from '@/core/services/images/imagePreprocessor.service';
 import type { LocalSiteData, ImageRef, Manifest } from '@/core/types';
 import Handlebars from 'handlebars';
 
-// Mock the image service
-jest.mock('@/core/services/images/images.service', () => ({
-  getActiveImageService: jest.fn()
+// Mock the image preprocessor
+jest.mock('@/core/services/images/imagePreprocessor.service', () => ({
+  imagePreprocessor: {
+    getProcessedImageUrlForField: jest.fn()
+  }
 }));
 
-const mockGetActiveImageService = getActiveImageService as jest.MockedFunction<typeof getActiveImageService>;
+const mockImagePreprocessor = imagePreprocessor as jest.Mocked<typeof imagePreprocessor>;
 
-describe('image.helper', () => {
+describe('image.helper (New Preset System)', () => {
   // Helper functions
   const createMockSiteData = (): LocalSiteData => ({
     siteId: 'test-site',
@@ -35,372 +37,475 @@ describe('image.helper', () => {
     height: 600
   });
 
-  const createMockHandlebarsOptions = (hash: Record<string, unknown> = {}): Handlebars.HelperOptions => ({
+  const createMockHandlebarsOptions = (hash: Record<string, unknown> = {}, rootContext: any = {}): Handlebars.HelperOptions => ({
     hash,
     data: {
       root: {
+        contentFile: {
+          path: 'content/blog/test-post.md',
+          frontmatter: {}
+        },
         options: {
           isExport: false
-        }
+        },
+        ...rootContext
       }
     },
     fn: jest.fn(),
     inverse: jest.fn()
   });
 
-  const mockImageService = {
-    id: 'local',
-    name: 'Local Service',
-    upload: jest.fn(),
-    getDisplayUrl: jest.fn(),
-    getExportableAssets: jest.fn()
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetActiveImageService.mockReturnValue(mockImageService);
-    mockImageService.getDisplayUrl.mockResolvedValue('https://example.com/test.jpg');
+    mockImagePreprocessor.getProcessedImageUrlForField.mockReturnValue('https://example.com/processed/test.jpg');
   });
 
-  describe('image helper', () => {
-    test('generates img tag with basic parameters', async () => {
+  describe('Basic functionality', () => {
+    test('generates img tag using preprocessed image with fieldname', () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
       const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
-        src: imageRef,
-        width: 300,
-        height: 200,
+        fieldname: 'featured_image',
         alt: 'Custom Alt Text'
+      }, {
+        contentFile: {
+          path: 'content/blog/test-post.md',
+          frontmatter: {
+            featured_image: imageRef
+          }
+        }
       });
 
-      const result = await helper.image.call({}, options);
+      const result = helper.image.call({}, options);
 
       expect(result).toBeInstanceOf(Handlebars.SafeString);
       const htmlString = result.toString();
       
       expect(htmlString).toContain('<img');
-      expect(htmlString).toContain('src="https://example.com/test.jpg"');
-      expect(htmlString).toContain('width="300"');
-      expect(htmlString).toContain('height="200"');
+      expect(htmlString).toContain('src="https://example.com/processed/test.jpg"');
       expect(htmlString).toContain('alt="Custom Alt Text"');
       expect(htmlString).toContain('loading="lazy"');
-      expect(htmlString).toContain('>');
+      expect(mockImagePreprocessor.getProcessedImageUrlForField).toHaveBeenCalledWith(
+        'content/blog/test-post.md',
+        'featured_image',
+        'full'
+      );
     });
 
-    test('uses imageRef alt when no custom alt provided', async () => {
+    test('uses imageRef alt when no custom alt provided', () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
       const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
-        src: imageRef,
-        width: 300
+        fieldname: 'featured_image'
+      }, {
+        contentFile: {
+          path: 'content/blog/test-post.md',
+          frontmatter: {
+            featured_image: imageRef
+          }
+        }
       });
 
-      const result = await helper.image.call({}, options);
+      const result = helper.image.call({}, options);
       const htmlString = result.toString();
       
       expect(htmlString).toContain('alt="Test Image"');
     });
 
-    test('handles missing alt gracefully', async () => {
+    test('handles missing alt gracefully', () => {
       const siteData = createMockSiteData();
       const imageRef = { ...createMockImageRef(), alt: undefined };
       const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
-        src: imageRef,
-        width: 300
+        fieldname: 'featured_image'
+      }, {
+        contentFile: {
+          path: 'content/blog/test-post.md',
+          frontmatter: {
+            featured_image: imageRef
+          }
+        }
       });
 
-      const result = await helper.image.call({}, options);
+      const result = helper.image.call({}, options);
       const htmlString = result.toString();
       
       expect(htmlString).toContain('alt=""');
     });
 
-    test('applies CSS class when provided', async () => {
+    test('returns error message when no fieldname provided', () => {
+      const siteData = createMockSiteData();
+      const helper = imageHelper(siteData);
+      
+      const options = createMockHandlebarsOptions({});
+
+      const result = helper.image.call({}, options);
+      const htmlString = result.toString();
+      
+      expect(htmlString).toContain('<!-- No fieldname provided: use {{{image fieldname="field_name"}}} -->');
+    });
+  });
+
+  describe('Field name detection', () => {
+    test('uses fieldname parameter when provided', () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
       const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
-        src: imageRef,
-        width: 300,
-        class: 'thumbnail responsive'
+        fieldname: 'banner_image'
+      }, {
+        contentFile: {
+          path: 'content/page.md',
+          frontmatter: {
+            banner_image: imageRef
+          }
+        }
       });
 
-      const result = await helper.image.call({}, options);
+      helper.image.call({}, options);
+      
+      expect(mockImagePreprocessor.getProcessedImageUrlForField).toHaveBeenCalledWith(
+        'content/page.md',
+        'banner_image',
+        undefined
+      );
+    });
+
+    test('detects field name from context', () => {
+      const siteData = createMockSiteData();
+      const imageRef = createMockImageRef();
+      const helper = imageHelper(siteData);
+      
+      const context = {
+        frontmatter: {
+          featured_image: imageRef
+        },
+        path: 'content/blog/post1.md'
+      };
+      
+      const options = createMockHandlebarsOptions({
+        fieldname: 'featured_image'
+      });
+
+      helper.image.call(context, options);
+      
+      expect(mockImagePreprocessor.getProcessedImageUrlForField).toHaveBeenCalledWith(
+        'content/blog/post1.md',
+        'featured_image',
+        undefined
+      );
+    });
+  });
+
+  describe('Context detection', () => {
+    test('detects context from displayType using layout configuration', () => {
+      const siteData = {
+        ...createMockSiteData(),
+        layoutFiles: [{
+          path: 'layouts/blog-listing/layout.json',
+          content: JSON.stringify({
+            displayTypes: {
+              'post-card': {
+                partial: 'post-card',
+                imageContext: 'card'
+              }
+            }
+          })
+        }]
+      };
+      const imageRef = createMockImageRef();
+      const helper = imageHelper(siteData);
+      
+      const context = {
+        path: 'content/blog/post1.md'
+      };
+      
+      const options = createMockHandlebarsOptions({
+        fieldname: 'featured_image'
+      }, {
+        layoutConfig: {
+          displayType: 'post-card',
+          layout: 'blog-listing'
+        }
+      });
+
+      const result = helper.image.call(context, options);
+      
+      expect(mockImagePreprocessor.getProcessedImageUrlForField).toHaveBeenCalledWith(
+        'content/blog/post1.md',
+        'featured_image',
+        'card'
+      );
+    });
+
+    test('detects full context from displayType configuration', () => {
+      const siteData = {
+        ...createMockSiteData(),
+        layoutFiles: [{
+          path: 'layouts/blog-listing/layout.json',
+          content: JSON.stringify({
+            displayTypes: {
+              'post-full': {
+                partial: 'post-full',
+                imageContext: 'full'
+              }
+            }
+          })
+        }]
+      };
+      const imageRef = createMockImageRef();
+      const helper = imageHelper(siteData);
+      
+      const context = {
+        path: 'content/blog/post1.md'
+      };
+      
+      const options = createMockHandlebarsOptions({
+        fieldname: 'featured_image'
+      }, {
+        layoutConfig: {
+          displayType: 'post-full',
+          layout: 'blog-listing'
+        }
+      });
+
+      const result = helper.image.call(context, options);
+      
+      expect(mockImagePreprocessor.getProcessedImageUrlForField).toHaveBeenCalledWith(
+        'content/blog/post1.md',
+        'featured_image',
+        'full'
+      );
+    });
+
+    test('defaults to full context for regular pages', () => {
+      const siteData = createMockSiteData();
+      const imageRef = createMockImageRef();
+      const helper = imageHelper(siteData);
+      
+      const options = createMockHandlebarsOptions({
+        fieldname: 'featured_image'
+      }, {
+        contentFile: {
+          path: 'content/about.md',
+          frontmatter: {
+            featured_image: imageRef
+          }
+        }
+      });
+
+      const result = helper.image.call({}, options);
+      
+      expect(mockImagePreprocessor.getProcessedImageUrlForField).toHaveBeenCalledWith(
+        'content/about.md',
+        'featured_image',
+        'full'
+      );
+    });
+  });
+
+  describe('URL-only mode for meta tags', () => {
+    test('returns only URL when url_only=true', () => {
+      const siteData = createMockSiteData();
+      const imageRef = createMockImageRef();
+      const helper = imageHelper(siteData);
+      
+      const options = createMockHandlebarsOptions({
+        fieldname: 'featured_image',
+        url_only: true
+      }, {
+        contentFile: {
+          path: 'content/page.md',
+          frontmatter: {
+            featured_image: imageRef
+          }
+        }
+      });
+
+      const result = helper.image.call({}, options);
+      
+      expect(result.toString()).toBe('https://example.com/processed/test.jpg');
+    });
+
+    test('returns only URL when inside meta tag context', () => {
+      const siteData = createMockSiteData();
+      const imageRef = createMockImageRef();
+      const helper = imageHelper(siteData);
+      
+      const context = {
+        tagName: 'meta'
+      };
+      
+      const options = createMockHandlebarsOptions({
+        fieldname: 'featured_image'
+      }, {
+        contentFile: {
+          path: 'content/page.md',
+          frontmatter: {
+            featured_image: imageRef
+          }
+        }
+      });
+
+      const result = helper.image.call(context, options);
+      
+      expect(result.toString()).toBe('https://example.com/processed/test.jpg');
+    });
+  });
+
+  describe('CSS and HTML attributes', () => {
+    test('applies CSS class when provided', () => {
+      const siteData = createMockSiteData();
+      const imageRef = createMockImageRef();
+      const helper = imageHelper(siteData);
+      
+      const options = createMockHandlebarsOptions({
+        fieldname: 'featured_image',
+        class: 'thumbnail responsive'
+      }, {
+        contentFile: {
+          path: 'content/page.md',
+          frontmatter: {
+            featured_image: imageRef
+          }
+        }
+      });
+
+      const result = helper.image.call({}, options);
       const htmlString = result.toString();
       
       expect(htmlString).toContain('class="thumbnail responsive"');
     });
 
-    test('disables lazy loading when lazy=false', async () => {
+    test('disables lazy loading when lazy=false', () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
       const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
-        src: imageRef,
-        width: 300,
+        fieldname: 'featured_image',
         lazy: false
+      }, {
+        contentFile: {
+          path: 'content/page.md',
+          frontmatter: {
+            featured_image: imageRef
+          }
+        }
       });
 
-      const result = await helper.image.call({}, options);
+      const result = helper.image.call({}, options);
       const htmlString = result.toString();
       
       expect(htmlString).not.toContain('loading="lazy"');
     });
+  });
 
-    test('passes transform options to image service', async () => {
+  describe('Error handling', () => {
+    test('handles invalid ImageRef gracefully', () => {
+      const siteData = createMockSiteData();
+      const helper = imageHelper(siteData);
+      
+      const options = createMockHandlebarsOptions({
+        fieldname: 'featured_image'
+      }, {
+        contentFile: {
+          path: 'content/page.md',
+          frontmatter: {
+            featured_image: null
+          }
+        }
+      });
+
+      const result = helper.image.call({}, options);
+      
+      expect(result.toString()).toBe('<!-- Invalid ImageRef -->');
+    });
+
+    test('handles missing fieldname', () => {
+      const siteData = createMockSiteData();
+      const helper = imageHelper(siteData);
+      
+      const options = createMockHandlebarsOptions({});
+
+      const result = helper.image.call({}, options);
+      
+      expect(result.toString()).toBe('<!-- No fieldname provided: use {{{image fieldname="field_name"}}} -->');
+    });
+
+    test('handles missing content path', () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
       const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
-        src: imageRef,
-        width: 300,
-        height: 200,
-        crop: 'fill',
-        gravity: 'center'
+        fieldname: 'featured_image'
+      }, {
+        contentFile: undefined
       });
 
-      await helper.image.call({}, options);
-
-      expect(mockImageService.getDisplayUrl).toHaveBeenCalledWith(
-        siteData.manifest,
-        imageRef,
-        {
-          width: 300,
-          height: 200,
-          crop: 'fill',
-          gravity: 'center'
-        },
-        false
-      );
+      const result = helper.image.call({}, options);
+      
+      expect(result.toString()).toContain('<!-- No content path -->');
     });
 
-    test('respects export mode from root context', async () => {
+    test('handles missing preprocessed image', () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
       const helper = imageHelper(siteData);
       
-      const options = createMockHandlebarsOptions({
-        src: imageRef,
-        width: 300
-      });
-      
-      // Set export mode
-      options.data.root.options.isExport = true;
-
-      await helper.image.call({}, options);
-
-      expect(mockImageService.getDisplayUrl).toHaveBeenCalledWith(
-        siteData.manifest,
-        imageRef,
-        { width: 300 },
-        true // isExport should be true
-      );
-    });
-
-    test('handles invalid ImageRef gracefully', async () => {
-      const siteData = createMockSiteData();
-      const helper = imageHelper(siteData);
+      mockImagePreprocessor.getProcessedImageUrlForField.mockReturnValue(null);
       
       const options = createMockHandlebarsOptions({
-        src: 'invalid-string',
-        width: 300
+        fieldname: 'featured_image'
+      }, {
+        contentFile: {
+          path: 'content/page.md',
+          frontmatter: {
+            featured_image: imageRef
+          }
+        }
       });
 
-      const result = await helper.image.call({}, options);
-      const htmlString = result.toString();
+      const result = helper.image.call({}, options);
       
-      expect(htmlString).toBe('<!-- Invalid ImageRef provided to image helper -->');
-      expect(mockImageService.getDisplayUrl).not.toHaveBeenCalled();
+      expect(result.toString()).toContain('<!-- Image not preprocessed -->');
     });
 
-    test('handles missing src parameter', async () => {
-      const siteData = createMockSiteData();
-      const helper = imageHelper(siteData);
-      
-      const options = createMockHandlebarsOptions({
-        width: 300
-      });
-
-      const result = await helper.image.call({}, options);
-      const htmlString = result.toString();
-      
-      expect(htmlString).toBe('<!-- Invalid ImageRef provided to image helper -->');
-    });
-
-    test('handles image service errors gracefully', async () => {
+    test('handles processing errors gracefully', () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
       const helper = imageHelper(siteData);
       
-      const error = new Error('Image processing failed');
-      mockImageService.getDisplayUrl.mockRejectedValue(error);
+      mockImagePreprocessor.getProcessedImageUrlForField.mockImplementation(() => {
+        throw new Error('Processing failed');
+      });
       
       const options = createMockHandlebarsOptions({
-        src: imageRef,
-        width: 300
+        fieldname: 'featured_image'
+      }, {
+        contentFile: {
+          path: 'content/page.md',
+          frontmatter: {
+            featured_image: imageRef
+          }
+        }
       });
 
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
-      const result = await helper.image.call({}, options);
-      const htmlString = result.toString();
+      const result = helper.image.call({}, options);
       
-      expect(htmlString).toBe('<!-- Image render failed: Image processing failed -->');
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '[ImageHelper] Failed to render image for src: assets/images/test.jpg',
-        error
-      );
+      expect(result.toString()).toContain('<!-- Image processing error: Processing failed -->');
+      expect(consoleSpy).toHaveBeenCalled();
       
       consoleSpy.mockRestore();
-    });
-
-    test('generates minimal img tag with only required attributes', async () => {
-      const siteData = createMockSiteData();
-      const imageRef = createMockImageRef();
-      const helper = imageHelper(siteData);
-      
-      const options = createMockHandlebarsOptions({
-        src: imageRef
-      });
-
-      const result = await helper.image.call({}, options);
-      const htmlString = result.toString();
-      
-      expect(htmlString).toContain('<img');
-      expect(htmlString).toContain('src="https://example.com/test.jpg"');
-      expect(htmlString).toContain('alt="Test Image"');
-      expect(htmlString).toContain('loading="lazy"');
-      expect(htmlString).not.toContain('width=');
-      expect(htmlString).not.toContain('height=');
-      expect(htmlString).not.toContain('class=');
-    });
-
-    test('handles different image service types', async () => {
-      const siteData = createMockSiteData();
-      siteData.manifest.settings = { imageService: 'cloudinary' };
-      
-      const cloudinaryService = {
-        id: 'cloudinary',
-        name: 'Cloudinary Service',
-        upload: jest.fn(),
-        getDisplayUrl: jest.fn().mockResolvedValue('https://cloudinary.com/test.jpg'),
-        getExportableAssets: jest.fn()
-      };
-      
-      mockGetActiveImageService.mockReturnValue(cloudinaryService);
-      
-      const imageRef = createMockImageRef();
-      const helper = imageHelper(siteData);
-      
-      const options = createMockHandlebarsOptions({
-        src: imageRef,
-        width: 300
-      });
-
-      const result = await helper.image.call({}, options);
-      const htmlString = result.toString();
-      
-      expect(htmlString).toContain('src="https://cloudinary.com/test.jpg"');
-      expect(cloudinaryService.getDisplayUrl).toHaveBeenCalled();
-    });
-
-    test('handles complex transform combinations', async () => {
-      const siteData = createMockSiteData();
-      const imageRef = createMockImageRef();
-      const helper = imageHelper(siteData);
-      
-      const options = createMockHandlebarsOptions({
-        src: imageRef,
-        width: 400,
-        height: 300,
-        crop: 'fit',
-        gravity: 'north',
-        alt: 'Complex Transform',
-        class: 'featured-image',
-        lazy: false
-      });
-
-      const result = await helper.image.call({}, options);
-      const htmlString = result.toString();
-      
-      expect(htmlString).toContain('src="https://example.com/test.jpg"');
-      expect(htmlString).toContain('width="400"');
-      expect(htmlString).toContain('height="300"');
-      expect(htmlString).toContain('alt="Complex Transform"');
-      expect(htmlString).toContain('class="featured-image"');
-      expect(htmlString).not.toContain('loading="lazy"');
-      
-      expect(mockImageService.getDisplayUrl).toHaveBeenCalledWith(
-        siteData.manifest,
-        imageRef,
-        {
-          width: 400,
-          height: 300, 
-          crop: 'fit',
-          gravity: 'north'
-        },
-        false
-      );
-    });
-
-    test('maintains proper HTML structure and formatting', async () => {
-      const siteData = createMockSiteData();
-      const imageRef = createMockImageRef();
-      const helper = imageHelper(siteData);
-      
-      const options = createMockHandlebarsOptions({
-        src: imageRef,
-        width: 200,
-        height: 150,
-        alt: 'Test & Sample "Image"',
-        class: 'test-class'
-      });
-
-      const result = await helper.image.call({}, options);
-      const htmlString = result.toString();
-      
-      // Should be well-formed HTML
-      expect(htmlString).toMatch(/^<img\s[^>]*>$/);
-      expect(htmlString).toContain('alt="Test & Sample "Image""');
-      
-      // Verify no extra whitespace issues
-      expect(htmlString).not.toContain('  '); // No double spaces
-      expect(htmlString.trim()).toBe(htmlString); // No leading/trailing whitespace
-    });
-
-    test('handles concurrent image processing', async () => {
-      const siteData = createMockSiteData();
-      const imageRef = createMockImageRef();
-      const helper = imageHelper(siteData);
-      
-      const options = createMockHandlebarsOptions({
-        src: imageRef,
-        width: 300
-      });
-
-      // Process multiple images concurrently
-      const promises = Array.from({ length: 5 }, () => 
-        helper.image.call({}, options)
-      );
-
-      const results = await Promise.all(promises);
-      
-      expect(results).toHaveLength(5);
-      results.forEach(result => {
-        expect(result).toBeInstanceOf(Handlebars.SafeString);
-        expect(result.toString()).toContain('<img');
-      });
-      
-      expect(mockImageService.getDisplayUrl).toHaveBeenCalledTimes(5);
     });
   });
 
@@ -413,17 +518,25 @@ describe('image.helper', () => {
       expect(typeof helpers.image).toBe('function');
     });
 
-    test('helper function is async', () => {
+    test('helper function is synchronous', () => {
       const siteData = createMockSiteData();
       const helpers = imageHelper(siteData);
       const imageRef = createMockImageRef();
       
       const options = createMockHandlebarsOptions({
-        src: imageRef
+        fieldname: 'featured_image'
+      }, {
+        contentFile: {
+          path: 'content/page.md',
+          frontmatter: {
+            featured_image: imageRef
+          }
+        }
       });
 
       const result = helpers.image.call({}, options);
-      expect(result).toBeInstanceOf(Promise);
+      expect(result).toBeInstanceOf(Handlebars.SafeString);
+      expect(result).not.toBeInstanceOf(Promise);
     });
 
     test('different site data creates independent helpers', () => {

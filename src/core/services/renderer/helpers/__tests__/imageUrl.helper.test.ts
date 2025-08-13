@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-require-imports */
-import { imageUrlHelper } from '../imageUrl.helper';
+import { imageHelper } from '../image.helper';
 import { getActiveImageService } from '@/core/services/images/images.service';
 import type { LocalSiteData, ImageRef, Manifest } from '@/core/types';
 import Handlebars from 'handlebars';
@@ -66,7 +66,7 @@ describe('imageUrl.helper', () => {
     test('returns URL as SafeString with basic parameters', async () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
         src: imageRef,
@@ -83,7 +83,7 @@ describe('imageUrl.helper', () => {
     test('passes transform options to image service', async () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
         src: imageRef,
@@ -111,7 +111,7 @@ describe('imageUrl.helper', () => {
     test('respects export mode from root context', async () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
         src: imageRef,
@@ -134,7 +134,7 @@ describe('imageUrl.helper', () => {
     test('handles missing export context gracefully', async () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
         src: imageRef,
@@ -156,7 +156,7 @@ describe('imageUrl.helper', () => {
 
     test('handles invalid ImageRef with string src', async () => {
       const siteData = createMockSiteData();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
         src: 'invalid-string',
@@ -177,7 +177,7 @@ describe('imageUrl.helper', () => {
 
     test('handles missing src parameter', async () => {
       const siteData = createMockSiteData();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
         width: 300
@@ -196,7 +196,7 @@ describe('imageUrl.helper', () => {
 
     test('handles null src parameter', async () => {
       const siteData = createMockSiteData();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
         src: null,
@@ -216,7 +216,7 @@ describe('imageUrl.helper', () => {
 
     test('handles object without serviceId', async () => {
       const siteData = createMockSiteData();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
         src: { url: 'some-url' }, // Missing serviceId
@@ -237,7 +237,7 @@ describe('imageUrl.helper', () => {
     test('handles image service errors gracefully', async () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const error = new Error('Image processing failed');
       mockImageService.getDisplayUrl.mockRejectedValue(error);
@@ -264,7 +264,7 @@ describe('imageUrl.helper', () => {
     test('returns URL without transform options when none provided', async () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
         src: imageRef
@@ -284,7 +284,7 @@ describe('imageUrl.helper', () => {
     test('handles partial transform options', async () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
         src: imageRef,
@@ -322,7 +322,7 @@ describe('imageUrl.helper', () => {
       mockGetActiveImageService.mockReturnValue(cloudinaryService);
       
       const imageRef = createMockImageRef();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
         src: imageRef,
@@ -338,7 +338,7 @@ describe('imageUrl.helper', () => {
     test('handles complex URLs with special characters', async () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const complexUrl = 'https://example.com/images/test%20image.jpg?v=123&format=webp';
       mockImageService.getDisplayUrl.mockResolvedValue(complexUrl);
@@ -357,7 +357,7 @@ describe('imageUrl.helper', () => {
     test('handles concurrent URL generation', async () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
         src: imageRef,
@@ -372,7 +372,7 @@ describe('imageUrl.helper', () => {
       const results = await Promise.all(promises);
       
       expect(results).toHaveLength(5);
-      results.forEach(result => {
+      results.forEach((result: any) => {
         expect(result).toBeInstanceOf(Handlebars.SafeString);
         expect(result.toString()).toBe('https://example.com/test.jpg');
       });
@@ -383,7 +383,7 @@ describe('imageUrl.helper', () => {
     test('handles all supported transform options', async () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
         src: imageRef,
@@ -411,7 +411,7 @@ describe('imageUrl.helper', () => {
     test('ignores non-transform hash parameters', async () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
         src: imageRef,
@@ -437,7 +437,7 @@ describe('imageUrl.helper', () => {
 
     test('returns empty string for various error conditions', async () => {
       const siteData = createMockSiteData();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const testCases = [
         { src: undefined },
@@ -466,7 +466,7 @@ describe('imageUrl.helper', () => {
   describe('Helper Factory', () => {
     test('returns object with image_url helper function', () => {
       const siteData = createMockSiteData();
-      const helpers = imageUrlHelper(siteData);
+      const helpers = imageHelper(siteData);
       
       expect(helpers).toHaveProperty('image_url');
       expect(typeof helpers.image_url).toBe('function');
@@ -474,7 +474,7 @@ describe('imageUrl.helper', () => {
 
     test('helper function is async', () => {
       const siteData = createMockSiteData();
-      const helpers = imageUrlHelper(siteData);
+      const helpers = imageHelper(siteData);
       const imageRef = createMockImageRef();
       
       const options = createMockHandlebarsOptions({
@@ -489,8 +489,8 @@ describe('imageUrl.helper', () => {
       const siteData1 = createMockSiteData();
       const siteData2 = { ...createMockSiteData(), siteId: 'different-site' };
       
-      const helpers1 = imageUrlHelper(siteData1);
-      const helpers2 = imageUrlHelper(siteData2);
+      const helpers1 = imageHelper(siteData1);
+      const helpers2 = imageHelper(siteData2);
       
       expect(helpers1).not.toBe(helpers2);
       expect(helpers1.image_url).not.toBe(helpers2.image_url);
@@ -499,7 +499,7 @@ describe('imageUrl.helper', () => {
     test('maintains site data context correctly', async () => {
       const siteData = createMockSiteData();
       const imageRef = createMockImageRef();
-      const helper = imageUrlHelper(siteData);
+      const helper = imageHelper(siteData);
       
       const options = createMockHandlebarsOptions({
         src: imageRef,

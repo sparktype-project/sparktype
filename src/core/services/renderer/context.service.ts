@@ -4,9 +4,7 @@ import Handlebars from 'handlebars';
 import type {
     LocalSiteData,
     PageResolutionResult,
-    ImageRef,
     ParsedMarkdownFile,
-    Manifest,
     ImageService,
     LayoutManifest,
     CollectionItemRef,
@@ -36,7 +34,7 @@ export async function assemblePageContext(
     siteData: LocalSiteData,
     resolution: PageResolutionResult,
     options: RenderOptions,
-    imageService: ImageService,
+    _imageService: ImageService,
     pageLayoutManifest: LayoutManifest | null
 ): Promise<EnrichedPageContext> {
     if (resolution.type === PageType.NotFound) {
@@ -100,7 +98,7 @@ export async function assembleBaseContext(
     siteData: LocalSiteData,
     resolution: PageResolutionResult,
     options: RenderOptions,
-    imageService: ImageService,
+    _imageService: ImageService,
     pageContext: EnrichedPageContext
 ) {
     if (resolution.type === PageType.NotFound || pageContext.type === PageType.NotFound) {
@@ -108,8 +106,8 @@ export async function assembleBaseContext(
     }
 
     const { manifest } = siteData;
-    const logoUrl = manifest.logo ? await imageService.getDisplayUrl(manifest, manifest.logo, { height: 32 }, options.isExport) : undefined;
-    const faviconUrl = manifest.favicon ? await imageService.getDisplayUrl(manifest, manifest.favicon, { width: 32, height: 32 }, options.isExport) : undefined;
+    const logoUrl = manifest.logo ? await _imageService.getDisplayUrl(manifest, manifest.logo, { height: 32 }, options.isExport) : undefined;
+    const faviconUrl = manifest.favicon ? await _imageService.getDisplayUrl(manifest, manifest.favicon, { width: 32, height: 32 }, options.isExport) : undefined;
     // OpenGraph image is now handled by the image helper in templates
     
     // CORRECTED: Create the appropriate `StructureNode` or `CollectionItemRef` before passing to `getUrlForNode`.
