@@ -337,7 +337,7 @@ export class ImagePreprocessorService {
     // Old format: look for presets that have "source": fieldName
     if (layoutManifest?.image_presets) {
       for (const [presetName, presetConfig] of Object.entries(layoutManifest.image_presets)) {
-        if (presetConfig && typeof presetConfig === 'object' && presetConfig.source === fieldName) {
+        if (presetConfig && typeof presetConfig === 'object' && 'source' in presetConfig && presetConfig.source === fieldName) {
           console.log(`[ImagePreprocessor] Found old-format preset '${presetName}' for field '${fieldName}'`);
           return presetName;
         }
