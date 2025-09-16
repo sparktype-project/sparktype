@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:starlight.astro.build)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(go mod:*)",
+      "Bash(go build:*)",
+      "Bash(chmod:*)",
+      "Bash(./st-cli http://localhost:8080)",
+      "Bash(go run:*)",
+      "Bash(./test-cli)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "browser-tools"
+  ]
+}

@@ -56,32 +56,52 @@
         "title": "Headings Font Family",
         "description": "Choose the font family for all headlines.",
         "enum": [
-          "var(--font-stack-serif)",
-          "var(--font-stack-sans)",
-          "var(--font-stack-mono)"
+          "Geist",
+          "Geist Mono",
+          "Gentium Book Plus",
+          "IBM Plex Mono",
+          "IBM Plex Sans",
+          "IBM Plex Serif",
+          "Instrument Serif",
+          "Inter"
         ],
         "enumNames": [
-          "Serif (System)",
-          "Sans-Serif (System)",
-          "Monospace (System)"
+          "Geist (Sans)",
+          "Geist Mono (Monospace)",
+          "Gentium Book Plus (Serif)",
+          "IBM Plex Mono (Monospace)",
+          "IBM Plex Sans (Sans)",
+          "IBM Plex Serif (Serif)",
+          "Instrument Serif (Serif)",
+          "Inter (Sans)"
         ],
-        "default": "var(--font-stack-serif)"
+        "default": "Inter"
       },
       "font_text": {
         "type": "string",
         "title": "Body Text Font Family",
         "description": "Choose the font family for all paragraphs and lists.",
         "enum": [
-          "var(--font-stack-serif)",
-          "var(--font-stack-sans)",
-          "var(--font-stack-mono)"
+          "Geist",
+          "Geist Mono",
+          "Gentium Book Plus",
+          "IBM Plex Mono",
+          "IBM Plex Sans",
+          "IBM Plex Serif",
+          "Instrument Serif",
+          "Inter"
         ],
         "enumNames": [
-          "Serif (System)",
-          "Sans-Serif (System)",
-          "Monospace (System)"
+          "Geist (Sans)",
+          "Geist Mono (Monospace)",
+          "Gentium Book Plus (Serif)",
+          "IBM Plex Mono (Monospace)",
+          "IBM Plex Sans (Sans)",
+          "IBM Plex Serif (Serif)",
+          "Instrument Serif (Serif)",
+          "Inter (Sans)"
         ],
-        "default": "var(--font-stack-sans)"
+        "default": "IBM Plex Sans"
       },
       "sidebar_width": {
         "type": "string",

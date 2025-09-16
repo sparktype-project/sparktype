@@ -1,47 +1,21 @@
-# Get Static
+# Sparktype
 
-[![Deploy Web Version](https://github.com/yourusername/yourrepo/actions/workflows/deploy-web.yml/badge.svg)](https://github.com/yourusername/yourrepo/actions/workflows/deploy-web.yml)
+### Publishing made easy
 
-A static site generator built with React and Tauri.
+Sparktype is a browser-based publishing platform that combines the ease of use of a content management system with the performance and simplicity of a static site generator.
 
-## Development
+### Prinicples
 
-```bash
-# Install dependencies
-npm install
+**Simplicity**
 
-# Start development server
-npm run dev
+Sparktype deliberately takes a content-first approach, favouring readability and accessibility over complex layouts and features. Sites are pure HTML and CSS (with just a tiny bit of Javascript), meaning they can be hosted almost anywhere and viewed by almost anything.
 
-# Build for web deployment
-npm run build:web
+**Security** 
 
-# Build Tauri desktop app
-npm run tauri build
-```
+Being static, Sparktype sites do not need ongoing maintenance or security updates. As the editor runs locally in your browser, no private information is uploaded or published and there is no tracking by default.
 
-## Deployment
+**Usability**
 
-The web version is automatically built and deployed by Netlify on every push to the main branch.
+With a simple but powerful editing interface, Sparktype handles the complexity of building and publishing your site enabling you to focus on your content.
 
-- **Live Site**: [your-site-name.netlify.app](https://your-site-name.netlify.app)
-- **Deploy Status**: [![Netlify Status](https://api.netlify.com/api/v1/badges/your-site-id/deploy-status)](https://app.netlify.com/sites/your-site-name/deploys)
-- **Build Checks**: GitHub Actions run linting and build tests on PRs
 
-## Architecture
-
-- **Frontend**: React + TypeScript + Tailwind CSS
-- **Desktop**: Tauri (Rust + WebView)
-- **Web Deployment**: Netlify
-- **CI/CD**: GitHub Actions
-
----
-
-## Original Vite Template Info
-
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh

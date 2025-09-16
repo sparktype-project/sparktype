@@ -123,7 +123,7 @@ export default function SiteLayout() {
       <aside className="fixed inset-x-0 bottom-0 z-30 flex h-16 w-full shrink-0 border-t bg-background lg:static lg:inset-y-0 lg:left-0 lg:h-full lg:w-[60px] lg:border-r lg:border-t-0">
         <nav className="flex w-full items-center justify-center gap-2  lg:flex-col lg:justify-start">
           <Link
-            to="/sites"
+            to="/"
             title="Dashboard"
             className='lg:flex hidden flex-col items-center w-[60px] h-[60px] border-b'
           >

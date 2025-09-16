@@ -12,13 +12,13 @@
   --font-stack-mono: 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 
   /* ==========================================================================
-     CORE COLOR PALETTE - Documentation theme colors
+     CORE COLOR PALETTE - Starlight-inspired documentation colors
      ========================================================================== */
   --color-background: #ffffff;
-  --color-text: #333333;
-  --color-heading: #111111;
+  --color-text: #374151;
+  --color-heading: #1f2937;
   --color-primary: #3b82f6;
-  --color-border: #e5e5e5;
+  --color-border: #e5e7eb;
   
   /* ==========================================================================
      SEMANTIC COLOR VARIATIONS
@@ -31,14 +31,14 @@
   /* ==========================================================================
      DOCUMENTATION-SPECIFIC COLORS
      ========================================================================== */
-  --color-sidebar: #f8f9fa;
+  --color-sidebar: #f9fafb;
   
   /* ==========================================================================
      DEFAULT FONT ASSIGNMENTS
      These defaults will be overridden by theme config via styleOverrides
      ========================================================================== */
-  --font-headings: var(--font-stack-sans); /* Docs theme uses sans for headings by default */
-  --font-text: var(--font-stack-sans);
+  --font-headings: "Inter", var(--font-stack-sans);
+  --font-text: "IBM Plex Sans", var(--font-stack-sans);
 
   /* ==========================================================================
      MAPPED FONTS (Used by Design System)
