@@ -294,7 +294,7 @@ func (a *App) handleEnter() (tea.Model, tea.Cmd) {
 	switch a.state {
 	case StateMainMenu:
 		selectedItem := a.list.SelectedItem()
-		if item, ok := selectedItem.(NavigationItemWrapper); ok {
+		if _, ok := selectedItem.(NavigationItemWrapper); ok {
 			return a.selectNavigationItem(a.list.Index())
 		}
 	case StateCollectionListing:
@@ -448,8 +448,8 @@ func (a *App) showCollectionListing(collectionID, title string) {
 		}
 	}
 
-	// Sort by date (most recent first) - we'll implement this later
-	// TODO: Fetch dates from content files for proper sorting
+	// Sort by date (most recent first)
+	a.sortCollectionItemsByDate(items)
 
 	a.collectionItems = items
 	a.collectionTitle = title
@@ -476,15 +476,52 @@ func (a *App) setupCollectionListingUI() {
 	pageItems := a.getCurrentPageItems()
 	items := make([]list.Item, len(pageItems))
 
-	for i, item := range pageItems {
+	// Fetch metadata for all items on this page
+	a.fetchCollectionItemsMetadata(pageItems, func(itemsWithMetadata []CollectionItemWrapper) {
+		for i, itemWithMetadata := range itemsWithMetadata {
+			items[i] = itemWithMetadata
+		}
+
+		delegate := list.NewDefaultDelegate()
+		delegate.Styles.SelectedTitle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#7D56F4")).
+			Bold(true)
+
+		a.list = list.New(items, delegate, a.width, a.height-4)
+		a.list.Title = a.getTitle()
+		a.list.SetShowStatusBar(false)
+		a.list.SetShowHelp(false)
+
+		a.ready = true
+	})
+}
+
+// fetchCollectionItemsMetadata fetches date and description for collection items
+func (a *App) fetchCollectionItemsMetadata(items []CollectionItem, callback func([]CollectionItemWrapper)) {
+	itemsWithMetadata := make([]CollectionItemWrapper, len(items))
+
+	// For now, we'll fetch synchronously for simplicity
+	// In a real implementation, this could be done asynchronously
+	for i, item := range items {
 		// Add number prefix to title
 		numberedTitle := fmt.Sprintf("%d. %s", i+1, item.Title)
 
-		// TODO: Fetch content to get date and description
-		// For now, use placeholder
-		description := "Date and description will be loaded"
+		// Fetch content to get date and description
+		content, err := a.client.FetchContent(item.Path)
 
-		items[i] = CollectionItemWrapper{
+		var dateStr, description string
+		if err == nil {
+			if !content.Date.IsZero() {
+				dateStr = content.Date.Format("2 January 2006")
+			}
+			description = content.Description
+		} else {
+			// Fallback if content can't be fetched
+			dateStr = "Date unavailable"
+			description = ""
+		}
+
+		itemsWithMetadata[i] = CollectionItemWrapper{
 			CollectionItem: CollectionItem{
 				CollectionID: item.CollectionID,
 				Slug:         item.Slug,
@@ -492,20 +529,12 @@ func (a *App) setupCollectionListingUI() {
 				Title:        numberedTitle,
 				URL:          item.URL,
 			},
+			ItemDate:        dateStr,
+			ItemDescription: description,
 		}
 	}
 
-	delegate := list.NewDefaultDelegate()
-	delegate.Styles.SelectedTitle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#7D56F4")).
-		Bold(true)
-
-	a.list = list.New(items, delegate, a.width, a.height-4)
-	a.list.Title = a.getTitle()
-	a.list.SetShowStatusBar(false)
-	a.list.SetShowHelp(false)
-
-	a.ready = true
+	callback(itemsWithMetadata)
 }
 
 // View renders the application

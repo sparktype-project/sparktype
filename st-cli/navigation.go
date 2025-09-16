@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 )
 
 // NavigationItemWrapper wraps NavigationItem for the list component
@@ -30,6 +29,8 @@ func (n NavigationItemWrapper) FilterValue() string {
 // CollectionItemWrapper wraps CollectionItem for the list component
 type CollectionItemWrapper struct {
 	CollectionItem
+	ItemDate        string
+	ItemDescription string
 }
 
 // Title returns the title for the collection item
@@ -39,7 +40,14 @@ func (c CollectionItemWrapper) Title() string {
 
 // Description returns the description for the collection item
 func (c CollectionItemWrapper) Description() string {
-	return "" // Remove descriptions
+	if c.ItemDate != "" && c.ItemDescription != "" {
+		return fmt.Sprintf("%s\n%s", c.ItemDate, c.ItemDescription)
+	} else if c.ItemDate != "" {
+		return c.ItemDate
+	} else if c.ItemDescription != "" {
+		return c.ItemDescription
+	}
+	return ""
 }
 
 // FilterValue returns the value to filter on
@@ -112,6 +120,21 @@ func (a *App) showCollectionItems(parentPath, collectionID string) {
 
 // sortCollectionItemsByDate sorts collection items by date (most recent first)
 func (a *App) sortCollectionItemsByDate(items []CollectionItem) {
-	// For now, we'll implement this later when we can efficiently fetch dates
-	// This would require fetching content for each item to get the date
+	// Sort items by fetching their dates
+	// This is a simplified implementation - in practice you might want to cache dates
+	for i := 0; i < len(items); i++ {
+		for j := i + 1; j < len(items); j++ {
+			// Fetch dates for comparison
+			content1, err1 := a.client.FetchContent(items[i].Path)
+			content2, err2 := a.client.FetchContent(items[j].Path)
+
+			// Compare dates (most recent first)
+			if err1 == nil && err2 == nil {
+				if content1.Date.Before(content2.Date) {
+					// Swap items
+					items[i], items[j] = items[j], items[i]
+				}
+			}
+		}
+	}
 }
