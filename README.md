@@ -2,7 +2,7 @@
 
 ### Publishing made easy
 
-Sparktype is a browser-based publishing platform that combines the ease of use of a fully-fledged content management system with the performance and simplicity of a static site generator.
+Sparktype is a browser-based publishing platform that combines the ease of use of a content management system with the performance and simplicity of a static site generator.
 
 ### Prinicples
 
