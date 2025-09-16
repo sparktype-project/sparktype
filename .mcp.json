@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "tauri-mcp": {
+      "command": "node",
+      "args": ["/path/to/tauri-mcp/server/index.js"],
+      "env": {
+        "TAURI_MCP_LOG_LEVEL": "info"
+      }
+    }
+  }
+}

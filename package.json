@@ -5,13 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:tauri": "vite --port 5174",
     "build": "tsc -b && vite build",
     "build:web": "tsc -b && vite build --config vite.config.web.ts",
     "preview:web": "vite preview --config vite.config.web.ts --outDir dist",
     "lint": "eslint .",
     "preview": "vite preview",
     "ci:install": "npm ci --prefer-offline --no-audit",
-    "ci:build": "npm run build:web"
+    "ci:build": "npm run build:web",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:start": "tauri dev"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.2",
@@ -64,6 +69,7 @@
     "@platejs/table": "^49.1.13",
     "@platejs/toc": "^49.0.0",
     "@platejs/toggle": "^49.0.0",
+    "@proj-airi/tauri-plugin-mcp": "^0.7.2-beta.2",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-avatar": "^1.1.10",
@@ -86,6 +92,8 @@
     "@simplewebauthn/browser": "^13.1.2",
     "@tailwindcss/vite": "^4.1.11",
     "@tauri-apps/api": "^2.6.0",
+    "@tauri-apps/plugin-http": "^2.5.1",
+    "@tauri-apps/plugin-os": "^2.3.1",
     "@types/dompurify": "^3.0.5",
     "@udecode/cn": "^49.0.15",
     "@uploadthing/react": "^7.3.1",

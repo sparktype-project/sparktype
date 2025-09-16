@@ -1,8 +1,8 @@
 // src/core/components/Navbar.tsx
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Leaf, Home, Settings, Globe } from 'lucide-react';
+import { Leaf, Home, Settings, Globe, Minus, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 // UI Components (no changes needed)
@@ -35,6 +35,13 @@ const NavLink: React.FC<{ to: string; label: string; icon?: React.ReactNode; }> 
 export default function Navbar() {
   const navigate = useNavigate();
   const [remoteUrl, setRemoteUrl] = useState('');
+  const [isTauri, setIsTauri] = useState(false);
+
+  // Check if we're in Tauri environment
+  useEffect(() => {
+    const checkTauri = typeof window !== 'undefined' && !!(window as any).__TAURI__;
+    setIsTauri(checkTauri);
+  }, []);
 
   const handleBrowseRemoteSite = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,15 +61,117 @@ export default function Navbar() {
     }
   };
 
+  // Tauri window controls
+  const handleMinimize = async () => {
+    if (isTauri) {
+      const { appWindow } = await import('@tauri-apps/api/window');
+      appWindow.minimize();
+    }
+  };
+
+  const handleClose = async () => {
+    if (isTauri) {
+      const { appWindow } = await import('@tauri-apps/api/window');
+      appWindow.close();
+    }
+  };
+
+  // For Tauri: Custom titlebar with draggable area
+  if (isTauri) {
+    return (
+      <header
+        data-tauri-drag-region
+        className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 h-16"
+      >
+        <div
+          className="container flex h-16 items-center justify-between gap-4"
+          data-tauri-drag-region
+        >
+          {/* Logo section */}
+          <Link
+            to="/"
+            className="flex items-center space-x-2"
+            onMouseDown={(e) => e.stopPropagation()} // Prevents dragging
+          >
+            <Leaf className="h-7 w-7 text-primary" />
+            <span className="text-2xl font-bold text-foreground hidden sm:inline">Sparktype</span>
+          </Link>
+
+          {/* Search form */}
+          <form
+            onSubmit={handleBrowseRemoteSite}
+            className="flex-grow max-w-xl flex items-center gap-2"
+            onMouseDown={(e) => e.stopPropagation()} // Prevents dragging
+          >
+            <div className="relative w-full">
+              <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="url"
+                value={remoteUrl}
+                onChange={(e) => setRemoteUrl(e.target.value)}
+                placeholder="Enter remote Sparktype site URL..."
+                className="pl-9"
+              />
+            </div>
+            <Button type="submit">Browse</Button>
+          </form>
+
+          {/* Navigation and controls */}
+          <div className="flex items-center space-x-1">
+            <nav className="hidden md:flex items-center space-x-1">
+              <div onMouseDown={(e) => e.stopPropagation()}>
+                <NavLink to="/sites" label="Dashboard" icon={<Home className="h-4 w-4" />} />
+              </div>
+            </nav>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                onMouseDown={(e) => e.stopPropagation()} // Prevents dragging
+              >
+                <Settings className="h-5 w-5" />
+                <span className="sr-only">Toggle menu</span>
+              </Button>
+            </div>
+
+            {/* Tauri Window Controls (macOS style) */}
+            <div className="flex items-center space-x-2 ml-4">
+              <button
+                onClick={handleMinimize}
+                onMouseDown={(e) => e.stopPropagation()} // Prevents dragging
+                className="w-3 h-3 bg-yellow-400 hover:bg-yellow-500 rounded-full transition-colors flex items-center justify-center group"
+                title="Minimize"
+              >
+                <Minus className="w-1.5 h-1.5 text-yellow-900 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+              <button
+                onClick={handleClose}
+                onMouseDown={(e) => e.stopPropagation()} // Prevents dragging
+                className="w-3 h-3 bg-red-400 hover:bg-red-500 rounded-full transition-colors flex items-center justify-center group"
+                title="Close"
+              >
+                <X className="w-1.5 h-1.5 text-red-900 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  // For web: Standard header
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between gap-4">
-        {/* The main logo links to the marketing page or dashboard root */}
+        {/* Logo */}
         <Link to="/" className="flex items-center space-x-2">
           <Leaf className="h-7 w-7 text-primary" />
           <span className="text-2xl font-bold text-foreground hidden sm:inline">Sparktype</span>
         </Link>
-        
+
+        {/* Search form */}
         <form onSubmit={handleBrowseRemoteSite} className="flex-grow max-w-xl flex items-center gap-2">
           <div className="relative w-full">
             <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -76,13 +185,13 @@ export default function Navbar() {
           </div>
           <Button type="submit">Browse</Button>
         </form>
-        
+
+        {/* Navigation */}
         <nav className="hidden md:flex items-center space-x-1">
-          {/* Note: The main dashboard link is now `/sites` */}
           <NavLink to="/sites" label="Dashboard" icon={<Home className="h-4 w-4" />} />
         </nav>
 
-        {/* This mobile menu button is currently a placeholder and would need state management to function */}
+        {/* Mobile menu */}
         <div className="md:hidden">
           <Button variant="ghost" size="icon">
             <Settings className="h-5 w-5" />

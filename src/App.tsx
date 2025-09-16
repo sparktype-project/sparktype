@@ -8,7 +8,7 @@ import { useAppStore } from './core/state/useAppStore';
 import { useInitialiseUIStore } from './core/hooks/useInitialiseUIStore';
 import { Toaster } from "./core/components/ui/sonner";
 import AuthGuard from './core/components/AuthGuard';
-
+import { PlatformProvider } from './core/providers/PlatformProvider';
 // --- Code-Splitting Page Imports using React.lazy ---
 // This is a best practice to keep the initial bundle size small.
 // Each page component is only loaded when its route is visited.
@@ -69,6 +69,8 @@ export default function App() {
 
    return (
     <>
+        <PlatformProvider>
+
       <Suspense fallback={<AppLoadingIndicator />}>
         <Routes>
           
@@ -100,6 +102,7 @@ export default function App() {
         </Routes>
       </Suspense>
       <Toaster richColors position="top-right" />
+      </PlatformProvider>
     </>
   );
 }

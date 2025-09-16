@@ -36,7 +36,7 @@ export async function exportSiteBackup(siteData: LocalSiteData): Promise<Blob> {
     );
   });
   
-  const imagesFolder = signumFolder.folder('assets/images');
+  const imagesFolder = signumFolder.folder('assets/originals');
   const imageAssets = await localSiteFs.getAllImageAssetsForSite(siteData.siteId);
   for (const [path, blob] of Object.entries(imageAssets)) {
       const filename = path.split('/').pop();
@@ -132,12 +132,26 @@ export async function importSiteFromZip(zipFile: File): Promise<LocalSiteData & 
     const layoutFiles = await Promise.all(layoutPromises);
 
     const imageAssets: { [path: string]: Blob } = {};
-    const imagesFolder = signumFolder.folder('assets/images');
-    if (imagesFolder) {
-        for (const filename in imagesFolder.files) {
-            const file = imagesFolder.files[filename];
+    
+    // Handle originals
+    const originalsFolder = signumFolder.folder('assets/originals');
+    if (originalsFolder) {
+        for (const filename in originalsFolder.files) {
+            const file = originalsFolder.files[filename];
             if (!file.dir) {
-                const path = `assets/images/${file.name.split('/').pop()}`;
+                const path = `assets/originals/${file.name.split('/').pop()}`;
+                imageAssets[path] = await file.async('blob');
+            }
+        }
+    }
+
+    // Handle derivatives  
+    const derivativesFolder = signumFolder.folder('assets/derivatives');
+    if (derivativesFolder) {
+        for (const filename in derivativesFolder.files) {
+            const file = derivativesFolder.files[filename];
+            if (!file.dir) {
+                const path = `assets/derivatives/${file.name.split('/').pop()}`;
                 imageAssets[path] = await file.async('blob');
             }
         }

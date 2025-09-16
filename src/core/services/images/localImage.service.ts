@@ -8,6 +8,7 @@ import imageCompression from 'browser-image-compression';
 import { MEMORY_CONFIG } from '@/config/editorConfig';
 import { toast } from 'sonner';
 import { cropAndResizeImage, getImageDimensions as getImageDimensionsFromBlob } from './imageManipulation.service';
+// TODO: Re-add manifest tracking with different approach
 
 /**
  * This service manages images stored locally within the browser's IndexedDB.

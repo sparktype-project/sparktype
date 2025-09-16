@@ -3,6 +3,7 @@
 import type { LocalSiteData, ImageRef } from '@/core/types';
 import { getAllImageAssetsForSite, saveAllImageAssetsForSite } from '@/core/services/localFileSystem.service';
 import { getAllCacheKeys, getCachedDerivative, removeCachedDerivative } from './derivativeCache.service';
+// TODO: Re-add manifest tracking with different approach
 
 /**
  * Result of an image cleanup operation
@@ -280,6 +281,8 @@ export async function cleanupOrphanedImages(siteData: LocalSiteData): Promise<Cl
         
         // Update stored images without the orphaned ones
         await saveAllImageAssetsForSite(siteData.siteId, cleanStoredImages);
+        
+        // TODO: Re-add manifest cleanup with different approach
       } catch (error) {
         log.push(`[ImageCleanup] Error removing orphaned originals: ${error}`);
         console.error('[ImageCleanup] Failed to remove orphaned original images:', error);

@@ -7,28 +7,30 @@ import { Link } from 'react-router-dom'; // Use react-router-dom's Link
 import { useAppStore } from '@/core/state/useAppStore';
 import { type LocalSiteData } from '@/core/types';
 
-// Services (no changes needed)
+// Services
 import { importSiteFromZip, exportSiteBackup } from '@/core/services/siteBackup.service';
+import { importSiteFromGitHub } from '@/core/services/remoteImport.service';
 import { saveAllImageAssetsForSite } from '@/core/services/localFileSystem.service';
 import { slugify } from '@/core/libraries/utils';
 
-// UI Components & Icons (no changes needed)
+// UI Components & Icons
 import { Button } from '@/core/components/ui/button';
 import { toast } from 'sonner';
-import { FilePlus2, Upload, Eye, Edit3, Archive, Trash2, MoreVertical } from 'lucide-react';
+import { FilePlus2, Upload, Eye, Edit3, Archive, Trash2, MoreVertical, ChevronDown, Github } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/core/components/ui/alert-dialog";
 import CreateSiteModal from '@/core/components/CreateSiteModal';
+import ImportModal from '@/core/components/ImportModal';
 
 export default function HomePageDashboard() {
-  // All state management, handlers, and logic are ported directly from the original
-  // component. No changes are needed here as this logic is framework-agnostic.
   const { sites, getSiteById, addSite, updateSiteSecrets, loadSite, deleteSiteAndState } = useAppStore();
   const [isImporting, setIsImporting] = useState(false);
   const [isOverwriteDialogOpen, setIsOverwriteDialogOpen] = useState(false);
   const [importedData, setImportedData] = useState<(LocalSiteData & { imageAssetsToSave?: Record<string, Blob> }) | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isGitHubImportOpen, setIsGitHubImportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importDropdownRef = useRef<HTMLButtonElement>(null);
 
   const finishImport = useCallback(async (data: LocalSiteData & { imageAssetsToSave?: Record<string, Blob> }) => {
     try {
@@ -107,10 +109,32 @@ export default function HomePageDashboard() {
     }
   };
 
-    // Listen for global import trigger from menu
+
+  const handleGitHubImport = async (repoUrl: string, branch?: string) => {
+    setIsImporting(true);
+    toast.info("Importing site from GitHub...");
+    try {
+      const data = await importSiteFromGitHub(repoUrl, branch);
+      const existingSite = getSiteById(data.siteId);
+      if (existingSite) {
+        setImportedData(data);
+        setIsOverwriteDialogOpen(true);
+      } else {
+        await finishImport(data);
+      }
+    } catch (error) {
+      console.error("Error during GitHub import:", error);
+      toast.error(`GitHub import failed: ${(error as Error).message}`);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  // Listen for global import trigger from menu
   useEffect(() => {
     const handleTriggerImport = () => {
-      fileInputRef.current?.click();
+      // Open the dropdown menu for both web and Tauri
+      importDropdownRef.current?.click();
     };
 
     window.addEventListener('triggerImport', handleTriggerImport);
@@ -132,9 +156,26 @@ export default function HomePageDashboard() {
             <span className="text-xl font-bold font-mono text-foreground hidden sm:inline">Sparktype</span>
           </Link>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
-              <Upload className="h-4 w-4" /> {isImporting ? 'Importing...' : 'Import site'}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button ref={importDropdownRef} variant="ghost" disabled={isImporting}>
+                  <Upload className="h-4 w-4" /> 
+                  {isImporting ? 'Importing...' : 'Import site'}
+                  <ChevronDown className="ml-1 h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload ZIP file
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setIsGitHubImportOpen(true)} disabled={isImporting}>
+                  <Github className="mr-2 h-4 w-4" />
+                  Import from GitHub repo
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="outline" onClick={() => setIsCreateModalOpen(true)}>
               <FilePlus2 className="h-4 w-4" /> Create new site
             </Button>
@@ -234,6 +275,13 @@ export default function HomePageDashboard() {
       <CreateSiteModal 
         open={isCreateModalOpen} 
         onOpenChange={setIsCreateModalOpen} 
+      />
+
+      {/* GitHub Import Modal - Available on both web and Tauri */}
+      <ImportModal
+        open={isGitHubImportOpen}
+        onOpenChange={setIsGitHubImportOpen}
+        onImport={handleGitHubImport}
       />
     </>
   );

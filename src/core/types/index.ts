@@ -420,6 +420,7 @@ export interface Manifest {
     userDisplayName?: string;
     registeredAt: string;
   };
+  // Removed imageFiles - images discovered from content scanning
 }
 
 /**
@@ -533,6 +534,8 @@ export interface ImageRef {
   width?: number;
   height?: number;
 }
+
+// Removed separate image tracking - images are discovered from content files
 
 /** Transformation options requested by the theme engine. */
 export interface ImageTransformOptions {
