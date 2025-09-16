@@ -72,9 +72,8 @@ export default function App() {
       <Suspense fallback={<AppLoadingIndicator />}>
         <Routes>
           
-          <Route path="/" element={<MarketingHomePage />} />
 
-          <Route path="/sites" element={<HomePageDashboard />} />
+          <Route path="/" element={<HomePageDashboard />} />
           <Route path="/sites/:siteId" element={<SiteLayout />}>
 
           <Route path="view/*" element={<ViewSitePage />} />

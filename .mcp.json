@@ -1,0 +1,12 @@
+
+ {
+ "mcpServers": {
+    "browser-tools": {
+      "command": "wsl",
+      "args": [
+        "npx @agentdeskai/browser-tools-mcp@1.2.0"
+      ],
+      "enabled": true
+    }
+  }
+}
