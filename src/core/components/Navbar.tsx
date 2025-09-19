@@ -64,15 +64,15 @@ export default function Navbar() {
   // Tauri window controls
   const handleMinimize = async () => {
     if (isTauri) {
-      const { appWindow } = await import('@tauri-apps/api/window');
-      appWindow.minimize();
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      getCurrentWindow().minimize();
     }
   };
 
   const handleClose = async () => {
     if (isTauri) {
-      const { appWindow } = await import('@tauri-apps/api/window');
-      appWindow.close();
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      getCurrentWindow().close();
     }
   };
 

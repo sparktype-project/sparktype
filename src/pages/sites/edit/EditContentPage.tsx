@@ -17,7 +17,6 @@ import ThreeColumnLayout from '@/core/components/layout/ThreeColumnLayout';
 import LeftSidebar from '@/features/editor/components/LeftSidebar';
 import NewPageDialog from '@/features/editor/components/NewPageDialog';
 
-import type { Value } from 'platejs';
 import { PlateEditor, type PlateEditorRef } from '@/components/editor/PlateEditor';
 
 import FrontmatterSidebar from '@/features/editor/components/FrontmatterSidebar';
@@ -42,12 +41,6 @@ function EditorLoadingSkeleton({ message = "Loading Editor..." }: { message?: st
   );
 }
 
-const defaultInitialValue: Value = [
-  {
-    children: [{ text: '' }],
-    type: 'p',
-  },
-];
 
 /**
  * The internal component that contains the core editor logic and UI.
@@ -66,37 +59,45 @@ function EditContentPageInternal() {
   const { isNewFileMode, filePath, collectionContext } = usePageIdentifier({ siteStructure, allContentFiles, siteData: site || null });
   const { status, frontmatter, slug, setSlug, handleFrontmatterChange, onContentModified, applyPendingSlugChange } = useFileContent(siteId, filePath, isNewFileMode, collectionContext);
   const editorRef = useRef<PlateEditorRef>(null);
-  const [editorValue, setEditorValue] = useState<Value>(defaultInitialValue);
-  
-  const { handleDelete } = useFilePersistence({ 
-    siteId, 
-    filePath, 
-    isNewFileMode, 
-    frontmatter, 
-    slug, 
+  const [editorReady, setEditorReady] = useState(false);
+
+  const { handleDelete } = useFilePersistence({
+    siteId,
+    filePath,
+    isNewFileMode,
+    frontmatter,
+    slug,
     getEditorContent: () => editorRef.current?.getMarkdown() ?? '',
     applyPendingSlugChange
   });
 
-  // Load initial content when file data is ready
+  // Initialize editor with content when data is ready
   useEffect(() => {
-    if (status === 'ready' && !isNewFileMode) {
-      // Load content from markdown if available
-      const site = useAppStore.getState().getSiteById(siteId);
-      const fileData = site?.contentFiles?.find(f => f.path === filePath);
-      
-      if (fileData?.content && editorRef.current) {
-        // Try to load from markdown content
-        const contentToLoad = fileData.content.replace('<!-- Content managed by BlockNote editor -->', '').trim();
-        
-        console.log('Loading content into editor:', contentToLoad.substring(0, 200));
-        
-        if (contentToLoad) {
-          editorRef.current.setMarkdown(contentToLoad);
+    if (status === 'ready' && site?.contentFiles && editorRef.current) {
+      setEditorReady(false);
+
+      if (isNewFileMode) {
+        // Initialize with empty content for new files
+        console.log('Initializing new file mode with empty content');
+        editorRef.current.initializeWithContent('');
+        setEditorReady(true);
+      } else {
+        const fileData = site.contentFiles.find(f => f.path === filePath);
+
+        if (fileData) {
+          // Process content and initialize editor
+          const rawContent = fileData.content || '';
+          const contentToLoad = rawContent.replace('<!-- Content managed by BlockNote editor -->', '').trim();
+
+          console.log('Initializing editor with content:', contentToLoad.substring(0, 200));
+          console.log('Raw content length:', rawContent.length, 'Processed length:', contentToLoad.length);
+
+          editorRef.current.initializeWithContent(contentToLoad || '');
+          setEditorReady(true);
         }
       }
     }
-  }, [status, siteId, filePath, isNewFileMode]);
+  }, [status, filePath, isNewFileMode, site?.contentFiles]);
 
   // --- 2. Manage Sidebars via UI Store ---
   const { leftSidebarContent, rightSidebarContent, setLeftAvailable, setRightAvailable, setLeftSidebarContent, setRightSidebarContent } = useUIStore(state => state.sidebar);
@@ -218,18 +219,17 @@ function EditContentPageInternal() {
                       <CollectionItemList siteId={siteId} collectionId={frontmatter.layoutConfig.collectionId as string} />
                       
                     ) : (
-                    <PlateEditor 
+                    <PlateEditor
                       ref={editorRef}
-                      initialValue={editorValue}
-                      onContentChange={(value) => {
-                        setEditorValue(value);
+                      onContentChange={() => {
                         onContentModified();
                       }}
                       placeholder="Type your amazing content here..."
                       siteId={siteId}
                       collections={siteCollections}
+                      ready={editorReady}
                     />
-                    )};
+                    )}
                   </div>
                 </div>
               </div>

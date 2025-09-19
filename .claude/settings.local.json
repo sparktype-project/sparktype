@@ -10,7 +10,8 @@
       "Bash(chmod:*)",
       "Bash(./st-cli http://localhost:8080)",
       "Bash(go run:*)",
-      "Bash(./test-cli)"
+      "Bash(./test-cli)",
+      "Bash(npm run build:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

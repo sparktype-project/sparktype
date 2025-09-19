@@ -14,7 +14,6 @@ import { PlatformProvider } from './core/providers/PlatformProvider';
 // Each page component is only loaded when its route is visited.
 
 // Marketing and Site Management Pages
-const MarketingHomePage = lazy(() => import('./pages/MarketingHomePage')); // app/page.tsx
 const HomePageDashboard = lazy(() => import('./pages/HomePageDashboard')); // app/sites/page.tsx
 
 // Site-Specific Layouts and Pages

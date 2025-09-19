@@ -1,5 +1,4 @@
 import { useCallback, forwardRef, useImperativeHandle, useMemo } from 'react';
-import type { Value } from 'platejs';
 
 import { BasicNodesKit } from '@/components/editor/plugins/basic-nodes-kit';
 
@@ -19,34 +18,29 @@ import { createSparkTypeMediaKit } from '@/components/editor/plugins/sparktype-m
 import { createCollectionViewKit } from '@/components/editor/plugins/collection-view-kit';
 
 interface PlateEditorProps {
-  initialValue?: Value;
-  onContentChange?: (content: Value) => void;
+  onContentChange?: () => void;
   placeholder?: string;
   className?: string;
   siteId?: string;
   collections?: Array<{ id: string; name: string }>;
+  ready?: boolean;
 }
 
 // Export the ref type for external use
 export type PlateEditorRef = {
   getMarkdown: () => string;
   setMarkdown: (markdown: string) => void;
+  initializeWithContent: (markdown: string) => void;
 };
 
-const defaultInitialValue: Value = [
-  {
-    children: [{ text: '' }],
-    type: 'p',
-  },
-];
 
-export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({ 
-  initialValue = defaultInitialValue, 
-  onContentChange, 
+export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
+  onContentChange,
   placeholder = "Start writing...",
   className = "",
   siteId,
-  collections = []
+  collections = [],
+  ready = false
 }, ref) => {
 
   // Create SparkType MediaKit with siteId if available, otherwise use empty array
@@ -64,21 +58,21 @@ export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
       // Basic nodes (paragraphs, headings, etc.)
       ...EditorKit,
       ...BasicNodesKit,
-      
+
       // Core functionality
       ...(siteId ? [] : MarkdownKit), // MarkdownKit is included in sparkTypeMediaKit when siteId is available
 
       ...sparkTypeMediaKit,
       ...collectionViewKit,
     ],
-    value: initialValue,
+    skipInitialization: true, // Don't initialize immediately
   });
 
 
-  // Set up change listener - use the onChange prop from Plate component instead
-  const handlePlateChange = useCallback(({ value }: { value: Value }) => {
+  // Set up change listener - simplified since we don't need the value
+  const handlePlateChange = useCallback(() => {
     if (onContentChange) {
-      onContentChange(value);
+      onContentChange();
     }
   }, [onContentChange]);
 
@@ -92,7 +86,7 @@ export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
     return '';
   }, [editor]);
 
-  // Method to set content from markdown
+  // Method to set content from markdown (deprecated, use initializeWithContent instead)
   const setMarkdown = useCallback((markdown: string) => {
     if (editor?.api?.markdown) {
       const plateValue = editor.api.markdown.deserialize(markdown);
@@ -100,16 +94,40 @@ export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
     }
   }, [editor]);
 
+  // Method to initialize editor with content using proper PlateJS pattern
+  const initializeWithContent = useCallback((markdown: string) => {
+    if (editor?.api?.markdown) {
+      const plateValue = editor.api.markdown.deserialize(markdown);
+      editor.tf.init({
+        value: plateValue,
+        autoSelect: 'end'
+      });
+      console.log('PlateJS initialized with content length:', markdown.length);
+    }
+  }, [editor]);
+
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
     getMarkdown,
     setMarkdown,
-  }), [getMarkdown, setMarkdown]);
+    initializeWithContent,
+  }), [getMarkdown, setMarkdown, initializeWithContent]);
+
+  // Show loading state until editor is ready
+  if (!ready) {
+    return (
+      <div className={className}>
+        <div className="flex items-center justify-center h-32 text-muted-foreground">
+          Loading editor...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={className}>
       <Plate editor={editor} onChange={handlePlateChange}>
-       
+
         <EditorContainer>
           <Editor placeholder={placeholder} />
         </EditorContainer>

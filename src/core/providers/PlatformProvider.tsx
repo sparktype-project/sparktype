@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useEffect, ReactNode } from 'react'
-import { usePlatform, Platform } from '../hooks/usePlatform'
+import { createContext, useContext, useEffect } from 'react'
+import type { ReactNode } from 'react'
+import { usePlatform } from '../hooks/usePlatform'
+import type { Platform } from '../hooks/usePlatform'
 
 interface PlatformContextType {
   platform: Platform
