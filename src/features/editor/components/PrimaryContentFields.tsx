@@ -57,7 +57,7 @@ export default function PrimaryContentFields({
             value={frontmatter.description || ''}
             onChange={(e) => handleChange('description', e.target.value)}
             // Style for a clean, borderless textarea
-            className="p-0 border-0 shadow-none focus-visible:ring-0 bg-transparent resize-none text-2xl text-black"
+            className="p-0 border-0 shadow-none focus-visible:ring-0 bg-none resize-none text-2xl"
             rows={1}
           />
         </div>

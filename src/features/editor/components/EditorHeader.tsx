@@ -137,7 +137,7 @@ export default function EditorHeader({ actions }: EditorHeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex shrink-0 items-center gap-4 border-b bg-background lg:pl-4 pr-4 h-[60px]">
+    <header className="sticky top-0 z-20 flex shrink-0 items-center gap-4 border-b bg-background lg:pl-4 px-4 h-[60px]">
       <div className="flex items-center gap-2">
         {/*
           This button is only visible if the corresponding sidebar has been

@@ -187,7 +187,7 @@ function EditContentPageInternal() {
             }
             return (
               <div className='flex h-full w-full flex-col'>
-                <div className='container mx-auto flex h-full max-w-[900px] flex-col p-6'>
+                <div className='container mx-auto flex h-full max-w-[900px] flex-col p-4 md:p-6'>
                   <div className="shrink-0">
                     {/* Context Indicator */}
                     <div className="mb-4">

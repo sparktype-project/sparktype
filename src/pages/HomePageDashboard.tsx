@@ -184,7 +184,7 @@ export default function HomePageDashboard() {
       </header>
       
       <main className="p-4 max-w-5xl mx-auto ">
-        <h1 className="text-4xl text-foreground my-8 font-serif">My sites</h1>
+        <h1 className="text-4xl text-foreground my-8 font-mono">My sites</h1>
         {validSites.length === 0 ? (
           <div className="text-center py-10 border-2 border-dashed border-muted rounded-lg">
             <h2 className="text-xl font-semibold text-muted-foreground mb-2">No sites yet</h2>
@@ -193,7 +193,7 @@ export default function HomePageDashboard() {
         ) : (
           <div className="grid grid-cols-1 gap-6">
             {validSites.map((site: LocalSiteData) => (
-              <div key={site.siteId} className="bg-card border-b flex flex-row justify-between pb-6">
+              <div key={site.siteId} className=" border-b flex flex-row justify-between pb-6">
                 <Link to={`/sites/${site.siteId}/view`} target="_blank" rel="noopener noreferrer" className='flex-1 hover:cursor-pointer group'>
                   <div className=''>
                     <h2 className="text-2xl cursor-pointer font-bold text-card-foreground mb-2 truncate group-hover:underline" title={site.manifest.title}>
