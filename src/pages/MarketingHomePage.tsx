@@ -2,9 +2,11 @@
 
 import { Link } from 'react-router-dom';
 
-// UI Components (no changes needed)
+// UI Components
 import { Button } from '@/core/components/ui/button';
 import { ShieldCheck, Feather, Zap, Archive } from 'lucide-react';
+import UnifiedHeader from '@/core/components/UnifiedHeader';
+import MarketingHeaderContent from '@/core/components/header-content/MarketingHeaderContent';
 
 // NO MORE 'react-helmet-async' import needed!
 
@@ -19,17 +21,9 @@ export default function MarketingHomePage() {
       <title>Sparktype - Own Your Content</title>
       <meta name="description" content="A simple, private, and portable publishing platform that puts you back in control." />
       
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2">
-            <img src="/sparktype.svg" className='size-7' />
-            <span className="text-2xl font-bold text-foreground hidden sm:inline">Sparktype</span>
-          </Link>
-          <Button asChild variant="ghost">
-            <Link to="/sites">Dashboard</Link>
-          </Button>
-        </div>
-      </header>
+      <UnifiedHeader>
+        <MarketingHeaderContent />
+      </UnifiedHeader>
 
       <div className="container mx-auto px-4 py-16 sm:py-24 text-center">
         <header className="mb-12">

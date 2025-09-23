@@ -1,0 +1,15 @@
+{
+  "app": {
+    "windows": [
+      {
+        "minWidth": 500,
+        "titleBarStyle": "Overlay",
+      "hiddenTitle": true,
+      "trafficLightPosition": {
+        "x": 20.0,
+        "y": 25.0
+      }
+      }
+    ]
+  }
+}

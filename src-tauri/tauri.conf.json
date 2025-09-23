@@ -17,13 +17,15 @@
         "height": 800,
         "resizable": true,
         "fullscreen": false,
-        "decorations": false,
+        "transparent": true,
+        "decorations": true,
+        "shadow": true,
         "label": "main",
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
         "trafficLightPosition": {
-          "x": 20.0,
-          "y": 25.0
+          "x": 15.0,
+          "y": 20.0
         }
       }
     ],

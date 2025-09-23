@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 
 export type Platform = 'web' | 'desktop' | 'ios' | 'android'
+export type OSPlatform = 'macos' | 'windows' | 'linux' | 'ios' | 'android' | 'web'
 
 export function usePlatform(): Platform {
   const [platform, setPlatform] = useState<Platform>('web')
@@ -11,7 +12,7 @@ export function usePlatform(): Platform {
         try {
           const { platform } = await import('@tauri-apps/plugin-os')
           const platformName = await platform()
-          
+
           switch (platformName) {
             case 'ios':
               setPlatform('ios')
@@ -40,6 +41,40 @@ export function usePlatform(): Platform {
   }, [])
 
   return platform
+}
+
+export function useOSPlatform(): OSPlatform {
+  const [osPlatform, setOSPlatform] = useState<OSPlatform>('web')
+
+  useEffect(() => {
+    const detectOSPlatform = async () => {
+      if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+        try {
+          const { platform } = await import('@tauri-apps/plugin-os')
+          const platformName = await platform()
+          setOSPlatform(platformName as OSPlatform)
+        } catch (error) {
+          // Fallback based on user agent for desktop detection
+          const userAgent = navigator.userAgent.toLowerCase()
+          if (userAgent.includes('mac')) {
+            setOSPlatform('macos')
+          } else if (userAgent.includes('win')) {
+            setOSPlatform('windows')
+          } else if (userAgent.includes('linux')) {
+            setOSPlatform('linux')
+          } else {
+            setOSPlatform('web')
+          }
+        }
+      } else {
+        setOSPlatform('web')
+      }
+    }
+
+    detectOSPlatform()
+  }, [])
+
+  return osPlatform
 }
 
 // Helper functions for conditional styling

@@ -1,14 +1,15 @@
 // src/core/components/Navbar.tsx
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Leaf, Home, Settings, Globe, Minus, X } from 'lucide-react';
+import { Leaf, Home, Settings, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 
-// UI Components (no changes needed)
+// UI Components and Platform Detection
 import { Button } from '@/core/components/ui/button';
 import { Input } from '@/core/components/ui/input';
 import { cn } from '@/core/libraries/utils';
+import { usePlatformContext } from '@/core/providers/PlatformProvider';
 
 /**
  * A specialized NavLink component for the main navigation.
@@ -35,13 +36,7 @@ const NavLink: React.FC<{ to: string; label: string; icon?: React.ReactNode; }> 
 export default function Navbar() {
   const navigate = useNavigate();
   const [remoteUrl, setRemoteUrl] = useState('');
-  const [isTauri, setIsTauri] = useState(false);
-
-  // Check if we're in Tauri environment
-  useEffect(() => {
-    const checkTauri = typeof window !== 'undefined' && !!(window as any).__TAURI__;
-    setIsTauri(checkTauri);
-  }, []);
+  const { isTauri, isDesktop } = usePlatformContext();
 
   const handleBrowseRemoteSite = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,23 +56,8 @@ export default function Navbar() {
     }
   };
 
-  // Tauri window controls
-  const handleMinimize = async () => {
-    if (isTauri) {
-      const { getCurrentWindow } = await import('@tauri-apps/api/window');
-      getCurrentWindow().minimize();
-    }
-  };
-
-  const handleClose = async () => {
-    if (isTauri) {
-      const { getCurrentWindow } = await import('@tauri-apps/api/window');
-      getCurrentWindow().close();
-    }
-  };
-
-  // For Tauri: Custom titlebar with draggable area
-  if (isTauri) {
+  // For Tauri Desktop: Custom titlebar with draggable area
+  if (isTauri && isDesktop) {
     return (
       <header
         data-tauri-drag-region
@@ -134,26 +114,6 @@ export default function Navbar() {
                 <Settings className="h-5 w-5" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
-            </div>
-
-            {/* Tauri Window Controls (macOS style) */}
-            <div className="flex items-center space-x-2 ml-4">
-              <button
-                onClick={handleMinimize}
-                onMouseDown={(e) => e.stopPropagation()} // Prevents dragging
-                className="w-3 h-3 bg-yellow-400 hover:bg-yellow-500 rounded-full transition-colors flex items-center justify-center group"
-                title="Minimize"
-              >
-                <Minus className="w-1.5 h-1.5 text-yellow-900 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
-              <button
-                onClick={handleClose}
-                onMouseDown={(e) => e.stopPropagation()} // Prevents dragging
-                className="w-3 h-3 bg-red-400 hover:bg-red-500 rounded-full transition-colors flex items-center justify-center group"
-                title="Close"
-              >
-                <X className="w-1.5 h-1.5 text-red-900 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
             </div>
           </div>
         </div>

@@ -1,9 +1,11 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useEffect } from 'react';
 import { useUIStore } from '@/core/state/uiStore';
 import { cn } from '@/core/libraries/utils';
-import EditorHeader from '@/features/editor/components/EditorHeader';
+import EditorHeaderContent from '@/core/components/header-content/EditorHeaderContent';
+import { useHeaderContext } from '@/core/contexts/HeaderContext';
 
 interface ThreeColumnLayoutProps {
   leftSidebar: ReactNode;
@@ -15,11 +17,20 @@ interface ThreeColumnLayoutProps {
 export default function ThreeColumnLayout({ leftSidebar, rightSidebar, children, headerActions }: ThreeColumnLayoutProps) {
   const isLeftOpen = useUIStore((state) => state.sidebar.isLeftOpen);
   const isRightOpen = useUIStore((state) => state.sidebar.isRightOpen);
+  const { setHeaderContent } = useHeaderContext();
+
+  // Set the header content when this layout mounts
+  useEffect(() => {
+    setHeaderContent(<EditorHeaderContent actions={headerActions} />);
+
+    // Clean up when unmounting
+    return () => {
+      setHeaderContent(null);
+    };
+  }, [headerActions, setHeaderContent]);
 
   return (
-    <div className="flex h-screen w-full flex-col">
-      <EditorHeader actions={headerActions} />
-      
+    <div className="h-full w-full flex flex-col">
       {/* This is now the positioning context for all three columns */}
       <div className="relative flex-1 overflow-hidden">
         

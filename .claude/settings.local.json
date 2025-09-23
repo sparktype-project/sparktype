@@ -11,7 +11,10 @@
       "Bash(./st-cli http://localhost:8080)",
       "Bash(go run:*)",
       "Bash(./test-cli)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "WebFetch(domain:v2.tauri.app)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:css-irl.info)"
     ]
   },
   "enableAllProjectMcpServers": true,
