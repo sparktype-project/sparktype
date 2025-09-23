@@ -1,6 +1,6 @@
 // src/pages/sites/SiteLayout.tsx
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, type ReactNode } from 'react';
 import { Link, Outlet, useParams, useLocation } from 'react-router-dom';
 
 // State Management
@@ -13,6 +13,11 @@ import { getActiveImageService } from '@/core/services/images/images.service';
 // UI and Icons
 import { TbEdit, TbSettings } from "react-icons/tb";
 import { cn } from '@/core/libraries/utils';
+
+// Header Components
+import UnifiedHeader from '@/core/components/UnifiedHeader';
+import { HeaderContext } from '@/core/contexts/HeaderContext';
+import DefaultHeaderContent from '@/core/components/header-content/DefaultHeaderContent';
 
 /**
  * Renders the site-specific icon, either the logo or a text fallback.
@@ -84,6 +89,7 @@ function SiteLayoutLoader() {
 export default function SiteLayout() {
   const { siteId } = useParams<{ siteId: string }>();
   const { pathname } = useLocation();
+  const [headerContent, setHeaderContent] = useState<ReactNode>(null);
 
   const site = useAppStore(useCallback((state: AppStore) => siteId ? state.getSiteById(siteId) : undefined, [siteId]));
   const loadSite = useAppStore((state: AppStore) => state.loadSite);
@@ -119,43 +125,52 @@ export default function SiteLayout() {
   ];
 
   return (
-    <div className="flex h-screen flex-col lg:flex-row">
-      <aside className="fixed inset-x-0 bottom-0 z-30 flex h-16 w-full shrink-0 border-t bg-background lg:static lg:inset-y-0 lg:left-0 lg:h-full lg:w-[60px] lg:border-r lg:border-t-0">
-        <nav className="flex w-full items-center justify-center gap-2  lg:flex-col lg:justify-start">
-          <Link
-            to="/"
-            title="Dashboard"
-            className='lg:flex hidden flex-col items-center w-[60px] h-[60px] border-b'
-          >
-            <img src="/sparktype.svg" width={32} height={32} alt="Sparktype" className='m-auto'/>
-          </Link>
-          
-          {navItems.map((item) => {
-            const IconComponent = item.icon;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                title={item.title}
-                className={cn(
-                  'flex h-10 w-10 items-center justify-center rounded-lg transition-colors overflow-hidden',
-                  item.isActive
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                )}
-              >
-                
-                <IconComponent className={cn(item.isStandardIcon && 'size-6')} />
-              </Link>
-            )
-          })}
-        </nav>
-      </aside>
+    <HeaderContext.Provider value={{ setHeaderContent }}>
+      <div className="flex h-screen flex-col">
+        {/* Global UnifiedHeader for all site pages */}
+        <UnifiedHeader showLogo={false}>
+          {headerContent || <DefaultHeaderContent />}
+        </UnifiedHeader>
 
-      <main className="flex-1 overflow-auto pb-16 lg:pb-0">
-        <Outlet />
-      </main>
-    </div>
+        <div className="flex flex-1 lg:flex-row flex-col">
+          <aside className="fixed inset-x-0 bottom-0 z-30 flex h-16 w-full shrink-0 border-t bg-background lg:static lg:inset-y-0 lg:left-0 lg:h-full lg:w-[50px] mx-[5px] rounded-lg shadow lg:border ">
+            <nav className="flex w-full items-center justify-center gap-2  lg:flex-col lg:justify-start">
+              <Link
+                to="/"
+                title="Dashboard"
+                className='lg:flex hidden flex-col items-center w-[60px] h-[60px] border-b'
+              >
+                <img src="/sparktype.svg" width={32} height={32} alt="Sparktype" className='m-auto'/>
+              </Link>
+
+              {navItems.map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    title={item.title}
+                    className={cn(
+                      'flex h-10 w-10 items-center justify-center rounded-lg transition-colors overflow-hidden',
+                      item.isActive
+                        ? 'bg-accent text-accent-foreground'
+                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                    )}
+                  >
+
+                    <IconComponent className={cn(item.isStandardIcon && 'size-6')} />
+                  </Link>
+                )
+              })}
+            </nav>
+          </aside>
+
+          <main className="flex-1 overflow-auto pb-16 lg:pb-0 border rounded-lg mx-[5px] mb-[5px]">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    </HeaderContext.Provider>
   );
 }
 

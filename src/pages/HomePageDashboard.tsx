@@ -16,11 +16,12 @@ import { slugify } from '@/core/libraries/utils';
 // UI Components & Icons
 import { Button } from '@/core/components/ui/button';
 import { toast } from 'sonner';
-import { FilePlus2, Upload, Eye, Edit3, Archive, Trash2, MoreVertical, ChevronDown, Github } from 'lucide-react';
+import { Eye, Edit3, Archive, Trash2, MoreVertical, Upload, FilePlus2, ChevronDown, Github } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/core/components/ui/alert-dialog";
 import CreateSiteModal from '@/core/components/CreateSiteModal';
 import ImportModal from '@/core/components/ImportModal';
+import UnifiedHeader from '@/core/components/UnifiedHeader';
 
 export default function HomePageDashboard() {
   const { sites, getSiteById, addSite, updateSiteSecrets, loadSite, deleteSiteAndState } = useAppStore();
@@ -30,7 +31,6 @@ export default function HomePageDashboard() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isGitHubImportOpen, setIsGitHubImportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const importDropdownRef = useRef<HTMLButtonElement>(null);
 
   const finishImport = useCallback(async (data: LocalSiteData & { imageAssetsToSave?: Record<string, Blob> }) => {
     try {
@@ -133,8 +133,8 @@ export default function HomePageDashboard() {
   // Listen for global import trigger from menu
   useEffect(() => {
     const handleTriggerImport = () => {
-      // Open the dropdown menu for both web and Tauri
-      importDropdownRef.current?.click();
+      // Trigger file input directly for import
+      fileInputRef.current?.click();
     };
 
     window.addEventListener('triggerImport', handleTriggerImport);
@@ -148,18 +148,24 @@ export default function HomePageDashboard() {
   return (
     <>
        <title>My sites | Sparktype</title>
-      
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
-        <div className="flex h-16 items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2">
-            <img src="/sparktype.svg" className='size-8' />
-            <span className="text-xl font-bold font-mono text-foreground hidden sm:inline">Sparktype</span>
-          </Link>
+
+      <UnifiedHeader>
+        <></>
+      </UnifiedHeader>
+
+      <main className="p-4 max-w-5xl mx-auto ">
+        <div className="flex justify-between items-center my-8">
+          <h1 className="text-4xl text-foreground font-serif">My sites</h1>
+
+          {/* Action buttons moved from header */}
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button ref={importDropdownRef} variant="ghost" disabled={isImporting}>
-                  <Upload className="h-4 w-4" /> 
+                <Button
+                  variant="ghost"
+                  disabled={isImporting}
+                >
+                  <Upload className="h-4 w-4" />
                   {isImporting ? 'Importing...' : 'Import site'}
                   <ChevronDown className="ml-1 h-3 w-3" />
                 </Button>
@@ -176,15 +182,16 @@ export default function HomePageDashboard() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" onClick={() => setIsCreateModalOpen(true)}>
-              <FilePlus2 className="h-4 w-4" /> Create new site
+
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              <FilePlus2 className="h-4 w-4" />
+              Create new site
             </Button>
           </div>
         </div>
-      </header>
-      
-      <main className="p-4 max-w-5xl mx-auto ">
-        <h1 className="text-4xl text-foreground my-8 font-serif">My sites</h1>
         {validSites.length === 0 ? (
           <div className="text-center py-10 border-2 border-dashed border-muted rounded-lg">
             <h2 className="text-xl font-semibold text-muted-foreground mb-2">No sites yet</h2>

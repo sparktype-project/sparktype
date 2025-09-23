@@ -126,8 +126,31 @@
   }
   html {
     font-size: 18px;
+    /* Prevent scroll bouncing on window/viewport level for fixed/sticky elements */
+    overscroll-behavior: none;
   }
   body {
     @apply bg-background text-foreground;
+    /* Prevent scroll bouncing on body level */
+    overscroll-behavior: none;
+  }
+
+  /* Restore scroll bounce behavior for scrollable content containers */
+  .scrollable-content,
+  .overflow-auto,
+  .overflow-y-auto,
+  .overflow-x-auto,
+  .overflow-y-scroll,
+  .overflow-x-scroll,
+  [data-scrollable="true"] {
+    overscroll-behavior: auto;
+  }
+
+  /* Browser toolbar styling */
+  .browser-address-bar {
+    @apply rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+    @apply disabled:cursor-not-allowed disabled:opacity-50;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
   }
 }

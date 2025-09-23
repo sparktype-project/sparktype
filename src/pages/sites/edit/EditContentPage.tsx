@@ -32,7 +32,7 @@ import CollectionItemList from '@/features/editor/components/CollectionItemList'
 /**
  * A loading skeleton specifically for the main editor content area.
  */
-function EditorLoadingSkeleton({ message = "Loading Editor..." }: { message?: string }) {
+function EditorLoadingSkeleton({ message = "Loading Editor..." }: { message?: string }) { 3
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-6">
       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
