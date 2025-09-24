@@ -22,7 +22,10 @@
       "Bash(npm install:*)",
       "Bash(cargo check:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "WebFetch(domain:thatgurjot.com)",
+      "WebFetch(domain:ratulmaharaj.com)",
+      "Bash(npm run tauri:dev:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

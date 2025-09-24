@@ -201,7 +201,7 @@ export default function HomePageDashboard() {
           <div className="grid grid-cols-1 gap-6">
             {validSites.map((site: LocalSiteData) => (
               <div key={site.siteId} className=" border-b flex flex-row justify-between pb-6">
-                <Link to={`/sites/${site.siteId}/view`} target="_blank" rel="noopener noreferrer" className='flex-1 hover:cursor-pointer group'>
+                <Link to={`/sites/${site.siteId}/view`} className='flex-1 hover:cursor-pointer group'>
                   <div className=''>
                     <h2 className="text-2xl cursor-pointer font-bold text-card-foreground mb-2 truncate group-hover:underline" title={site.manifest.title}>
                       {site.manifest.title || "Untitled Site"}

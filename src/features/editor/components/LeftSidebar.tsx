@@ -332,7 +332,7 @@ export default function LeftSidebar() {
           </Accordion>
         </div>
 
-        <div className="mt-auto shrink-0 border-t p-2 space-y-1">
+        <div className=" border-t p-2 space-y-1">
             {site?.manifest.auth?.requiresAuth ? (
               <AlertDialog>
                 <AlertDialogTrigger asChild>

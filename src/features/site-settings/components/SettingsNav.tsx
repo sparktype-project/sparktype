@@ -25,7 +25,7 @@ export default function SettingsNav() {
 
   return (
     <div className="flex h-full flex-col p-4">
-      <h2 className="px-2 text-lg font-semibold tracking-tight">Settings</h2>
+      <h2 className="text-lg font-semibold">Settings</h2>
       <nav className="mt-4 flex flex-col gap-1">
         {navItems.map((item) => (
           <NavLink
@@ -35,7 +35,7 @@ export default function SettingsNav() {
             // The `className` prop on NavLink can accept a function that receives an `isActive` boolean.
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                'flex items-center gap-3 rounded px-2 py-1 text-xs font-normal transition-colors',
                 isActive
                   ? 'bg-primary text-primary-foreground' // Style for the active link
                   : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground' // Style for inactive links

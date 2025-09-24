@@ -11,14 +11,15 @@ import { type AppStore } from '@/core/state/useAppStore';
 import { getActiveImageService } from '@/core/services/images/images.service';
 
 // UI and Icons
-import { TbEdit, TbSettings } from "react-icons/tb";
 import { cn } from '@/core/libraries/utils';
+import { Edit3, Settings } from 'lucide-react';
 
 // Header Components
 import UnifiedHeader from '@/core/components/UnifiedHeader';
 import { HeaderContext } from '@/core/contexts/HeaderContext';
 import DefaultHeaderContent from '@/core/components/header-content/DefaultHeaderContent';
 import SparkotypeLogo from '@/core/components/ui/SparkotypeLogo';
+import Loader from '@/core/components/ui/Loader';
 
 /**
  * Renders the site-specific icon, either the logo or a text fallback.
@@ -75,15 +76,7 @@ function SiteIcon({ site }: { site: AppStore['sites'][0] }) {
  */
 function SiteLayoutLoader() {
     return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <div className="flex flex-col items-center gap-2">
-                <svg className="animate-spin h-6 w-6 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p className="text-sm text-muted-foreground">Loading Site Data...</p>
-            </div>
-        </div>
+        <Loader />
     );
 }
 
@@ -119,10 +112,10 @@ export default function SiteLayout() {
   // --- FIX: Add a property to distinguish standard icons ---
   const navItems = [
     // This item will not receive the extra size class.
-    { to: siteId ? `/sites/${siteId}/view` : '#', title: 'View Site', icon: () => <SiteIcon site={site} />, isStandardIcon: false, isActive: isViewActive },
+    { to: siteId ? `/sites/${siteId}/view` : '#', title: 'View site', icon: () => <SiteIcon site={site} />, isStandardIcon: false, isActive: isViewActive },
     // These items will receive the `size-6` class.
-    { to: siteId ? `/sites/${siteId}/edit` : '#', title: 'Edit Content', icon: TbEdit, isStandardIcon: true, isActive: isEditorActive },
-    { to: siteId ? `/sites/${siteId}/settings` : '#', title: 'Site Settings', icon: TbSettings, isStandardIcon: true, isActive: isSettingsActive },
+    { to: siteId ? `/sites/${siteId}/edit` : '#', title: 'Edit content', icon: Edit3, isStandardIcon: true, isActive: isEditorActive },
+    { to: siteId ? `/sites/${siteId}/settings` : '#', title: 'Site settings', icon: Settings, isStandardIcon: true, isActive: isSettingsActive },
   ];
 
   return (
@@ -132,9 +125,7 @@ export default function SiteLayout() {
         <UnifiedHeader showLogo={false}>
           {headerContent || <DefaultHeaderContent />}
         </UnifiedHeader>
-
-        <div className="flex flex-1 md:flex-row flex-col">
-          <aside className="fixed inset-x-0 bottom-0 z-30 flex h-16 w-full shrink-0 border-t md:border-t-0 md:border-r bg-background md:static md:inset-y-0 md:left-0 md:h-full md:w-[50px]">
+         <aside className="fixed inset-x-0 bottom-0 z-30 flex h-16 w-full shrink-0 border-t md:border-t-0 md:border-r bg-background md:top-[45px] md:inset-y-0 md:left-0 md:h-full md:w-[50px]">
             <nav className=" px-8 md:p-0 flex w-full items-center justify-between gap-3  md:flex-col md:justify-start">
               <Link
                 to="/"
@@ -165,11 +156,11 @@ export default function SiteLayout() {
               })}
             </nav>
           </aside>
+         
 
-          <main className="flex-1 overflow-auto pb-16 md:pb-0">
+          <main className="flex-1 overflow-hidden pb-16 md:pb-0 md:ml-[50px]">
             <Outlet />
           </main>
-        </div>
       </div>
     </HeaderContext.Provider>
   );

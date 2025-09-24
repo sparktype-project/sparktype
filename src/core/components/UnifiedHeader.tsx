@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { Leaf } from 'lucide-react';
 import { cn } from '@/core/libraries/utils';
 import { usePlatformContext } from '@/core/providers/PlatformProvider';
+import SparkotypeLogo from './ui/SparkotypeLogo';
 
 interface UnifiedHeaderProps {
   children: ReactNode;
@@ -35,7 +36,7 @@ export default function UnifiedHeader({
       >
         <div
         
-          className="flex items-center justify-between h-[45px] px-4"
+          className="flex items-center justify-between h-[45px] px-2 md:px-4"
           data-tauri-drag-region
         >
           {/* Logo section */}
@@ -45,8 +46,7 @@ export default function UnifiedHeader({
               data-tauri-drag-region
             >
               <Link to="/" className="flex items-center space-x-2">
-                <img src="/sparktype.svg" width={20} height={20} alt="Sparktype" className='m-auto'/>
-                <span className="text-sm font-bold ml-2 text-foreground hidden sm:inline">
+                <span className="text-sm font-bold text-foreground hidden sm:inline">
                   {title || 'Sparktype'}
                 </span>
               </Link>
@@ -69,15 +69,14 @@ export default function UnifiedHeader({
       "sticky top-0 z-[100] w-full  bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b",
       className
     )}>
-      <div className="flex h-16 items-center justify-between px-4">
+      <div className="flex h-[50px] items-center justify-between px-4">
         {/* Logo section */}
         {showLogo && (
           <div className="flex items-center space-x-2 shrink-0">
             <Link to="/" className="flex items-center space-x-2">
-              <Leaf className="h-7 w-7 text-primary" />
-              <span className="text-2xl font-bold text-foreground hidden sm:inline">
-                {title || 'Sparktype'}
-              </span>
+              <span className="text-sm font-bold text-foreground hidden sm:inline">
+                  {title || 'Sparktype'}
+                </span>
             </Link>
           </div>
         )}

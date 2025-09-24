@@ -187,51 +187,49 @@ function EditContentPageInternal() {
               return <EditorLoadingSkeleton />;
             }
             return (
-              <div className='flex h-full w-full flex-col'>
-                <div className='container mx-auto flex h-full max-w-[900px] flex-col p-4 md:p-6'>
-                  <div className="shrink-0">
-                    {/* Context Indicator */}
-                    <div className="mb-4">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">
-                          {collectionContext.displayName} 
-                          {collectionContext.isCollectionItem && collectionContext.collection && (
-                            <span className='ml-1'>
-                            / {collectionContext.collectionItemLayout}
-                           </span>
-                          )} 
-                        
-                        </span>
-                      </div>
-                      
+              <div className='container mx-auto flex flex-col max-w-[900px] p-4 md:p-6'>
+                <div className="">
+                  {/* Context Indicator */}
+                  <div className="mb-4">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">
+                        {collectionContext.displayName}
+                        {collectionContext.isCollectionItem && collectionContext.collection && (
+                          <span className='ml-1'>
+                          / {collectionContext.collectionItemLayout}
+                         </span>
+                        )}
+
+                      </span>
                     </div>
-                    
-                    <PrimaryContentFields 
-                      frontmatter={{ 
-                        title: frontmatter.title, 
-           
-                        description: frontmatter.description as string | undefined
-                      }} 
-                      onFrontmatterChange={handleFrontmatterChange as (newData: Partial<MarkdownFrontmatter>) => void} 
-                    />
+
                   </div>
-                  <div className="mt-6 flex-grow min-h-0">
-                     {frontmatter.layoutConfig?.collectionId ? (
-                      <CollectionItemList siteId={siteId} collectionId={frontmatter.layoutConfig.collectionId as string} />
-                      
-                    ) : (
-                    <PlateEditor
-                      ref={editorRef}
-                      onContentChange={() => {
-                        onContentModified();
-                      }}
-                      placeholder="Type your amazing content here..."
-                      siteId={siteId}
-                      collections={siteCollections}
-                      ready={editorReady}
-                    />
-                    )}
-                  </div>
+
+                  <PrimaryContentFields
+                    frontmatter={{
+                      title: frontmatter.title,
+
+                      description: frontmatter.description as string | undefined
+                    }}
+                    onFrontmatterChange={handleFrontmatterChange as (newData: Partial<MarkdownFrontmatter>) => void}
+                  />
+                </div>
+                <div className="mt-6 flex-1 min-h-0">
+                   {frontmatter.layoutConfig?.collectionId ? (
+                    <CollectionItemList siteId={siteId} collectionId={frontmatter.layoutConfig.collectionId as string} />
+
+                  ) : (
+                  <PlateEditor
+                    ref={editorRef}
+                    onContentChange={() => {
+                      onContentModified();
+                    }}
+                    placeholder="Type your amazing content here..."
+                    siteId={siteId}
+                    collections={siteCollections}
+                    ready={editorReady}
+                  />
+                  )}
                 </div>
               </div>
             );

@@ -93,7 +93,7 @@ export default function ViewHeaderContent() {
       </div>
 
       {/* URL Address Bar */}
-      <div className="flex-1 mx-3" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="flex-1 md:mx-12" onMouseDown={(e) => e.stopPropagation()}>
         <Input
           value={addressBarValue}
           onChange={handleAddressChange}
@@ -101,7 +101,7 @@ export default function ViewHeaderContent() {
           onFocus={handleAddressFocus}
           onBlur={handleAddressBlur}
           placeholder="Enter site path..."
-          className="h-8 browser-address-bar"
+          className="h-8 browser-address-bar rounded-full"
         />
       </div>
 
