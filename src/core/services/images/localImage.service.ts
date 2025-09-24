@@ -8,6 +8,7 @@ import imageCompression from 'browser-image-compression';
 import { MEMORY_CONFIG } from '@/config/editorConfig';
 import { toast } from 'sonner';
 import { cropAndResizeImage, getImageDimensions as getImageDimensionsFromBlob } from './imageManipulation.service';
+import { isTauriApp } from '@/core/utils/platform';
 // TODO: Re-add manifest tracking with different approach
 
 /**
@@ -132,8 +133,8 @@ class LocalImageService implements ImageService {
         return `/_site/assets/originals/${filename}`;
       }
       const sourceBlob = await this.getSourceBlob(manifest.siteId, ref.src);
-      if (forIframe) {
-        // For iframe contexts, use data URLs
+      if (forIframe || isTauriApp()) {
+        // For iframe contexts or Tauri apps, use data URLs to avoid WebKit blob URL limitations
         return new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
@@ -164,9 +165,9 @@ class LocalImageService implements ImageService {
     if (isExport) {
       // For export, derivatives go to assets/derivatives/
       return `/assets/derivatives/${derivativeFilename}`;
-    } else if (forIframe) {
-      // For iframe contexts, use data URLs
-      console.log(`[LocalImageService] Creating data URL for iframe: ${cacheKey}`);
+    } else if (forIframe || isTauriApp()) {
+      // For iframe contexts or Tauri apps, use data URLs to avoid WebKit blob URL limitations
+      console.log(`[LocalImageService] Creating data URL for ${isTauriApp() ? 'Tauri' : 'iframe'}: ${cacheKey}`);
       return new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
@@ -174,7 +175,7 @@ class LocalImageService implements ImageService {
         reader.readAsDataURL(finalBlob);
       });
     } else {
-      // For preview, return blob URL
+      // For preview in web browsers, return blob URL for better performance
       const blobUrl = URL.createObjectURL(finalBlob);
       console.log(`[LocalImageService] Preview blob URL created: ${blobUrl}`);
       return blobUrl;

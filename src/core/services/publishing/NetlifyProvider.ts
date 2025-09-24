@@ -1,6 +1,9 @@
 import { BaseProvider } from './BaseProvider';
 import type { PublishingResult, ValidationResult, PublishingConfigSchema } from './types';
 import type { LocalSiteData } from '@/core/types';
+import { netlifyTauriService } from '@/core/services/netlify.tauri.service';
+import { loadSiteSecretsFromDb } from '@/core/services/siteSecrets.service';
+import { isTauriApp } from '@/core/utils/platform';
 
 export interface NetlifyConfig {
   apiToken: string;
@@ -16,6 +19,23 @@ export class NetlifyProvider extends BaseProvider {
   // Live proxy function deployed to Netlify
   private readonly defaultProxyUrl = 'https://sparktype-proxy.netlify.app/.netlify/functions/netlify-deploy';
 
+  /**
+   * Determines proxy configuration from site secrets
+   */
+  private async getProxyConfig(siteId: string) {
+    const secrets = await loadSiteSecretsFromDb(siteId);
+    const proxySettings = secrets.publishing?.netlify?.proxySettings;
+
+    // Default to app proxy in Tauri mode, external proxy otherwise
+    const useAppProxy = proxySettings?.useAppProxy ?? isTauriApp();
+    const customProxyUrl = proxySettings?.customProxyUrl || this.defaultProxyUrl;
+
+    return {
+      useAppProxy: useAppProxy && isTauriApp(), // Only allow app proxy in Tauri
+      proxyUrl: customProxyUrl
+    };
+  }
+
   async deploy(site: LocalSiteData, config: Record<string, unknown>): Promise<PublishingResult> {
     try {
       const validation = await this.validateConfig(config);
@@ -28,9 +48,14 @@ export class NetlifyProvider extends BaseProvider {
 
       // Cast config to NetlifyConfig for type safety after validation
       const netlifyConfig = config as unknown as NetlifyConfig;
-      const proxyUrl = netlifyConfig.proxyUrl || this.defaultProxyUrl;
 
-      console.log(`[NetlifyProvider] Starting deployment via proxy: ${proxyUrl}`);
+      // Get proxy configuration
+      const proxyConfig = await this.getProxyConfig(site.siteId);
+
+      console.log(`[NetlifyProvider] Starting deployment using ${proxyConfig.useAppProxy ? 'app proxy' : 'external proxy'}`);
+      if (!proxyConfig.useAppProxy) {
+        console.log(`[NetlifyProvider] External proxy URL: ${proxyConfig.proxyUrl}`);
+      }
 
       // Generate site files
       const files = await this.generateSiteFiles(site);
@@ -57,24 +82,41 @@ export class NetlifyProvider extends BaseProvider {
           };
         }
         
-        // Use the optimized ZIP
-        const zipBase64 = await this.blobToBase64(optimizedZip);
-        return await this.deployViaProxy(proxyUrl, netlifyConfig.apiToken, netlifyConfig.siteId!, zipBase64);
+        // Use the optimized ZIP for external proxy deployment
+        if (proxyConfig.useAppProxy) {
+          return await netlifyTauriService.deploySite(netlifyConfig.apiToken, netlifyConfig.siteId!, optimizedZip);
+        } else {
+          const zipBase64 = await this.blobToBase64(optimizedZip);
+          return await this.deployViaProxy(proxyConfig.proxyUrl, netlifyConfig.apiToken, netlifyConfig.siteId!, zipBase64);
+        }
       }
-      
-      // Convert blob to base64 for proxy transmission
-      const zipBase64 = await this.blobToBase64(zipBlob);
+
+      // Convert blob to base64 for external proxy transmission (if needed)
+      let zipBase64 = '';
+      if (!proxyConfig.useAppProxy) {
+        zipBase64 = await this.blobToBase64(zipBlob);
+      }
       
       let siteId = netlifyConfig.siteId;
       
-      // If no siteId provided, create a new site via proxy
+      // If no siteId provided, create a new site
       if (!siteId) {
         console.log('[NetlifyProvider] Creating new Netlify site...');
-        const createResponse = await this.createSiteViaProxy(
-          proxyUrl,
-          netlifyConfig.apiToken, 
-          netlifyConfig.siteName || site.manifest.title
-        );
+
+        let createResponse;
+        if (proxyConfig.useAppProxy) {
+          createResponse = await netlifyTauriService.createSite(
+            netlifyConfig.apiToken,
+            netlifyConfig.siteName || site.manifest.title
+          );
+        } else {
+          createResponse = await this.createSiteViaProxy(
+            proxyConfig.proxyUrl,
+            netlifyConfig.apiToken,
+            netlifyConfig.siteName || site.manifest.title
+          );
+        }
+
         if (!createResponse.success) {
           return createResponse;
         }
@@ -104,16 +146,31 @@ export class NetlifyProvider extends BaseProvider {
         console.log(`[NetlifyProvider] Saved site ID ${siteId} to publishing config`);
       }
       
-      // Deploy the files via proxy
+      // Deploy the files
       console.log(`[NetlifyProvider] Deploying to site: ${siteId}`);
-      console.log(`[NetlifyProvider] ZIP size: ${zipBase64.length} characters`);
-      const deployResponse = await this.deployViaProxy(
-        proxyUrl,
-        netlifyConfig.apiToken, 
-        siteId!, 
-        zipBase64
-      );
-      
+
+      let deployResponse;
+      if (proxyConfig.useAppProxy) {
+        // Use Tauri service for direct deployment
+        console.log(`[NetlifyProvider] Using app proxy for deployment`);
+        const zipBlob = await this.createZipFromFiles(files);
+        deployResponse = await netlifyTauriService.deploySite(
+          netlifyConfig.apiToken,
+          siteId!,
+          zipBlob
+        );
+      } else {
+        // Use external proxy for deployment
+        console.log(`[NetlifyProvider] Using external proxy for deployment`);
+        console.log(`[NetlifyProvider] ZIP size: ${zipBase64.length} characters`);
+        deployResponse = await this.deployViaProxy(
+          proxyConfig.proxyUrl,
+          netlifyConfig.apiToken,
+          siteId!,
+          zipBase64
+        );
+      }
+
       return deployResponse;
       
     } catch (error) {
@@ -125,51 +182,71 @@ export class NetlifyProvider extends BaseProvider {
     }
   }
 
-  async validateConfig(config: Record<string, unknown>): Promise<ValidationResult> {
+  async validateConfig(config: Record<string, unknown>, siteId?: string): Promise<ValidationResult> {
     const requiredFields = ['apiToken'];
     const baseValidation = this.validateRequiredFields(config, requiredFields);
-    
+
     if (!baseValidation.valid) {
       return baseValidation;
     }
 
-    // Validate API token via deployed proxy function
+    // Validate API token using appropriate service
     try {
       const netlifyConfig = config as unknown as NetlifyConfig;
-      const proxyUrl = netlifyConfig.proxyUrl || this.defaultProxyUrl;
-      
-      console.log(`[NetlifyProvider] Validating API token via proxy: ${proxyUrl}`);
-      
-      const requestBody = {
-        action: 'get-sites',
-        apiToken: config.apiToken
-      };
-      
-      console.log('[NetlifyProvider] Request details:', {
-        url: proxyUrl,
-        method: 'POST',
-        body: { ...requestBody, apiToken: requestBody.apiToken ? '[HIDDEN]' : 'MISSING' }
-      });
-      
-      const response = await fetch(proxyUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-      
-      console.log(`[NetlifyProvider] Response status: ${response.status} ${response.statusText}`);
-      
-      const result = await response.json();
-      
+
+      // Get proxy configuration if siteId is available
+      let useAppProxy = isTauriApp(); // Default for validation when no siteId
+      let proxyUrl = this.defaultProxyUrl;
+
+      if (siteId) {
+        const proxyConfig = await this.getProxyConfig(siteId);
+        useAppProxy = proxyConfig.useAppProxy;
+        proxyUrl = proxyConfig.proxyUrl;
+      }
+
+      console.log(`[NetlifyProvider] Validating API token using ${useAppProxy ? 'app proxy' : 'external proxy'}`);
+
+      let result;
+      if (useAppProxy) {
+        // Use Tauri service for validation
+        result = await netlifyTauriService.validateToken(netlifyConfig.apiToken);
+      } else {
+        // Use external proxy for validation
+        console.log(`[NetlifyProvider] External proxy URL: ${proxyUrl}`);
+
+        const requestBody = {
+          action: 'get-sites',
+          apiToken: config.apiToken
+        };
+
+        const response = await fetch(proxyUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        console.log(`[NetlifyProvider] Response status: ${response.status} ${response.statusText}`);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          return {
+            valid: false,
+            errors: [`Proxy error (${response.status}): ${errorText}`]
+          };
+        }
+
+        result = await response.json();
+      }
+
       if (!result.success) {
         return {
           valid: false,
           errors: [result.error || 'Invalid API token']
         };
       }
-      
+
       console.log('[NetlifyProvider] API token validated successfully');
       return { valid: true, errors: [] };
     } catch (error) {

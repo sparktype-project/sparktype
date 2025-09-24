@@ -79,13 +79,13 @@ export default function FileTreeNode({
 
   const showDropLine = activeId && projected && isOver && projected.depth === item.depth;
   const showNestingHighlight = activeId && projected && isOver && projected.depth > item.depth;
-  
+
   return (
     <li
       ref={setNodeRef}
       style={{ paddingLeft: indentation, ...style }}
       className={cn(
-        'relative list-none my-0.5 rounded-md transition-shadow',
+        'relative list-none rounded-md transition-shadow',
         isDragging && 'opacity-50 z-10 shadow-lg',
         showNestingHighlight && 'bg-blue-100 dark:bg-blue-900/40'
       )}
@@ -93,11 +93,11 @@ export default function FileTreeNode({
       {showDropLine && (
         <div className="absolute -top-[3px] left-0 right-0 h-1 bg-blue-500 rounded-full z-20" />
       )}
-      
+
       <div
         className={cn(
-          "flex items-center group w-full relative transition-colors h-9",
-          activePath === item.path && "bg-accent text-accent-foreground"
+          "flex items-center group w-full relative transition-colors h-8",
+          activePath === item.path && "bg-accent text-accent-foreground rounded"
         )}
       >
         <button
@@ -105,17 +105,17 @@ export default function FileTreeNode({
           {...listeners}
           disabled={isHomepage}
           className={cn(
-            "p-1.5 touch-none",
+            "p-1 touch-none",
             isHomepage ? "cursor-default text-muted-foreground/30" : "cursor-grab text-muted-foreground/50 hover:text-muted-foreground"
           )}
         >
           <GripVertical className="h-4 w-4" />
         </button>
-        
+
         <div className="flex-grow flex items-center pl-1 pr-1 overflow-hidden">
           {showCollapseButton ? (
             <button onClick={() => onCollapse(item.path)} className="p-0.5 mr-1" aria-label={`Collapse ${item.title}`}>
-                <ChevronRight className={cn("h-4 w-4 shrink-0 transition-transform duration-200", !item.collapsed && "rotate-90")} />
+              <ChevronRight className={cn("h-4 w-4 shrink-0 transition-transform duration-200", !item.collapsed && "rotate-90")} />
             </button>
           ) : (
             // A spacer is used to keep alignment consistent for items without a collapse button.
@@ -123,19 +123,19 @@ export default function FileTreeNode({
           )}
 
           {isHomepage ? (
-            <Home className="h-4 w-4 shrink-0 text-primary" />
+            <Home className="size-3 shrink-0 text-primary" />
           ) : isCollection ? (
-            <LayoutGrid className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <LayoutGrid className="size-3 shrink-0 text-muted-foreground" />
           ) : (
-            <FileIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <FileIcon className="size-3 shrink-0 text-muted-foreground" />
           )}
-          
+
           {isDraft && (
             <EyeOff className="h-3 w-3 shrink-0 text-muted-foreground/60 ml-1" />
           )}
-          
+
           {/* CORRECT: Use the react-router-dom Link with the `to` prop */}
-          <Link to={to} className="truncate flex-grow mx-1.5 text-sm hover:underline" title={item.title}>
+          <Link to={to} className="truncate flex-grow mx-1.5 text-xs hover:underline" title={item.title}>
             {item.menuTitle || item.title}
           </Link>
         </div>

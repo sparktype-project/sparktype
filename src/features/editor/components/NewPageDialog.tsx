@@ -89,7 +89,7 @@ export default function NewPageDialog({ siteId, children, onComplete }: NewPageD
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Content Page</DialogTitle>
+          <DialogTitle>Create new page</DialogTitle>
           <DialogDescription>
             Give your new page a title. You can add content and change settings later.
           </DialogDescription>
@@ -97,7 +97,7 @@ export default function NewPageDialog({ siteId, children, onComplete }: NewPageD
         <form onSubmit={handleCreatePage}>
           <div className="grid gap-4 py-4">
             <div className="space-y-1">
-              <Label htmlFor="title">Page Title</Label>
+              <Label htmlFor="title">Page title</Label>
               <Input 
                 id="title" 
                 value={title} 
@@ -110,7 +110,7 @@ export default function NewPageDialog({ siteId, children, onComplete }: NewPageD
           <DialogFooter>
             <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
             <Button type="submit" disabled={!title.trim() || isSubmitting}>
-              {isSubmitting ? 'Creating...' : <><Plus className="mr-2 h-4 w-4" /> Create Page</>}
+              {isSubmitting ? 'Creating...' : <><Plus className="mr-2 h-4 w-4" /> Create page</>}
             </Button>
           </DialogFooter>
         </form>

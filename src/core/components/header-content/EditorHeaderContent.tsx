@@ -175,16 +175,13 @@ export default function EditorHeaderContent({ actions, siteId: propSiteId }: Edi
           </Link>
         </Button>
 
-        <Button
-          variant="outline"
+        <div
           onClick={handlePublishSite}
-          disabled={isPublishing}
           onMouseDown={(e) => e.stopPropagation()} // Prevent dragging on button
           className='size-3 hover:cursor-pointer'
-          size='icon'
         >
           <UploadCloud className="h-4 w-4" />
-        </Button>
+        </div>
 
         {/* Right sidebar toggle button */}
         {isRightAvailable && (

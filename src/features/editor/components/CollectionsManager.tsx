@@ -74,13 +74,11 @@ export default function CollectionsManager({ siteId }: CollectionsManagerProps) 
         
         <div className="flex-1 overflow-y-auto">
           {collections.length === 0 ? (
-            <div className="p-2">
-              <div className="space-y-3">
+              <div className="space-y-3 px-1">
                 <div className="text-muted-foreground">
-                  <p className="text-xs">No collections yet. Click the plus button above to create one.</p>
+                  <p className="text-xs">No collections yet. </p>
                 </div>
               </div>
-            </div>
           ) : (
             <div className="space-y-1">
               {collections.map((collection) => (

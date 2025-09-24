@@ -27,9 +27,9 @@ export default function UnifiedHeader({
       <header
         data-tauri-drag-region
         className={cn(
-          "sticky top-0 z-50 w-full  pl-18",
+          "sticky top-0 z-[90] w-full  pl-18",
           // Transparent background for Tauri to maintain rounded corners and native appearance
-          "bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl supports-[backdrop-filter]:backdrop-blur-xl",
+          "bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl supports-[backdrop-filter]:backdrop-blur-xl border-b",
           className
         )}
       >
@@ -66,7 +66,7 @@ export default function UnifiedHeader({
   // For web: Standard header without drag regions
   return (
     <header className={cn(
-      "sticky top-0 z-50 w-full  bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+      "sticky top-0 z-[100] w-full  bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b",
       className
     )}>
       <div className="flex h-16 items-center justify-between px-4">

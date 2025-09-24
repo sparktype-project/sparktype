@@ -21,6 +21,10 @@ export interface SiteSecrets {
   publishing?: {
     netlify?: {
       apiToken?: string;
+      proxySettings?: {
+        useAppProxy?: boolean; // true = use Tauri app proxy, false = use custom proxy URL
+        customProxyUrl?: string; // custom proxy URL when not using app proxy
+      };
     };
     github?: {
       accessToken?: string;

@@ -79,12 +79,10 @@ export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto">
         {tagGroups.length === 0 ? (
-          <div className="p-2">
-            <div className="space-y-3">
+            <div className="space-y-3 px-1">
               <div className="text-muted-foreground">
-                <p className="text-xs">No tag groups yet. Click the plus button above to create one.</p>
+                <p className="text-xs">No tags yet.</p>
               </div>
-            </div>
           </div>
         ) : (
           <div className="space-y-1">

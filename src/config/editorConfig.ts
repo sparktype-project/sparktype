@@ -156,7 +156,8 @@ export const BASE_SCHEMA: { schema: ExtendedRJSFSchema; uiSchema: UiSchema } = {
       },
       published: {
         type: 'boolean',
-        title: 'Published',
+        field_text: 'Published',
+        title: 'Publishing status',
         default: true,
       },
       author: {

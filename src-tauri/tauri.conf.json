@@ -30,7 +30,12 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": "'self' asset:",
+        "img-src": "'self' asset: http://asset.localhost blob: data:",
+        "script-src": "'self' 'unsafe-inline'",
+        "style-src": "'self' 'unsafe-inline'"
+      }
     },
     "withGlobalTauri": true
   },

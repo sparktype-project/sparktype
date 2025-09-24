@@ -28,17 +28,18 @@ import { usePageIdentifier } from '@/features/editor/hooks/usePageIdentifier';
 import { useFileContent } from '@/features/editor/hooks/useFileContent';
 import { useFilePersistence } from '@/features/editor/hooks/useFilePersistence';
 import CollectionItemList from '@/features/editor/components/CollectionItemList';
+import Loader from '@/core/components/ui/Loader';
 
 /**
  * A loading skeleton specifically for the main editor content area.
  */
-function EditorLoadingSkeleton({ message = "Loading Editor..." }: { message?: string }) { 3
-  return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-6">
-      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      <p className="text-muted-foreground">{message}</p>
-    </div>
-  );
+function EditorLoadingSkeleton() { 
+      return (
+        <div className='mt-[-50px]'>
+      <Loader fullScreen />
+      </div>
+      );
+  
 }
 
 
@@ -180,7 +181,7 @@ function EditContentPageInternal() {
         ) : (
           (() => {
             if (status === 'converting') {
-              return <EditorLoadingSkeleton message="Converting content..." />;
+              return <EditorLoadingSkeleton  />;
             }
             if (status !== 'ready' || !frontmatter) {
               return <EditorLoadingSkeleton />;

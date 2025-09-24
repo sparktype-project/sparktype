@@ -5,6 +5,8 @@ import { exportSiteToZip } from './siteExporter.service';
 import { NetlifyProvider } from './publishing/NetlifyProvider';
 import { GitHubProvider } from './publishing/GitHubProvider';
 import { slugify } from '@/core/libraries/utils';
+import { tauriFileDownloadService } from './tauri/fileDownload.service';
+import { isTauriApp } from '@/core/utils/platform';
 
 export type PublishingProvider = 'zip' | 'netlify' | 'github';
 
@@ -63,17 +65,36 @@ export async function publishSite(siteData: LocalSiteData): Promise<PublishingRe
 async function publishToZip(siteData: LocalSiteData): Promise<PublishingResult> {
   try {
     const blob = await exportSiteToZip(siteData);
-    const filename = `${slugify(siteData.manifest.title || 'sparktype-site')}.zip`;
-    
-    // Create download URL
-    const downloadUrl = URL.createObjectURL(blob);
-    
-    return {
-      success: true,
-      message: 'Site bundle generated successfully!',
-      downloadUrl,
-      filename
-    };
+    const siteName = siteData.manifest.title || 'sparktype-site';
+
+    if (isTauriApp()) {
+      // Use Tauri file download service to save to Downloads folder
+      const savedPath = await tauriFileDownloadService.downloadSiteZip(blob, siteName, true);
+
+      if (savedPath) {
+        return {
+          success: true,
+          message: `Site exported successfully to: ${savedPath}`,
+          filename: savedPath.split('/').pop() || 'export.zip'
+        };
+      } else {
+        return {
+          success: false,
+          message: 'Export cancelled by user'
+        };
+      }
+    } else {
+      // Web fallback - create download URL
+      const filename = `${slugify(siteName)}.zip`;
+      const downloadUrl = URL.createObjectURL(blob);
+
+      return {
+        success: true,
+        message: 'Site bundle generated successfully!',
+        downloadUrl,
+        filename
+      };
+    }
   } catch (error) {
     console.error('[Publishing Service] ZIP export failed:', error);
     return {

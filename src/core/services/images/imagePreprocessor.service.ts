@@ -202,7 +202,11 @@ export class ImagePreprocessorService {
         const storageKey = context ? `${context}_context` : presetName;
         contentData[fieldName][storageKey] = processedUrl;
         
-        console.log(`[ImagePreprocessor] Processed ${fieldName} with preset '${presetName}'${context ? ` (${context})` : ''} (${resolvedPreset.width}x${resolvedPreset.height}): ${processedUrl}`);
+        // Truncate data URLs for logging to prevent console spam
+        const logUrl = processedUrl.startsWith('data:')
+          ? `${processedUrl.substring(0, 50)}... [${processedUrl.length} chars]`
+          : processedUrl;
+        console.log(`[ImagePreprocessor] Processed ${fieldName} with preset '${presetName}'${context ? ` (${context})` : ''} (${resolvedPreset.width}x${resolvedPreset.height}): ${logUrl}`);
         
       } catch (error) {
         console.error(`[ImagePreprocessor] Failed to process image for field '${fieldName}' with preset '${presetName}':`, error);

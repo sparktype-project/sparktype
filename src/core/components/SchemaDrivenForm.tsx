@@ -44,7 +44,7 @@ function CustomFieldTemplate(props: FieldTemplateProps) {
   return (
     <div className={classNames}>
       {label && (
-        <Label htmlFor={id} className="block text-sm font-medium mb-1">
+        <Label htmlFor={id} className="block mb-2">
           {label}
           {required && <span className="text-destructive ml-1">*</span>}
         </Label>

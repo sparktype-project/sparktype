@@ -10,6 +10,7 @@ import { Separator } from '@/core/components/ui/separator';
 // Switch component not currently used
 import { toast } from 'sonner';
 import { Download, Globe, Github } from 'lucide-react';
+import { isTauriApp } from '@/core/utils/platform';
 
 type PublishingProvider = 'zip' | 'netlify' | 'github';
 
@@ -17,6 +18,8 @@ interface NetlifyConfigUI {
   apiToken: string;
   siteId?: string;
   siteName?: string;
+  useAppProxy: boolean;
+  customProxyUrl: string;
 }
 
 interface NetlifyConfigPublic {
@@ -53,7 +56,9 @@ export default function PublishingSettingsPage() {
   const [netlifyConfig, setNetlifyConfig] = useState<NetlifyConfigUI>({
     apiToken: '',
     siteId: '',
-    siteName: ''
+    siteName: '',
+    useAppProxy: isTauriApp(), // Default to app proxy in Tauri mode
+    customProxyUrl: 'https://sparktype-proxy.netlify.app/.netlify/functions/netlify-deploy'
   });
   const [githubConfig, setGithubConfig] = useState<GitHubConfigUI>({
     accessToken: '',
@@ -88,16 +93,22 @@ export default function PublishingSettingsPage() {
       
       // Load Netlify configuration
       const netlifyApiToken = site.secrets?.publishing?.netlify?.apiToken || '';
+      const netlifyProxySettings = site.secrets?.publishing?.netlify?.proxySettings;
+
       if (config.netlify) {
         setNetlifyConfig({
           siteId: config.netlify?.siteId || '',
           siteName: config.netlify?.siteName || '',
-          apiToken: netlifyApiToken
+          apiToken: netlifyApiToken,
+          useAppProxy: netlifyProxySettings?.useAppProxy ?? isTauriApp(),
+          customProxyUrl: netlifyProxySettings?.customProxyUrl || 'https://sparktype-proxy.netlify.app/.netlify/functions/netlify-deploy'
         });
-      } else if (netlifyApiToken) {
+      } else if (netlifyApiToken || netlifyProxySettings) {
         setNetlifyConfig(prev => ({
           ...prev,
-          apiToken: netlifyApiToken
+          apiToken: netlifyApiToken,
+          useAppProxy: netlifyProxySettings?.useAppProxy ?? isTauriApp(),
+          customProxyUrl: netlifyProxySettings?.customProxyUrl || prev.customProxyUrl
         }));
       }
 
@@ -119,10 +130,13 @@ export default function PublishingSettingsPage() {
     }
     // If no publishing config but we have secrets, load the tokens
     else {
-      if (site?.secrets?.publishing?.netlify?.apiToken) {
+      const netlifySecrets = site?.secrets?.publishing?.netlify;
+      if (netlifySecrets?.apiToken || netlifySecrets?.proxySettings) {
         setNetlifyConfig(prev => ({
           ...prev,
-          apiToken: site.secrets?.publishing?.netlify?.apiToken || ''
+          apiToken: netlifySecrets?.apiToken || '',
+          useAppProxy: netlifySecrets?.proxySettings?.useAppProxy ?? isTauriApp(),
+          customProxyUrl: netlifySecrets?.proxySettings?.customProxyUrl || prev.customProxyUrl
         }));
       }
       if (site?.secrets?.publishing?.github?.accessToken) {
@@ -140,7 +154,7 @@ export default function PublishingSettingsPage() {
     setIsLoading(true);
     try {
       // Separate public config from secrets for both providers
-      const { apiToken, ...publicNetlifyConfig } = netlifyConfig;
+      const { apiToken, useAppProxy, customProxyUrl, ...publicNetlifyConfig } = netlifyConfig;
       const { accessToken, ...publicGithubConfig } = githubConfig;
       
       const publishingConfig: PublishingConfig = {
@@ -162,10 +176,14 @@ export default function PublishingSettingsPage() {
         ...site.secrets,
         publishing: {
           ...site.secrets?.publishing,
-          ...(provider === 'netlify' && apiToken && {
+          ...(provider === 'netlify' && (apiToken || useAppProxy !== undefined || customProxyUrl) && {
             netlify: {
               ...site.secrets?.publishing?.netlify,
-              apiToken
+              ...(apiToken && { apiToken }),
+              proxySettings: {
+                useAppProxy,
+                customProxyUrl
+              }
             }
           }),
           ...(provider === 'github' && accessToken && {
@@ -177,7 +195,7 @@ export default function PublishingSettingsPage() {
         }
       };
 
-      if ((provider === 'netlify' && apiToken) || (provider === 'github' && accessToken)) {
+      if ((provider === 'netlify' && (apiToken || useAppProxy !== undefined)) || (provider === 'github' && accessToken)) {
         await updateSiteSecrets(siteId, updatedSecrets);
       }
 
@@ -293,6 +311,69 @@ export default function PublishingSettingsPage() {
                   <p className="text-xs text-muted-foreground">
                     Use this to update an existing Netlify site
                   </p>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <h4 className="text-md font-semibold">Proxy Settings</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Configure how Sparktype connects to Netlify API
+                  </p>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        id="use-app-proxy"
+                        type="radio"
+                        name="proxy-type"
+                        checked={netlifyConfig.useAppProxy}
+                        onChange={() => setNetlifyConfig({ ...netlifyConfig, useAppProxy: true })}
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      />
+                      <Label htmlFor="use-app-proxy" className="text-sm font-normal">
+                        Use Sparktype app {isTauriApp() ? '(Recommended)' : '(Desktop app only)'}
+                      </Label>
+                    </div>
+                    {isTauriApp() && netlifyConfig.useAppProxy && (
+                      <p className="text-xs text-muted-foreground ml-6">
+                        Direct connection through the desktop app - no external proxy needed
+                      </p>
+                    )}
+                    {!isTauriApp() && netlifyConfig.useAppProxy && (
+                      <p className="text-xs text-orange-600 ml-6">
+                        ⚠️ App proxy is only available in the desktop version of Sparktype
+                      </p>
+                    )}
+
+                    <div className="flex items-center space-x-2">
+                      <input
+                        id="use-custom-proxy"
+                        type="radio"
+                        name="proxy-type"
+                        checked={!netlifyConfig.useAppProxy}
+                        onChange={() => setNetlifyConfig({ ...netlifyConfig, useAppProxy: false })}
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      />
+                      <Label htmlFor="use-custom-proxy" className="text-sm font-normal">
+                        Use custom proxy URL {!isTauriApp() ? '(Required)' : '(Advanced)'}
+                      </Label>
+                    </div>
+
+                    {!netlifyConfig.useAppProxy && (
+                      <div className="ml-6 space-y-2">
+                        <Input
+                          value={netlifyConfig.customProxyUrl}
+                          onChange={(e) => setNetlifyConfig({ ...netlifyConfig, customProxyUrl: e.target.value })}
+                          placeholder="https://your-proxy.example.com/netlify-proxy"
+                          className="text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          External proxy function to bypass browser CORS restrictions
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </>

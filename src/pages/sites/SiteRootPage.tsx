@@ -1,5 +1,6 @@
 // src/pages/sites/SiteRootPage.tsx
 
+import Loader from '@/core/components/ui/Loader';
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
@@ -23,8 +24,7 @@ export default function SiteRootPage() {
 
   // Display a loading message while the redirect is processed by the browser.
   return (
-    <div className="flex justify-center items-center h-full">
-      <p>Redirecting to editor...</p>
-    </div>
+        <Loader fullScreen />
+   
   );
 }

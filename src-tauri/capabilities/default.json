@@ -20,6 +20,17 @@
           "url": "http://**"
         }
       ]
-    }
+    },
+    "fs:default",
+    "fs:allow-write-file",
+    "fs:allow-create",
+    "fs:allow-exists",
+    "fs:allow-remove",
+    "fs:allow-copy-file",
+    "fs:allow-mkdir",
+    "fs:allow-read-file",
+    "dialog:default",
+    "dialog:allow-save",
+    "core:path:default"
   ]
 }

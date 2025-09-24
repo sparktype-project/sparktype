@@ -18,6 +18,7 @@ import { cn } from '@/core/libraries/utils';
 import UnifiedHeader from '@/core/components/UnifiedHeader';
 import { HeaderContext } from '@/core/contexts/HeaderContext';
 import DefaultHeaderContent from '@/core/components/header-content/DefaultHeaderContent';
+import SparkotypeLogo from '@/core/components/ui/SparkotypeLogo';
 
 /**
  * Renders the site-specific icon, either the logo or a text fallback.
@@ -132,15 +133,15 @@ export default function SiteLayout() {
           {headerContent || <DefaultHeaderContent />}
         </UnifiedHeader>
 
-        <div className="flex flex-1 lg:flex-row flex-col">
-          <aside className="fixed inset-x-0 bottom-0 z-30 flex h-16 w-full shrink-0 border-t bg-background lg:static lg:inset-y-0 lg:left-0 lg:h-full lg:w-[50px] mx-[5px] rounded-lg shadow lg:border ">
-            <nav className="flex w-full items-center justify-center gap-2  lg:flex-col lg:justify-start">
+        <div className="flex flex-1 md:flex-row flex-col">
+          <aside className="fixed inset-x-0 bottom-0 z-30 flex h-16 w-full shrink-0 border-t md:border-t-0 md:border-r bg-background md:static md:inset-y-0 md:left-0 md:h-full md:w-[50px]">
+            <nav className=" px-8 md:p-0 flex w-full items-center justify-between gap-3  md:flex-col md:justify-start">
               <Link
                 to="/"
                 title="Dashboard"
-                className='lg:flex hidden flex-col items-center w-[60px] h-[60px] border-b'
+                className='md:flex flex-col items-center md:w-[50px] md:h-[50px] md:border-b'
               >
-                <img src="/sparktype.svg" width={32} height={32} alt="Sparktype" className='m-auto'/>
+                <SparkotypeLogo size={32} className="m-auto" />
               </Link>
 
               {navItems.map((item) => {
@@ -151,21 +152,21 @@ export default function SiteLayout() {
                     to={item.to}
                     title={item.title}
                     className={cn(
-                      'flex h-10 w-10 items-center justify-center rounded-lg transition-colors overflow-hidden',
+                      'flex h-8 w-8 items-center justify-center rounded-lg transition-colors overflow-hidden',
                       item.isActive
                         ? 'bg-accent text-accent-foreground'
                         : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                     )}
                   >
 
-                    <IconComponent className={cn(item.isStandardIcon && 'size-6')} />
+                    <IconComponent className={cn(item.isStandardIcon && 'size-5')} />
                   </Link>
                 )
               })}
             </nav>
           </aside>
 
-          <main className="flex-1 overflow-auto pb-16 lg:pb-0 border rounded-lg mx-[5px] mb-[5px]">
+          <main className="flex-1 overflow-auto pb-16 md:pb-0">
             <Outlet />
           </main>
         </div>

@@ -14,7 +14,15 @@
       "Bash(npm run build:*)",
       "WebFetch(domain:v2.tauri.app)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:css-irl.info)"
+      "WebFetch(domain:css-irl.info)",
+      "Bash(grep:*)",
+      "Bash(identify:*)",
+      "Bash(sips:*)",
+      "Bash(iconutil:*)",
+      "Bash(npm install:*)",
+      "Bash(cargo check:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run lint)"
     ]
   },
   "enableAllProjectMcpServers": true,

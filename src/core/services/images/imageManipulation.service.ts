@@ -1,6 +1,7 @@
 // src/core/services/images/imageManipulation.service.ts
 
 import type { ImageTransformOptions } from '@/core/types';
+import { isTauriApp } from '@/core/utils/platform';
 
 /**
  * Lightweight canvas-based image manipulation utilities for client-side processing.
@@ -9,33 +10,57 @@ import type { ImageTransformOptions } from '@/core/types';
 
 /**
  * Creates an image element from a blob for canvas operations
+ * Uses data URLs for Tauri contexts to avoid WebKit blob URL limitations
  */
 const createImageFromBlob = (blob: Blob): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    const url = URL.createObjectURL(blob);
-    
+
     // Add timeout to prevent hanging
     const timeout = setTimeout(() => {
-      URL.revokeObjectURL(url);
       reject(new Error('Image load timeout after 30 seconds'));
     }, 30000);
-    
-    img.onload = () => {
+
+    const onLoad = () => {
       clearTimeout(timeout);
-      URL.revokeObjectURL(url);
       resolve(img);
     };
-    
-    img.onerror = (error) => {
+
+    const onError = (error: any) => {
       clearTimeout(timeout);
-      URL.revokeObjectURL(url);
       console.error('[ImageManipulation] Image load error:', error);
       reject(new Error(`Failed to load image: ${error instanceof Event ? 'Load error' : error}`));
     };
-    
-    // Set src after event listeners are attached
-    img.src = url;
+
+    img.onload = onLoad;
+    img.onerror = onError;
+
+    // Use data URLs for Tauri to avoid WebKit blob URL limitations
+    if (isTauriApp()) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        img.src = reader.result as string;
+      };
+      reader.onerror = () => {
+        clearTimeout(timeout);
+        reject(new Error('Failed to read blob as data URL'));
+      };
+      reader.readAsDataURL(blob);
+    } else {
+      // Use blob URLs for web browsers (better performance)
+      const url = URL.createObjectURL(blob);
+      img.onload = () => {
+        clearTimeout(timeout);
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = (error) => {
+        clearTimeout(timeout);
+        URL.revokeObjectURL(url);
+        onError(error);
+      };
+      img.src = url;
+    }
   });
 };
 

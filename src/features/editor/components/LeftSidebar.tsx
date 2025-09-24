@@ -248,8 +248,8 @@ export default function LeftSidebar() {
       onDragCancel={resetState}
     >
       <div className="flex h-full flex-col">
-        <div className="flex shrink-0 items-center justify-between border-b px-2 py-0.5">
-          <h3 className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Content</h3>
+        <div className="flex shrink-0 items-center justify-between border-b px-2 py-0">
+          <h3 className="px-2 text-xs  uppercase tracking-wider text-muted-foreground">Pages</h3>
           <div className="flex items-center gap-1">
             {/* <CreateCollectionPageDialog siteId={siteId}>
                 <Button variant="ghost" className='size-7 p-1' title="New Collection">
@@ -257,9 +257,11 @@ export default function LeftSidebar() {
                 </Button>
             </CreateCollectionPageDialog> */}
             <NewPageDialog siteId={siteId}>
-                <Button variant="ghost" className='size-7 p-1' title="New Page">
+                <div title="New Page"
+                                    className="text-muted-foreground size-7 p-1 rounded-md hover:bg-accent hover:text-accent-foreground inline-flex items-center justify-center cursor-pointer" 
+>
                     <FilePlus className="h-4 w-4" />
-                </Button>
+                </div>
             </NewPageDialog>
           </div>
         </div>
@@ -287,9 +289,9 @@ export default function LeftSidebar() {
         <div className="border-t bg-background">
           <Accordion type="multiple" defaultValue={['collections', 'taggroups']}>
             <AccordionItem value="collections" className="border-b-0">
-              <AccordionTrigger className="hover:no-underline py-0.5 items-center px-3">
+              <AccordionTrigger className="py-0 hover:no-underline items-center px-3">
                 <div className="flex items-center justify-between w-full">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Collections</span>
+                  <span className="font-normal text-xs uppercase tracking-wider text-muted-foreground">Collections</span>
                   <div 
                     className="size-7 p-1 rounded-md hover:bg-accent hover:text-accent-foreground inline-flex items-center justify-center cursor-pointer" 
                     onClick={(e) => {
@@ -308,16 +310,16 @@ export default function LeftSidebar() {
             </AccordionItem>
             
             <AccordionItem value="taggroups" className="border-b-0">
-              <AccordionTrigger className="hover:no-underline py-0.5 px-3 items-center border-t-1 [state=closed]:border-b-0">
+              <AccordionTrigger className="hover:no-underline py-0 px-3 items-center border-t-1 [state=closed]:border-b-0">
                 <div className="flex items-center justify-between w-full">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tag Groups</span>
+                  <span className="text-xs font-normal uppercase tracking-wider text-muted-foreground">Tags</span>
                   <div 
                     className="size-7 p-1 rounded-md hover:bg-accent hover:text-accent-foreground inline-flex items-center justify-center cursor-pointer" 
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsCreateTagGroupDialogOpen(true);
                     }}
-                    title="Create Tag Group"
+                    title="Create tags"
                   >
                     <CirclePlus className="h-4 w-4" />
                   </div>

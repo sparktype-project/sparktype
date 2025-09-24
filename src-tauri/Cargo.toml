@@ -25,3 +25,5 @@ tauri = { version = "2.6.1", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-http = "2.0.0"
 tauri-plugin-mcp = { version = "0.4.27" }
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"

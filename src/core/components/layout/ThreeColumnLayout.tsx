@@ -17,6 +17,8 @@ interface ThreeColumnLayoutProps {
 export default function ThreeColumnLayout({ leftSidebar, rightSidebar, children, headerActions }: ThreeColumnLayoutProps) {
   const isLeftOpen = useUIStore((state) => state.sidebar.isLeftOpen);
   const isRightOpen = useUIStore((state) => state.sidebar.isRightOpen);
+  const toggleLeftSidebar = useUIStore((state) => state.sidebar.toggleLeftSidebar);
+  const toggleRightSidebar = useUIStore((state) => state.sidebar.toggleRightSidebar);
   const { setHeaderContent } = useHeaderContext();
 
   // Set the header content when this layout mounts
@@ -33,12 +35,52 @@ export default function ThreeColumnLayout({ leftSidebar, rightSidebar, children,
     <div className="h-full w-full flex flex-col">
       {/* This is now the positioning context for all three columns */}
       <div className="relative flex-1 overflow-hidden">
-        
-        
+
+        {/* Mobile Overlays - only visible on mobile when sidebars are open */}
+        {/* Left Sidebar Overlay */}
+        {isLeftOpen && (
+          <div
+            className="absolute inset-0 z-[60] bg-black/60 transition-opacity duration-300 ease-in-out lg:hidden cursor-pointer"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleLeftSidebar();
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleLeftSidebar();
+            }}
+            aria-label="Close left sidebar"
+            role="button"
+            tabIndex={0}
+          />
+        )}
+
+        {/* Right Sidebar Overlay */}
+        {isRightOpen && (
+          <div
+            className="absolute inset-0 z-[60] bg-black/60 transition-opacity duration-300 ease-in-out lg:hidden cursor-pointer"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleRightSidebar();
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleRightSidebar();
+            }}
+            aria-label="Close right sidebar"
+            role="button"
+            tabIndex={0}
+          />
+        )}
+
         {/* Left Sidebar: Absolutely positioned within the parent div */}
         <aside
           className={cn(
-            'absolute inset-y-0 left-0 z-20 h-full w-72 border-r bg-background transition-transform duration-300 ease-in-out',
+            'absolute inset-y-0 left-0 z-[65] h-full w-72 border-r bg-background transition-transform duration-300 ease-in-out',
             isLeftOpen ? 'translate-x-0' : '-translate-x-full'
           )}
         >
@@ -64,7 +106,7 @@ export default function ThreeColumnLayout({ leftSidebar, rightSidebar, children,
         {/* Right Sidebar: Absolutely positioned within the parent div */}
         <aside
           className={cn(
-            'absolute inset-y-0 right-0 z-10 h-full w-80 border-l bg-background transition-transform duration-300 ease-in-out',
+            'absolute inset-y-0 right-0 z-[65] h-full w-80 border-l bg-background transition-transform duration-300 ease-in-out',
             isRightOpen ? 'translate-x-0' : 'translate-x-full'
           )}
         >
