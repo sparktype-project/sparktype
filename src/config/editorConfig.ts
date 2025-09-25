@@ -51,7 +51,7 @@ export const CORE_LAYOUTS: LayoutInfo[] = [
   // --- Standard Page Layouts ---
   {
     id: 'page',
-    name: 'Standard Page',
+    name: 'Standard page',
     type: 'single', // For individual content pages
     path: 'page',
     description: "A clean, single-column layout for standard pages like 'About Us'."
@@ -60,14 +60,14 @@ export const CORE_LAYOUTS: LayoutInfo[] = [
   // --- "Blog" Content Layouts ---
   {
     id: 'blog-post',
-    name: 'Blog Post',
+    name: 'Blog post',
     type: 'single', // A blueprint for one blog post
     path: 'blog-post', // Corresponds to the folder /public/layouts/blog-post/
     description: "The standard layout for an individual blog post article."
   },
   {
     id: 'blog-listing',
-    name: 'Blog Listing',
+    name: 'Blog listing',
     type: 'collection', // This layout is designed to display a list of items
     path: 'blog-listing', // Corresponds to the folder /public/layouts/blog-listing/
     description: "Displays a paginated list of items from a 'Blog' collection."
@@ -76,14 +76,14 @@ export const CORE_LAYOUTS: LayoutInfo[] = [
   // --- "Portfolio" Content Layouts ---
   {
     id: 'portfolio-project',
-    name: 'Portfolio Project',
+    name: 'Portfolio project',
     type: 'single', // A blueprint for one portfolio project
     path: 'portfolio-project',
     description: "The layout for a single, detailed portfolio project page."
   },
   {
     id: 'portfolio-grid',
-    name: 'Portfolio Grid',
+    name: 'Portfolio grid',
     type: 'collection', // This layout displays a list of portfolio projects
     path: 'portfolio-grid',
     description: "Displays a visual grid of items from a 'Portfolio' collection."
@@ -96,8 +96,8 @@ export const CORE_LAYOUTS: LayoutInfo[] = [
 export const CORE_THEMES: ThemeInfo[] = [
   {
     id: 'default',
-    name: 'Default theme',
-    path: 'default'
+    name: 'Sparktype',
+    path: 'sparktype'
   },
   {
     id: 'docs',

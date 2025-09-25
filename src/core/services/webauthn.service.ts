@@ -252,7 +252,6 @@ export class WebAuthnService {
         siteId,
         siteName,
         userDisplayName,
-        editingDomain: this.getEditingDomain(),
       });
 
       return result as RegistrationResult;
@@ -371,7 +370,6 @@ export class WebAuthnService {
       const result = await invoke('authenticate_passkey', {
         siteId,
         authConfig,
-        editingDomain: this.getEditingDomain(),
       });
 
       return result as AuthenticationResult;

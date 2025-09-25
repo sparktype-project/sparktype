@@ -1,5 +1,5 @@
 {
-  "name": "Default theme",
+  "name": "Sparktype theme",
   "version": "1.2.0",
   "files": [
     { "path": "theme.json", "type": "manifest" },
@@ -10,31 +10,31 @@
     { "path": "partials/footer.hbs", "type": "partial", "name": "footer" }
   ],
   "appearanceSchema": {
-    "title": "Theme Customization",
-    "description": "Customize the core fonts and colors of your site.",
+    "title": "Theme customisation",
+    "description": "Customise the core fonts and colors of your site.",
     "type": "object",
     "properties": {
       "color_background": {
         "type": "string",
-        "title": "Page Background Color",
+        "title": "Page background colour",
         "format": "color",
         "default": "#f8f9fa"
       },
       "color_text": {
         "type": "string",
-        "title": "Body Text Color",
+        "title": "Body text colour",
         "format": "color",
         "default": "#212529"
       },
       "color_headings": {
         "type": "string",
-        "title": "Headings Color",
+        "title": "Headings colour",
         "format": "color",
         "default": "#000000"
       },
       "color_primary": {
         "type": "string",
-        "title": "Primary Accent Color",
+        "title": "Primary accent colour",
         "format": "color",
         "default": "#0d6efd"
       },
@@ -95,21 +95,20 @@
     }
   },
   "themeDataSchema": {
-    "title": "Site Content",
     "description": "Configure additional content fields for your site.",
     "type": "object",
     "properties": {
-      "footer_text": {
+      "footer_content": {
         "type": "string",
-        "title": "Footer Text",
-        "description": "HTML content to display in the site footer.",
+        "title": "Footer content",
+        "description": "Optional footer HTML content.",
         "format": "textarea",
         "default": "<p>&copy; 2024 Your Site Name. All rights reserved.</p>"
       },
-      "header_announcement": {
+      "header_content": {
         "type": "string", 
-        "title": "Header Announcement",
-        "description": "Optional announcement banner text.",
+        "title": "Header content",
+        "description": "Optional header HTML content.",
         "format": "textarea",
         "default": ""
       }

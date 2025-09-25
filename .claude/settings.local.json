@@ -25,7 +25,10 @@
       "Bash(npm run lint)",
       "WebFetch(domain:thatgurjot.com)",
       "WebFetch(domain:ratulmaharaj.com)",
-      "Bash(npm run tauri:dev:*)"
+      "Bash(npm run tauri:dev:*)",
+      "WebFetch(domain:docs.rs)",
+      "Bash(npm run tauri:build:*)",
+      "Bash(pkill:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

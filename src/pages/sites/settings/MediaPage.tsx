@@ -113,23 +113,23 @@ export default function ImageSettingsPage() {
       <title>{pageTitle}</title>
       <div className="space-y-6 max-w-2xl p-6">
         <div>
-          <h1 className="text-2xl font-bold">Image Settings</h1>
+          <h1 className="text-2xl font-bold">Media</h1>
           <p className="text-muted-foreground">Configure how images are stored and processed for your site.</p>
         </div>
 
         <div className="border-t pt-6 space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="service-select">Image storage backend</Label>
+            <Label htmlFor="service-select">Image storage</Label>
             <Select value={selectedService} onValueChange={handleServiceChange}>
               <SelectTrigger id="service-select" className="mt-1">
                 <SelectValue placeholder="Select a service..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="local">Store in Site Bundle (Default)</SelectItem>
+                <SelectItem value="local">Store in site (default)</SelectItem>
                 <SelectItem value="cloudinary">Upload to Cloudinary</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">"Local" is best for portability. "Cloudinary" is best for performance.</p>
+            <p className="text-xs text-muted-foreground">"Store in site" is best for portability. "Cloudinary" is best for performance.</p>
           </div>
           
           {selectedService === 'cloudinary' && (
@@ -146,7 +146,7 @@ export default function ImageSettingsPage() {
                 <p className="text-xs text-muted-foreground">This is public and stored in your site's manifest.</p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="upload-preset">Cloudinary Upload Preset (Secret)</Label>
+                <Label htmlFor="upload-preset">Cloudinary upload preset (secret)</Label>
                 <Input
                   id="upload-preset"
                   type="password"
@@ -160,9 +160,9 @@ export default function ImageSettingsPage() {
           )}
         </div>
 
-        <div className="flex justify-end pt-4">
+        <div className=" pt-4">
           <Button onClick={handleSave} disabled={isLoading || !hasChanges} size="lg">
-            {isLoading ? 'Saving...' : 'Save Image Settings'}
+            {isLoading ? 'Saving...' : 'Save settings'}
           </Button>
         </div>
       </div>

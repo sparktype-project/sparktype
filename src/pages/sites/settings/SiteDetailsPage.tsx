@@ -133,7 +133,7 @@ export default function SiteSettingsPage() {
       <title>{pageTitle}</title>
       <div className="space-y-6 max-w-2xl p-6">
         <div>
-          <h1 className="text-2xl font-bold">Site Settings</h1>
+          <h1 className="text-2xl font-bold">Site details</h1>
           <p className="text-muted-foreground">Manage the core details and identity of your website.</p>
         </div>
 

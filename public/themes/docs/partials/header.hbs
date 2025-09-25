@@ -1,16 +1,16 @@
 {{!-- Clean header for documentation --}}
-<header class="border-solid border-b-1 border-t-0 border-l-0 border-r-0 border-border bg-background">
-  <div class="max-w-7xl mx-auto px-4 py-3">
+<header class="shadow">
+  <div class="max-w-7xl mx-auto px-4 py-2">
     <div class="flex items-center justify-between">
       {{!-- Page breadcrumb or title --}}
       <div class="flex items-center space-x-4">
-        <h1 class="text-lg font-semibold text-heading mb-0">
+        <p class="font-bold text-heading mb-0 font-headings">
           {{#if contentFile.frontmatter.title}}
             {{contentFile.frontmatter.title}}
           {{else}}
             {{manifest.title}}
           {{/if}}
-        </h1>
+        </p>
       </div>
 
       {{!-- Header content --}}

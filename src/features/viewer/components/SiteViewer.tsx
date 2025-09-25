@@ -15,7 +15,8 @@ import { PageType } from '@/core/types';
 
 // UI Components
 import { Button } from '@/core/components/ui/button';
-import { AlertTriangle, Edit } from 'lucide-react';
+import { Edit3 } from 'lucide-react';
+import Loader from '@/core/components/ui/Loader';
 
 export default function SiteViewer() {
   // --- 1. Use react-router-dom hooks ---
@@ -25,7 +26,8 @@ export default function SiteViewer() {
 
   const site = useAppStore(useCallback((state: AppStore) => state.getSiteById(siteId), [siteId]));
 
-  const [htmlContent, setHtmlContent] = useState<string>('<p>Loading site...</p>');
+  const [htmlContent, setHtmlContent] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // The base path for the viewer, used to calculate relative paths
@@ -48,18 +50,22 @@ export default function SiteViewer() {
 
   // This function generates the final HTML and sets the iframe content
   const updateIframeContent = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+
     if (!site?.contentFiles) {
-      setHtmlContent('<p>Loading site data...</p>');
+      setHtmlContent('');
       return;
     }
 
     // The slug array is derived from the relative path inside the viewer
     const slugArray = currentRelativePath.split('/').filter(Boolean);
     const resolution = await resolvePageContent(site, slugArray);
-    
+
     if (resolution.type === PageType.NotFound) {
       setErrorMessage(resolution.errorMessage);
       setHtmlContent(''); // Clear content on error
+      setIsLoading(false);
       return;
     }
 
@@ -85,8 +91,8 @@ export default function SiteViewer() {
               const normalizedPath = relativePath === '/' ? '' : relativePath.replace(/^\\//, '');
               
               // Notify parent of navigation for URL bar update
-              window.parent.postMessage({ 
-                type: 'SIGNUM_NAVIGATE', 
+              window.parent.postMessage({
+                type: 'SIGNUM_NAVIGATE',
                 path: '${viewRootPath}' + (normalizedPath ? '/' + normalizedPath : '')
               }, '*');
               
@@ -102,13 +108,30 @@ export default function SiteViewer() {
           document.addEventListener('click', function(e) {
             const link = e.target.closest('a');
             if (!link || !link.href) return;
-            
+
             // Skip external links
-            if (link.target === '_blank' || 
-                (link.href.startsWith('http') && !link.href.includes(window.location.hostname))) {
-              return; // Allow default behavior for external links
+            if (link.target === '_blank') {
+              return; // Allow default behavior for links that should open in new tab
             }
-            
+
+            // Check if it's an external HTTP/HTTPS link
+            if (link.href.startsWith('http://') || link.href.startsWith('https://')) {
+              // Only prevent default for same-origin links or data: URLs
+              // Allow external links to work normally
+              try {
+                const linkUrl = new URL(link.href);
+                const isExternal = linkUrl.hostname !== 'localhost' &&
+                                 linkUrl.hostname !== '127.0.0.1' &&
+                                 !linkUrl.href.startsWith('data:');
+                if (isExternal) {
+                  return; // Allow default behavior for truly external links
+                }
+              } catch (e) {
+                // If URL parsing fails, treat as external
+                return;
+              }
+            }
+
             // Skip anchor links on same page
             if (link.href.includes('#') && !link.href.includes('#/sites/')) {
               return; // Allow default behavior for anchor links
@@ -147,12 +170,14 @@ export default function SiteViewer() {
 
       const finalHtml = pureHtml.replace('</body>', `${communicationScript}</body>`);
       setHtmlContent(finalHtml);
+      setIsLoading(false);
       setErrorMessage(null);
     } catch (e) {
       const error = e as Error;
       console.error("Error during site rendering:", error);
       setErrorMessage(`Theme Error: ${error.message}`);
       setHtmlContent('');
+      setIsLoading(false);
     }
   }, [site, viewRootPath, currentRelativePath]);
 
@@ -166,15 +191,22 @@ export default function SiteViewer() {
   // This effect listens for messages from the iframe to update the browser's URL bar.
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      
-      const { type, path } = event.data;
-      if (type === 'SIGNUM_NAVIGATE' && typeof path === 'string' && path.trim() !== '') {
-        // Only navigate if the path is actually different to prevent infinite loops
-        if (path !== location.pathname) {
-          console.log('[SiteViewer] Navigating to:', path);
-          navigate(path);
-        }
+      // For iframe srcDoc content, origin will be 'null' or different
+      // We need to be more permissive but validate the message structure
+      const { type, path } = event.data || {};
+      if (type !== 'SIGNUM_NAVIGATE' || typeof path !== 'string' || path.trim() === '') {
+        return;
+      }
+
+      // Additional validation to ensure it's a valid site viewer path
+      if (!path.startsWith(`/sites/${siteId}/view`)) {
+        return;
+      }
+
+      // Only navigate if the path is actually different to prevent infinite loops
+      if (path !== location.pathname) {
+        console.log('[SiteViewer] Navigating to:', path);
+        navigate(path);
       }
     };
 
@@ -191,16 +223,21 @@ export default function SiteViewer() {
       ? 'allow-scripts allow-forms allow-same-origin'
       : 'allow-scripts allow-forms';
 
+  // Loading state
+  if (isLoading) {
+    return <Loader fullScreen />;
+  }
+
   // Error state rendering remains the same
   if (errorMessage) {
     return (
-      <div className="p-8 text-center">
-        <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
-        <h1 className="text-2xl font-bold mb-2">Could Not Render Preview</h1>
+      <div className="p-8 text-center m-auto">
+        <img src="spark.svg" className="w-12  mx-auto mb-4" />
+        <h1 className="text-2xl font-bold mb-2">There's a problem</h1>
         <p className="text-muted-foreground">{errorMessage}</p>
         <Button asChild variant="default" className="mt-6">
           <Link to={`/sites/${siteId}/edit`}>
-            <Edit className="mr-2 h-4 w-4" /> Go to Editor
+            <Edit3 className="mr-2 h-4 w-4" /> Go to editor
           </Link>
         </Button>
       </div>

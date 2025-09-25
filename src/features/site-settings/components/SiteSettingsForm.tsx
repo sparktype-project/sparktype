@@ -42,10 +42,10 @@ export default function SiteSettingsForm({
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Site Identity</h2>
+        <h2 className="text-lg font-semibold">Site identity</h2>
         <SiteAssetUploader 
           siteId={siteId}
-          label="Site Logo"
+          label="Site logo"
           value={formData.logo}
           onChange={(newRef) => handleChange('logo', newRef)}
           onRemove={() => handleChange('logo', undefined)}
@@ -60,18 +60,18 @@ export default function SiteSettingsForm({
       </div>
 
       <div className="border-t pt-6 space-y-4">
-        <h2 className="text-lg font-semibold">Core Details</h2>
+        <h2 className="text-lg font-semibold">Core details</h2>
         <div className="space-y-2">
-            <Label htmlFor="title">Site Title</Label>
+            <Label htmlFor="title">Site title</Label>
             <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => handleChange('title', e.target.value)}
-                placeholder="My Awesome Site"
+                placeholder="My amazing site"
             />
         </div>
         <div className="space-y-2">
-            <Label htmlFor="description">Site Description</Label>
+            <Label htmlFor="description">Site description</Label>
             <Textarea
                 id="description"
                 value={formData.description}
@@ -81,7 +81,7 @@ export default function SiteSettingsForm({
             />
         </div>
         <div className="space-y-2">
-            <Label htmlFor="author">Author (Optional)</Label>
+            <Label htmlFor="author">Author (optional)</Label>
             <Input
                 id="author"
                 value={formData.author}
@@ -103,7 +103,7 @@ export default function SiteSettingsForm({
 
       {themeDataSchema && onThemeDataChange && (
         <div className="border-t pt-6 space-y-4">
-          <h2 className="text-lg font-semibold">Theme Content</h2>
+          <h2 className="text-lg font-semibold">Theme content</h2>
           <p className="text-sm text-muted-foreground">
             Configure additional content fields defined by your theme.
           </p>

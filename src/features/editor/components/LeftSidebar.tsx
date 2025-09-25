@@ -279,8 +279,8 @@ export default function LeftSidebar() {
               onCollapse={handleCollapse}
             />
           ) : (
-            <div className="px-2 py-2 text-xs text-muted-foreground">
-              <p>No pages created yet. Click the button above to add one.</p>
+            <div className="px-1 py-1 text-xs text-muted-foreground">
+              <p>No pages yet.</p>
             </div>
           )}
         </div>

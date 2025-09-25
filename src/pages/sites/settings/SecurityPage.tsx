@@ -4,11 +4,10 @@ import { useAppStore } from '@/core/state/useAppStore';
 import { Button } from '@/core/components/ui/button';
 import { Label } from '@/core/components/ui/label';
 import { Switch } from '@/core/components/ui/switch';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/core/components/ui/card';
 import { Separator } from '@/core/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/core/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Shield, Key, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Key, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 
 export default function SecuritySettingsPage() {
   const { siteId = '' } = useParams<{ siteId: string }>();
@@ -123,36 +122,27 @@ export default function SecuritySettingsPage() {
   };
 
   const isProtected = authStatus?.requiresAuth || false;
+  const pageTitle = `Publishing - ${site?.manifest?.title || 'Loading...'}`;
 
   return (
-    <div className="space-y-6">
+    <>
+        <title>{pageTitle}</title>
+
+    <div className="space-y-6 max-w-2xl p-6">
       <div>
-        <h1 className="text-2xl font-bold">Security Settings</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage edit protection and authentication for your site.
+        <h1 className="text-2xl font-bold">Security</h1>
+        <p className="text-muted-foreground">
+          Manage authentication for your site.
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Edit Protection
-          </CardTitle>
-          <CardDescription>
-            Control who can edit your site by requiring passkey authentication.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      <hr />
+          <h2 className="mb-0.5 text-lg font-bold">Authentication</h2>
+
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-base">Require authentication to edit</Label>
-              <p className="text-sm text-muted-foreground">
-                {isProtected 
-                  ? "This site requires a passkey to edit" 
-                  : "Anyone can edit this site"}
-              </p>
-            </div>
+            <Label className="text-sm text-muted-foreground font-normal">Require authentication to open this site in the editor</Label>
+              
             <div className="flex items-center gap-2">
               {isProtected ? (
                 <CheckCircle className="h-4 w-4 text-green-500" />
@@ -165,7 +155,9 @@ export default function SecuritySettingsPage() {
                 disabled={isLoading || isRegistering}
               />
             </div>
+
           </div>
+                        <p className='text-xs'>Even with authenticaton disabled</p>
 
           {isProtected && site.manifest.auth && (
             <>
@@ -174,7 +166,7 @@ export default function SecuritySettingsPage() {
                 <div>
                   <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                     <Key className="h-4 w-4" />
-                    Credential Information
+                    Credential information
                   </h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
@@ -244,65 +236,18 @@ export default function SecuritySettingsPage() {
           {!isProtected && (
             <>
               <Separator />
-              <div className="space-y-3">
-                <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                  <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium">Site is not protected</p>
-                    <p className="text-xs text-muted-foreground">
-                      Anyone can edit this site. Enable protection to require authentication.
-                    </p>
-                  </div>
-                </div>
+              
                 <Button
                   onClick={handleEnableProtection}
                   disabled={isRegistering}
-                  className="w-full"
+                  
                 >
-                  {isRegistering ? 'Setting up...' : 'Enable Edit Protection'}
+                  {isRegistering ? 'Setting up...' : 'Save settings'}
                 </Button>
-              </div>
             </>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>How Edit Protection Works</CardTitle>
-          <CardDescription>
-            Understanding passkey authentication for your site.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div className="space-y-2">
-            <h4 className="font-medium">🔒 What's Protected</h4>
-            <ul className="text-muted-foreground space-y-1 ml-4">
-              <li>• Editing site content and structure</li>
-              <li>• Accessing site settings</li>
-              <li>• Publishing and exporting with credentials</li>
-            </ul>
-          </div>
-          
-          <div className="space-y-2">
-            <h4 className="font-medium">🌐 What Remains Public</h4>
-            <ul className="text-muted-foreground space-y-1 ml-4">
-              <li>• Viewing your published site</li>
-              <li>• Site content and design</li>
-            </ul>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="font-medium">🔑 Passkey Benefits</h4>
-            <ul className="text-muted-foreground space-y-1 ml-4">
-              <li>• Works with Touch ID, Face ID, Windows Hello</li>
-              <li>• Syncs across your devices (iCloud, 1Password)</li>
-              <li>• No passwords to remember or lose</li>
-              <li>• Phishing-resistant security</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
     </div>
+    </>
   );
 }

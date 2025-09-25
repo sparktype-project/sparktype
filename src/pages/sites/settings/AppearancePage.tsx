@@ -145,12 +145,12 @@ export default function ThemeSettingsPage() {
       <div className="space-y-6 max-w-2xl p-6">
         <div>
           <h1 className="text-2xl font-bold">Appearance</h1>
-          <p className="text-muted-foreground">Customize the visual style and branding of your site.</p>
+          <p className="text-muted-foreground">Customise the visual style and branding of your site.</p>
         </div>
 
         <div className="border-t pt-6 space-y-6">
           <div>
-            <Label htmlFor="theme-select">Active Theme</Label>
+            <Label htmlFor="theme-select">Active theme</Label>
             <Select 
               value={selectedTheme} 
               onValueChange={handleThemeChange}
@@ -171,7 +171,7 @@ export default function ThemeSettingsPage() {
           
           {schema?.properties && Object.keys(schema.properties).length > 0 ? (
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Theme Customization</h3>
+              <h3 className="text-lg font-medium">Theme customisation</h3>
               <SchemaDrivenForm 
                 schema={schema}
                 formData={formData}
@@ -180,9 +180,9 @@ export default function ThemeSettingsPage() {
             </div>
           ) : (
             <div className="text-center border-2 border-dashed p-6 rounded-lg">
-              <p className="font-semibold">No Customization Options</p>
+              <p className="font-semibold">No options</p>
               <p className="text-sm text-muted-foreground">
-                The theme "{selectedTheme}" does not provide any customizable appearance settings.
+                The theme "{selectedTheme}" does not provide any customisation options.
               </p>
             </div>
           )}
@@ -194,7 +194,7 @@ export default function ThemeSettingsPage() {
             disabled={isSaving || !hasChanges || isLoading} 
             size="lg"
           >
-            {isSaving ? 'Saving...' : 'Save Appearance'}
+            {isSaving ? 'Saving...' : 'Save theme'}
           </Button>
         </div>
       </div>

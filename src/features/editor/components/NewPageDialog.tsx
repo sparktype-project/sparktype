@@ -89,7 +89,7 @@ export default function NewPageDialog({ siteId, children, onComplete }: NewPageD
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create new page</DialogTitle>
+          <DialogTitle>Create a new page</DialogTitle>
           <DialogDescription>
             Give your new page a title. You can add content and change settings later.
           </DialogDescription>
@@ -102,7 +102,7 @@ export default function NewPageDialog({ siteId, children, onComplete }: NewPageD
                 id="title" 
                 value={title} 
                 onChange={(e) => setTitle(e.target.value)} 
-                placeholder="e.g., About Us"
+                placeholder="e.g., About us"
                 autoFocus
               />
             </div>

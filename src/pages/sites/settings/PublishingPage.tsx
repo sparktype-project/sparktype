@@ -213,7 +213,7 @@ export default function PublishingSettingsPage() {
     return <div>Site not found</div>;
   }
 
-   const pageTitle = `Publishing settings - ${site?.manifest?.title || 'Loading...'}`;
+   const pageTitle = `Publishing - ${site?.manifest?.title || 'Loading...'}`;
 
   if (isLoading || !site) {
     return (
@@ -230,7 +230,7 @@ export default function PublishingSettingsPage() {
 
     <div className="space-y-6 max-w-2xl p-6">
       <div>
-        <h1 className="text-2xl font-bold">Publishing settings</h1>
+        <h1 className="text-2xl font-bold">Publishing</h1>
         <p className="text-muted-foreground">
           Configure how you want to publish your site
         </p>
@@ -477,22 +477,13 @@ export default function PublishingSettingsPage() {
             </>
           )}
 
-          <div className="flex gap-2 pt-4">
+          <div className=" pt-4">
             <Button onClick={handleSaveSettings} disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save Settings'}
+              {isLoading ? 'Saving...' : 'Save settings'}
             </Button>
           </div>
           
-          <div className="bg-muted/50 p-4 rounded-lg">
-            <p className="text-sm text-muted-foreground">
-              <strong>Note:</strong> After saving your settings, use the "Publish" button in the editor header to publish your site using the configured provider.
-              {provider === 'github' && (
-                <span className="block mt-2">
-                  <strong>GitHub + Netlify:</strong> This approach bypasses size limitations and provides automatic deployments with version control.
-                </span>
-              )}
-            </p>
-          </div>
+          
       </div>
     </div>
     </>

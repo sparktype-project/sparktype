@@ -7,7 +7,11 @@ pub fn run() {
     .plugin(tauri_plugin_mcp::Builder.build())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
-    .plugin(webauthn::init())
+    .invoke_handler(tauri::generate_handler![
+      webauthn::is_webauthn_available,
+      webauthn::register_passkey,
+      webauthn::authenticate_passkey
+    ])
 
     .setup(|app| {
       if cfg!(debug_assertions) {

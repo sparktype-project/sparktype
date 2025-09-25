@@ -1,8 +1,8 @@
 // src/features/site-settings/components/SettingsNav.tsx
 
 import { NavLink, useParams } from 'react-router-dom'; // Import NavLink and useParams
-import { TbUserCircle, TbPalette, TbPhoto, TbCloudUpload, TbShield } from 'react-icons/tb';
 import { cn } from '@/core/libraries/utils';
+import { Clipboard, CloudUpload, Image, Palette, Shield } from 'lucide-react';
 
 /**
  * Renders the vertical navigation menu for the settings section.
@@ -16,17 +16,17 @@ export default function SettingsNav() {
 
   const navItems = [
     // Use the `end` prop for the index route to prevent it from matching all child routes.
-    { to: settingsBasePath, title: 'Site details', icon: TbUserCircle, end: true },
-    { to: `${settingsBasePath}/theme`, title: 'Theme config', icon: TbPalette, end: false },
-    { to: `${settingsBasePath}/images`, title: 'Image handling', icon: TbPhoto, end: false },
-    { to: `${settingsBasePath}/publishing`, title: 'Publishing', icon: TbCloudUpload, end: false },
-    { to: `${settingsBasePath}/security`, title: 'Security', icon: TbShield, end: false },
+    { to: settingsBasePath, title: 'Site details', icon: Clipboard, end: true },
+    { to: `${settingsBasePath}/theme`, title: 'Appearance', icon: Palette, end: false },
+    { to: `${settingsBasePath}/images`, title: 'Media', icon: Image, end: false },
+    { to: `${settingsBasePath}/publishing`, title: 'Publishing', icon: CloudUpload, end: false },
+    { to: `${settingsBasePath}/security`, title: 'Security', icon: Shield, end: false },
   ];
 
   return (
-    <div className="flex h-full flex-col p-4">
-      <h2 className="text-lg font-semibold">Settings</h2>
-      <nav className="mt-4 flex flex-col gap-1">
+    <div className="flex h-full flex-col p-2">
+      <h2 className="text-lg font-semibold my-1 ml-2">Settings</h2>
+      <nav className="mt-1 flex flex-col gap-1">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
@@ -42,7 +42,7 @@ export default function SettingsNav() {
               )
             }
           >
-            <item.icon className="h-5 w-5" />
+            <item.icon className="h-4 w-4" />
             {item.title}
           </NavLink>
         ))}

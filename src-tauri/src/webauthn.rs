@@ -2,17 +2,14 @@
 
 use serde::{Deserialize, Serialize};
 use tauri::command;
+use rand::RngCore;
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use std::time::Duration;
 
-#[cfg(target_os = "macos")]
-use cocoa::appkit::NSApplication;
-#[cfg(target_os = "macos")]
-use cocoa::base::{id, nil};
-#[cfg(target_os = "macos")]
-use cocoa::foundation::{NSString, NSAutoreleasePool};
-#[cfg(target_os = "macos")]
-use objc::runtime::Class;
-#[cfg(target_os = "macos")]
-use objc::{msg_send, sel, sel_impl};
+// Note: The objc2 bindings may not have all WebAuthn types available yet
+// This is a framework implementation that can be extended when the APIs are stable
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+use objc2_foundation::NSObject;
 
 /// Configuration for site-specific WebAuthn authentication
 /// Matches the structure in webauthn.service.ts
@@ -48,6 +45,33 @@ pub struct RegistrationResult {
     pub error: Option<String>,
 }
 
+/// Generate a cryptographically secure random challenge for WebAuthn operations
+///
+/// Creates a 32-byte random challenge encoded as base64url (URL-safe base64).
+/// This challenge prevents replay attacks and ensures each authentication
+/// request is unique.
+///
+/// Mirrors the generateChallenge() function from webauthn.service.ts
+fn generate_challenge() -> String {
+    let mut array = [0u8; 32];
+    rand::thread_rng().fill_bytes(&mut array);
+    URL_SAFE_NO_PAD.encode(array)
+}
+
+/// Get the appropriate editing domain for WebAuthn authentication
+/// Uses localhost in development, configured domain in production
+///
+/// Mirrors the getEditingDomain() function from webauthn.service.ts
+fn get_editing_domain() -> String {
+    // In development, use localhost
+    if cfg!(debug_assertions) {
+        "localhost".to_string()
+    } else {
+        // Use configured editing domain for production
+        "app.sparktype.org".to_string()
+    }
+}
+
 /// Check if WebAuthn is available on the current platform
 #[command]
 pub async fn is_webauthn_available() -> Result<bool, String> {
@@ -65,16 +89,16 @@ pub async fn is_webauthn_available() -> Result<bool, String> {
     }
 }
 
-/// Authenticate user for site access using ASWebAuthenticationSession
+/// Authenticate user for site access using native WebAuthn
 #[command]
 pub async fn authenticate_passkey(
     site_id: String,
     auth_config: SiteAuthConfig,
-    editing_domain: String,
 ) -> Result<AuthenticationResult, String> {
     #[cfg(any(target_os = "macos", target_os = "ios"))]
     {
-        match authenticate_with_aswebauth(&site_id, &auth_config, &editing_domain).await {
+        let editing_domain = get_editing_domain();
+        match authenticate_with_native_webauthn(&site_id, &auth_config, &editing_domain).await {
             Ok(result) => Ok(result),
             Err(error) => Ok(AuthenticationResult {
                 success: false,
@@ -93,17 +117,17 @@ pub async fn authenticate_passkey(
     }
 }
 
-/// Register a new WebAuthn credential using ASWebAuthenticationSession
+/// Register a new WebAuthn credential using native WebAuthn
 #[command]
 pub async fn register_passkey(
     site_id: String,
     site_name: String,
     user_display_name: Option<String>,
-    editing_domain: String,
 ) -> Result<RegistrationResult, String> {
     #[cfg(any(target_os = "macos", target_os = "ios"))]
     {
-        match register_with_aswebauth(&site_id, &site_name, &user_display_name, &editing_domain).await {
+        let editing_domain = get_editing_domain();
+        match register_with_native_webauthn(&site_id, &site_name, &user_display_name, &editing_domain).await {
             Ok(result) => Ok(result),
             Err(error) => Ok(RegistrationResult {
                 success: false,
@@ -123,70 +147,113 @@ pub async fn register_passkey(
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
-async fn authenticate_with_aswebauth(
+async fn authenticate_with_native_webauthn(
     site_id: &str,
     auth_config: &SiteAuthConfig,
     editing_domain: &str,
 ) -> Result<AuthenticationResult, String> {
-    use std::ffi::CString;
-    use std::ptr;
+    // Generate a fresh challenge for this authentication
+    let challenge = generate_challenge();
 
-    // For now, we'll create a basic implementation that uses ASWebAuthenticationSession
-    // to authenticate against the WebAuthn endpoints
+    log::info!("Starting native WebAuthn authentication for site: {}", site_id);
+    log::info!("Challenge: {}", challenge);
+    log::info!("Editing domain: {}", editing_domain);
+    log::info!("Credential ID: {}", auth_config.credential_id);
 
-    // Construct the authentication URL
-    let auth_url = format!(
-        "https://{}/webauthn/authenticate?siteId={}&credentialId={}",
-        editing_domain,
-        site_id,
-        auth_config.credential_id
-    );
+    // TODO: Implement actual ASAuthorizationController integration
+    // This would involve:
+    // 1. Creating ASAuthorizationPlatformPublicKeyCredentialProvider
+    // 2. Setting up ASAuthorizationController with delegate
+    // 3. Configuring presentation context
+    // 4. Handling biometric authentication prompt
+    // 5. Processing the authentication response
 
-    // Use ASWebAuthenticationSession to perform the authentication
-    // This is a simplified implementation - in a real scenario, you'd want to:
-    // 1. Present the ASWebAuthenticationSession
-    // 2. Handle the callback with authentication result
-    // 3. Parse the WebAuthn response
+    // For now, simulate successful authentication in development
+    if cfg!(debug_assertions) {
+        log::warn!("Development mode: simulating successful authentication");
 
-    // For now, we'll return a placeholder result
-    // TODO: Implement actual ASWebAuthenticationSession integration
+        // Use async sleep from tokio
+        tokio::time::sleep(Duration::from_millis(1500)).await;
 
-    log::info!("Authenticating with URL: {}", auth_url);
+        return Ok(AuthenticationResult {
+            success: true,
+            error: None,
+            credential_id: Some(auth_config.credential_id.clone()),
+        });
+    }
 
+    // In production, return framework status
     Ok(AuthenticationResult {
         success: false,
-        error: Some("ASWebAuthenticationSession integration not yet implemented".to_string()),
-        credential_id: None,
+        error: Some("Native WebAuthn authentication requires ASAuthorizationController integration".to_string()),
+        credential_id: Some(auth_config.credential_id.clone()),
     })
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
-async fn register_with_aswebauth(
+async fn register_with_native_webauthn(
     site_id: &str,
     site_name: &str,
     user_display_name: &Option<String>,
     editing_domain: &str,
 ) -> Result<RegistrationResult, String> {
-    // Construct the registration URL
-    let registration_url = format!(
-        "https://{}/webauthn/register?siteId={}&siteName={}",
-        editing_domain,
-        site_id,
-        urlencoding::encode(site_name)
-    );
+    // Generate a random challenge for this registration
+    let challenge = generate_challenge();
 
-    // Use ASWebAuthenticationSession to perform the registration
-    // This is a simplified implementation - in a real scenario, you'd want to:
-    // 1. Present the ASWebAuthenticationSession
-    // 2. Handle the callback with registration result
-    // 3. Parse the WebAuthn response and create SiteAuthConfig
+    log::info!("Starting native WebAuthn registration for site: {}", site_id);
+    log::info!("Challenge: {}", challenge);
+    log::info!("Site name: {}", site_name);
+    log::info!("User display name: {:?}", user_display_name);
+    log::info!("Editing domain: {}", editing_domain);
 
-    log::info!("Registering with URL: {}", registration_url);
+    // TODO: Implement actual ASAuthorizationController integration
+    // This would involve:
+    // 1. Creating ASAuthorizationPlatformPublicKeyCredentialProvider
+    // 2. Setting up registration request with challenge
+    // 3. Configuring ASAuthorizationController with delegate
+    // 4. Handling biometric registration prompt
+    // 5. Extracting public key and credential ID from response
 
+    // Create a placeholder auth config with proper structure
+    let auth_config = SiteAuthConfig {
+        public_key: if cfg!(debug_assertions) {
+            format!("dev_public_key_{}", challenge)
+        } else {
+            format!("placeholder_public_key_{}", challenge)
+        },
+        credential_id: if cfg!(debug_assertions) {
+            format!("dev_credential_id_{}", site_id)
+        } else {
+            format!("placeholder_credential_id_{}", site_id)
+        },
+        requires_auth: true,
+        user_display_name: user_display_name.clone(),
+        registered_at: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            .to_string(),
+    };
+
+    // In development mode, simulate successful registration
+    if cfg!(debug_assertions) {
+        log::warn!("Development mode: simulating successful registration");
+
+        // Use async sleep from tokio
+        tokio::time::sleep(Duration::from_millis(2000)).await;
+
+        return Ok(RegistrationResult {
+            success: true,
+            auth_config: Some(auth_config),
+            error: None,
+        });
+    }
+
+    // In production, return framework status
     Ok(RegistrationResult {
         success: false,
-        auth_config: None,
-        error: Some("ASWebAuthenticationSession integration not yet implemented".to_string()),
+        auth_config: Some(auth_config),
+        error: Some("Native WebAuthn registration requires ASAuthorizationController integration".to_string()),
     })
 }
 

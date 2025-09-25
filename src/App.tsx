@@ -22,12 +22,12 @@ const SiteLayout = lazy(() => import('./pages/sites/SiteLayout'));             /
 const EditContentPage = lazy(() => import('./pages/sites/edit/EditContentPage'));// app/sites/[siteId]/edit/content/[[...slug]]/page.tsx
 const CollectionManagementPage = lazy(() => import('./pages/sites/collections/CollectionManagementPage')); // app/sites/[siteId]/collections/[collectionId]/page.tsx
 const TagGroupManagementPage = lazy(() => import('./pages/sites/taggroups/TagGroupManagementPage')); // app/sites/[siteId]/taggroups/[tagGroupId]/page.tsx
-const SettingsSectionLayout = lazy(() => import('@/pages/sites/settings/SettingsSectionLayout')); // app/sites/[siteId]/settings/layout.tsx
-const SiteSettingsPage = lazy(() => import('@/pages/sites/settings/SiteSettingsPage'));         // app/sites/[siteId]/settings/page.tsx
-const ThemeSettingsPage = lazy(() => import('@/pages/sites/settings/ThemeSettingsPage'));       // app/sites/[siteId]/settings/theme/page.tsx
-const ImageSettingsPage = lazy(() => import('@/pages/sites/settings/ImageSettingsPage'));       // app/sites/[siteId]/settings/images/page.tsx
-const PublishingSettingsPage = lazy(() => import('@/pages/sites/settings/PublishingSettingsPage')); // app/sites/[siteId]/settings/publishing/page.tsx
-const SecuritySettingsPage = lazy(() => import('@/pages/sites/settings/SecuritySettingsPage')); // app/sites/[siteId]/settings/security/page.tsx
+const SettingsSectionLayout = lazy(() => import('@/pages/sites/settings/SettingsLayout')); // app/sites/[siteId]/settings/layout.tsx
+const SiteSettingsPage = lazy(() => import('@/pages/sites/settings/SiteDetailsPage'));         // app/sites/[siteId]/settings/page.tsx
+const ThemeSettingsPage = lazy(() => import('@/pages/sites/settings/AppearancePage'));       // app/sites/[siteId]/settings/theme/page.tsx
+const ImageSettingsPage = lazy(() => import('@/pages/sites/settings/MediaPage'));       // app/sites/[siteId]/settings/images/page.tsx
+const PublishingSettingsPage = lazy(() => import('@/pages/sites/settings/PublishingPage')); // app/sites/[siteId]/settings/publishing/page.tsx
+const SecuritySettingsPage = lazy(() => import('@/pages/sites/settings/SecurityPage')); // app/sites/[siteId]/settings/security/page.tsx
 const ViewSitePage = lazy(() => import('@/pages/sites/view/ViewSitePage'));                     // app/sites/[siteId]/view/[[...slug]]/page.tsx
 
 

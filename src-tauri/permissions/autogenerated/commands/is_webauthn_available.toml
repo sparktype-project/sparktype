@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "allow-is-webauthn-available"
+description = "Enables the is_webauthn_available command without any pre-configured scope."
+commands.allow = ["is_webauthn_available"]
+
+[[permission]]
+identifier = "deny-is-webauthn-available"
+description = "Denies the is_webauthn_available command without any pre-configured scope."
+commands.deny = ["is_webauthn_available"]

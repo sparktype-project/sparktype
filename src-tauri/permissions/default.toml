@@ -1,0 +1,7 @@
+[default]
+description = "Default permissions for the application's WebAuthn commands"
+permissions = [
+  "allow-is-webauthn-available",
+  "allow-register-passkey",
+  "allow-authenticate-passkey"
+]

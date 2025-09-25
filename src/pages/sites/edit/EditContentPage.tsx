@@ -172,10 +172,11 @@ function EditContentPageInternal() {
       >
         {isSiteEmpty ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-8 bg-background">
-            <h2 className="text-2xl font-bold mb-2">Create Your Homepage</h2>
-            <p className="text-muted-foreground mb-6 max-w-md">Your site is empty. The first page you create will become the site's permanent homepage.</p>
+            <h2 className="text-2xl font-bold mb-2">Create your first page</h2>
+            <p className="mb-2 max-w-md">“It’s a new dawn, it’s a new day, it’s a new life for me, and I’m feeling good.”</p>
+            <p className='text-xs text-muted-foreground mb-6'>– Nina Simone</p>
             <div className="flex gap-4">
-              <NewPageDialog siteId={siteId}><Button size="lg"><FilePlus className="mr-2 h-5 w-5" /> Create Content Page</Button></NewPageDialog>
+              <NewPageDialog siteId={siteId}><Button size="lg"><FilePlus className="mr-2 h-5 w-5" /> Create a page</Button></NewPageDialog>
             </div>
           </div>
         ) : (
