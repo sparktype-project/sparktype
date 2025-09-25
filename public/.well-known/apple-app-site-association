@@ -1,0 +1,15 @@
+{
+  "webcredentials": {
+    "apps": [
+      "TEAMID.com.sparktype.app"
+    ]
+  },
+  "applinks": {
+    "details": [
+      {
+        "appID": "TEAMID.com.sparktype.app",
+        "paths": ["*"]
+      }
+    ]
+  }
+}

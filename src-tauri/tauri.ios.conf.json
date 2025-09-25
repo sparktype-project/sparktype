@@ -1,0 +1,7 @@
+{
+  "bundle": {
+    "iOS": {
+      "entitlements": "entitlements/iOS.plist"
+    }
+  }
+}

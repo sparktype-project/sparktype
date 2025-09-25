@@ -1,11 +1,14 @@
 // src/core/services/webauthn.service.ts
 
-import { 
-  startRegistration, 
+import {
+  startRegistration,
   startAuthentication,
   type PublicKeyCredentialCreationOptionsJSON,
   type PublicKeyCredentialRequestOptionsJSON
 } from '@simplewebauthn/browser';
+import { AUTH_CONFIG } from '@/config/editorConfig';
+import { isTauriApp } from '@/core/utils/platform';
+import { invoke } from '@tauri-apps/api/core';
 
 /**
  * Configuration for site-specific WebAuthn authentication
@@ -75,7 +78,7 @@ export class WebAuthnService {
   /**
    * Get the singleton instance of WebAuthnService
    * Ensures consistent state management across the application
-   * 
+   *
    * @returns The singleton WebAuthnService instance
    */
   static getInstance(): WebAuthnService {
@@ -83,6 +86,23 @@ export class WebAuthnService {
       WebAuthnService.instance = new WebAuthnService();
     }
     return WebAuthnService.instance;
+  }
+
+  /**
+   * Get the appropriate editing domain for WebAuthn authentication
+   * Uses localhost in development, configured domain in production
+   *
+   * @returns The domain to use as RP ID for WebAuthn
+   * @private
+   */
+  private getEditingDomain(): string {
+    // Use localhost in development or when actually on localhost
+    if (import.meta.env.DEV || window.location.hostname === 'localhost') {
+      return 'localhost';
+    }
+
+    // Use configured editing domain for production
+    return AUTH_CONFIG.EDITING_DOMAIN;
   }
 
   /**
@@ -111,30 +131,30 @@ export class WebAuthnService {
 
   /**
    * Register a new WebAuthn credential for site authentication
-   * 
+   *
    * This creates a new public/private key pair where:
    * - Private key stays securely on user's device (TPM, Secure Enclave, etc.)
    * - Public key is returned to be stored in the site's manifest.json
-   * 
+   *
    * The registration process:
    * 1. Generates a cryptographically secure challenge
    * 2. Prompts user for biometric authentication
    * 3. Creates credential tied to this specific site
    * 4. Returns public key and credential ID for storage
-   * 
+   *
    * @param siteId - Unique identifier for the site
    * @param siteName - Human-readable site name for user display
    * @param userDisplayName - Display name for the credential owner
    * @returns Promise resolving to registration result with auth config
-   * 
+   *
    * @example
    * ```typescript
    * const result = await webAuthnService.registerCredential(
-   *   'site-123', 
+   *   'site-123',
    *   'My Personal Blog',
    *   'John Doe'
    * );
-   * 
+   *
    * if (result.success) {
    *   // Store result.authConfig in manifest.json
    *   manifest.auth = result.authConfig;
@@ -142,87 +162,131 @@ export class WebAuthnService {
    * ```
    */
   async registerCredential(
-    siteId: string, 
+    siteId: string,
     siteName: string,
     userDisplayName = 'Site Owner'
   ): Promise<RegistrationResult> {
     try {
-      if (!this.isSupported()) {
-        return { success: false, error: 'WebAuthn not supported in this browser' };
+      // Check if running in Tauri environment
+      if (isTauriApp()) {
+        return await this.registerCredentialTauri(siteId, siteName, userDisplayName);
       }
 
-      // Generate registration options
-      const registrationOptions: PublicKeyCredentialCreationOptionsJSON = {
-        rp: {
-          name: 'Sparktype',
-          id: window.location.hostname,
-        },
-        user: {
-          id: siteId,
-          name: `${siteName} (${siteId})`,
-          displayName: userDisplayName,
-        },
-        challenge: this.generateChallenge(),
-        pubKeyCredParams: [
-          { alg: -7, type: 'public-key' }, // ES256
-          { alg: -257, type: 'public-key' }, // RS256
-        ],
-        authenticatorSelection: {
-          authenticatorAttachment: 'platform',
-          userVerification: 'preferred',
-          requireResidentKey: false,
-        },
-        timeout: 60000,
-        attestation: 'none',
-      };
-
-      const registrationResponse = await startRegistration({ optionsJSON: registrationOptions });
-
-      // Create auth config from successful registration
-      const authConfig: SiteAuthConfig = {
-        publicKey: registrationResponse.response.publicKey!,
-        credentialId: registrationResponse.id,
-        requiresAuth: true,
-        userDisplayName,
-        registeredAt: new Date().toISOString(),
-      };
-
-      // Cache the credential locally
-      this.registeredCredentials.set(siteId, authConfig);
-
-      return { success: true, authConfig };
-
+      // Web browser registration
+      return await this.registerCredentialWeb(siteId, siteName, userDisplayName);
     } catch (error) {
       console.error('WebAuthn registration failed:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Registration failed' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Registration failed'
+      };
+    }
+  }
+
+  /**
+   * Register credential using browser WebAuthn API
+   * @private
+   */
+  private async registerCredentialWeb(
+    siteId: string,
+    siteName: string,
+    userDisplayName: string
+  ): Promise<RegistrationResult> {
+    if (!this.isSupported()) {
+      return { success: false, error: 'WebAuthn not supported in this browser' };
+    }
+
+    // Generate registration options
+    const registrationOptions: PublicKeyCredentialCreationOptionsJSON = {
+      rp: {
+        name: 'Sparktype',
+        id: this.getEditingDomain(),
+      },
+      user: {
+        id: siteId,
+        name: `${siteName} (${siteId})`,
+        displayName: userDisplayName,
+      },
+      challenge: this.generateChallenge(),
+      pubKeyCredParams: [
+        { alg: -7, type: 'public-key' }, // ES256
+        { alg: -257, type: 'public-key' }, // RS256
+      ],
+      authenticatorSelection: {
+        authenticatorAttachment: 'platform',
+        userVerification: 'preferred',
+        requireResidentKey: false,
+      },
+      timeout: 60000,
+      attestation: 'none',
+    };
+
+    const registrationResponse = await startRegistration({ optionsJSON: registrationOptions });
+
+    // Create auth config from successful registration
+    const authConfig: SiteAuthConfig = {
+      publicKey: registrationResponse.response.publicKey!,
+      credentialId: registrationResponse.id,
+      requiresAuth: true,
+      userDisplayName,
+      registeredAt: new Date().toISOString(),
+    };
+
+    // Cache the credential locally
+    this.registeredCredentials.set(siteId, authConfig);
+
+    return { success: true, authConfig };
+  }
+
+  /**
+   * Register credential using Tauri native authentication
+   * @private
+   */
+  private async registerCredentialTauri(
+    siteId: string,
+    siteName: string,
+    userDisplayName: string
+  ): Promise<RegistrationResult> {
+    try {
+      const result = await invoke('register_passkey', {
+        siteId,
+        siteName,
+        userDisplayName,
+        editingDomain: this.getEditingDomain(),
+      });
+
+      return result as RegistrationResult;
+    } catch (error) {
+      console.error('Tauri WebAuthn registration failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Tauri registration failed'
       };
     }
   }
 
   /**
    * Authenticate user for site access using registered WebAuthn credential
-   * 
+   *
    * This verifies the user possesses the private key corresponding to the
    * public key stored in the site's manifest. The authentication process:
-   * 
+   *
    * 1. Generates a new cryptographic challenge
    * 2. Requests user authentication via biometrics/security key
    * 3. Verifies the credential ID matches the registered credential
    * 4. Grants access if verification succeeds
-   * 
+   *
    * @param siteId - The site requesting authentication
    * @param authConfig - The auth configuration from manifest.json
    * @returns Promise resolving to authentication result
-   * 
+   *
    * @example
    * ```typescript
    * const authResult = await webAuthnService.authenticateForSite(
    *   'site-123',
    *   manifest.auth
    * );
-   * 
+   *
    * if (authResult.success) {
    *   // Grant access to site editing
    *   loadSiteEditor();
@@ -232,55 +296,96 @@ export class WebAuthnService {
    * ```
    */
   async authenticateForSite(
-    siteId: string, 
+    siteId: string,
     authConfig: SiteAuthConfig
   ): Promise<AuthenticationResult> {
     try {
-      if (!this.isSupported()) {
-        return { success: false, error: 'WebAuthn not supported in this browser' };
-      }
-
       if (!authConfig.requiresAuth) {
         return { success: true };
       }
 
-      // Generate authentication options
-      const authenticationOptions: PublicKeyCredentialRequestOptionsJSON = {
-        challenge: this.generateChallenge(),
-        allowCredentials: [{
-          id: authConfig.credentialId,
-          type: 'public-key',
-          transports: ['internal', 'hybrid'],
-        }],
-        userVerification: 'preferred',
-        timeout: 60000,
-      };
-
-      const authenticationResponse = await startAuthentication({ optionsJSON: authenticationOptions });
-
-      if (authenticationResponse.id === authConfig.credentialId) {
-        // Cache successful authentication
-        this.registeredCredentials.set(siteId, authConfig);
-        
-        return { 
-          success: true, 
-          credentialId: authenticationResponse.id 
-        };
+      // Check if running in Tauri environment
+      if (isTauriApp()) {
+        return await this.authenticateForSiteTauri(siteId, authConfig);
       }
 
-      return { success: false, error: 'Credential verification failed' };
-
+      // Web browser authentication
+      return await this.authenticateForSiteWeb(siteId, authConfig);
     } catch (error) {
       console.error('WebAuthn authentication failed:', error);
-      
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Authentication failed'
+      };
+    }
+  }
+
+  /**
+   * Authenticate using browser WebAuthn API
+   * @private
+   */
+  private async authenticateForSiteWeb(
+    siteId: string,
+    authConfig: SiteAuthConfig
+  ): Promise<AuthenticationResult> {
+    if (!this.isSupported()) {
+      return { success: false, error: 'WebAuthn not supported in this browser' };
+    }
+
+    // Generate authentication options
+    const authenticationOptions: PublicKeyCredentialRequestOptionsJSON = {
+      challenge: this.generateChallenge(),
+      allowCredentials: [{
+        id: authConfig.credentialId,
+        type: 'public-key',
+        transports: ['internal', 'hybrid'],
+      }],
+      userVerification: 'preferred',
+      timeout: 60000,
+    };
+
+    const authenticationResponse = await startAuthentication({ optionsJSON: authenticationOptions });
+
+    if (authenticationResponse.id === authConfig.credentialId) {
+      // Cache successful authentication
+      this.registeredCredentials.set(siteId, authConfig);
+
+      return {
+        success: true,
+        credentialId: authenticationResponse.id
+      };
+    }
+
+    return { success: false, error: 'Credential verification failed' };
+  }
+
+  /**
+   * Authenticate using Tauri native authentication
+   * @private
+   */
+  private async authenticateForSiteTauri(
+    siteId: string,
+    authConfig: SiteAuthConfig
+  ): Promise<AuthenticationResult> {
+    try {
+      const result = await invoke('authenticate_passkey', {
+        siteId,
+        authConfig,
+        editingDomain: this.getEditingDomain(),
+      });
+
+      return result as AuthenticationResult;
+    } catch (error) {
+      console.error('Tauri WebAuthn authentication failed:', error);
+
       // Handle user cancellation gracefully
-      if (error instanceof Error && error.name === 'NotAllowedError') {
+      if (error instanceof Error && error.message.includes('cancelled')) {
         return { success: false, error: 'Authentication was cancelled' };
       }
-      
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Authentication failed' 
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Tauri authentication failed'
       };
     }
   }

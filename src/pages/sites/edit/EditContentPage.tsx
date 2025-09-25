@@ -12,7 +12,7 @@ import { type MarkdownFrontmatter } from '@/core/types';
 
 // UI Components
 import { Button } from '@/core/components/ui/button';
-import { FilePlus, Loader2 } from 'lucide-react';
+import { FilePlus } from 'lucide-react';
 import ThreeColumnLayout from '@/core/components/layout/ThreeColumnLayout';
 import LeftSidebar from '@/features/editor/components/LeftSidebar';
 import NewPageDialog from '@/features/editor/components/NewPageDialog';

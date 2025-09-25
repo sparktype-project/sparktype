@@ -27,3 +27,9 @@ tauri-plugin-http = "2.0.0"
 tauri-plugin-mcp = { version = "0.4.27" }
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
+
+# Dependencies for WebAuthn authentication
+objc = "0.2"
+cocoa = "0.25"
+security-framework = "2.9"
+urlencoding = "2.1"

@@ -1,6 +1,6 @@
 // src/core/components/header-content/EditorHeaderContent.tsx
 
-import { type ReactNode, useState, useCallback, useMemo } from 'react';
+import { type ReactNode, useCallback, useMemo } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 
 // State Management
@@ -27,7 +27,6 @@ interface EditorHeaderContentProps {
 export default function EditorHeaderContent({ actions, siteId: propSiteId }: EditorHeaderContentProps) {
   const { siteId = propSiteId || '' } = useParams<{ siteId: string }>();
   const location = useLocation();
-  const [isPublishing, setIsPublishing] = useState(false);
 
   // Get site and UI state from the global stores
   const site = useAppStore(useCallback((state: AppStore) => state.getSiteById(siteId), [siteId]));
@@ -69,7 +68,6 @@ export default function EditorHeaderContent({ actions, siteId: propSiteId }: Edi
       return;
     }
 
-    setIsPublishing(true);
 
     // Get the configured provider for appropriate messaging
     const provider = site.manifest.publishingConfig?.provider || 'zip';
@@ -114,8 +112,6 @@ export default function EditorHeaderContent({ actions, siteId: propSiteId }: Edi
     } catch (error) {
       console.error("Error publishing site:", error);
       toast.error(`Publishing failed: ${(error as Error).message}`);
-    } finally {
-      setIsPublishing(false);
     }
   };
 

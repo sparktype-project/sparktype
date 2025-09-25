@@ -317,4 +317,11 @@ export const AUTH_CONFIG = {
    * How long authentication sessions persist in localStorage (30 days)
    */
   SESSION_EXPIRY_MS: 30 * 24 * 60 * 60 * 1000,
+
+  /**
+   * The primary editing domain for WebAuthn passkey authentication.
+   * Self-hosters can change this to their own domain.
+   * In development, 'localhost' is automatically used instead.
+   */
+  EDITING_DOMAIN: 'app.sparktype.org',
 } as const;

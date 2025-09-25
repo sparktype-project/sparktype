@@ -2,10 +2,8 @@
 
 import { type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf } from 'lucide-react';
 import { cn } from '@/core/libraries/utils';
 import { usePlatformContext } from '@/core/providers/PlatformProvider';
-import SparkotypeLogo from './ui/SparkotypeLogo';
 
 interface UnifiedHeaderProps {
   children: ReactNode;
