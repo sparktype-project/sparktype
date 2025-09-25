@@ -80,7 +80,7 @@
 
             {{!-- Mobile Menu Button --}}
             <div class="flex md:hidden">
-                <button 
+                <div 
                     @click="isMobileMenuOpen = true" 
                     type="button" 
                     class="inline-flex items-center justify-center p-2 rounded-md text-text hover:text-primary transition-colors"
@@ -90,7 +90,7 @@
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                     </svg>
-                </button>
+                </div>
             </div>
         </div>
     </div>
@@ -138,15 +138,14 @@
      
     {{!-- Mobile Menu Header --}}
     <div class="flex items-center justify-between p-4 border-b border-border">
-        <h2 id="mobile-menu-title" class="text-lg font-semibold text-heading">Menu</h2>
-        <button @click="isMobileMenuOpen = false" 
+        <div @click="isMobileMenuOpen = false" 
                 type="button" 
                 class="inline-flex items-center justify-center p-2 rounded-md text-text hover:text-primary transition-colors"
                 aria-label="Close menu">
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
-        </button>
+        </div>
     </div>
 
     {{!-- Mobile Navigation --}}
@@ -156,9 +155,9 @@
                 {{#if this.children.length}}
                     {{!-- Navigation Item with Submenu --}}
                     <div x-data="{ open: false }" class="space-y-1">
-                        <div class="flex items-center justify-between">
+                        <div class="flex items-center justify-between font-headings">
                             <a href="{{this.href}}" 
-                               class="flex-1 block px-3 py-2 text-base font-medium text-text hover:text-primary hover:bg-muted rounded-md transition-colors"
+                               class="flex-1 block px-3 py-2 text-base hover:text-primary hover:bg-muted rounded-md transition-colors"
                                @click="isMobileMenuOpen = false">
                                 {{this.label}}
                             </a>
@@ -185,7 +184,7 @@
                              class="pl-4 space-y-1 border-l-2 border-border ml-3">
                             {{#each this.children}}
                                 <a href="{{this.href}}" 
-                                   class="block px-3 py-2 text-sm text-muted hover:text-text hover:bg-muted rounded-md transition-colors"
+                                   class="block px-3 py-2 text-sm text-muted hover:text-text hover:bg-muted rounded-md transition-colors font-headings"
                                    @click="isMobileMenuOpen = false">
                                     {{this.label}}
                                 </a>

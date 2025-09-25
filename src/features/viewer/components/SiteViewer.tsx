@@ -44,7 +44,7 @@ export default function SiteViewer() {
     const pathParts = currentRelativePath.split('/').filter(Boolean);
     if (pathParts.length === 3 && pathParts[0] === 'collection') {
       // Keep the collection path as-is for the resolver
-      currentRelativePath = currentRelativePath;
+      // currentRelativePath is already in the correct format
     }
   }
 
@@ -217,11 +217,8 @@ export default function SiteViewer() {
   }, [location.pathname, navigate]);
 
 
-  // Sandbox attributes remain the same
-  const sandboxAttributes = 
-    process.env.NODE_ENV === 'development'
-      ? 'allow-scripts allow-forms allow-same-origin'
-      : 'allow-scripts allow-forms';
+  // Sandbox attributes - allow same-origin in all environments since we now use SAMEORIGIN X-Frame-Options
+  const sandboxAttributes = 'allow-scripts allow-forms allow-same-origin';
 
   // Loading state
   if (isLoading) {

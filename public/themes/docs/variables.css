@@ -1,5 +1,5 @@
 /* ==========================================================================
-   DOCUMENTATION THEME VARIABLES
+   DOCS THEME VARIABLES
    CSS variables that work with the SparkType Design System
    ========================================================================== */
 
@@ -12,33 +12,28 @@
   --font-stack-mono: 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 
   /* ==========================================================================
-     CORE COLOR PALETTE - Starlight-inspired documentation colors
+     CORE COLOR PALETTE
      ========================================================================== */
   --color-background: #ffffff;
-  --color-text: #374151;
-  --color-heading: #1f2937;
+  --color-text: #1f2937;
+  --color-heading: #111827;
   --color-primary: #3b82f6;
   --color-border: #e5e7eb;
   
   /* ==========================================================================
      SEMANTIC COLOR VARIATIONS
      ========================================================================== */
-  --color-muted: #6b7280;
+  --color-muted: #9ca3af;
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-error: #ef4444;
   
   /* ==========================================================================
-     DOCUMENTATION-SPECIFIC COLORS
-     ========================================================================== */
-  --color-sidebar: #f9fafb;
-  
-  /* ==========================================================================
      DEFAULT FONT ASSIGNMENTS
      These defaults will be overridden by theme config via styleOverrides
      ========================================================================== */
-  --font-headings: "Inter", var(--font-stack-sans);
-  --font-text: "IBM Plex Sans", var(--font-stack-sans);
+  --font-headings: "Inter", sans-serif;
+  --font-text: "Gentium Book Plus", serif;
 
   /* ==========================================================================
      MAPPED FONTS (Used by Design System)
@@ -49,7 +44,7 @@
   --font-mono: var(--font-stack-mono);
 
   /* ==========================================================================
-     LAYOUT VARIABLES
+     COMPONENT-SPECIFIC VARIABLES
      ========================================================================== */
   --header-height: 60px;
   --sidebar-width: 280px;
@@ -69,4 +64,42 @@
   --transition-fast: 150ms ease-in-out;
   --transition-medium: 300ms ease-in-out;
   --transition-slow: 500ms ease-in-out;
+}
+
+.gentium-book-plus-regular {
+  font-family: "Gentium Book Plus", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.gentium-book-plus-regular-italic {
+  font-family: "Gentium Book Plus", serif;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.instrument-serif-regular {
+  font-family: "Instrument Serif", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.instrument-serif-regular-italic {
+  font-family: "Instrument Serif", serif;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.inter-regular {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.inter-bold {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: normal;
 }
