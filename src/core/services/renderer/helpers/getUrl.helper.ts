@@ -20,23 +20,26 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
     const node = args[0] as StructureNode;
     const isExport = options.data.root.options?.isExport === true;
     const siteRootPath = options.data.root.options?.siteRootPath;
-    
+
     const baseUrl = getUrlUtil(node, siteData.manifest, isExport, undefined, siteData);
-    
+
     // For preview mode with iframe routing, use relative URLs like export mode
     if (!isExport && siteRootPath === '/') {
-      // Generate relative URLs for virtual site navigation
+      // Handle empty baseUrl (homepage) for iframe preview
+      if (!baseUrl || baseUrl === '') {
+        return './';
+      }
       return baseUrl;
     }
-    
+
     // Apply siteRootPath for other preview modes (legacy hash-based navigation)
     if (!isExport && siteRootPath) {
       const basePath = siteRootPath.replace(/\/$/, ''); // Remove trailing slash
       const segmentPath = baseUrl ? `/${baseUrl}` : '';  // Add leading slash if URL exists
       return `${basePath}${segmentPath}`;
     }
-    
-    return baseUrl;
+
+    return baseUrl || './';
   },
 
   /**
@@ -53,17 +56,26 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
       console.warn('Handlebars "getPageUrl" helper called with an invalid node object.');
       return '#error-invalid-node';
     }
-    
+
     const baseUrl = getUrlUtil(node, siteData.manifest, isExport, undefined, siteData, false);
-    
-    // Apply siteRootPath for preview mode (iframe navigation)
+
+    // For preview mode with iframe routing, use relative URLs
+    if (!isExport && siteRootPath === '/') {
+      // Handle empty baseUrl (homepage) for iframe preview
+      if (!baseUrl || baseUrl === '') {
+        return './';
+      }
+      return baseUrl;
+    }
+
+    // Apply siteRootPath for other preview modes (legacy hash-based navigation)
     if (!isExport && siteRootPath) {
       const basePath = siteRootPath.replace(/\/$/, ''); // Remove trailing slash
       const segmentPath = baseUrl ? `/${baseUrl}` : '';  // Add leading slash if URL exists
       return `${basePath}${segmentPath}`;
     }
-    
-    return baseUrl;
+
+    return baseUrl || './';
   },
 
   /**
@@ -121,17 +133,20 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
 
     // For preview mode with iframe routing, use relative URLs like export mode
     if (!isExport && siteRootPath === '/') {
-      // Generate relative URLs for virtual site navigation
+      // Handle empty baseUrl for iframe preview
+      if (!baseUrl || baseUrl === '') {
+        return './';
+      }
       return baseUrl;
     }
-    
+
     // Apply siteRootPath for other preview modes (legacy hash-based navigation)
     if (!isExport && siteRootPath) {
       const basePath = siteRootPath.replace(/\/$/, ''); // Remove trailing slash
       const segmentPath = baseUrl ? `/${baseUrl}` : '';  // Add leading slash if URL exists
       return `${basePath}${segmentPath}`;
     }
-    
-    return baseUrl;
+
+    return baseUrl || './';
   }
 });

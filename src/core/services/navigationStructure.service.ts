@@ -1,6 +1,7 @@
 // src/core/services/navigationStructure.service.ts
 import { type LocalSiteData, type NavLinkItem, type StructureNode } from '@/core/types';
 import { getUrlForNode } from '@/core/services/urlUtils.service';
+import { getRelativePath } from '@/core/services/relativePaths.service';
 import { type RenderOptions } from '@/core/services/renderer/render.service';
 
 /**
@@ -13,9 +14,9 @@ import { type RenderOptions } from '@/core/services/renderer/render.service';
  */
 
 function buildNavLinks(
-    siteData: LocalSiteData, 
-    nodes: StructureNode[], 
-    currentPagePath: string, 
+    siteData: LocalSiteData,
+    nodes: StructureNode[],
+    currentPagePath: string,
     options: Pick<RenderOptions, 'isExport' | 'siteRootPath'>
 ): NavLinkItem[] {
   return nodes
@@ -26,9 +27,14 @@ function buildNavLinks(
       let href: string;
 
       if (options.isExport) {
-        // For export mode, navigation links should be absolute paths from site root
-        // This ensures navigation works correctly regardless of the current page depth
-        href = urlSegment ? `/${urlSegment}` : '/';
+        // For export mode, use relative navigation links for portable HTML
+        if (!urlSegment || urlSegment === 'index.html') {
+          // Homepage link - calculate relative path from current page to index.html
+          href = getRelativePath(currentPagePath, 'index.html');
+        } else {
+          // Other pages - calculate relative path from current page to target page
+          href = getRelativePath(currentPagePath, urlSegment);
+        }
       } else {
         // 1. Get the base path from options (e.g., "#/sites/123").
         // 2. The urlSegment is the page-specific part (e.g., "about" or "blog/post-1").
@@ -40,7 +46,7 @@ function buildNavLinks(
 
       const nodeFile = siteData.contentFiles?.find(f => f.path === node.path);
       const isCollectionPage = !!nodeFile?.frontmatter.collection;
-      
+
       const children = (node.children && node.children.length > 0 && !isCollectionPage)
         ? buildNavLinks(siteData, node.children, currentPagePath, options)
         : [];

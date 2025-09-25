@@ -22,8 +22,26 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
-# Cache static assets
+# Cache static assets and allow CORS for iframe loading
 [[headers]]
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET"
+    Access-Control-Allow-Headers = "*"
+
+# Allow CORS for JavaScript and CSS files to prevent loading failures in iframes
+[[headers]]
+  for = "*.js"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET"
+    Access-Control-Allow-Headers = "*"
+
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET"
+    Access-Control-Allow-Headers = "*"
