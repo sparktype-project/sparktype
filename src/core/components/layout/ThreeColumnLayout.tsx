@@ -97,7 +97,7 @@ export default function ThreeColumnLayout({ leftSidebar, rightSidebar, children,
             // When left sidebar is open, add left padding
             isLeftOpen ? 'lg:pl-72' : 'lg:pl-0',
             // When right sidebar is open, add right padding
-            isRightOpen ? 'lg:pr-80' : 'lg:pr-0'
+            isRightOpen ? 'lg:pr-72' : 'lg:pr-0'
           )}
         >
           <div className="h-full overflow-y-auto">

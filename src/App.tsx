@@ -9,6 +9,7 @@ import { useInitialiseUIStore } from './core/hooks/useInitialiseUIStore';
 import { Toaster } from "./core/components/ui/sonner";
 import AuthGuard from './core/components/AuthGuard';
 import { PlatformProvider } from './core/providers/PlatformProvider';
+import { EditorProvider } from './features/editor/contexts/EditorProvider';
 import Loader from './core/components/ui/Loader';
 // --- Code-Splitting Page Imports using React.lazy ---
 // This is a best practice to keep the initial bundle size small.
@@ -54,9 +55,9 @@ export default function App() {
    return (
     <>
         <PlatformProvider>
-
-      <Suspense fallback={<Loader fullScreen />}>
-        <Routes>
+          <EditorProvider>
+            <Suspense fallback={<Loader fullScreen />}>
+              <Routes>
           
 
           <Route path="/" element={<HomePageDashboard />} />
@@ -82,10 +83,11 @@ export default function App() {
           </Route>
           
           <Route path="*" element={<div>404 - Page Not Found</div>} />
-        </Routes>
-      </Suspense>
-      <Toaster richColors position="top-center" />
-      </PlatformProvider>
+              </Routes>
+            </Suspense>
+            <Toaster richColors position="top-center" />
+          </EditorProvider>
+        </PlatformProvider>
     </>
   );
 }

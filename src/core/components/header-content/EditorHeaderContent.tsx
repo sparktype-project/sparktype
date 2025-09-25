@@ -18,6 +18,7 @@ import { publishSite } from '@/core/services/publishing.service';
 
 // Components
 import { SyncStatusIndicator } from '@/features/editor/components/SyncStatusIndicator';
+import { TooltipTrigger, Tooltip, TooltipContent } from '@/components/ui/tooltip';
 
 interface EditorHeaderContentProps {
   actions?: ReactNode;
@@ -127,16 +128,24 @@ export default function EditorHeaderContent({ actions, siteId: propSiteId }: Edi
       <div className="flex items-center gap-2">
         {/* Left sidebar toggle button */}
         {isLeftAvailable && (
-          <Button
-            variant="outline"
-            size="icon"
-            className="shrink-0 text-xs size-3"
+          <Tooltip>
+          <TooltipTrigger>
+            <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 hover:cursor-pointer"
             onClick={toggleLeftSidebar}
             onMouseDown={(e) => e.stopPropagation()} // Prevent dragging on button
-            aria-label="Toggle file tree"
+            aria-label="Toggle left sidebar"
           >
             <PanelLeft className="h-5 w-5" />
           </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Toggle sidebar</p>
+          </TooltipContent>
+        </Tooltip>   
+          
         )}
       </div>
 
@@ -147,50 +156,76 @@ export default function EditorHeaderContent({ actions, siteId: propSiteId }: Edi
         <span data-tauri-drag-region className="font-bold ml-4 text-foreground">{site.manifest.title}</span>
       </div>
 
-      <div className="flex items-center justify-end gap-4" data-tauri-drag-region>
+      <div className="flex items-center justify-end gap-2" data-tauri-drag-region>
         {/* Context-specific actions (e.g., SaveButton) - prevent dragging */}
         <div onMouseDown={(e) => e.stopPropagation()}>
           {actions}
         </div>
 
         {/* GitHub sync status indicator - prevent dragging */}
-        <div onMouseDown={(e) => e.stopPropagation()}>
-          <SyncStatusIndicator siteId={siteId} site={site} />
-        </div>
+        <SyncStatusIndicator siteId={siteId} site={site} />
 
-        <Button
-          variant="outline"
-          asChild
-          onMouseDown={(e) => e.stopPropagation()} // Prevent dragging on button
-          className='size-3 hover:cursor-pointer'
-          size='icon'
-        >
-          <Link to={viewLink}>
-            <Eye className="h-4 w-4" />
-            
-          </Link>
-        </Button>
+        
+        
+        <Tooltip>
+          <TooltipTrigger>
+            <Button
+              size="sm"
+              variant="ghost"
+              asChild
+              onMouseDown={(e) => e.stopPropagation()} // Prevent dragging on button
+              className='h-8 w-8 p-0 hover:cursor-pointer'
+              aria-label="Preview site"
+            >
+              <Link to={viewLink}>
+                <Eye className="h-4 w-4" />
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Preview</p>
+          </TooltipContent>
+        </Tooltip>    
 
-        <div
-          onClick={handlePublishSite}
-          onMouseDown={(e) => e.stopPropagation()} // Prevent dragging on button
-          className='size-3 hover:cursor-pointer'
-        >
-          <UploadCloud className="h-4 w-4" />
-        </div>
+        <Tooltip>
+          <TooltipTrigger>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handlePublishSite}
+              onMouseDown={(e) => e.stopPropagation()} // Prevent dragging on button
+              className='h-8 w-8 p-0 hover:cursor-pointer'
+              aria-label="Publish site"
+            >
+              <UploadCloud className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Publish</p>
+          </TooltipContent>
+        </Tooltip>   
+        
 
         {/* Right sidebar toggle button */}
         {isRightAvailable && (
-          <Button
-            variant="outline"
-            size="icon"
-            className="shrink-0 size-3 hover:cursor-pointer"
-            onClick={toggleRightSidebar}
-            onMouseDown={(e) => e.stopPropagation()} // Prevent dragging on button
-            aria-label="Toggle settings sidebar"
-          >
-            <PanelRight className="h-5 w-5" />
+          <Tooltip>
+          <TooltipTrigger>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 hover:cursor-pointer"
+              onClick={toggleRightSidebar}
+              onMouseDown={(e) => e.stopPropagation()} // Prevent dragging on button
+              aria-label="Toggle right sidebar"
+            >
+              <PanelRight className="h-5 w-5" />
           </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Toggle sidebar</p>
+          </TooltipContent>
+        </Tooltip>   
+          
         )}
       </div>
     </>

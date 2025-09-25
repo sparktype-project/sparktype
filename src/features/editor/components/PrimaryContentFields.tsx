@@ -43,7 +43,7 @@ export default function PrimaryContentFields({
           value={frontmatter.title || ''}
           onChange={(e) => handleChange('title', e.target.value)}
           // These classes create the large, "invisible" input style
-          className="text-2xl lg:text-3xl font-bold h-auto p-0 border-0 shadow-none focus-visible:ring-0 bg-transparent"
+          className="text-2xl md:text-3xl font-bold h-auto p-0 border-0 shadow-none focus-visible:ring-0 bg-transparent"
         />
       </div>
 
@@ -57,7 +57,7 @@ export default function PrimaryContentFields({
             value={frontmatter.description || ''}
             onChange={(e) => handleChange('description', e.target.value)}
             // Style for a clean, borderless textarea
-            className="p-0 border-0 shadow-none focus-visible:ring-0 bg-none resize-none text-2xl"
+            className="p-0 border-0 shadow-none focus-visible:ring-0 bg-none resize-none text-xl md:text-xl"
             rows={1}
           />
         </div>

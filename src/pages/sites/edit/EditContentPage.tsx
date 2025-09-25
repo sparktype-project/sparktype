@@ -7,7 +7,6 @@ import { useParams } from 'react-router-dom';
 import { useUIStore } from '@/core/state/uiStore';
 import { useAppStore } from '@/core/state/useAppStore';
 import { type AppStore } from '@/core/state/useAppStore';
-import { EditorProvider } from '@/features/editor/contexts/EditorProvider';
 import { type MarkdownFrontmatter } from '@/core/types';
 
 // UI Components
@@ -242,12 +241,8 @@ function EditContentPageInternal() {
 }
 
 /**
- * The final exported component wraps the internal logic with the necessary context provider.
+ * The main exported component - EditorProvider is now available at app level.
  */
 export default function EditContentPage() {
-  return (
-    <EditorProvider>
-      <EditContentPageInternal />
-    </EditorProvider>
-  );
+  return <EditContentPageInternal />;
 }
