@@ -131,7 +131,7 @@ export async function assembleBaseContext(
         manifest,
         options,
         pageContext,
-        navLinks: generateNavLinks(siteData, getUrlForNode(urlNode, manifest, true, undefined, siteData), options),
+        navLinks: generateNavLinks(siteData, getUrlForNode(urlNode, manifest, options.isExport, undefined, siteData), options),
         headContext: {
             pageTitle: resolution.pageTitle,
             manifest,

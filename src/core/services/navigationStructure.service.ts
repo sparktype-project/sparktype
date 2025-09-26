@@ -36,12 +36,22 @@ function buildNavLinks(
           href = getRelativePath(currentPagePath, urlSegment);
         }
       } else {
-        // 1. Get the base path from options (e.g., "#/sites/123").
-        // 2. The urlSegment is the page-specific part (e.g., "about" or "blog/post-1").
-        // 3. Combine them into a clean absolute hash path.
-        const basePath = options.siteRootPath.replace(/\/$/, ''); // Remove trailing slash
-        const segmentPath = urlSegment ? `/${urlSegment}` : '';  // Add leading slash if segment exists
-        href = `${basePath}${segmentPath}`;
+        // Check if this is iframe content (empty siteRootPath)
+        if (!options.siteRootPath) {
+          // For iframe content, use simple relative paths for JS interception
+          if (!urlSegment || urlSegment === 'index.html') {
+            href = '';  // Homepage - empty path
+          } else {
+            href = urlSegment;  // Other pages - just the segment (e.g., "about")
+          }
+        } else {
+          // 1. Get the base path from options (e.g., "#/sites/123").
+          // 2. The urlSegment is the page-specific part (e.g., "about" or "blog/post-1").
+          // 3. Combine them into a clean absolute hash path.
+          const basePath = options.siteRootPath.replace(/\/$/, ''); // Remove trailing slash
+          const segmentPath = urlSegment ? `/${urlSegment}` : '';  // Add leading slash if segment exists
+          href = `${basePath}${segmentPath}`;
+        }
       }
 
       const nodeFile = siteData.contentFiles?.find(f => f.path === node.path);
