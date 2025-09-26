@@ -30,12 +30,13 @@ export class ImagePreprocessorService {
    */
   async preprocessImages(siteData: LocalSiteData, isExport: boolean, forIframe?: boolean): Promise<void> {
     console.log('[ImagePreprocessor] Starting image preprocessing...');
-    
+    console.log(`[ImagePreprocessor] Site data contains ${siteData.contentFiles?.length || 0} content files`);
+
     const imageService = getActiveImageService(siteData.manifest);
-    
+
     // Clear previous processing
     this.processedImages.clear();
-    
+
     // Get all image references from content
     const allImageRefs = this.extractImageReferences(siteData);
     console.log(`[ImagePreprocessor] Found ${allImageRefs.length} image references`);
@@ -116,22 +117,29 @@ export class ImagePreprocessorService {
       console.warn('[ImagePreprocessor] No content files found in siteData');
       return [];
     }
-    
+
     for (const contentFile of siteData.contentFiles) {
       const layoutPath = contentFile.frontmatter.layout || 'page';
-      
+
+      console.log(`[ImagePreprocessor] Scanning ${contentFile.path} frontmatter:`, contentFile.frontmatter);
+
       // Check frontmatter for image fields
       for (const [fieldName, value] of Object.entries(contentFile.frontmatter)) {
+        console.log(`[ImagePreprocessor] Checking field '${fieldName}' with value:`, value, `Type: ${typeof value}`);
+
         if (this.isImageRef(value)) {
+          console.log(`[ImagePreprocessor] ✓ Found image reference in field '${fieldName}':`, value);
           imageRefs.push({
             imageRef: value as ImageRef,
             fieldName,
             layoutPath,
             contentPath: contentFile.path
           });
+        } else {
+          console.log(`[ImagePreprocessor] ✗ Value in field '${fieldName}' is not an ImageRef`);
         }
       }
-      
+
       // Note: This preprocessor only handles frontmatter image fields.
       // Markdown content images are handled separately by the markdown renderer.
     }
@@ -430,7 +438,7 @@ export class ImagePreprocessorService {
    * Type guard to check if a value is an ImageRef
    */
   private isImageRef(value: any): boolean {
-    return (
+    const isValid = (
       value &&
       typeof value === 'object' &&
       'serviceId' in value &&
@@ -438,6 +446,21 @@ export class ImagePreprocessorService {
       typeof value.serviceId === 'string' &&
       typeof value.src === 'string'
     );
+
+    if (!isValid && value && typeof value === 'object') {
+      console.log(`[ImagePreprocessor] isImageRef failed for:`, value);
+      console.log(`[ImagePreprocessor] Analysis:`, {
+        hasValue: !!value,
+        isObject: typeof value === 'object',
+        hasServiceId: 'serviceId' in value,
+        hasSrc: 'src' in value,
+        serviceIdType: typeof value.serviceId,
+        srcType: typeof value.src,
+        objectKeys: Object.keys(value)
+      });
+    }
+
+    return isValid;
   }
 }
 

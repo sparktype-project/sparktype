@@ -9,7 +9,7 @@ import { MEMORY_CONFIG } from '@/config/editorConfig';
 import { toast } from 'sonner';
 import { cropAndResizeImage, getImageDimensions as getImageDimensionsFromBlob } from './imageManipulation.service';
 import { isTauriApp } from '@/core/utils/platform';
-import { addImageToRegistry, addDerivativeToRegistry } from './imageRegistry.service';
+import { addImageToRegistry, addDerivativeToRegistry, type AddImageMetadata } from './imageRegistry.service';
 
 /**
  * This service manages images stored locally within the browser's IndexedDB.
@@ -59,12 +59,15 @@ class LocalImageService implements ImageService {
    * @throws {Error} If the file type is unsupported or the file size exceeds the configured limits.
    */
   public async upload(file: File, siteId: string): Promise<ImageRef> {
+    console.log(`[LocalImageService] Upload started - file: ${file.name}, size: ${file.size}, type: ${file.type}, siteId: ${siteId}`);
+
     // --- Validation Block ---
     const isSvg = file.type === 'image/svg+xml';
 
     // 1. Check if the MIME type is supported.
     if (!MEMORY_CONFIG.SUPPORTED_IMAGE_TYPES.includes(file.type as typeof MEMORY_CONFIG.SUPPORTED_IMAGE_TYPES[number])) {
       const errorMsg = `Unsupported file type: ${file.type}.`;
+      console.error(`[LocalImageService] ${errorMsg}`);
       toast.error(errorMsg);
       throw new Error(errorMsg);
     }
@@ -75,6 +78,7 @@ class LocalImageService implements ImageService {
         const maxSizeFormatted = (maxSize / 1024 / (isSvg ? 1 : 1024)).toFixed(1);
         const unit = isSvg ? 'KB' : 'MB';
         const errorMsg = `Image is too large. Max size is ${maxSizeFormatted}${unit}.`;
+        console.error(`[LocalImageService] ${errorMsg}`);
         toast.error(errorMsg);
         throw new Error(errorMsg);
     }
@@ -90,37 +94,60 @@ class LocalImageService implements ImageService {
     const fileName = `${Date.now()}-${slugifiedBaseName}${extension}`;
     const relativePath = `assets/originals/${fileName}`;
 
+    console.log(`[LocalImageService] Generated path: ${relativePath}`);
+
     // Convert File to Blob to ensure proper storage in IndexedDB
     const blob = new Blob([file], { type: file.type });
+    console.log(`[LocalImageService] Saving image asset to IndexedDB...`);
+    const saveStartTime = Date.now();
     await localSiteFs.saveImageAsset(siteId, relativePath, blob);
+    const saveEndTime = Date.now();
+    console.log(`[LocalImageService] Image asset saved in ${saveEndTime - saveStartTime}ms`);
 
-    // Register the image in the registry for tracking
+    let width: number, height: number;
     try {
-      await addImageToRegistry(siteId, relativePath, file.size);
-      console.log(`[LocalImageService] Registered image in registry: ${relativePath}`);
+      console.log(`[LocalImageService] Getting image dimensions...`);
+      const dimensionsStartTime = Date.now();
+      const dimensions = await getImageDimensionsFromBlob(file as Blob);
+      const dimensionsEndTime = Date.now();
+      width = dimensions.width;
+      height = dimensions.height;
+      console.log(`[LocalImageService] Image dimensions obtained in ${dimensionsEndTime - dimensionsStartTime}ms: ${width}x${height}`);
+    } catch (error) {
+      console.error('[LocalImageService] Failed to get image dimensions, using defaults:', error);
+      width = 0;
+      height = 0;
+    }
+
+    // Register the image in the registry with complete metadata
+    try {
+      console.log(`[LocalImageService] Registering image in registry...`);
+      const registryStartTime = Date.now();
+      const metadata: AddImageMetadata = {
+        sizeBytes: file.size,
+        width: width > 0 ? width : undefined,
+        height: height > 0 ? height : undefined,
+        alt: file.name, // Use filename as initial alt text
+      };
+
+      await addImageToRegistry(siteId, relativePath, metadata);
+      const registryEndTime = Date.now();
+      console.log(`[LocalImageService] Image registered in registry in ${registryEndTime - registryStartTime}ms: ${relativePath}`, metadata);
     } catch (error) {
       console.warn(`[LocalImageService] Failed to register image in registry: ${relativePath}`, error);
       // Don't fail the upload if registry update fails
     }
 
-    let width: number, height: number;
-    try {
-      const dimensions = await getImageDimensionsFromBlob(file as Blob);
-      width = dimensions.width;
-      height = dimensions.height;
-    } catch (error) {
-      console.error('Failed to get image dimensions, using defaults:', error);
-      width = 0;
-      height = 0;
-    }
-
-    return {
+    const imageRef = {
       serviceId: 'local',
       src: relativePath,
       alt: file.name,
       width,
       height,
     };
+
+    console.log(`[LocalImageService] Upload completed successfully:`, imageRef);
+    return imageRef;
   }
 
   /**
@@ -131,9 +158,11 @@ class LocalImageService implements ImageService {
    * @param {ImageTransformOptions} options The requested transformations (width, height, etc.).
    * @param {boolean} isExport If true, returns a relative path for static export. If false, returns a temporary `blob:` URL for live preview.
    * @param {boolean} forIframe If true, returns data URLs that work in iframe contexts.
+   * @param {boolean} skipDerivatives If true, returns original image without generating derivatives (for fast upload previews).
    * @returns {Promise<string>} A promise that resolves to the displayable URL or relative path.
    */
-  public async getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions, isExport: boolean, forIframe?: boolean): Promise<string> {
+  public async getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions, isExport: boolean, forIframe?: boolean, skipDerivatives?: boolean): Promise<string> {
+    console.log(`[LocalImageService] getDisplayUrl called - skipDerivatives: ${skipDerivatives}, isExport: ${isExport}, forIframe: ${forIframe}, options:`, options);
     // SVGs are returned directly without processing.
     if (ref.src.toLowerCase().endsWith('.svg')) {
       if (isExport) {
@@ -154,14 +183,35 @@ class LocalImageService implements ImageService {
       return URL.createObjectURL(sourceBlob);
     }
 
+    // If skipDerivatives is true, return original image directly for fast preview
+    if (skipDerivatives) {
+      console.log(`[LocalImageService] Skipping derivative generation, returning original image: ${ref.src}`);
+      const sourceBlob = await this.getSourceBlob(manifest.siteId, ref.src);
+
+      if (forIframe || isTauriApp()) {
+        // For iframe contexts or Tauri apps, use data URLs to avoid WebKit blob URL limitations
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(sourceBlob);
+        });
+      } else {
+        // For preview in web browsers, return blob URL for better performance
+        const blobUrl = URL.createObjectURL(sourceBlob);
+        console.log(`[LocalImageService] Original image blob URL created: ${blobUrl}`);
+        return blobUrl;
+      }
+    }
+
     // Generate derivative with proper path handling
     const { width, height, crop = 'scale', gravity = 'center' } = options;
     const extIndex = ref.src.lastIndexOf('.');
     if (extIndex === -1) throw new Error("Source image has no extension.");
-    
+
     const pathWithoutExt = ref.src.substring(0, extIndex);
     const ext = ref.src.substring(extIndex);
-    
+
     // Extract just the filename (remove assets/originals/ or assets/images/ prefix)
     const baseFilename = pathWithoutExt.replace(/^assets\/(originals|images)\//, '');
     const derivativeFilename = `${baseFilename}_w${width || 'auto'}_h${height || 'auto'}_c-${crop}_g-${gravity}${ext}`;
@@ -203,23 +253,36 @@ class LocalImageService implements ImageService {
    * @returns {Promise<Blob>} A promise that resolves to the final derivative blob.
    */
   private async getOrProcessDerivative(siteId: string, srcPath: string, cacheKey: string, options: ImageTransformOptions): Promise<Blob> {
+    console.log(`[LocalImageService] getOrProcessDerivative called - siteId: ${siteId}, srcPath: ${srcPath}, cacheKey: ${cacheKey}, options:`, options);
+
     // 1. Check persistent cache (IndexedDB) first.
-    console.log(`[ImageService] Looking for cached derivative: ${cacheKey}`);
+    console.log(`[LocalImageService] Looking for cached derivative: ${cacheKey}`);
+    const cacheStartTime = Date.now();
     const cachedBlob = await getCachedDerivative(cacheKey);
+    const cacheEndTime = Date.now();
+
     if (cachedBlob) {
-      console.log(`[ImageService] Found cached derivative: ${cacheKey}, size: ${cachedBlob.size}`);
+      console.log(`[LocalImageService] Found cached derivative in ${cacheEndTime - cacheStartTime}ms: ${cacheKey}, size: ${cachedBlob.size}`);
       return cachedBlob;
     } else {
-      console.log(`[ImageService] No cached derivative found, will generate: ${cacheKey}`);
+      console.log(`[LocalImageService] No cached derivative found after ${cacheEndTime - cacheStartTime}ms, will generate: ${cacheKey}`);
     }
 
     // 2. Check if this exact derivative is already being processed.
-    if (processingPromises.has(cacheKey)) return processingPromises.get(cacheKey)!;
-    
+    if (processingPromises.has(cacheKey)) {
+      console.log(`[LocalImageService] Derivative already being processed, waiting for existing promise: ${cacheKey}`);
+      return processingPromises.get(cacheKey)!;
+    }
+
     // 3. If not, create and store a new processing promise.
+    console.log(`[LocalImageService] Starting new derivative processing: ${cacheKey}`);
     const processingPromise = (async (): Promise<Blob> => {
       try {
+        console.log(`[LocalImageService] Getting source blob for: ${srcPath}`);
+        const sourceBlobStartTime = Date.now();
         const sourceBlob = await this.getSourceBlob(siteId, srcPath);
+        const sourceBlobEndTime = Date.now();
+        console.log(`[LocalImageService] Source blob retrieved in ${sourceBlobEndTime - sourceBlobStartTime}ms, size: ${sourceBlob.size}`);
         const sourceDimensions = await getImageDimensionsFromBlob(sourceBlob);
 
         console.log(`[ImageService] Processing new derivative: ${cacheKey}`);
@@ -235,15 +298,18 @@ class LocalImageService implements ImageService {
         // Use canvas-based cropping for precise control
         let processedBlob: Blob;
         try {
+          console.log(`[LocalImageService] Starting canvas processing for ${cacheKey}...`);
+          const canvasStartTime = Date.now();
           processedBlob = await cropAndResizeImage(sourceBlob, {
             width: targetWidth,
             height: targetHeight,
             crop,
             gravity: options.gravity
           });
-          console.log(`[ImageService] Canvas processing complete: ${sourceBlob.size} -> ${processedBlob.size} bytes`);
+          const canvasEndTime = Date.now();
+          console.log(`[LocalImageService] Canvas processing complete in ${canvasEndTime - canvasStartTime}ms: ${sourceBlob.size} -> ${processedBlob.size} bytes`);
         } catch (canvasError) {
-          console.error(`[ImageService] Canvas processing failed, falling back to compression only:`, canvasError);
+          console.error(`[LocalImageService] Canvas processing failed, falling back to compression only:`, canvasError);
           // Fallback to compression-only if canvas processing fails
           // Note: browser-image-compression doesn't support proper cropping, only resizing
           const compressionOptions: CompressionOptions = {
@@ -254,7 +320,12 @@ class LocalImageService implements ImageService {
             // Only set maxWidth/maxHeight for 'fit' mode to avoid stretching
             ...(crop === 'fit' ? { maxWidth: targetWidth, maxHeight: targetHeight } : {})
           };
+
+          console.log(`[LocalImageService] Starting fallback compression...`);
+          const compressionStartTime = Date.now();
           processedBlob = await imageCompression(sourceBlob as File, compressionOptions);
+          const compressionEndTime = Date.now();
+          console.log(`[LocalImageService] Fallback compression complete in ${compressionEndTime - compressionStartTime}ms`);
         }
 
         // Apply additional compression if the result is still large

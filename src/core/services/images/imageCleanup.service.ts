@@ -289,7 +289,11 @@ export async function getImageUsageStats(siteData: LocalSiteData): Promise<{
 }> {
   try {
     // Use the registry-based stats which are much faster and more reliable
-    return await getRegistryImageStats(siteData.siteId);
+    const registryStats = await getRegistryImageStats(siteData.siteId);
+    return {
+      ...registryStats,
+      totalStorageBytes: registryStats.totalRegistryBytes,
+    };
   } catch (error) {
     console.error('[ImageCleanup] Registry-based stats failed, falling back to basic counts:', error);
 

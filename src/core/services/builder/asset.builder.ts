@@ -5,6 +5,7 @@ import { getAssetContent, getJsonAsset } from '@/core/services/config/configHelp
 import { getActiveImageService } from '@/core/services/images/images.service';
 import { cleanupOrphanedImages } from '@/core/services/images/imageCleanup.service';
 import { CSS_CONFIG } from '@/config/editorConfig';
+import { generateMediaManifest } from '../images/mediaManifest.service';
 
 /**
  * Recursively finds all ImageRef objects within the site's data.
@@ -46,6 +47,55 @@ async function bundleAssetFiles(
             bundle[bundlePath] = content;
         }
     }));
+}
+
+/**
+ * Generates media.json data file for the site bundle.
+ *
+ * This function creates a media manifest that contains metadata about all
+ * referenced images in the site. This enables smart import/export workflows
+ * and proper registry reconstruction during site transfers.
+ *
+ * The media.json file is placed in the _site/data/ directory and referenced
+ * in the site manifest for processing during import.
+ *
+ * @param bundle - Site bundle to add the media.json file to
+ * @param siteData - Complete site data including registry information
+ *
+ * @example
+ * ```typescript
+ * await generateMediaDataFile(bundle, siteData);
+ * // Adds: bundle['_site/data/media.json'] = '{"version":1,"imageService":"local",...}'
+ * ```
+ *
+ * @throws Error if media manifest generation fails
+ */
+async function generateMediaDataFile(bundle: SiteBundle, siteData: LocalSiteData): Promise<void> {
+  try {
+    console.log(`[AssetBuilder] Generating media.json data file for site: ${siteData.siteId}`);
+
+    // Generate the media manifest with only referenced images
+    const mediaManifest = await generateMediaManifest(siteData, {
+      includeOrphaned: false,
+      verbose: true,
+    });
+
+    // Convert to JSON string with proper formatting
+    const mediaJson = JSON.stringify(mediaManifest, null, 2);
+
+    // Add to bundle at the data file location
+    bundle['_site/data/media.json'] = mediaJson;
+
+    console.log(
+      `[AssetBuilder] ✅ Generated media.json with ${Object.keys(mediaManifest.images).length} images ` +
+      `(${(mediaJson.length / 1024).toFixed(2)} KB)`
+    );
+
+  } catch (error) {
+    console.error(`[AssetBuilder] ❌ Failed to generate media.json:`, error);
+    console.warn(`[AssetBuilder] Site export will continue without media.json - import functionality may be limited`);
+    // Don't throw - allow export to continue even if media.json generation fails
+  }
 }
 
 /**
@@ -161,4 +211,7 @@ export async function bundleAllAssets(bundle: SiteBundle, siteData: LocalSiteDat
         console.error(`[AssetBuilder] ❌ Layout bundling failed:`, error);
         console.warn(`[AssetBuilder] Site export will continue without layout files - layouts may not work correctly`);
     }
+
+    // 6. Generate media.json data file
+    await generateMediaDataFile(bundle, siteData);
 }

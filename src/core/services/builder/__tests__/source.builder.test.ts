@@ -84,11 +84,23 @@ describe('source.builder', () => {
       await bundleSourceFiles(mockBundle, mockSiteData);
 
       expect(mockBundle['_site/manifest.json']).toBeDefined();
-      
+
       const manifestContent = JSON.parse(mockBundle['_site/manifest.json'] as string);
-      expect(manifestContent).toEqual(mockSiteData.manifest);
       expect(manifestContent.title).toBe('Test Site');
       expect(manifestContent.theme.name).toBe('default');
+
+      // Should include the original manifest data
+      expect(manifestContent.siteId).toBe(mockSiteData.manifest.siteId);
+      expect(manifestContent.description).toBe(mockSiteData.manifest.description);
+    });
+
+    test('adds dataFiles array to manifest', async () => {
+      await bundleSourceFiles(mockBundle, mockSiteData);
+
+      const manifestContent = JSON.parse(mockBundle['_site/manifest.json'] as string);
+
+      // Should include data files reference for media.json
+      expect(manifestContent.dataFiles).toEqual(['data/media.json']);
     });
 
     test('adds all content files to bundle with correct paths', async () => {

@@ -188,9 +188,19 @@ export async function cropAndResizeImage(
       throw new Error('Unable to get canvas 2D context');
     }
     
-    // Set canvas dimensions
-    canvas.width = cropParams.canvasWidth;
-    canvas.height = cropParams.canvasHeight;
+    // Set canvas dimensions with validation
+    const canvasWidth = Math.max(1, Math.min(cropParams.canvasWidth, 4096)); // Clamp to reasonable limits
+    const canvasHeight = Math.max(1, Math.min(cropParams.canvasHeight, 4096));
+
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+
+    // Validate canvas dimensions
+    if (canvasWidth <= 0 || canvasHeight <= 0) {
+      throw new Error(`Invalid canvas dimensions: ${canvasWidth}x${canvasHeight}`);
+    }
+
+    console.log(`[ImageManipulation] Canvas dimensions set to: ${canvasWidth}x${canvasHeight}`);
     
     // Enable image smoothing for better quality
     ctx.imageSmoothingEnabled = true;
@@ -202,23 +212,38 @@ export async function cropAndResizeImage(
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     
+    // Validate drawImage parameters
+    const { sourceX, sourceY, sourceWidth: srcWidth, sourceHeight: srcHeight, destX, destY, destWidth, destHeight } = cropParams;
+
+    if (srcWidth <= 0 || srcHeight <= 0 || destWidth <= 0 || destHeight <= 0) {
+      throw new Error(`Invalid draw dimensions: source ${srcWidth}x${srcHeight}, dest ${destWidth}x${destHeight}`);
+    }
+
+    console.log(`[ImageManipulation] Drawing image: source(${sourceX},${sourceY},${srcWidth},${srcHeight}) -> dest(${destX},${destY},${destWidth},${destHeight})`);
+
     // Draw the cropped/resized image
     ctx.drawImage(
       img,
-      cropParams.sourceX,
-      cropParams.sourceY,
-      cropParams.sourceWidth,
-      cropParams.sourceHeight,
-      cropParams.destX,
-      cropParams.destY,
-      cropParams.destWidth,
-      cropParams.destHeight
+      sourceX,
+      sourceY,
+      srcWidth,
+      srcHeight,
+      destX,
+      destY,
+      destWidth,
+      destHeight
     );
     
-    // Convert canvas to blob
+    // Convert canvas to blob with timeout protection
     return new Promise((resolve, reject) => {
+      // Add timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        reject(new Error('Canvas to blob conversion timed out after 10 seconds'));
+      }, 10000);
+
       canvas.toBlob(
         (blob) => {
+          clearTimeout(timeout);
           if (blob) {
             console.log(`[ImageManipulation] Canvas to blob complete: ${sourceBlob.size} -> ${blob.size} bytes`);
             resolve(blob);

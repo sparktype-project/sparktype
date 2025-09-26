@@ -22,17 +22,26 @@ export default function ImageUploadWidget(props: WidgetProps) {
     const generatePreview = async () => {
       if (imageRef && site?.manifest) {
         try {
+          console.log(`[ImageUploadWidget] Generating preview for ${label}, imageRef:`, imageRef);
           const service = getActiveImageService(site.manifest);
-          const url = await service.getDisplayUrl(site.manifest, imageRef, { width: 256, crop: 'fit' }, false);
+          console.log(`[ImageUploadWidget] Using image service:`, service.constructor.name);
+          const startTime = Date.now();
+
+          // For upload widget preview, use original image without derivative generation
+          // This prevents blocking and ensures fast preview display
+          const url = await service.getDisplayUrl(site.manifest, imageRef, {}, false, false, true); // Pass skipDerivatives=true
+          const endTime = Date.now();
+          console.log(`[ImageUploadWidget] Preview generated in ${endTime - startTime}ms, url:`, url);
           setPreviewUrl(url);
           if (url.startsWith('blob:')) {
             objectUrl = url;
           }
         } catch (error) {
-          console.error(`Could not generate preview for ${label}:`, error);
+          console.error(`[ImageUploadWidget] Could not generate preview for ${label}:`, error);
           setPreviewUrl(null);
         }
       } else {
+        console.log(`[ImageUploadWidget] No preview - imageRef: ${imageRef}, site: ${!!site?.manifest}`);
         setPreviewUrl(null);
       }
     };
@@ -49,6 +58,8 @@ export default function ImageUploadWidget(props: WidgetProps) {
     const file = event.target.files?.[0];
     if (!file || !site?.manifest) return;
 
+    console.log(`[ImageUploadWidget] File selected: ${file.name}, size: ${file.size}, type: ${file.type}`);
+
     const isSvg = file.type === 'image/svg+xml';
     if (!MEMORY_CONFIG.SUPPORTED_IMAGE_TYPES.includes(file.type as typeof MEMORY_CONFIG.SUPPORTED_IMAGE_TYPES[number])) {
       toast.error(`Unsupported file type.`);
@@ -61,19 +72,26 @@ export default function ImageUploadWidget(props: WidgetProps) {
       toast.error(`Image is too large. Max size is ${maxSizeFormatted}${unit}.`);
       return;
     }
-    
+
     setIsUploading(true);
+    console.log(`[ImageUploadWidget] Starting upload for ${file.name}`);
     try {
       const service = getActiveImageService(site.manifest);
+      console.log(`[ImageUploadWidget] Using upload service:`, service.constructor.name);
+      const uploadStartTime = Date.now();
       const newRef = await service.upload(file, siteId);
+      const uploadEndTime = Date.now();
+      console.log(`[ImageUploadWidget] Upload completed in ${uploadEndTime - uploadStartTime}ms, ref:`, newRef);
       onChange(newRef);
+      console.log(`[ImageUploadWidget] onChange called with ref:`, newRef);
       toast.success(`${label} uploaded successfully.`);
     } catch (error) {
-      console.error(`Upload failed for ${label}:`, error);
+      console.error(`[ImageUploadWidget] Upload failed for ${label}:`, error);
       const errorMsg = error instanceof Error ? error.message : 'Upload failed. Please try again.';
       toast.error(errorMsg);
     } finally {
       setIsUploading(false);
+      console.log(`[ImageUploadWidget] Upload process finished, isUploading set to false`);
       event.target.value = '';
     }
   };

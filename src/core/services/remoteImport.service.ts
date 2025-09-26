@@ -6,9 +6,11 @@ import type {
   Manifest,
   ParsedMarkdownFile,
   RawFile,
+  MediaManifest,
 } from '@/core/types';
 import { parseMarkdownString } from '@/core/libraries/markdownParser';
 import { isTauriApp } from '@/core/utils/platform';
+import { importMediaManifest } from './images/mediaManifest.service';
 
 const SIGNUM_FOLDER = '_site';
 
@@ -78,8 +80,9 @@ async function downloadData(url: string): Promise<ArrayBuffer> {
 
 /**
  * Processes a ZIP archive and extracts site data, similar to importSiteFromZip
+ * Exported for testing purposes.
  */
-async function processSiteZip(zipData: ArrayBuffer): Promise<LocalSiteData & { imageAssetsToSave?: { [path: string]: Blob } }> {
+export async function processSiteZip(zipData: ArrayBuffer): Promise<LocalSiteData & { imageAssetsToSave?: { [path: string]: Blob } }> {
   const zip = await JSZip.loadAsync(zipData);
   const signumFolder = zip.folder(SIGNUM_FOLDER);
 
@@ -161,8 +164,43 @@ async function processSiteZip(zipData: ArrayBuffer): Promise<LocalSiteData & { i
     }
   }
 
-  // Images are now discovered from content - no separate manifest tracking needed
-  console.log(`[ZipImport] Discovered ${Object.keys(imageAssets).length} images from content scanning`);
+  // Handle data files (e.g., media.json)
+  let mediaManifestProcessed = false;
+  const dataFolder = signumFolder.folder('data');
+  if (dataFolder && manifest.dataFiles?.includes('data/media.json')) {
+    const mediaJsonFile = dataFolder.file('media.json');
+    if (mediaJsonFile) {
+      try {
+        const mediaJsonContent = await mediaJsonFile.async('string');
+        const mediaManifest: MediaManifest = JSON.parse(mediaJsonContent);
+
+        console.log(`[ZipImport] Found media.json with ${Object.keys(mediaManifest.images).length} images`);
+
+        // Import the media manifest to rebuild the registry
+        const importResult = await importMediaManifest(mediaManifest, manifest.siteId, {
+          validateReferences: false, // Skip validation since we're importing
+          preserveExisting: false,   // Start fresh for imports
+        });
+
+        if (importResult.success) {
+          console.log(`[ZipImport] ✅ Media manifest imported: ${importResult.imagesImported} images processed`);
+          mediaManifestProcessed = true;
+        } else {
+          console.warn(`[ZipImport] ⚠️ Media manifest import failed:`, importResult.errors);
+        }
+      } catch (error) {
+        console.error(`[ZipImport] ❌ Failed to process media.json:`, error);
+      }
+    }
+  }
+
+  // Images are discovered from content and/or media manifest
+  const totalImages = Object.keys(imageAssets).length;
+  if (mediaManifestProcessed) {
+    console.log(`[ZipImport] Processed ${totalImages} image files and imported media registry`);
+  } else {
+    console.log(`[ZipImport] Discovered ${totalImages} images from content scanning (no media.json found)`);
+  }
 
   return {
     siteId: manifest.siteId,
@@ -240,8 +278,15 @@ export async function importSiteFromGitHub(repoUrl: string, branch?: string): Pr
     for (const [path, file] of Object.entries(zip.files)) {
       if (path.startsWith(siteFolderPath) && !file.dir) {
         const relativePath = path.substring(siteFolderPath.length);
-        const content = await file.async('string');
-        signumFolder.file(relativePath, content);
+
+        // Handle binary files (images) vs text files
+        if (relativePath.match(/\.(jpg|jpeg|png|gif|webp|svg|pdf)$/i)) {
+          const content = await file.async('arraybuffer');
+          signumFolder.file(relativePath, content);
+        } else {
+          const content = await file.async('string');
+          signumFolder.file(relativePath, content);
+        }
       }
     }
 

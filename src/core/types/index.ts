@@ -420,6 +420,8 @@ export interface Manifest {
     userDisplayName?: string;
     registeredAt: string;
   };
+  /** Optional array of data file paths for export/import system (e.g., "data/media.json") */
+  dataFiles?: string[];
   // Removed imageFiles - images discovered from content scanning
 }
 
@@ -555,7 +557,7 @@ export interface ImageService {
   id: string;
   name: string;
   upload(file: File, siteId: string): Promise<ImageRef>;
-  getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions, isExport: boolean, forIframe?: boolean): Promise<string>;
+  getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions, isExport: boolean, forIframe?: boolean, skipDerivatives?: boolean): Promise<string>;
   getExportableAssets(siteId: string, allImageRefs: ImageRef[]): Promise<{ path: string; data: Blob; }[]>;
 }
 
@@ -566,4 +568,89 @@ export interface ImageService {
  */
 export interface SiteBundle {
   [filePath: string]: string | Blob;
+}
+
+// ============================================================================
+// Media Management Types
+// ============================================================================
+
+/**
+ * Complete metadata for an image stored in the registry.
+ * This contains all information needed to recreate the image entry
+ * and generate media.json for export/import.
+ */
+export interface ImageMetadata {
+  /** Original path where the image is stored */
+  originalPath: string;
+  /** Array of derivative image paths generated from this image */
+  derivativePaths: string[];
+  /** Array of file paths where this image is referenced */
+  referencedIn: string[];
+  /** Timestamp of last access for LRU cleanup */
+  lastAccessed: number;
+  /** File size in bytes */
+  sizeBytes: number;
+  /** Image width in pixels (if available) */
+  width?: number;
+  /** Image height in pixels (if available) */
+  height?: number;
+  /** Alt text for accessibility */
+  alt?: string;
+  /** Timestamp when this image was first added */
+  createdAt: number;
+}
+
+/**
+ * Subset of image metadata specifically for media.json export.
+ * This excludes internal tracking data like lastAccessed and derivativePaths.
+ */
+export interface MediaImageMetadata {
+  /** Image width in pixels (if available) */
+  width?: number;
+  /** Image height in pixels (if available) */
+  height?: number;
+  /** File size in bytes */
+  sizeBytes: number;
+  /** Alt text for accessibility */
+  alt?: string;
+}
+
+/**
+ * Entry for a single image in the media manifest.
+ * Contains usage tracking and essential metadata for import/export.
+ */
+export interface MediaImageEntry {
+  /** Array of file paths where this image is referenced */
+  referencedIn: string[];
+  /** Essential image metadata for export/import */
+  metadata: MediaImageMetadata;
+}
+
+/**
+ * Complete media manifest structure for export/import.
+ * This file enables smart image import/export with proper registry reconstruction.
+ */
+export interface MediaManifest {
+  /** Format version for future compatibility */
+  version: number;
+  /** Image service that was used (local, cloudinary, etc.) */
+  imageService: string;
+  /** Map of image paths to their entries (only referenced images) */
+  images: Record<string, MediaImageEntry>;
+}
+
+/**
+ * Generic data file reference for extensible export system.
+ * This allows the manifest to reference additional data files like media.json,
+ * collections.json, themes.json, etc.
+ */
+export interface DataFile {
+  /** Relative path to the data file within the site bundle */
+  path: string;
+  /** Type of data file for processing during import */
+  type: 'media' | 'collections' | 'themes' | 'settings';
+  /** Format version for future compatibility */
+  version: number;
+  /** Optional description of the data file contents */
+  description?: string;
 }

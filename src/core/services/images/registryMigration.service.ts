@@ -10,7 +10,7 @@
  * files, providing a migration path that doesn't lose any existing data.
  */
 
-import type { LocalSiteData, ImageRef } from '@/core/types';
+import type { LocalSiteData } from '@/core/types';
 import { getAllImageAssetsForSite } from '@/core/services/localFileSystem.service';
 import { createEmptyRegistry, saveImageRegistry, getImageRegistry, type ImageRegistry } from './imageRegistry.service';
 

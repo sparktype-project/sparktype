@@ -14,19 +14,9 @@
  * - Self-healing capabilities when data is missing
  */
 
-import type { LocalSiteData, ImageRef } from '@/core/types';
+import type { ImageMetadata } from '@/core/types';
 
-/**
- * Metadata for a single image asset
- */
-export interface ImageMetadata {
-  originalPath: string;           // "assets/images/photo.jpg"
-  derivativePaths: string[];      // ["assets/derivatives/photo_w300_h200.jpg"]
-  referencedIn: string[];         // ["content/blog/post1.md", "manifest.theme.config"]
-  lastAccessed: number;           // timestamp for LRU cleanup
-  sizeBytes: number;              // for cleanup metrics
-  createdAt: number;              // when this image was first added
-}
+// ImageMetadata interface moved to core types
 
 /**
  * Complete image registry for a site
@@ -128,29 +118,144 @@ export async function saveImageRegistry(registry: ImageRegistry): Promise<void> 
 }
 
 /**
- * Adds a new image to the registry
+ * Enhanced metadata for adding images to the registry.
+ * This supports both the old simple format and the new complete format.
+ */
+export interface AddImageMetadata {
+  /** File size in bytes (required) */
+  sizeBytes: number;
+  /** Image width in pixels (optional) */
+  width?: number;
+  /** Image height in pixels (optional) */
+  height?: number;
+  /** Alt text for accessibility (optional) */
+  alt?: string;
+}
+
+/**
+ * Adds a new image to the registry with complete metadata.
+ *
+ * This function creates a new registry entry for an uploaded image with all
+ * available metadata. The image will initially have no references or derivatives,
+ * which will be populated as the image is used in content and processed.
+ *
+ * @param siteId - Unique identifier for the site
+ * @param imagePath - Full path where the image is stored (e.g., "assets/originals/photo.jpg")
+ * @param metadata - Complete metadata including size, dimensions, and alt text
+ *
+ * @example
+ * ```typescript
+ * await addImageToRegistry('site123', 'assets/originals/photo.jpg', {
+ *   sizeBytes: 245760,
+ *   width: 1920,
+ *   height: 1080,
+ *   alt: 'Beautiful sunset over mountains'
+ * });
+ * ```
+ *
+ * @throws Error if registry cannot be saved
  */
 export async function addImageToRegistry(
   siteId: string,
   imagePath: string,
-  sizeBytes: number
+  metadata: AddImageMetadata | number // Support both new and legacy formats
 ): Promise<void> {
-  const registry = await getImageRegistry(siteId);
+  console.log(`[ImageRegistry] addImageToRegistry called - siteId: ${siteId}, imagePath: ${imagePath}, metadata:`, metadata);
 
+  const registryStartTime = Date.now();
+  const registry = await getImageRegistry(siteId);
+  const registryEndTime = Date.now();
+  console.log(`[ImageRegistry] Got existing registry in ${registryEndTime - registryStartTime}ms, has ${Object.keys(registry.images).length} images`);
+
+  // Handle legacy number format for backward compatibility
+  const imageMetadata: AddImageMetadata = typeof metadata === 'number'
+    ? { sizeBytes: metadata }
+    : metadata;
+
+  console.log(`[ImageRegistry] Creating image metadata for: ${imagePath}`);
   registry.images[imagePath] = {
     originalPath: imagePath,
     derivativePaths: [],
     referencedIn: [],
     lastAccessed: Date.now(),
-    sizeBytes,
+    sizeBytes: imageMetadata.sizeBytes,
+    width: imageMetadata.width,
+    height: imageMetadata.height,
+    alt: imageMetadata.alt,
     createdAt: Date.now()
   };
+
+  console.log(`[ImageRegistry] Saving updated registry with ${Object.keys(registry.images).length} images...`);
+  const saveStartTime = Date.now();
+  await saveImageRegistry(registry);
+  const saveEndTime = Date.now();
+  console.log(`[ImageRegistry] Registry saved in ${saveEndTime - saveStartTime}ms`);
+}
+
+/**
+ * Updates metadata for an existing image in the registry.
+ *
+ * This function allows updating specific metadata fields for an image
+ * after it has been uploaded. Commonly used for updating alt text,
+ * dimensions, or other metadata that becomes available later.
+ *
+ * @param siteId - Unique identifier for the site
+ * @param imagePath - Path to the image to update
+ * @param updates - Partial metadata updates to apply
+ *
+ * @example
+ * ```typescript
+ * // Update alt text after user provides it
+ * await updateImageMetadata('site123', 'assets/originals/photo.jpg', {
+ *   alt: 'User-provided description'
+ * });
+ * ```
+ *
+ * @throws Error if image not found in registry or registry cannot be saved
+ */
+export async function updateImageMetadata(
+  siteId: string,
+  imagePath: string,
+  updates: Partial<Pick<ImageMetadata, 'width' | 'height' | 'alt' | 'sizeBytes'>>
+): Promise<void> {
+  const registry = await getImageRegistry(siteId);
+  const metadata = registry.images[imagePath];
+
+  if (!metadata) {
+    throw new Error(`Image not found in registry: ${imagePath}`);
+  }
+
+  // Apply updates to metadata
+  if (updates.width !== undefined) metadata.width = updates.width;
+  if (updates.height !== undefined) metadata.height = updates.height;
+  if (updates.alt !== undefined) metadata.alt = updates.alt;
+  if (updates.sizeBytes !== undefined) metadata.sizeBytes = updates.sizeBytes;
+
+  // Update access timestamp
+  metadata.lastAccessed = Date.now();
 
   await saveImageRegistry(registry);
 }
 
 /**
- * Adds a derivative relationship to the registry
+ * Adds a derivative relationship to the registry.
+ *
+ * This function records that a derivative image has been created from
+ * an original image. This tracking is essential for cleanup operations
+ * to know which derivatives are associated with which originals.
+ *
+ * @param siteId - Unique identifier for the site
+ * @param originalPath - Path to the original source image
+ * @param derivativePath - Path to the generated derivative image
+ *
+ * @example
+ * ```typescript
+ * await addDerivativeToRegistry(
+ *   'site123',
+ *   'assets/originals/photo.jpg',
+ *   'assets/derivatives/photo_w300_hauto_c-scale_g-center.jpg'
+ * );
+ * ```
  */
 export async function addDerivativeToRegistry(
   siteId: string,

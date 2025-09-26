@@ -3,10 +3,19 @@ import { bundleAllAssets } from '../asset.builder';
 import type { LocalSiteData, SiteBundle, ImageRef } from '@/core/types';
 import * as configHelpers from '../../config/configHelpers.service';
 import * as imagesService from '../../images/images.service';
+import * as imageCleanup from '../../images/imageCleanup.service';
+import * as mediaManifest from '../../images/mediaManifest.service';
+import { CSS_CONFIG } from '@/config/editorConfig';
 
 // Mock dependencies
 jest.mock('../../config/configHelpers.service');
 jest.mock('../../images/images.service');
+jest.mock('../../images/imageCleanup.service');
+jest.mock('../../images/mediaManifest.service');
+jest.mock('@/config/editorConfig');
+
+// Mock fetch
+global.fetch = jest.fn();
 
 describe('asset.builder', () => {
   const mockSiteData: LocalSiteData = {
@@ -80,6 +89,42 @@ describe('asset.builder', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockBundle = {};
+
+    // Mock CSS_CONFIG
+    (CSS_CONFIG as any) = {
+      MAIN_STYLESHEET_PATH: 'http://localhost:3000/styles/main.css',
+      EXPORT_BUNDLE_PATH: '_site/styles/main.css',
+    };
+
+    // Mock fetch for CSS
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      text: jest.fn().mockResolvedValue('/* Main CSS content */'),
+    });
+
+    // Mock image cleanup
+    (imageCleanup.cleanupOrphanedImages as jest.Mock).mockResolvedValue({
+      originalImagesRemoved: 1,
+      derivativesRemoved: 2,
+      bytesFreed: 1024000,
+    });
+
+    // Mock media manifest generation
+    (mediaManifest.generateMediaManifest as jest.Mock).mockResolvedValue({
+      version: 1,
+      imageService: 'local',
+      images: {
+        'assets/originals/featured1.jpg': {
+          referencedIn: ['content/posts/post1.md'],
+          metadata: {
+            sizeBytes: 245760,
+            width: 1920,
+            height: 1080,
+            alt: 'Featured image',
+          },
+        },
+      },
+    });
 
     // Mock config helpers
     (configHelpers.getJsonAsset as jest.Mock)
@@ -329,6 +374,128 @@ describe('asset.builder', () => {
 
       // Should not throw, but log error and continue
       await expect(bundleAllAssets(mockBundle, mockSiteData)).rejects.toThrow('Image service error');
+    });
+
+    // New tests for media.json functionality
+    test('generates media.json data file successfully', async () => {
+      await bundleAllAssets(mockBundle, mockSiteData);
+
+      // Should call media manifest generation
+      expect(mediaManifest.generateMediaManifest).toHaveBeenCalledWith(mockSiteData, {
+        includeOrphaned: false,
+        verbose: true,
+      });
+
+      // Should add media.json to bundle
+      expect(mockBundle['_site/data/media.json']).toBeDefined();
+
+      const mediaJson = JSON.parse(mockBundle['_site/data/media.json'] as string);
+      expect(mediaJson).toEqual({
+        version: 1,
+        imageService: 'local',
+        images: {
+          'assets/originals/featured1.jpg': {
+            referencedIn: ['content/posts/post1.md'],
+            metadata: {
+              sizeBytes: 245760,
+              width: 1920,
+              height: 1080,
+              alt: 'Featured image',
+            },
+          },
+        },
+      });
+    });
+
+    test('handles media manifest generation failure gracefully', async () => {
+      (mediaManifest.generateMediaManifest as jest.Mock).mockRejectedValue(
+        new Error('Registry error')
+      );
+
+      // Should not throw despite media manifest failure
+      await expect(bundleAllAssets(mockBundle, mockSiteData)).resolves.not.toThrow();
+
+      // Media.json should not be in bundle
+      expect(mockBundle['_site/data/media.json']).toBeUndefined();
+
+      // But other assets should still be bundled
+      expect(mockBundle['_site/styles/main.css']).toBe('/* Main CSS content */');
+    });
+
+    test('bundles CSS from configured path', async () => {
+      await bundleAllAssets(mockBundle, mockSiteData);
+
+      // Should fetch CSS from configured path
+      expect(global.fetch).toHaveBeenCalledWith('http://localhost:3000/styles/main.css');
+
+      // Should add CSS to bundle at configured export path
+      expect(mockBundle['_site/styles/main.css']).toBe('/* Main CSS content */');
+    });
+
+    test('handles CSS fetch failure gracefully', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      });
+
+      // Should not throw despite CSS failure
+      await expect(bundleAllAssets(mockBundle, mockSiteData)).resolves.not.toThrow();
+
+      // CSS should not be in bundle
+      expect(mockBundle['_site/styles/main.css']).toBeUndefined();
+
+      // But media.json should still be generated
+      expect(mockBundle['_site/data/media.json']).toBeDefined();
+    });
+
+    test('performs image cleanup before bundling', async () => {
+      await bundleAllAssets(mockBundle, mockSiteData);
+
+      // Should call image cleanup
+      expect(imageCleanup.cleanupOrphanedImages).toHaveBeenCalledWith(mockSiteData);
+
+      // Should still bundle everything successfully
+      expect(mockBundle['_site/data/media.json']).toBeDefined();
+    });
+
+    test('handles image cleanup timeout gracefully', async () => {
+      // Mock cleanup to hang indefinitely (simulating timeout)
+      (imageCleanup.cleanupOrphanedImages as jest.Mock).mockImplementation(
+        () => new Promise(() => {}) // Never resolves
+      );
+
+      // Should not throw despite cleanup hanging
+      await expect(bundleAllAssets(mockBundle, mockSiteData)).resolves.not.toThrow();
+
+      // Media.json should still be generated
+      expect(mockBundle['_site/data/media.json']).toBeDefined();
+    });
+
+    test('handles empty media manifest correctly', async () => {
+      (mediaManifest.generateMediaManifest as jest.Mock).mockResolvedValue({
+        version: 1,
+        imageService: 'local',
+        images: {},
+      });
+
+      await bundleAllAssets(mockBundle, mockSiteData);
+
+      // Should still generate media.json even when empty
+      expect(mockBundle['_site/data/media.json']).toBeDefined();
+
+      const mediaJson = JSON.parse(mockBundle['_site/data/media.json'] as string);
+      expect(mediaJson.images).toEqual({});
+    });
+
+    test('handles CSS fetch error exception gracefully', async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+
+      // Should not throw despite fetch error
+      await expect(bundleAllAssets(mockBundle, mockSiteData)).resolves.not.toThrow();
+
+      // CSS should not be in bundle
+      expect(mockBundle['_site/styles/main.css']).toBeUndefined();
     });
   });
 });

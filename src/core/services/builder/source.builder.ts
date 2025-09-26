@@ -8,8 +8,13 @@ import * as localSiteFs from '@/core/services/localFileSystem.service';
  * Bundles all raw source files (Markdown, manifest) into the `_site` directory.
  */
 export async function bundleSourceFiles(bundle: SiteBundle, siteData: LocalSiteData): Promise<void> {
-    // 1. Add the synchronized manifest
-    bundle['_site/manifest.json'] = JSON.stringify(siteData.manifest, null, 2);
+    // 1. Add the synchronized manifest with data files reference
+    const manifestWithDataFiles = {
+        ...siteData.manifest,
+        // Include data files reference if media.json will be generated
+        dataFiles: ['data/media.json']
+    };
+    bundle['_site/manifest.json'] = JSON.stringify(manifestWithDataFiles, null, 2);
 
     // 2. Add all published content files only
     siteData.contentFiles?.forEach(file => {

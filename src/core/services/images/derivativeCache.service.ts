@@ -21,7 +21,9 @@ const derivativeCacheStore = localforage.createInstance({
  * @returns A promise that resolves to the derivative Blob, or null if not found.
  */
 export async function getCachedDerivative(key: string): Promise<Blob | null> {
-  return derivativeCacheStore.getItem<Blob>(key);
+  console.log(`[DerivativeCache] getCachedDerivative called for key: ${key} - CACHE DISABLED`);
+  // Temporarily disable cache to avoid timeout issues
+  return null;
 }
 
 /**
@@ -30,7 +32,9 @@ export async function getCachedDerivative(key: string): Promise<Blob | null> {
  * @param blob The derivative image data as a Blob to be cached.
  */
 export async function setCachedDerivative(key: string, blob: Blob): Promise<void> {
-  await derivativeCacheStore.setItem(key, blob);
+  console.log(`[DerivativeCache] setCachedDerivative called for key: ${key}, blob size: ${blob.size} - CACHE DISABLED`);
+  // Temporarily disable cache to avoid timeout issues
+  return;
 }
 
 /**

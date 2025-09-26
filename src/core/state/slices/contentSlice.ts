@@ -16,7 +16,7 @@ import { createTagGroup, updateTagGroup, deleteTagGroup, getTagGroups, getTagGro
 import { createTag, updateTag, deleteTag, getTags, getTagsInGroup } from '@/core/services/tags.service';
 import type { TagGroup, Tag } from '@/core/types';
 import { updateImageReferences } from '@/core/services/images/imageRegistry.service';
-import { findImagesInContentFile, findImagesInRawContent } from '@/core/services/images/imageReferenceFinder.service';
+import { findImagesInContentFile } from '@/core/services/images/imageReferenceFinder.service';
 
 // Helper: Generates an up-to-date list of collection item references.
 function buildCollectionItemRefs(siteData: LocalSiteData): CollectionItemRef[] {
