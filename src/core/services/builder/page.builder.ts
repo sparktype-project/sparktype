@@ -4,7 +4,7 @@ import { type LocalSiteData, PageType } from '@/core/types';
 import { flattenStructure } from '@/core/services/fileTree.service';
 import { resolvePageContent } from '@/core/services/pageResolver.service';
 import { render } from '@/core/services/renderer/render.service';
-import { getUrlForNode } from '@/core/services/urlUtils.service';
+import { generateExportUrl } from '@/core/services/urlUtils.service';
 
 /**
  * ============================================================================
@@ -40,16 +40,23 @@ export async function generateHtmlPages(siteData: LocalSiteData): Promise<Record
             continue;
         }
 
-        const outputPath = getUrlForNode(node, manifest, true, undefined, siteData, true);
-        
+        const outputPath = generateExportUrl(node, manifest, undefined, siteData, undefined, true);
+        console.log(`[PageBuilder] Generating page for node: ${node.path} -> ${outputPath}`);
+
         const relativeAssetPath = '../'.repeat((outputPath.match(/\//g) || []).length);
 
-        const finalHtml = await render(siteData, resolution, {
-            siteRootPath: '/', // For export, root is always /
-            isExport: true,
-            relativeAssetPath,
-        });
-        htmlPages[outputPath] = finalHtml;
+        try {
+            const finalHtml = await render(siteData, resolution, {
+                siteRootPath: '/', // For export, root is always /
+                isExport: true,
+                relativeAssetPath,
+            });
+            htmlPages[outputPath] = finalHtml;
+            console.log(`[PageBuilder] ✅ Successfully generated ${outputPath} (${finalHtml.length} characters)`);
+        } catch (error) {
+            console.error(`[PageBuilder] ❌ Failed to render page ${outputPath}:`, error);
+            throw error; // Re-throw to stop the build process
+        }
     }
 
     // --- Step 2: Build all collection items into their own pages ---
@@ -58,23 +65,31 @@ export async function generateHtmlPages(siteData: LocalSiteData): Promise<Record
     for (const itemRef of collectionItems) {
         
         // Resolve the content for the item's unique URL.
-        const slugArray = getUrlForNode(itemRef, manifest, false, undefined, siteData).split('/');
+        const previewPath = generateExportUrl(itemRef, manifest, undefined, siteData);
+        const slugArray = previewPath.split('/');
         const resolution = await resolvePageContent(siteData, slugArray);
         if (resolution.type === PageType.NotFound) {
             console.warn(`[Build] Skipping item: ${itemRef.path}. Reason: ${resolution.errorMessage}`);
             continue;
         }
 
-        const outputPath = getUrlForNode(itemRef, manifest, true, undefined, siteData, true);
-        
+        const outputPath = generateExportUrl(itemRef, manifest, undefined, siteData, undefined, true);
+        console.log(`[PageBuilder] Generating collection item: ${itemRef.path} -> ${outputPath}`);
+
         const relativeAssetPath = '../'.repeat((outputPath.match(/\//g) || []).length);
 
-        const finalHtml = await render(siteData, resolution, {
-            siteRootPath: '/',
-            isExport: true,
-            relativeAssetPath,
-        });
-        htmlPages[outputPath] = finalHtml;
+        try {
+            const finalHtml = await render(siteData, resolution, {
+                siteRootPath: '/',
+                isExport: true,
+                relativeAssetPath,
+            });
+            htmlPages[outputPath] = finalHtml;
+            console.log(`[PageBuilder] ✅ Successfully generated collection item ${outputPath} (${finalHtml.length} characters)`);
+        } catch (error) {
+            console.error(`[PageBuilder] ❌ Failed to render collection item ${outputPath}:`, error);
+            throw error; // Re-throw to stop the build process
+        }
     }
 
     return htmlPages;

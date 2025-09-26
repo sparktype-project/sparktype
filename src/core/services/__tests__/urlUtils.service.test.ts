@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-require-imports */
-import { getUrlForNode } from '../urlUtils.service';
-import type { Manifest, StructureNode } from '@/core/types';
+import { getUrlForNode, generatePreviewUrl, generateExportUrl, addPagination } from '../urlUtils.service';
+import type { Manifest, StructureNode, CollectionItemRef } from '@/core/types';
 
 describe('urlUtils.service', () => {
   // Helper function to create a mock manifest
@@ -331,6 +331,156 @@ describe('urlUtils.service', () => {
         expect(sampleStructure[1]).toEqual(originalNode);
         expect(manifest.siteId).toBe(originalManifest.siteId);
         expect(manifest.structure.length).toBe(originalManifest.structure.length);
+      });
+    });
+  });
+
+  describe('Simplified URL Functions', () => {
+    const siteId = 'test-site-123';
+    const homepageFile = { path: 'content/home.md', frontmatter: { homepage: true } };
+    const siteDataWithHomepage = { contentFiles: [homepageFile] };
+
+    describe('addPagination', () => {
+      test('handles homepage pagination', () => {
+        expect(addPagination('', 1, false)).toBe('');
+        expect(addPagination('', 2, false)).toBe('page/2');
+        expect(addPagination('', 3, true)).toBe('page/3/index.html');
+      });
+
+      test('handles regular page pagination', () => {
+        expect(addPagination('blog', 1, false)).toBe('blog');
+        expect(addPagination('blog', 2, false)).toBe('blog/page/2');
+        expect(addPagination('blog', 3, true)).toBe('blog/page/3/index.html');
+      });
+
+      test('handles edge cases', () => {
+        expect(addPagination('about', 0, false)).toBe('about');
+        expect(addPagination('about', -1, false)).toBe('about');
+        expect(addPagination('about', undefined, false)).toBe('about');
+      });
+    });
+
+    describe('generatePreviewUrl', () => {
+      test('generates correct preview URLs for homepage', () => {
+        const homeNode = sampleStructure[0];
+
+        expect(generatePreviewUrl(homeNode, manifest, siteId, undefined, siteDataWithHomepage))
+          .toBe(`#/sites/${siteId}/view`);
+      });
+
+      test('generates correct preview URLs for regular pages', () => {
+        const aboutNode = sampleStructure[1]; // about
+
+        expect(generatePreviewUrl(aboutNode, manifest, siteId))
+          .toBe(`#/sites/${siteId}/view/about`);
+      });
+
+      test('generates correct preview URLs with pagination', () => {
+        const blogNode = sampleStructure[2]; // blog
+
+        expect(generatePreviewUrl(blogNode, manifest, siteId, 2))
+          .toBe(`#/sites/${siteId}/view/blog/page/2`);
+      });
+
+      test('handles collection items', () => {
+        const collectionItem: CollectionItemRef = {
+          collectionId: 'blog',
+          slug: 'my-post',
+          path: 'content/blog/my-post.md',
+          title: 'My Post',
+          url: ''
+        };
+
+        expect(generatePreviewUrl(collectionItem, manifest, siteId))
+          .toBe(`#/sites/${siteId}/view/blog/my-post`);
+      });
+    });
+
+    describe('generateExportUrl', () => {
+      test('generates correct export URLs for homepage', () => {
+        const homeNode = sampleStructure[0];
+
+        expect(generateExportUrl(homeNode, manifest, undefined, siteDataWithHomepage))
+          .toBe('');
+        expect(generateExportUrl(homeNode, manifest, undefined, siteDataWithHomepage, undefined, true))
+          .toBe('index.html');
+      });
+
+      test('generates correct export URLs for regular pages', () => {
+        const aboutNode = sampleStructure[1];
+
+        expect(generateExportUrl(aboutNode, manifest))
+          .toBe('about');
+        expect(generateExportUrl(aboutNode, manifest, undefined, undefined, undefined, true))
+          .toBe('about/index.html');
+      });
+
+      test('generates correct export URLs with pagination', () => {
+        const blogNode = sampleStructure[2];
+
+        expect(generateExportUrl(blogNode, manifest, 2))
+          .toBe('blog/page/2');
+        expect(generateExportUrl(blogNode, manifest, 2, undefined, undefined, true))
+          .toBe('blog/page/2/index.html');
+      });
+
+      test('handles collection items', () => {
+        const collectionItem: CollectionItemRef = {
+          collectionId: 'blog',
+          slug: 'my-post',
+          path: 'content/blog/my-post.md',
+          title: 'My Post',
+          url: ''
+        };
+
+        expect(generateExportUrl(collectionItem, manifest))
+          .toBe('blog/my-post');
+        expect(generateExportUrl(collectionItem, manifest, undefined, undefined, undefined, true))
+          .toBe('blog/my-post/index.html');
+      });
+
+      test('generates relative paths when currentPagePath is provided', () => {
+        const aboutNode = sampleStructure[1];
+        const currentPath = 'blog/index.html';
+
+        const relativePath = generateExportUrl(aboutNode, manifest, undefined, undefined, currentPath);
+        expect(relativePath).toBe('../about');
+      });
+    });
+
+    describe('Cross-context consistency', () => {
+      test('preview and export URLs should be consistent for same content', () => {
+        const aboutNode = sampleStructure[1];
+
+        const previewUrl = generatePreviewUrl(aboutNode, manifest, siteId);
+        const exportUrl = generateExportUrl(aboutNode, manifest);
+
+        // Extract path from preview URL
+        const previewPath = previewUrl.replace(`#/sites/${siteId}/view/`, '');
+
+        expect(previewPath).toBe(exportUrl);
+      });
+
+      test('homepage handling is consistent', () => {
+        const homeNode = sampleStructure[0];
+
+        const previewUrl = generatePreviewUrl(homeNode, manifest, siteId, undefined, siteDataWithHomepage);
+        const exportUrl = generateExportUrl(homeNode, manifest, undefined, siteDataWithHomepage);
+
+        expect(previewUrl).toBe(`#/sites/${siteId}/view`);
+        expect(exportUrl).toBe('');
+      });
+    });
+
+    describe('Legacy compatibility', () => {
+      test('getUrlForNode still works for existing code', () => {
+        const aboutNode = sampleStructure[1];
+
+        // Export mode
+        expect(getUrlForNode(aboutNode, manifest, true)).toBe('about/index.html');
+
+        // Preview mode
+        expect(getUrlForNode(aboutNode, manifest, false)).toBe('about');
       });
     });
   });

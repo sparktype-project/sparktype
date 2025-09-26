@@ -1,6 +1,6 @@
 // src/core/services/navigationStructure.service.ts
 import { type LocalSiteData, type NavLinkItem, type StructureNode } from '@/core/types';
-import { getUrlForNode } from '@/core/services/urlUtils.service';
+import { generatePreviewUrl, generateExportUrl } from '@/core/services/urlUtils.service';
 import { getRelativePath } from '@/core/services/relativePaths.service';
 import { type RenderOptions } from '@/core/services/renderer/render.service';
 
@@ -19,39 +19,27 @@ function buildNavLinks(
     currentPagePath: string,
     options: Pick<RenderOptions, 'isExport' | 'siteRootPath'>
 ): NavLinkItem[] {
+  const siteId = siteData.manifest.siteId || 'unknown';
+
   return nodes
     .filter(node => node.type === 'page' && node.navOrder !== undefined)
     .sort((a, b) => (a.navOrder || 0) - (b.navOrder || 0))
     .map(node => {
-      const urlSegment = getUrlForNode(node, siteData.manifest, options.isExport, undefined, siteData);
       let href: string;
 
       if (options.isExport) {
-        // For export mode, use relative navigation links for portable HTML
-        if (!urlSegment || urlSegment === 'index.html') {
-          // Homepage link - calculate relative path from current page to index.html
+        // For export mode, generate clean directory URLs and relative paths
+        const exportUrl = generateExportUrl(node, siteData.manifest, undefined, siteData);
+        if (exportUrl === '') {
+          // Homepage - calculate relative path to homepage
           href = getRelativePath(currentPagePath, 'index.html');
         } else {
-          // Other pages - calculate relative path from current page to target page
-          href = getRelativePath(currentPagePath, urlSegment);
+          // Other pages - calculate relative path
+          href = getRelativePath(currentPagePath, `${exportUrl}/index.html`);
         }
       } else {
-        // Check if this is iframe content (empty siteRootPath)
-        if (!options.siteRootPath) {
-          // For iframe content, use simple relative paths for JS interception
-          if (!urlSegment || urlSegment === 'index.html') {
-            href = '';  // Homepage - empty path
-          } else {
-            href = urlSegment;  // Other pages - just the segment (e.g., "about")
-          }
-        } else {
-          // 1. Get the base path from options (e.g., "#/sites/123").
-          // 2. The urlSegment is the page-specific part (e.g., "about" or "blog/post-1").
-          // 3. Combine them into a clean absolute hash path.
-          const basePath = options.siteRootPath.replace(/\/$/, ''); // Remove trailing slash
-          const segmentPath = urlSegment ? `/${urlSegment}` : '';  // Add leading slash if segment exists
-          href = `${basePath}${segmentPath}`;
-        }
+        // For preview mode, generate direct hash-based URLs
+        href = generatePreviewUrl(node, siteData.manifest, siteId, undefined, siteData);
       }
 
       const nodeFile = siteData.contentFiles?.find(f => f.path === node.path);

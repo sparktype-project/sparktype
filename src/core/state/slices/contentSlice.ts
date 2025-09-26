@@ -15,6 +15,8 @@ import { type SiteSlice } from '@/core/state/slices/siteSlice';
 import { createTagGroup, updateTagGroup, deleteTagGroup, getTagGroups, getTagGroupsForCollection } from '@/core/services/tagGroups.service';
 import { createTag, updateTag, deleteTag, getTags, getTagsInGroup } from '@/core/services/tags.service';
 import type { TagGroup, Tag } from '@/core/types';
+import { updateImageReferences } from '@/core/services/images/imageRegistry.service';
+import { findImagesInContentFile, findImagesInRawContent } from '@/core/services/images/imageReferenceFinder.service';
 
 // Helper: Generates an up-to-date list of collection item references.
 function buildCollectionItemRefs(siteData: LocalSiteData): CollectionItemRef[] {
@@ -93,6 +95,18 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
     
     await localSiteFs.saveContentFile(siteId, savedFile.path, markdownContent);
 
+    // Update image references in registry
+    try {
+      const referencedImages = findImagesInContentFile(savedFile);
+      await updateImageReferences(siteId, savedFile.path, referencedImages);
+      if (referencedImages.length > 0) {
+        console.log(`[ContentSlice] Updated image references for ${savedFile.path}: ${referencedImages.length} images`);
+      }
+    } catch (error) {
+      console.warn(`[ContentSlice] Failed to update image references for ${savedFile.path}:`, error);
+      // Don't fail content saving if registry update fails
+    }
+
     // If silent mode (for autosave), skip state updates to prevent re-renders
     if (silent) {
       console.log('Silent mode: Skipping state updates to prevent re-renders');
@@ -148,7 +162,19 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
     }
 
     const savedFile = await localSiteFs.saveContentFile(siteId, filePath, processedContent);
-    
+
+    // Update image references in registry
+    try {
+      const referencedImages = findImagesInContentFile(savedFile);
+      await updateImageReferences(siteId, savedFile.path, referencedImages);
+      if (referencedImages.length > 0) {
+        console.log(`[ContentSlice] Updated image references for ${savedFile.path}: ${referencedImages.length} images`);
+      }
+    } catch (error) {
+      console.warn(`[ContentSlice] Failed to update image references for ${savedFile.path}:`, error);
+      // Don't fail content saving if registry update fails
+    }
+
     // Determine if this is a new file that needs to be added to the navigation structure.
     const isNewFileInStructure = !findNodeByPath(site.manifest.structure, filePath);
 

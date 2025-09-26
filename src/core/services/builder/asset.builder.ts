@@ -54,65 +54,111 @@ async function bundleAssetFiles(
 export async function bundleAllAssets(bundle: SiteBundle, siteData: LocalSiteData): Promise<void> {
     // 1. Bundle main styles CSS via HTTP request (using configurable paths)
     try {
+        console.log(`[AssetBuilder] Attempting to fetch CSS from: ${CSS_CONFIG.MAIN_STYLESHEET_PATH}`);
         const response = await fetch(CSS_CONFIG.MAIN_STYLESHEET_PATH);
+
         if (response.ok) {
             const stylesCSS = await response.text();
             bundle[CSS_CONFIG.EXPORT_BUNDLE_PATH] = stylesCSS;
-            console.log(`[AssetBuilder] Bundled main styles CSS: ${CSS_CONFIG.MAIN_STYLESHEET_PATH} -> ${CSS_CONFIG.EXPORT_BUNDLE_PATH}`);
+            console.log(`[AssetBuilder] ✅ Successfully bundled main styles CSS (${stylesCSS.length} characters)`);
+            console.log(`[AssetBuilder] CSS bundled: ${CSS_CONFIG.MAIN_STYLESHEET_PATH} -> ${CSS_CONFIG.EXPORT_BUNDLE_PATH}`);
         } else {
-            console.warn(`[AssetBuilder] Main styles CSS not found at: ${CSS_CONFIG.MAIN_STYLESHEET_PATH}`);
+            console.warn(`[AssetBuilder] ⚠️ CSS fetch failed - HTTP ${response.status}: ${response.statusText}`);
+            console.warn(`[AssetBuilder] URL attempted: ${CSS_CONFIG.MAIN_STYLESHEET_PATH}`);
+            console.warn(`[AssetBuilder] Site export will continue without bundled CSS - styles may not appear correctly`);
         }
     } catch (error) {
-        console.error('[AssetBuilder] Failed to bundle main styles CSS:', error);
+        console.error(`[AssetBuilder] ❌ CSS fetch error for ${CSS_CONFIG.MAIN_STYLESHEET_PATH}:`, error);
+        console.warn(`[AssetBuilder] Site export will continue without bundled CSS - styles may not appear correctly`);
+        // Don't throw - allow export to continue even if CSS fails
     }
 
     // 2. Cleanup orphaned images before bundling
     try {
-        const cleanupResult = await cleanupOrphanedImages(siteData);
-        console.log(`[AssetBuilder] Image cleanup completed: ${cleanupResult.originalImagesRemoved} originals, ${cleanupResult.derivativesRemoved} derivatives removed, ${(cleanupResult.bytesFreed / 1024 / 1024).toFixed(2)} MB freed`);
+        console.log(`[AssetBuilder] Starting image cleanup...`);
+
+        // Add timeout to prevent infinite hanging
+        const cleanupPromise = cleanupOrphanedImages(siteData);
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('Image cleanup timeout after 30 seconds')), 30000);
+        });
+
+        const cleanupResult = await Promise.race([cleanupPromise, timeoutPromise]);
+        console.log(`[AssetBuilder] ✅ Image cleanup completed: ${cleanupResult.originalImagesRemoved} originals, ${cleanupResult.derivativesRemoved} derivatives removed, ${(cleanupResult.bytesFreed / 1024 / 1024).toFixed(2)} MB freed`);
     } catch (error) {
-        console.warn('[AssetBuilder] Image cleanup failed, continuing with export:', error);
+        console.error('[AssetBuilder] ❌ Image cleanup failed:', error);
+        console.error('[AssetBuilder] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+        console.warn('[AssetBuilder] Continuing with export despite cleanup failure...');
         // Export continues even if cleanup fails - this ensures exports always work
     }
 
     // 3. Bundle images (now only the referenced ones remain)
-    const allImageRefs = findAllImageRefs(siteData);
-    console.log(`[AssetBuilder] Found ${allImageRefs.length} image references`);
-    
-    if (allImageRefs.length > 0) {
-        // Validate image references before export
-        const validImageRefs = allImageRefs.filter(ref => {
-            if (!ref.serviceId || !ref.src) {
-                console.warn(`[AssetBuilder] Invalid image reference:`, ref);
-                return false;
+    try {
+        const allImageRefs = findAllImageRefs(siteData);
+        console.log(`[AssetBuilder] Found ${allImageRefs.length} image references`);
+
+        if (allImageRefs.length > 0) {
+            // Validate image references before export
+            const validImageRefs = allImageRefs.filter(ref => {
+                if (!ref.serviceId || !ref.src) {
+                    console.warn(`[AssetBuilder] Invalid image reference:`, ref);
+                    return false;
+                }
+                return true;
+            });
+
+            console.log(`[AssetBuilder] Processing ${validImageRefs.length} valid image references`);
+
+            const imageService = getActiveImageService(siteData.manifest);
+            const assetsToBundle = await imageService.getExportableAssets(siteData.siteId, validImageRefs);
+
+            for (const asset of assetsToBundle) {
+                if (asset.path && asset.data) {
+                    bundle[asset.path] = asset.data;
+                } else {
+                    console.warn(`[AssetBuilder] Skipping invalid asset:`, asset);
+                }
             }
-            return true;
-        });
-        
-        console.log(`[AssetBuilder] Processing ${validImageRefs.length} valid image references`);
-        
-        const imageService = getActiveImageService(siteData.manifest);
-        const assetsToBundle = await imageService.getExportableAssets(siteData.siteId, validImageRefs);
-        
-        for (const asset of assetsToBundle) {
-            if (asset.path && asset.data) {
-                bundle[asset.path] = asset.data;
-            } else {
-                console.warn(`[AssetBuilder] Skipping invalid asset:`, asset);
-            }
+
+            console.log(`[AssetBuilder] ✅ Successfully bundled ${assetsToBundle.length} image assets`);
+        } else {
+            console.log(`[AssetBuilder] No images to bundle`);
         }
-        
-        console.log(`[AssetBuilder] Bundled ${assetsToBundle.length} image assets`);
+    } catch (error) {
+        console.error(`[AssetBuilder] ❌ Image bundling failed:`, error);
+        console.warn(`[AssetBuilder] Site export will continue without images - images may not display correctly`);
+        // Don't throw - allow export to continue even if image bundling fails
     }
 
     // 4. Bundle the active theme's files
-    await bundleAssetFiles(bundle, siteData, 'theme', siteData.manifest.theme.name);
+    try {
+        console.log(`[AssetBuilder] Bundling theme: ${siteData.manifest.theme.name}`);
+        await bundleAssetFiles(bundle, siteData, 'theme', siteData.manifest.theme.name);
+        console.log(`[AssetBuilder] ✅ Theme bundled successfully`);
+    } catch (error) {
+        console.error(`[AssetBuilder] ❌ Theme bundling failed:`, error);
+        console.warn(`[AssetBuilder] Site export will continue without theme files - styling may not work correctly`);
+    }
 
     // 5. Bundle all unique, used layouts' files
-    if (siteData.contentFiles) {
-        const usedLayoutIds = [...new Set(siteData.contentFiles.map(f => f.frontmatter.layout))];
-        await Promise.all(
-            usedLayoutIds.map(layoutId => bundleAssetFiles(bundle, siteData, 'layout', layoutId))
-        );
+    try {
+        if (siteData.contentFiles) {
+            const usedLayoutIds = [...new Set(siteData.contentFiles.map(f => f.frontmatter.layout))];
+            console.log(`[AssetBuilder] Bundling ${usedLayoutIds.length} layouts: ${usedLayoutIds.join(', ')}`);
+
+            await Promise.all(
+                usedLayoutIds.map(async (layoutId) => {
+                    try {
+                        await bundleAssetFiles(bundle, siteData, 'layout', layoutId);
+                    } catch (error) {
+                        console.warn(`[AssetBuilder] Failed to bundle layout ${layoutId}:`, error);
+                    }
+                })
+            );
+            console.log(`[AssetBuilder] ✅ Layouts bundled successfully`);
+        }
+    } catch (error) {
+        console.error(`[AssetBuilder] ❌ Layout bundling failed:`, error);
+        console.warn(`[AssetBuilder] Site export will continue without layout files - layouts may not work correctly`);
     }
 }

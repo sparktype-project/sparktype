@@ -15,23 +15,46 @@ import { buildSiteBundle } from './siteBuilder.service';
  * @returns A promise that resolves to a Blob containing the ZIP file.
  */
 export async function exportSiteToZip(siteData: LocalSiteData): Promise<Blob> {
-    // 1. Call the builder service to generate the complete site bundle in memory.
-    const bundle = await buildSiteBundle(siteData);
+    try {
+        console.log(`[SiteExporter] Starting site export for: ${siteData.siteId}`);
 
-    // 2. Create a new ZIP instance.
-    const zip = new JSZip();
+        // 1. Call the builder service to generate the complete site bundle in memory.
+        console.log(`[SiteExporter] Building site bundle...`);
+        const bundle = await buildSiteBundle(siteData);
+        console.log(`[SiteExporter] ✅ Site bundle completed with ${Object.keys(bundle).length} files`);
 
-    // 3. Iterate through the in-memory bundle and add each file to the zip.
-    for (const [filePath, content] of Object.entries(bundle)) {
-        zip.file(filePath, content);
+        // 2. Create a new ZIP instance.
+        console.log(`[SiteExporter] Creating ZIP archive...`);
+        const zip = new JSZip();
+
+        // 3. Iterate through the in-memory bundle and add each file to the zip.
+        let fileCount = 0;
+        for (const [filePath, content] of Object.entries(bundle)) {
+            zip.file(filePath, content);
+            fileCount++;
+
+            if (fileCount % 10 === 0) {
+                console.log(`[SiteExporter] Added ${fileCount} files to ZIP...`);
+            }
+        }
+        console.log(`[SiteExporter] ✅ Added all ${fileCount} files to ZIP`);
+
+        // 4. Generate the final ZIP blob and return it.
+        console.log(`[SiteExporter] Generating ZIP blob...`);
+        const zipBlob = await zip.generateAsync({
+            type: 'blob',
+            compression: 'DEFLATE',
+            compressionOptions: {
+                level: 9,
+            },
+        });
+
+        console.log(`[SiteExporter] ✅ ZIP export completed! Size: ${(zipBlob.size / 1024 / 1024).toFixed(2)} MB`);
+        return zipBlob;
+
+    } catch (error) {
+        console.error(`[SiteExporter] ❌ Export failed:`, error);
+        console.error(`[SiteExporter] Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
+        throw error;
     }
-
-    // 4. Generate the final ZIP blob and return it.
-    return zip.generateAsync({
-        type: 'blob',
-        compression: 'DEFLATE',
-        compressionOptions: {
-            level: 9,
-        },
-    });
 }

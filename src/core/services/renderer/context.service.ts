@@ -12,7 +12,7 @@ import type {
 } from '@/core/types';
 import { PageType } from '@/core/types';
 import { generateNavLinks } from '@/core/services/navigationStructure.service';
-import { getUrlForNode } from '@/core/services/urlUtils.service';
+import { generatePreviewUrl, generateExportUrl } from '@/core/services/urlUtils.service';
 import { generateStyleOverrides } from './asset.service';
 import { type RenderOptions } from './render.service';
 import { getRelativePath } from '@/core/services/relativePaths.service';
@@ -56,7 +56,10 @@ export async function assemblePageContext(
                 url: '' // Will be generated next
             };
             
-            const urlSegment = getUrlForNode(itemRef, manifest, options.isExport, undefined, siteData);
+            const siteId = siteData.manifest.siteId || 'unknown';
+            const urlSegment = options.isExport
+              ? generateExportUrl(itemRef, manifest, undefined, siteData)
+              : generatePreviewUrl(itemRef, manifest, siteId, undefined, siteData);
             
             // Create a `StructureNode` for the current (parent) page to get its path.
             const currentPageNode: StructureNode = {
@@ -65,14 +68,18 @@ export async function assemblePageContext(
               path: resolution.contentFile.path,
               slug: resolution.contentFile.slug
             };
-            const currentPagePath = getUrlForNode(currentPageNode, manifest, options.isExport, undefined, siteData);
+            const currentPagePath = options.isExport
+              ? generateExportUrl(currentPageNode, manifest, undefined, siteData)
+              : generatePreviewUrl(currentPageNode, manifest, siteId, undefined, siteData);
 
             let itemUrl: string;
             if (options.isExport) {
-                itemUrl = getRelativePath(currentPagePath, urlSegment);
+                // For export, urlSegment is already the correct path, calculate relative link
+                const targetPath = urlSegment === '' ? 'index.html' : `${urlSegment}/index.html`;
+                itemUrl = getRelativePath(currentPagePath === '' ? 'index.html' : `${currentPagePath}/index.html`, targetPath);
             } else {
-                const path = `/${urlSegment}`.replace(/\/$/, '') || '/';
-                itemUrl = `${options.siteRootPath}${path === '/' ? '' : path}`;
+                // For preview, urlSegment is already the full hash URL
+                itemUrl = urlSegment;
             }
 
             return {
@@ -131,12 +138,14 @@ export async function assembleBaseContext(
         manifest,
         options,
         pageContext,
-        navLinks: generateNavLinks(siteData, getUrlForNode(urlNode, manifest, options.isExport, undefined, siteData), options),
+        navLinks: generateNavLinks(siteData, options.isExport
+          ? generateExportUrl(urlNode, manifest, undefined, siteData)
+          : generatePreviewUrl(urlNode, manifest, siteData.manifest.siteId || 'unknown', undefined, siteData), options),
         headContext: {
             pageTitle: resolution.pageTitle,
             manifest,
             contentFile: resolution.contentFile,
-            canonicalUrl: new URL(getUrlForNode(urlNode, manifest, false, undefined, siteData), manifest.baseUrl || 'https://example.com').href,
+            canonicalUrl: new URL(generateExportUrl(urlNode, manifest, undefined, siteData), manifest.baseUrl || 'https://example.com').href,
             baseUrl: options.relativeAssetPath ?? '/',
             styleOverrides: new Handlebars.SafeString(generateStyleOverrides(manifest.theme.config)),
             faviconUrl,

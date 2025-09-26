@@ -28,7 +28,9 @@
       "Bash(npm run tauri:dev:*)",
       "WebFetch(domain:docs.rs)",
       "Bash(npm run tauri:build:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

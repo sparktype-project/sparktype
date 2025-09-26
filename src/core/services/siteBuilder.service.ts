@@ -39,10 +39,12 @@ export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBund
 
     // 4. Bundle all assets (images, themes, layouts).
     try {
+        console.log(`[SiteBuilder] Starting asset bundling...`);
         await bundleAllAssets(bundle, synchronizedSiteData);
-        console.log(`[SiteBuilder] Assets bundled successfully`);
+        console.log(`[SiteBuilder] ✅ Assets bundled successfully`);
     } catch (error) {
-        console.error(`[SiteBuilder] Failed to bundle assets:`, error);
+        console.error(`[SiteBuilder] ❌ Failed to bundle assets:`, error);
+        console.error(`[SiteBuilder] Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
         throw new Error(`Asset bundling failed: ${error}`);
     }
 

@@ -9,7 +9,7 @@ import { MEMORY_CONFIG } from '@/config/editorConfig';
 import { toast } from 'sonner';
 import { cropAndResizeImage, getImageDimensions as getImageDimensionsFromBlob } from './imageManipulation.service';
 import { isTauriApp } from '@/core/utils/platform';
-// TODO: Re-add manifest tracking with different approach
+import { addImageToRegistry, addDerivativeToRegistry } from './imageRegistry.service';
 
 /**
  * This service manages images stored locally within the browser's IndexedDB.
@@ -93,6 +93,15 @@ class LocalImageService implements ImageService {
     // Convert File to Blob to ensure proper storage in IndexedDB
     const blob = new Blob([file], { type: file.type });
     await localSiteFs.saveImageAsset(siteId, relativePath, blob);
+
+    // Register the image in the registry for tracking
+    try {
+      await addImageToRegistry(siteId, relativePath, file.size);
+      console.log(`[LocalImageService] Registered image in registry: ${relativePath}`);
+    } catch (error) {
+      console.warn(`[LocalImageService] Failed to register image in registry: ${relativePath}`, error);
+      // Don't fail the upload if registry update fails
+    }
 
     let width: number, height: number;
     try {
@@ -271,6 +280,18 @@ class LocalImageService implements ImageService {
         
         // 4. Store the result in the persistent cache.
         await setCachedDerivative(cacheKey, finalBlob);
+
+        // 5. Register the derivative in the registry
+        try {
+          // Extract derivative path from cache key (format: siteId/assets/derivatives/filename)
+          const derivativePath = cacheKey.substring(siteId.length + 1);
+          await addDerivativeToRegistry(siteId, srcPath, derivativePath);
+          console.log(`[LocalImageService] Registered derivative in registry: ${srcPath} -> ${derivativePath}`);
+        } catch (error) {
+          console.warn(`[LocalImageService] Failed to register derivative in registry: ${srcPath}`, error);
+          // Don't fail derivative creation if registry update fails
+        }
+
         return finalBlob;
       } catch (error) {
         console.error(`[ImageService] Failed to process derivative ${cacheKey}:`, error);
