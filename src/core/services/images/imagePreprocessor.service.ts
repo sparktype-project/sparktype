@@ -34,22 +34,33 @@ export class ImagePreprocessorService {
 
     const imageService = getActiveImageService(siteData.manifest);
 
-    // Clear previous processing
-    this.processedImages.clear();
+    // Update processing - only clear entries that are no longer valid
+    // Instead of clearing everything, we'll update only the images that need processing
 
     // Get all image references from content
     const allImageRefs = this.extractImageReferences(siteData);
     console.log(`[ImagePreprocessor] Found ${allImageRefs.length} image references`);
-    
+
+    // Get current content paths to identify removed content
+    const currentContentPaths = new Set(siteData.contentFiles?.map(file => file.path) || []);
+
+    // Remove processed images for content that no longer exists
+    for (const contentPath of this.processedImages.keys()) {
+      if (!currentContentPaths.has(contentPath)) {
+        console.log(`[ImagePreprocessor] Removing processed images for deleted content: ${contentPath}`);
+        this.processedImages.delete(contentPath);
+      }
+    }
+
     // Process each image reference
     for (const { imageRef, fieldName, layoutPath, contentPath } of allImageRefs) {
       await this.processImageForField(
-        siteData, 
-        imageRef, 
-        fieldName, 
+        siteData,
+        imageRef,
+        fieldName,
         layoutPath,
         contentPath,
-        imageService, 
+        imageService,
         isExport,
         forIframe
       );
@@ -121,14 +132,14 @@ export class ImagePreprocessorService {
     for (const contentFile of siteData.contentFiles) {
       const layoutPath = contentFile.frontmatter.layout || 'page';
 
-      console.log(`[ImagePreprocessor] Scanning ${contentFile.path} frontmatter:`, contentFile.frontmatter);
+      console.log(`[ImagePreprocessor] Scanning ${contentFile.path} frontmatter`);
 
       // Check frontmatter for image fields
       for (const [fieldName, value] of Object.entries(contentFile.frontmatter)) {
-        console.log(`[ImagePreprocessor] Checking field '${fieldName}' with value:`, value, `Type: ${typeof value}`);
+        console.log(`[ImagePreprocessor] Checking field '${fieldName}', type: ${typeof value}`);
 
         if (this.isImageRef(value)) {
-          console.log(`[ImagePreprocessor] ✓ Found image reference in field '${fieldName}':`, value);
+          console.log(`[ImagePreprocessor] ✓ Found image reference in field '${fieldName}'`);
           imageRefs.push({
             imageRef: value as ImageRef,
             fieldName,
@@ -181,7 +192,16 @@ export class ImagePreprocessorService {
     // Process each preset configuration
     for (const presetConfig of presetConfigs) {
       const { presetName, context } = presetConfig;
-      
+
+      // Create storage key for this preset/context combination
+      const storageKey = context ? `${context}_context` : presetName;
+
+      // Skip if already processed
+      if (contentData[fieldName][storageKey]) {
+        console.log(`[ImagePreprocessor] Skipping already processed ${fieldName} with preset '${presetName}'${context ? ` (${context})` : ''}`);
+        continue;
+      }
+
       // Resolve the preset with inheritance: base -> site manifest
       const resolvedPreset = this.resolvePreset(siteData.manifest, presetName);
       if (!resolvedPreset) {
@@ -206,8 +226,7 @@ export class ImagePreprocessorService {
           forIframe
         );
 
-        // Store the processed URL with context-aware key
-        const storageKey = context ? `${context}_context` : presetName;
+        // Store the processed URL (storageKey already defined above)
         contentData[fieldName][storageKey] = processedUrl;
         
         // Truncate data URLs for logging to prevent console spam
@@ -448,16 +467,7 @@ export class ImagePreprocessorService {
     );
 
     if (!isValid && value && typeof value === 'object') {
-      console.log(`[ImagePreprocessor] isImageRef failed for:`, value);
-      console.log(`[ImagePreprocessor] Analysis:`, {
-        hasValue: !!value,
-        isObject: typeof value === 'object',
-        hasServiceId: 'serviceId' in value,
-        hasSrc: 'src' in value,
-        serviceIdType: typeof value.serviceId,
-        srcType: typeof value.src,
-        objectKeys: Object.keys(value)
-      });
+      console.log(`[ImagePreprocessor] isImageRef failed - object keys:`, Object.keys(value));
     }
 
     return isValid;

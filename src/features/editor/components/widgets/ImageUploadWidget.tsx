@@ -22,7 +22,7 @@ export default function ImageUploadWidget(props: WidgetProps) {
     const generatePreview = async () => {
       if (imageRef && site?.manifest) {
         try {
-          console.log(`[ImageUploadWidget] Generating preview for ${label}, imageRef:`, imageRef);
+          console.log(`[ImageUploadWidget] Generating preview for ${label}`);
           const service = getActiveImageService(site.manifest);
           console.log(`[ImageUploadWidget] Using image service:`, service.constructor.name);
           const startTime = Date.now();
@@ -81,9 +81,9 @@ export default function ImageUploadWidget(props: WidgetProps) {
       const uploadStartTime = Date.now();
       const newRef = await service.upload(file, siteId);
       const uploadEndTime = Date.now();
-      console.log(`[ImageUploadWidget] Upload completed in ${uploadEndTime - uploadStartTime}ms, ref:`, newRef);
+      console.log(`[ImageUploadWidget] Upload completed in ${uploadEndTime - uploadStartTime}ms`);
       onChange(newRef);
-      console.log(`[ImageUploadWidget] onChange called with ref:`, newRef);
+      console.log(`[ImageUploadWidget] onChange called with new ref`);
       toast.success(`${label} uploaded successfully.`);
     } catch (error) {
       console.error(`[ImageUploadWidget] Upload failed for ${label}:`, error);

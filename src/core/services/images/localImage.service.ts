@@ -138,8 +138,8 @@ class LocalImageService implements ImageService {
       // Don't fail the upload if registry update fails
     }
 
-    const imageRef = {
-      serviceId: 'local',
+    const imageRef: ImageRef = {
+      serviceId: 'local' as const,
       src: relativePath,
       alt: file.name,
       width,
