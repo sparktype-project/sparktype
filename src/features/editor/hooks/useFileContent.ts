@@ -33,6 +33,7 @@ interface PageFrontmatter extends MarkdownFrontmatter { menuTitle?: string; }
 export function useFileContent(siteId: string, filePath: string, isNewFileMode: boolean, collectionContext: CollectionContext) {
   const navigate = useNavigate(); // <--- Use the navigate hook
   const site = useAppStore(state => state.getSiteById(siteId));
+  const isSlugChangeInProgress = useAppStore(state => state.isSlugChangeInProgress(siteId));
   const { setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave } = useEditor();
 
   const [status, setStatus] = useState<FileStatus>('initializing');
@@ -84,10 +85,30 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         fileData = site.contentFiles.find(f => f.path === filePath);
         if (!fileData) {
           console.log('useFileContent - file not found!');
+
+          // If slug change is in progress, wait for it to complete
+          if (isSlugChangeInProgress) {
+            console.log('useFileContent - slug change in progress, waiting...');
+            setStatus('loading');
+            return; // Don't show error, let it retry when slug change completes
+          }
+
+          // Check if we might be in the middle of a slug change by looking for similar files
+          const possibleSlug = filePath.replace(/^content\//, '').replace(/\.md$/, '');
+          const similarFiles = site.contentFiles.filter(f =>
+            f.slug.includes(possibleSlug) || possibleSlug.includes(f.slug)
+          );
+
+          if (similarFiles.length > 0) {
+            console.log('useFileContent - found similar files, might be slug change in progress:', similarFiles.map(f => f.path));
+            setStatus('loading'); // Set to loading instead of not_found
+            return; // Don't show error, let it retry
+          }
+
           setStatus('not_found');
           toast.error(`Content file not found at path: ${filePath}`);
           // Use navigate to redirect
-          navigate(`/sites/${siteId}/edit`, { replace: true }); 
+          navigate(`/sites/${siteId}/edit`, { replace: true });
           return;
         }
         console.log('useFileContent - found file with content length:', fileData.content?.length);
@@ -108,7 +129,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
 
     loadData();
     
-  }, [site, filePath, isNewFileMode, collectionContext, siteId, navigate, setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave]);
+  }, [site, filePath, isNewFileMode, collectionContext, siteId, navigate, setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave, isSlugChangeInProgress]);
 
   // Callback to signal that some content (either body or frontmatter) has changed.
   const onContentModified = useCallback(() => {
@@ -177,11 +198,17 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
       
       if (result.success) {
         setPendingSlug(null); // Clear pending change
-        
+
         // Navigate to the new path if it changed
         if (result.newFilePath && result.newFilePath !== filePath) {
           const newSlugFromPath = result.newFilePath.replace(/^content\//, '').replace(/\.md$/, '');
-          navigate(`/sites/${siteId}/edit/content/${newSlugFromPath}`);
+          console.log('useFileContent - navigating from', filePath, 'to', result.newFilePath, 'slug:', newSlugFromPath);
+          // Use setTimeout to ensure the site reload from changePageSlugWithContent
+          // has completed and all Zustand subscribers have been notified
+          setTimeout(() => {
+            console.log('useFileContent - executing navigation to:', `/sites/${siteId}/edit/content/${newSlugFromPath}`);
+            navigate(`/sites/${siteId}/edit/content/${newSlugFromPath}`, { replace: true });
+          }, 50); // Small delay to ensure state propagation
         }
         
         return { success: true, newFilePath: result.newFilePath };

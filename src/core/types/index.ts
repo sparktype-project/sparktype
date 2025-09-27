@@ -245,16 +245,6 @@ export interface LayoutInfo {
   description?: string;
 }
 
-/**
- * Represents metadata for a block asset in the file system.
- */
-
-export interface BlockInfo {
-  id: string;
-  name: string;   
-  path: string;
-  description?: string; 
-}
 
 /**
  * Represents a block instance in the editor with content, configuration, and nested regions.
@@ -265,25 +255,6 @@ export interface Block {
   content: Record<string, unknown>; // Data corresponding to contentSchema
   config: Record<string, unknown>;  // Data corresponding to configSchema
   regions: Record<string, Block[]>; // Key is region name, value is nested blocks
-}
-
-export interface BlockManifest extends BaseAssetManifest {
-  id: string; 
-  
-  // Content fields - data that is part of the block itself (e.g., text, images)
-  contentSchema?: import('@rjsf/utils').RJSFSchema;
-  contentUiSchema?: StrictUiSchema;
-  
-  // Config fields - settings that control block behavior (e.g., layout options, data sources)
-  configSchema?: import('@rjsf/utils').RJSFSchema;
-  configUiSchema?: StrictUiSchema;
-  
-  // Named droppable areas where other blocks can be nested
-  regions?: string[];
-  
-  // Legacy schema support (deprecated - use contentSchema instead)
-  schema?: import('@rjsf/utils').RJSFSchema;
-  uiSchema?: StrictUiSchema;
 }
 
 // ============================================================================
@@ -331,8 +302,6 @@ export interface MarkdownFrontmatter {
   layoutConfig?: LayoutConfig; // Collection layout configuration
   homepage?: boolean;
   tags?: Record<string, string[]>; // groupId -> array of tag IDs
-  // BlockNote blocks stored directly in frontmatter
-  blocknoteBlocks?: import('@blocknote/core').Block[];
   [key: string]: unknown;
 }
 
@@ -344,8 +313,6 @@ export interface ParsedMarkdownFile {
   path: string;
   frontmatter: MarkdownFrontmatter;
   content: string;
-  // BlockNote blocks stored directly in frontmatter
-  blocknoteBlocks?: import('@blocknote/core').Block[];
   // Legacy support - will be removed
   hasBlocks?: boolean;
   blocks?: Block[];
@@ -386,7 +353,6 @@ export interface Manifest {
   structure: StructureNode[];
   layouts?: LayoutInfo[];
   themes?: ThemeInfo[];
-  blocks?: BlockInfo[];
   collections?: Collection[];
   collectionItems?: CollectionItemRef[];
   tagGroups?: TagGroup[];
@@ -439,7 +405,6 @@ export interface LocalSiteData {
   layoutFiles?: RawFile[];
   themeFiles?: RawFile[];
   dataFiles?: Record<string, string>; // Added for storing data like categories.json
-  blocks?: BlockInfo[]; // Available blocks from manifest.blocks
   secrets?: SiteSecrets;
 }
 

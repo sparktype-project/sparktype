@@ -4,7 +4,6 @@ import { enableMapSet } from 'immer';
 import { type SiteSlice, createSiteSlice } from './slices/siteSlice';
 import { type ContentSlice, createContentSlice } from './slices/contentSlice';
 import { type SecretsSlice, createSecretsSlice } from './slices/secretsSlice';
-import { type BlockSlice, createBlockSlice } from './slices/blockSlice';
 import { type AuthSlice, createAuthSlice } from './slices/authSlice';
 
 // Enable Immer for Map and Set support, which is good practice with Zustand.
@@ -14,11 +13,17 @@ enableMapSet();
  * The full, combined type for the application's global store.
  * It's an intersection of all slice types plus root-level state.
  */
-export type AppStore = SiteSlice & ContentSlice & SecretsSlice & BlockSlice & AuthSlice & {
+export type AppStore = SiteSlice & ContentSlice & SecretsSlice & AuthSlice & {
   isInitialized: boolean;
   initialize: () => void;
   activeSiteId: string | null;
   setActiveSiteId: (siteId: string | null) => void;
+
+  // Slug change state tracking
+  recentSlugChanges: Set<string>;
+  markSlugChangeInProgress: (siteId: string) => void;
+  markSlugChangeComplete: (siteId: string) => void;
+  isSlugChangeInProgress: (siteId: string) => boolean;
 };
 
 /**
@@ -29,6 +34,9 @@ export const useAppStore = create<AppStore>()((set, get, api) => ({
   // --- Root State Properties ---
   isInitialized: false,
   activeSiteId: null,
+
+  // Slug change tracking
+  recentSlugChanges: new Set<string>(),
 
   // --- Root State Actions ---
 
@@ -66,6 +74,34 @@ export const useAppStore = create<AppStore>()((set, get, api) => ({
     set({ activeSiteId: siteId });
   },
 
+  /**
+   * Marks a site as having a slug change in progress.
+   * This prevents premature error messages during the transition.
+   */
+  markSlugChangeInProgress: (siteId) => {
+    set((state) => ({
+      recentSlugChanges: new Set([...state.recentSlugChanges, siteId])
+    }));
+  },
+
+  /**
+   * Marks a site's slug change as complete and removes it from tracking.
+   */
+  markSlugChangeComplete: (siteId) => {
+    set((state) => {
+      const newSet = new Set(state.recentSlugChanges);
+      newSet.delete(siteId);
+      return { recentSlugChanges: newSet };
+    });
+  },
+
+  /**
+   * Checks if a slug change is currently in progress for a site.
+   */
+  isSlugChangeInProgress: (siteId) => {
+    return get().recentSlugChanges.has(siteId);
+  },
+
   // --- Slices ---
   // The store is composed of smaller, focused slices of state.
   // --- FIX: Pass all three arguments (set, get, api) to each slice creator. ---
@@ -73,6 +109,5 @@ export const useAppStore = create<AppStore>()((set, get, api) => ({
   ...createSiteSlice(set, get, api as StoreApi<AppStore>),
   ...createContentSlice(set, get, api as StoreApi<AppStore>),
   ...createSecretsSlice(set, get, api as StoreApi<AppStore>),
-  ...createBlockSlice(set, get, api as StoreApi<AppStore>),
   ...createAuthSlice(set, get, api as StoreApi<AppStore>),
 }));

@@ -74,7 +74,6 @@ The application uses Zustand with a slice-based pattern:
 - `localFileSystem.service.ts` - Handles local file operations
 - `imageCache.service.ts` - Image processing and caching
 - `publishing.service.ts` - Site deployment (Netlify, GitHub)
-- `blockRegistry.service.ts` - Dynamic component registration
 
 ### Content System
 - **Markdown**: Frontmatter + content body using gray-matter

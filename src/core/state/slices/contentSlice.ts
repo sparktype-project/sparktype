@@ -680,6 +680,12 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
 
   changePageSlugWithContent: async (siteId: string, currentFilePath: string, newSlug: string, frontmatter: MarkdownFrontmatter, content: string) => {
     try {
+      // Mark slug change as in progress
+      const appStore = get() as any; // Cast to access other slice methods
+      if (appStore.markSlugChangeInProgress) {
+        appStore.markSlugChangeInProgress(siteId);
+      }
+
       const siteData = get().getSiteById(siteId);
       if (!siteData) {
         return { success: false, error: "Site not found" };
@@ -776,6 +782,14 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
         await get().updateManifest(siteId, finalSite.manifest);
       }
 
+      // Force a complete site reload to ensure all components get fresh data
+      await get().loadSite(siteId);
+
+      // Mark slug change as complete
+      if (appStore.markSlugChangeComplete) {
+        appStore.markSlugChangeComplete(siteId);
+      }
+
       toast.success(`Page slug changed from "${currentSlug}" to "${newSlug}"`);
 
       return {
@@ -787,6 +801,13 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
       console.error("Failed to change page slug:", error);
       const errorMessage = `Failed to change slug: ${(error as Error).message}`;
       toast.error(errorMessage);
+
+      // Mark slug change as complete even on error
+      const appStore = get() as any;
+      if (appStore.markSlugChangeComplete) {
+        appStore.markSlugChangeComplete(siteId);
+      }
+
       return { success: false, error: errorMessage };
     }
   },
@@ -860,8 +881,7 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
             originalPath: path,
             newPath,
             frontmatter: { ...file.frontmatter },
-            content: file.content,
-            blocknoteBlocks: file.blocknoteBlocks ? [...file.blocknoteBlocks] : undefined
+            content: file.content
           });
         }
       }
