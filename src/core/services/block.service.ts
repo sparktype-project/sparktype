@@ -1,6 +1,5 @@
 // src/core/services/block.service.ts
 
-// src/core/services/block.service.ts
 
 // CORE_BLOCKS removed - using layout partials instead
 import {
