@@ -4,7 +4,7 @@
 import { useEditor } from '@/features/editor/contexts/useEditor';
 import { Button } from '@/core/components/ui/button';
 import { Save, Check, Loader2, AlertTriangle } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/core/components/ui/tooltip';
 
 /**
  * A context-aware button that displays the current save state
@@ -54,15 +54,15 @@ export default function SaveButton() {
 
   return (
     <Tooltip>
-          <TooltipTrigger>
-            <Button variant={current.variant} onClick={triggerSave} disabled={current.disabled} size="sm" className='h-8 w-8'>
-      {current.icon}
-    </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{current.text}</p>
-          </TooltipContent>
-        </Tooltip>    
-    
+      <TooltipTrigger asChild>
+        <Button variant={current.variant} onClick={triggerSave} disabled={current.disabled} size="sm" className='h-8 w-8'>
+          {current.icon}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{current.text}</p>
+      </TooltipContent>
+    </Tooltip>
+
   );
 }

@@ -18,7 +18,6 @@ export default function ImageUploadWidget(props: WidgetProps) {
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
-    let objectUrl: string | null = null;
     const generatePreview = async () => {
       if (imageRef && site?.manifest) {
         try {
@@ -33,9 +32,6 @@ export default function ImageUploadWidget(props: WidgetProps) {
           const endTime = Date.now();
           console.log(`[ImageUploadWidget] Preview generated in ${endTime - startTime}ms, url:`, url);
           setPreviewUrl(url);
-          if (url.startsWith('blob:')) {
-            objectUrl = url;
-          }
         } catch (error) {
           console.error(`[ImageUploadWidget] Could not generate preview for ${label}:`, error);
           setPreviewUrl(null);
@@ -46,13 +42,16 @@ export default function ImageUploadWidget(props: WidgetProps) {
       }
     };
     generatePreview();
-    
+  }, [imageRef, site, label]);
+
+  // Cleanup blob URLs only on actual component unmount (not recreation)
+  useEffect(() => {
     return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
       }
     };
-  }, [imageRef, site, label]);
+  }, []); // Empty dependency array - only run on unmount
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -102,14 +101,14 @@ export default function ImageUploadWidget(props: WidgetProps) {
 
   return (
     <div className="space-y-2">
-      
-      
+
+
       {previewUrl ? (
         <div className="relative w-full aspect-video bg-muted rounded-md overflow-hidden">
           <img src={previewUrl} alt={`${label} preview`} className="absolute inset-0 w-full h-full object-contain" />
-          <Button 
-            size="icon" 
-            variant="destructive" 
+          <Button
+            size="icon"
+            variant="destructive"
             className="absolute top-2 right-2 h-7 w-7"
             onClick={handleRemove}
             aria-label={`Remove ${label}`}
@@ -125,16 +124,16 @@ export default function ImageUploadWidget(props: WidgetProps) {
           <div className="flex flex-row items-center justify-center py-3 px-0 w-full gap-3">
             <UploadCloud className="w-8 h-8  text-muted-foreground" />
             <div>
-            <p className="mb-1 text-xs text-muted-foreground">
-              <span className="font-semibold">Click to upload</span> or drag and drop
-            </p>
-            <p className="text-xs text-muted-foreground">PNG, JPG, or WEBP (Max 5MB)</p>
+              <p className="mb-1 text-xs text-muted-foreground">
+                <span className="font-semibold">Click to upload</span> or drag and drop
+              </p>
+              <p className="text-xs text-muted-foreground">PNG, JPG, or WEBP (Max 5MB)</p>
             </div>
           </div>
-          <input 
-            id={id} 
-            type="file" 
-            className="hidden" 
+          <input
+            id={id}
+            type="file"
+            className="hidden"
             onChange={handleFileSelect}
             accept={MEMORY_CONFIG.SUPPORTED_EXTENSIONS.join(',')}
             disabled={isUploading}

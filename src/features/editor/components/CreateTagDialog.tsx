@@ -26,20 +26,20 @@ export default function CreateTagDialog({ siteId, tagGroup, open, onOpenChange }
 
   const handleCreateTag = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!newTagName.trim() || !tagGroup || isCreating) return;
-    
+
     setIsCreating(true);
-    
+
     try {
       const tagData: Omit<Tag, 'id'> = {
         name: newTagName.trim(),
         groupId: tagGroup.id,
         description: newTagDescription.trim() || undefined,
       };
-      
+
       await createTag(siteId, tagData);
-      
+
       // Reset form and close dialog
       setNewTagName('');
       setNewTagDescription('');
@@ -66,7 +66,7 @@ export default function CreateTagDialog({ siteId, tagGroup, open, onOpenChange }
             Create a new tag{tagGroup ? ` in "${tagGroup.name}"` : ''}.
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleCreateTag} className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="tag-name">Tag Name *</Label>
@@ -79,7 +79,7 @@ export default function CreateTagDialog({ siteId, tagGroup, open, onOpenChange }
               autoFocus
             />
           </div>
-          
+
           <div className="grid gap-2">
             <Label htmlFor="tag-description">Description (optional)</Label>
             <Input
@@ -89,18 +89,18 @@ export default function CreateTagDialog({ siteId, tagGroup, open, onOpenChange }
               onChange={(e) => setNewTagDescription(e.target.value)}
             />
           </div>
-          
+
           <div className="flex gap-2 justify-end">
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={handleCancel}
               disabled={isCreating}
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={!newTagName.trim() || isCreating}
             >
               {isCreating ? 'Creating...' : 'Create Tag'}

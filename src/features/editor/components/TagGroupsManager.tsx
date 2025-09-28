@@ -60,7 +60,7 @@ export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
 
   const confirmDeleteTagGroup = async () => {
     if (!tagGroupToDelete || !siteData) return;
-    
+
     try {
       await deleteTagGroup(siteId, tagGroupToDelete.id);
     } catch (error) {
@@ -79,10 +79,10 @@ export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto">
         {tagGroups.length === 0 ? (
-            <div className="space-y-3 px-1">
-              <div className="text-muted-foreground">
-                <p className="text-xs">No tags yet.</p>
-              </div>
+          <div className="space-y-3 px-1">
+            <div className="text-muted-foreground">
+              <p className="text-xs">No tags yet.</p>
+            </div>
           </div>
         ) : (
           <div className="space-y-1">
@@ -102,7 +102,7 @@ export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
           </div>
         )}
       </div>
-      
+
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -119,14 +119,14 @@ export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      
+
       <CreateTagGroupDialog siteId={siteId} open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
       <EditTagGroupDialog siteId={siteId} tagGroup={tagGroupToEdit} open={editDialogOpen} onOpenChange={setEditDialogOpen} />
-      <CreateTagDialog 
-        siteId={siteId} 
-        tagGroup={selectedTagGroupForTag} 
-        open={createTagDialogOpen} 
-        onOpenChange={setCreateTagDialogOpen} 
+      <CreateTagDialog
+        siteId={siteId}
+        tagGroup={selectedTagGroupForTag}
+        open={createTagDialogOpen}
+        onOpenChange={setCreateTagDialogOpen}
       />
     </div>
   );
@@ -158,7 +158,7 @@ function TagGroupItem({ tagGroup, siteData, onEdit, onDelete, onManageTags, onAd
             {tagCount} tags
           </div>
         </div>
-        
+
       </div>
       <div className="flex items-center gap-1">
         <DropdownMenu>
@@ -179,9 +179,9 @@ function TagGroupItem({ tagGroup, siteData, onEdit, onDelete, onManageTags, onAd
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           className="h-6 w-6 p-0"
           title="Add new tag"
           onClick={onAddTag}

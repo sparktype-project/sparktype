@@ -1,4 +1,4 @@
-// React import removed - not needed with react-jsx
+import * as React from 'react';
 
 import type { SlateElementProps, TFileElement } from 'platejs';
 

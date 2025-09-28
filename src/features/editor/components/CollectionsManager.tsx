@@ -71,14 +71,14 @@ export default function CollectionsManager({ siteId }: CollectionsManagerProps) 
   return (
     <CollectionErrorBoundary fallback={CollectionErrorFallback}>
       <div className="flex h-full flex-col">
-        
+
         <div className="flex-1 overflow-y-auto">
           {collections.length === 0 ? (
-              <div className="space-y-3 px-1">
-                <div className="text-muted-foreground">
-                  <p className="text-xs">No collections yet. </p>
-                </div>
+            <div className="space-y-3 px-1">
+              <div className="text-muted-foreground">
+                <p className="text-xs">No collections yet. </p>
               </div>
+            </div>
           ) : (
             <div className="space-y-1">
               {collections.map((collection) => (
@@ -138,7 +138,7 @@ function CollectionItem({ collection, siteData, siteId, onClick, onEdit, onDelet
     <div className="group flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-md">
       <div className="flex-1 min-w-0 cursor-pointer" onClick={onClick} title="Click to view collection items">
         <div className="flex items-center gap-2">
-                    <LayoutGrid className='size-4' />
+          <LayoutGrid className='size-4' />
 
           <div className="text-sm truncate">{collection.name}</div>
           <div className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{itemCount} items</div>
@@ -154,10 +154,10 @@ function CollectionItem({ collection, siteData, siteId, onClick, onEdit, onDelet
             <DropdownMenuItem onClick={onDelete} className="text-destructive"><Trash2 className="h-4 w-4 mr-2" />Delete Collection</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button 
+        <Button
           asChild
-          variant="ghost" 
-          size="sm" 
+          variant="ghost"
+          size="sm"
           className="h-6 w-6 p-0"
           title="Add new item"
         >

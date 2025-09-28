@@ -2,8 +2,8 @@
 
 import type { LocalSiteData, ParsedMarkdownFile } from '@/core/types';
 import type { SimpleConflict, ConflictChoice } from './gitSync.service';
-import type { GitHubConfig } from './publishing/GitHubProvider';
-import { githubContentFetcher } from './githubContentFetcher.service';
+import type { GitHubConfig } from './git.service';
+import { githubContentFetcher } from '../githubContentFetcher.service';
 import { gitSyncService } from './gitSync.service';
 
 /**

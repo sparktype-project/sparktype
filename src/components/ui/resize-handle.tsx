@@ -1,6 +1,6 @@
 'use client';
 
-// React import removed - not needed with react-jsx
+import * as React from 'react';
 
 import type { VariantProps } from 'class-variance-authority';
 

@@ -20,12 +20,12 @@ import {
 } from 'platejs/react';
 import { useSelected } from 'platejs/react';
 
-import { Button } from '@/components/ui/button';
+import { Button } from '@/core/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from '@/core/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 const UNDRAGGABLE_KEYS = [KEYS.column, KEYS.tr, KEYS.td];
@@ -386,12 +386,12 @@ const createDragPreviewElements = (
 
   const resolveElement = (node: TElement, index: number) => {
     const domNode = editor.api.toDOMNode(node);
-    
+
     if (!domNode) {
       console.warn('resolveElement: Unable to find DOM node for element', node);
       return;
     }
-    
+
     const newDomNode = domNode.cloneNode(true) as HTMLElement;
 
     // Apply visual compensation for horizontal scroll
@@ -438,7 +438,7 @@ const createDragPreviewElements = (
 
     if (lastDomNode) {
       const lastDomNodeElement = editor.api.toDOMNode(lastDomNode);
-      
+
       if (lastDomNodeElement?.parentElement && domNode.parentElement) {
         const lastDomNodeRect = lastDomNodeElement.parentElement.getBoundingClientRect();
         const domNodeRect = domNode.parentElement.getBoundingClientRect();
@@ -482,7 +482,7 @@ const calculatePreviewTop = (
   }
 
   const firstDomNode = editor.api.toDOMNode(firstSelectedChild);
-  
+
   if (!firstDomNode) {
     console.warn('calculatePreviewTop: Unable to find DOM node for first selected child', firstSelectedChild);
     return 0;
@@ -522,7 +522,7 @@ const calculatePreviewTop = (
 
 const calcDragButtonTop = (editor: PlateEditor, element: TElement): number => {
   const child = editor.api.toDOMNode(element);
-  
+
   if (!child) {
     console.warn('calcDragButtonTop: Unable to find DOM node for element', element);
     return 0;

@@ -1,11 +1,11 @@
 // src/core/services/publishing.service.ts
 
 import type { LocalSiteData } from '@/core/types';
-import { exportSiteToZip } from './siteExporter.service';
-import { NetlifyProvider } from './publishing/NetlifyProvider';
-import { GitHubProvider } from './publishing/GitHubProvider';
+import { exportSiteToZip } from './download.service';
+import { NetlifyProvider } from '../publishing/netlify.service';
+import { GitHubProvider } from '../publishing/git.service';
 import { slugify } from '@/core/libraries/utils';
-import { tauriFileDownloadService } from './tauri/fileDownload.service';
+import { tauriFileDownloadService } from '../tauri/fileDownload.service';
 import { isTauriApp } from '@/core/utils/platform';
 
 export type PublishingProvider = 'zip' | 'netlify' | 'github';

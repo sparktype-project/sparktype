@@ -10,7 +10,6 @@ import {
 import { KEYS } from 'platejs';
 import { useEditorReadOnly } from 'platejs/react';
 import { AlignToolbarButton } from './align-toolbar-button';
-import { RedoToolbarButton, UndoToolbarButton } from './history-toolbar-button';
 import {
   IndentToolbarButton,
   OutdentToolbarButton,
@@ -23,7 +22,6 @@ import {
 } from './list-toolbar-button';
 import { MarkToolbarButton } from './mark-toolbar-button';
 import { MediaToolbarButton } from './media-toolbar-button';
-import { TableToolbarButton } from './table-toolbar-button';
 import { ToolbarGroup } from './toolbar';
 import { TurnIntoToolbarButton } from './turn-into-toolbar-button';
 
@@ -34,10 +32,7 @@ export function FixedToolbarButtons() {
     <div className="flex w-full">
       {!readOnly && (
         <>
-          <ToolbarGroup>
-            <UndoToolbarButton />
-            <RedoToolbarButton />
-          </ToolbarGroup>
+
 
           
 
@@ -85,7 +80,6 @@ export function FixedToolbarButtons() {
 
           <ToolbarGroup>
             <LinkToolbarButton />
-            <TableToolbarButton />
           </ToolbarGroup>
 
           <ToolbarGroup>

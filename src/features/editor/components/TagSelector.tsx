@@ -22,7 +22,7 @@ interface TagSelectorProps {
 
 export default function TagSelector({ siteId, tagGroup, selectedTagIds, onTagsChange }: TagSelectorProps) {
   const [isOpen, setIsOpen] = useState(true);
-  
+
   const getSiteById = useAppStore(state => state.getSiteById);
   const siteData = getSiteById(siteId);
 
@@ -37,13 +37,13 @@ export default function TagSelector({ siteId, tagGroup, selectedTagIds, onTagsCh
 
   const handleTagToggle = (tagId: string, checked: boolean) => {
     let newTagIds: string[];
-    
+
     if (checked) {
       newTagIds = [...selectedTagIds, tagId];
     } else {
       newTagIds = selectedTagIds.filter(id => id !== tagId);
     }
-    
+
     onTagsChange(newTagIds);
   };
 
@@ -72,78 +72,78 @@ export default function TagSelector({ siteId, tagGroup, selectedTagIds, onTagsCh
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </Button>
         </CollapsibleTrigger>
-        
+
         <CollapsibleContent>
           <div className="space-y-3">
-          {/* Selected Tags Display */}
-          {selectedTags.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-muted-foreground">Selected Tags</Label>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={handleClearAll}
-                >
-                  Clear all
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {selectedTags.map(tag => (
-                  <Badge 
-                    key={tag.id} 
-                    variant="secondary" 
-                    className="text-xs flex items-center gap-1 pr-1"
+            {/* Selected Tags Display */}
+            {selectedTags.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">Selected Tags</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={handleClearAll}
                   >
-                    {tag.name}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-4 w-4 p-0 hover:bg-transparent"
-                      onClick={() => handleRemoveTag(tag.id)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Available Tags */}
-          {availableTags.length > 0 ? (
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Available Tags</Label>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
-                {availableTags.map(tag => (
-                  <div key={tag.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`tag-${tag.id}`}
-                      checked={selectedTagIds.includes(tag.id)}
-                      onCheckedChange={(checked) => handleTagToggle(tag.id, !!checked)}
-                    />
-                    <Label 
-                      htmlFor={`tag-${tag.id}`} 
-                      className="text-sm font-normal cursor-pointer flex-1"
+                    Clear all
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {selectedTags.map(tag => (
+                    <Badge
+                      key={tag.id}
+                      variant="secondary"
+                      className="text-xs flex items-center gap-1 pr-1"
                     >
                       {tag.name}
-                    </Label>
-                  </div>
-                ))}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0 hover:bg-transparent"
+                        onClick={() => handleRemoveTag(tag.id)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="text-xs text-muted-foreground p-2 border rounded-md bg-muted/50">
-              No tags available in this group. Create tags in the Tag Groups manager to start organizing your content.
-            </div>
-          )}
+            )}
 
-          {tagGroup.description && (
-            <div className="text-xs text-muted-foreground">
-              {tagGroup.description}
-            </div>
-          )}
+            {/* Available Tags */}
+            {availableTags.length > 0 ? (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Available Tags</Label>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {availableTags.map(tag => (
+                    <div key={tag.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`tag-${tag.id}`}
+                        checked={selectedTagIds.includes(tag.id)}
+                        onCheckedChange={(checked) => handleTagToggle(tag.id, !!checked)}
+                      />
+                      <Label
+                        htmlFor={`tag-${tag.id}`}
+                        className="text-sm font-normal cursor-pointer flex-1"
+                      >
+                        {tag.name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground p-2 border rounded-md bg-muted/50">
+                No tags available in this group. Create tags in the Tag Groups manager to start organizing your content.
+              </div>
+            )}
+
+            {tagGroup.description && (
+              <div className="text-xs text-muted-foreground">
+                {tagGroup.description}
+              </div>
+            )}
           </div>
         </CollapsibleContent>
       </Collapsible>

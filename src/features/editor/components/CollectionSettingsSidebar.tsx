@@ -79,8 +79,8 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
   }, [siteData, collectionId]);
 
   const itemCount = useMemo(() => {
-      if (!siteData || !collection) return 0;
-      return (siteData.contentFiles || []).filter((file: ParsedMarkdownFile) => file.path.startsWith(collection.contentPath)).length;
+    if (!siteData || !collection) return 0;
+    return (siteData.contentFiles || []).filter((file: ParsedMarkdownFile) => file.path.startsWith(collection.contentPath)).length;
   }, [siteData, collection]);
 
   // Load the manifest for the collection's default item layout
@@ -138,10 +138,10 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
     if (!siteData || !collection) return;
     try {
       setIsLoading(true);
-      const updates = { 
-        name: name.trim(), 
+      const updates = {
+        name: name.trim(),
         defaultItemLayout: defaultItemLayout,
-        settings: description ? { description: description.trim() } : undefined 
+        settings: description ? { description: description.trim() } : undefined
       };
       const updatedManifest = updateCollection(siteData.manifest, collection.id, updates);
       await updateManifest(siteId, updatedManifest);
@@ -173,13 +173,13 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
     return <div className="p-4"><p className="text-sm text-muted-foreground">Collection not found</p></div>;
   }
 
-  const hasChanges = name !== collection.name || 
-                    description !== ((collection.settings?.description as string) || '') ||
-                    defaultItemLayout !== collection.defaultItemLayout;
+  const hasChanges = name !== collection.name ||
+    description !== ((collection.settings?.description as string) || '') ||
+    defaultItemLayout !== collection.defaultItemLayout;
 
   return (
     <div className="h-full flex flex-col">
-      
+
       <div className="flex-grow overflow-y-auto">
         <Accordion type="multiple" defaultValue={['basic', 'info']}>
           <AccordionItem value="basic">

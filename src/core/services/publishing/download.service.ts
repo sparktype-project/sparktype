@@ -2,7 +2,7 @@
 
 import JSZip from 'jszip';
 import type { LocalSiteData } from '@/core/types';
-import { buildSiteBundle } from './siteBuilder.service';
+import { buildSiteBundle } from '../siteBuilder.service';
 
 /**
  * Takes a complete site data object, uses the siteBuilder service to generate

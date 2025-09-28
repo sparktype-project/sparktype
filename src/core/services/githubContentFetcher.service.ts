@@ -1,6 +1,6 @@
 // src/core/services/githubContentFetcher.service.ts
 
-import type { GitHubConfig } from './publishing/GitHubProvider';
+import type { GitHubConfig } from './publishing/git.service';
 import type { LocalSiteData, ParsedMarkdownFile } from '@/core/types';
 import { parseMarkdownString } from '@/core/libraries/markdownParser';
 

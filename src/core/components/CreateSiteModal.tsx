@@ -59,12 +59,12 @@ export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalP
       toast.error('Site title and a theme are required.');
       return;
     }
-    
+
     setIsLoading(true);
     try {
       const newSiteId = generateSiteId(siteTitle);
       const { initialConfig } = await getMergedThemeDataForForm(selectedTheme.path, {});
-      
+
       const newManifest: Manifest = {
         siteId: newSiteId,
         generatorVersion: GENERATOR_VERSION,
@@ -76,7 +76,7 @@ export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalP
         },
         structure: [],
       };
-      
+
       const newSiteData: LocalSiteData = {
         siteId: newSiteId,
         manifest: newManifest,
@@ -84,29 +84,29 @@ export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalP
         themeFiles: [],
         layoutFiles: [],
       };
-      
+
       await addSite(newSiteData);
-      
+
       // Handle edit protection setup
       if (enableEditProtection) {
         try {
           const authResult = await registerSiteAuthentication(
-            newSiteId, 
+            newSiteId,
             siteTitle.trim(),
             'Site Owner'
           );
-          
+
           if (authResult.success && authResult.authConfig) {
             // Update the manifest with auth config
             const updatedManifest = {
               ...newManifest,
               auth: authResult.authConfig
             };
-            
+
             // Save the updated manifest with auth
             const updateManifest = useAppStore.getState().updateManifest;
             await updateManifest(newSiteId, updatedManifest);
-            
+
             toast.success(`Site "${siteTitle}" created with edit protection!`);
           } else {
             toast.warning(`Site created but edit protection setup failed: ${authResult.error}`);
@@ -118,7 +118,7 @@ export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalP
       } else {
         toast.success(`Site "${siteTitle}" created successfully!`);
       }
-      
+
       // Close modal and navigate to the new site's editor page
       handleOpenChange(false);
       navigate(`/sites/${newSiteId}/edit`);
@@ -142,7 +142,7 @@ export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalP
             Set up your new site with a title, description, theme, and security settings.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="site-title">Site Title</Label>
@@ -154,7 +154,7 @@ export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalP
               required
             />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="site-description">Site Description (Optional)</Label>
             <Textarea
@@ -165,15 +165,15 @@ export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalP
               rows={3}
             />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="theme-select">Theme</Label>
-            <Select 
-              value={selectedTheme?.path || ''} 
+            <Select
+              value={selectedTheme?.path || ''}
               onValueChange={(themePath) => {
                 const theme = availableThemes.find(t => t.path === themePath);
                 if (theme) setSelectedTheme(theme);
-              }} 
+              }}
             >
               <SelectTrigger id="theme-select">
                 <SelectValue placeholder="Select a theme..." />
@@ -190,12 +190,12 @@ export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalP
               Choose the overall design for your site. You can change this later.
             </p>
           </div>
-          
+
           <div className="space-y-3 pt-2 border-t">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label 
-                  htmlFor="edit-protection" 
+                <Label
+                  htmlFor="edit-protection"
                   className="text-sm font-medium flex items-center gap-2"
                 >
                   <Shield className="h-4 w-4" />

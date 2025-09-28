@@ -37,7 +37,7 @@ export default function SiteViewer() {
   const currentRelativePath = location.pathname.startsWith(viewRootPath)
     ? location.pathname.substring(viewRootPath.length) || '/'
     : '/';
-    
+
   // Handle collection item URLs: /collection/{collectionId}/{slug}
   // Convert them to the format expected by the viewer
   if (currentRelativePath.startsWith('/collection/')) {

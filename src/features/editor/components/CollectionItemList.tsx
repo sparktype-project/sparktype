@@ -35,7 +35,7 @@ export default function CollectionItemList({ siteId, collectionId }: CollectionI
   const site = useAppStore((state: AppStore) => state.getSiteById(siteId));
   const updateContentFile = useAppStore(state => state.updateContentFileOnly);
   const deleteContentFile = useAppStore(state => state.deleteContentFileAndState);
-  
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<ParsedMarkdownFile | null>(null);
 
@@ -47,7 +47,7 @@ export default function CollectionItemList({ siteId, collectionId }: CollectionI
   const collectionItems: ParsedMarkdownFile[] = useMemo(() => {
     if (!site || !collection) return [];
     const items = getCollectionContent(site, collection.id);
-    
+
     // Sort by date, most recent first
     return items.sort((a, b) => {
       const dateA = a.frontmatter.date ? new Date(a.frontmatter.date as string).getTime() : 0;
@@ -71,7 +71,7 @@ export default function CollectionItemList({ siteId, collectionId }: CollectionI
         published: !currentPublishedStatus
       }
     };
-    
+
     try {
       await updateContentFile(siteId, updatedItem);
     } catch (error) {
@@ -86,7 +86,7 @@ export default function CollectionItemList({ siteId, collectionId }: CollectionI
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!itemToDelete) return;
-    
+
     try {
       await deleteContentFile(siteId, itemToDelete.path);
       setDeleteDialogOpen(false);
@@ -161,7 +161,7 @@ export default function CollectionItemList({ siteId, collectionId }: CollectionI
                               </>
                             )}
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={() => handleDeleteClick(item)}
                             className="text-destructive"
                           >
@@ -180,9 +180,9 @@ export default function CollectionItemList({ siteId, collectionId }: CollectionI
           <div className="text-center text-muted-foreground py-10">
             <p>No items have been added to this collection yet.</p>
             <Button asChild variant="outline" className="mt-4">
-               <Link to={newItemPath}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add your first item
-                </Link>
+              <Link to={newItemPath}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add your first item
+              </Link>
             </Button>
           </div>
         )}
@@ -199,7 +199,7 @@ export default function CollectionItemList({ siteId, collectionId }: CollectionI
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleDeleteConfirm}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

@@ -4,15 +4,15 @@ import { useState, useEffect } from 'react';
 import { GitBranch, GitPullRequest, AlertTriangle, CheckCircle2, Clock, RefreshCw } from 'lucide-react';
 import { Button } from '@/core/components/ui/button';
 import { Badge } from '@/core/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/core/components/ui/tooltip';
 import { toast } from 'sonner';
 
-import { gitSyncService, type GitSyncState } from '@/core/services/gitSync.service';
-import { conflictDetectionService } from '@/core/services/conflictDetection.service';
+import { gitSyncService, type GitSyncState } from '@/core/services/publishing/gitSync.service';
+import { conflictDetectionService } from '@/core/services/publishing/gitConflict.service';
 import { ConflictResolutionDialog } from '@/components/ui/conflict-resolution-dialog';
-import type { GitHubConfig } from '@/core/services/publishing/GitHubProvider';
+import type { GitHubConfig } from '@/core/services/publishing/git.service';
 import type { LocalSiteData } from '@/core/types';
-import type { SimpleConflict, ConflictChoice } from '@/core/services/gitSync.service';
+import type { SimpleConflict, ConflictChoice } from '@/core/services/publishing/gitSync.service';
 
 interface SyncStatusIndicatorProps {
   siteId: string;
@@ -27,11 +27,11 @@ export function SyncStatusIndicator({ siteId, site }: SyncStatusIndicatorProps) 
   const [isResolvingConflicts, setIsResolvingConflicts] = useState(false);
 
   // Check if this site has GitHub publishing configured
-  const githubConfig = site.manifest.publishingConfig?.provider === 'github' 
+  const githubConfig = site.manifest.publishingConfig?.provider === 'github'
     ? {
-        ...site.manifest.publishingConfig.github,
-        accessToken: site.secrets?.publishing?.github?.accessToken || ''
-      } as GitHubConfig
+      ...site.manifest.publishingConfig.github,
+      accessToken: site.secrets?.publishing?.github?.accessToken || ''
+    } as GitHubConfig
     : null;
 
   const loadSyncState = async () => {
@@ -47,12 +47,12 @@ export function SyncStatusIndicator({ siteId, site }: SyncStatusIndicatorProps) 
 
   const checkSync = async () => {
     if (!githubConfig) return;
-    
+
     setIsChecking(true);
     try {
       const status = await conflictDetectionService.checkSyncStatus(
-        siteId, 
-        githubConfig, 
+        siteId,
+        githubConfig,
         syncState?.branch || 'main'
       );
 
@@ -61,15 +61,15 @@ export function SyncStatusIndicator({ siteId, site }: SyncStatusIndicatorProps) 
       if (status === 'behind' || status === 'diverged') {
         // Check for conflicts
         const detectedConflicts = await conflictDetectionService.detectConflicts(
-          site, 
-          githubConfig, 
+          site,
+          githubConfig,
           syncState?.branch || 'main'
         );
 
         if (detectedConflicts.length > 0) {
           setConflicts(detectedConflicts);
           setShowConflictDialog(true);
-          await gitSyncService.updateSyncState(siteId, { 
+          await gitSyncService.updateSyncState(siteId, {
             syncStatus: 'conflict',
             conflictedFiles: detectedConflicts.map(c => c.filePath)
           });
@@ -111,7 +111,7 @@ export function SyncStatusIndicator({ siteId, site }: SyncStatusIndicatorProps) 
 
   const getSyncIcon = () => {
     if (isChecking) return <RefreshCw className="h-3 w-3 animate-spin" />;
-    
+
     switch (syncState.syncStatus) {
       case 'synced': return <CheckCircle2 className="h-3 w-3 text-green-600" />;
       case 'ahead': return <GitPullRequest className="h-3 w-3 text-blue-600" />;
@@ -167,7 +167,7 @@ export function SyncStatusIndicator({ siteId, site }: SyncStatusIndicatorProps) 
               </Badge>
               {syncState.syncStatus !== 'synced' && (
                 <Button
-                  variant="ghost" 
+                  variant="ghost"
                   size="sm"
                   onClick={checkSync}
                   disabled={isChecking}

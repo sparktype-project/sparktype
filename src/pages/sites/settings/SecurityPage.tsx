@@ -126,23 +126,23 @@ export default function SecuritySettingsPage() {
 
   return (
     <>
-        <title>{pageTitle}</title>
+      <title>{pageTitle}</title>
 
-    <div className="space-y-6 max-w-2xl p-6">
-      <div>
-        <h1 className="text-2xl font-bold">Security</h1>
-        <p className="text-muted-foreground">
-          Manage authentication for your site.
-        </p>
-      </div>
+      <div className="space-y-6 max-w-2xl p-6">
+        <div>
+          <h1 className="text-2xl font-bold">Security</h1>
+          <p className="text-muted-foreground">
+            Manage authentication for your site.
+          </p>
+        </div>
 
-      <hr />
-          <h2 className="mb-0.5 text-lg font-bold">Authentication</h2>
+        <hr />
+        <h2 className="mb-0.5 text-lg font-bold">Authentication</h2>
 
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <Label className="text-sm text-muted-foreground font-normal">Require authentication to open this site in the editor</Label>
-              
+
             <div className="flex items-center gap-2">
               {isProtected ? (
                 <CheckCircle className="h-4 w-4 text-green-500" />
@@ -157,7 +157,7 @@ export default function SecuritySettingsPage() {
             </div>
 
           </div>
-                        <p className='text-xs'>Even with authenticaton disabled</p>
+          <p className='text-xs'>Even with authenticaton disabled</p>
 
           {isProtected && site.manifest.auth && (
             <>
@@ -196,7 +196,7 @@ export default function SecuritySettingsPage() {
                   >
                     {isRegistering ? 'Regenerating...' : 'Regenerate Passkey'}
                   </Button>
-                  
+
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
@@ -213,7 +213,7 @@ export default function SecuritySettingsPage() {
                           Disable Edit Protection?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will remove authentication requirements for editing this site. 
+                          This will remove authentication requirements for editing this site.
                           Anyone will be able to edit your site content.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
@@ -236,18 +236,18 @@ export default function SecuritySettingsPage() {
           {!isProtected && (
             <>
               <Separator />
-              
-                <Button
-                  onClick={handleEnableProtection}
-                  disabled={isRegistering}
-                  
-                >
-                  {isRegistering ? 'Setting up...' : 'Save settings'}
-                </Button>
+
+              <Button
+                onClick={handleEnableProtection}
+                disabled={isRegistering}
+
+              >
+                {isRegistering ? 'Setting up...' : 'Save settings'}
+              </Button>
             </>
           )}
         </div>
-    </div>
+      </div>
     </>
   );
 }

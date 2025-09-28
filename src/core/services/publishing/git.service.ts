@@ -1,8 +1,8 @@
-import { BaseProvider } from './BaseProvider';
+import { BaseProvider } from './basePublishing.service';
 import type { PublishingResult, ValidationResult, PublishingConfigSchema } from './types';
 import type { LocalSiteData } from '@/core/types';
-import { gitSyncService } from '../gitSync.service';
-import { conflictDetectionService } from '../conflictDetection.service';
+import { gitSyncService } from './gitSync.service';
+import { conflictDetectionService } from '../publishing/gitConflict.service';
 
 export interface GitHubConfig {
   accessToken: string;

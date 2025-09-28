@@ -194,14 +194,14 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
     await get().updateManifest(siteId, newManifest);
   },
 
-  addOrUpdateContentFile: async (siteId, filePath, rawMarkdownContent, silent = false) => {
+  addOrUpdateContentFile: async (siteId, filePath, rawMarkdownContent, silent) => {
     const site = get().getSiteById(siteId);
     if (!site) return false;
 
     // Check if this is the first file being created for the site
     let processedContent = rawMarkdownContent;
     const isFirstFile = site.manifest.structure.length === 0 && !site.contentFiles?.some(f => f.path === filePath);
-    
+
     if (isFirstFile) {
       // Parse the frontmatter and mark as homepage
       const { frontmatter, content } = parseMarkdownString(rawMarkdownContent);
@@ -226,6 +226,9 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
 
     // Determine if this is a new file that needs to be added to the navigation structure.
     const isNewFileInStructure = !findNodeByPath(site.manifest.structure, filePath);
+
+    // Default to silent mode for existing files, non-silent only for new files
+    const shouldBeSilent = silent !== undefined ? silent : !isNewFileInStructure;
 
     // Atomically create the new manifest with all necessary updates.
     const newManifest = produce(site.manifest, draft => {
@@ -266,7 +269,7 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
     });
 
     // Update both manifest and contentFiles atomically in a single state update (unless silent)
-    if (!silent) {
+    if (!shouldBeSilent) {
       set(produce((draft: SiteSlice) => {
         const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
         if (!siteToUpdate) return;

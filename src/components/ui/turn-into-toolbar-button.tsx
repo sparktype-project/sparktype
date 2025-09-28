@@ -10,7 +10,6 @@ import type { TElement } from 'platejs';
 import { DropdownMenuItemIndicator } from '@radix-ui/react-dropdown-menu';
 import {
   CheckIcon,
-  ChevronRightIcon,
   Columns3Icon,
   FileCodeIcon,
   Heading1Icon,
@@ -23,7 +22,6 @@ import {
   ListOrderedIcon,
   PilcrowIcon,
   QuoteIcon,
-  SquareIcon,
 } from 'lucide-react';
 import { KEYS } from 'platejs';
 import { useEditorRef, useSelectionFragmentProp } from 'platejs/react';
@@ -95,18 +93,6 @@ export const turnIntoItems = [
     keywords: ['ordered', 'ol', '1'],
     label: 'Numbered list',
     value: KEYS.ol,
-  },
-  {
-    icon: <SquareIcon />,
-    keywords: ['checklist', 'task', 'checkbox', '[]'],
-    label: 'To-do list',
-    value: KEYS.listTodo,
-  },
-  {
-    icon: <ChevronRightIcon />,
-    keywords: ['collapsible', 'expandable'],
-    label: 'Toggle list',
-    value: KEYS.toggle,
   },
   {
     icon: <FileCodeIcon />,

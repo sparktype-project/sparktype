@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { PlateElementProps } from 'platejs/react';
 import { PlateElement, useReadOnly } from 'platejs/react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/core/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card';
 import { Badge } from '@/core/components/ui/badge';
 import { Settings, List, Grid, LayoutGrid } from 'lucide-react';
@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from '@/core/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/core/components/ui/select';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/core/components/ui/input';
 import { Label } from '@/core/components/ui/label';
 interface CollectionViewElementData {
   collection?: string;
@@ -42,7 +42,7 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
   const { editor, element, attributes, children, collections = [] } = props;
   const readOnly = useReadOnly();
   const { activeSiteId, getSiteById } = useAppStore();
-  
+
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [availableLayouts, setAvailableLayouts] = useState<CollectionLayoutOption[]>([]);
   const [localConfig, setLocalConfig] = useState<CollectionViewElementData>({
@@ -62,7 +62,7 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
         if (siteData) {
           const layouts = await getAvailableCollectionLayouts(siteData);
           setAvailableLayouts(layouts);
-          
+
           // Set default layout if none selected
           if (!localConfig.layout && layouts.length > 0) {
             setLocalConfig(prev => ({ ...prev, layout: layouts[0].id }));
@@ -213,7 +213,7 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
               <Label htmlFor="layout">Layout</Label>
               <Select
                 value={localConfig.layout}
-                onValueChange={(value) => 
+                onValueChange={(value) =>
                   setLocalConfig(prev => ({ ...prev, layout: value }))
                 }
               >
@@ -239,9 +239,9 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
                   min="1"
                   max="50"
                   value={localConfig.maxItems}
-                  onChange={(e) => setLocalConfig(prev => ({ 
-                    ...prev, 
-                    maxItems: parseInt(e.target.value) || 10 
+                  onChange={(e) => setLocalConfig(prev => ({
+                    ...prev,
+                    maxItems: parseInt(e.target.value) || 10
                   }))}
                 />
               </div>
@@ -250,7 +250,7 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
                 <Label htmlFor="sortOrder">Sort Order</Label>
                 <Select
                   value={localConfig.sortOrder}
-                  onValueChange={(value) => 
+                  onValueChange={(value) =>
                     setLocalConfig(prev => ({ ...prev, sortOrder: value as 'asc' | 'desc' }))
                   }
                 >
@@ -269,7 +269,7 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
               <Label htmlFor="sortBy">Sort By</Label>
               <Select
                 value={localConfig.sortBy}
-                onValueChange={(value) => 
+                onValueChange={(value) =>
                   setLocalConfig(prev => ({ ...prev, sortBy: value as 'date' | 'title' | 'order' }))
                 }
               >

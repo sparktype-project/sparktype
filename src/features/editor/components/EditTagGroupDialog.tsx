@@ -43,18 +43,18 @@ export default function EditTagGroupDialog({ siteId, tagGroup, open, onOpenChang
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name.trim() || !tagGroup) return;
-    
+
     setIsSubmitting(true);
-    
+
     try {
       const updates: Partial<Omit<TagGroup, 'id'>> = {
         name: name.trim(),
         description: description.trim() || undefined,
         applicableCollections: selectedCollections,
       };
-      
+
       await updateTagGroup(siteId, tagGroup.id, updates);
       onOpenChange(false);
     } catch (error) {
@@ -93,7 +93,7 @@ export default function EditTagGroupDialog({ siteId, tagGroup, open, onOpenChang
               Update the tag group settings. Changes to applicable collections will affect where this tag group appears in the content editor.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="edit-name">Name *</Label>
@@ -105,7 +105,7 @@ export default function EditTagGroupDialog({ siteId, tagGroup, open, onOpenChang
                 required
               />
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="edit-description">Description</Label>
               <Textarea
@@ -116,13 +116,13 @@ export default function EditTagGroupDialog({ siteId, tagGroup, open, onOpenChang
                 rows={2}
               />
             </div>
-            
+
             <div className="grid gap-2">
               <Label>Applicable Collections</Label>
               <div className="text-sm text-muted-foreground mb-2">
                 Select which collections this tag group should appear for when editing content.
               </div>
-              
+
               {collections.length === 0 ? (
                 <div className="text-sm text-muted-foreground p-3 border rounded-md bg-muted/50">
                   No collections available. Create a collection first to assign tag groups to it.
@@ -146,7 +146,7 @@ export default function EditTagGroupDialog({ siteId, tagGroup, open, onOpenChang
               )}
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel

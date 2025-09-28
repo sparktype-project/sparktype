@@ -13,7 +13,7 @@ import {
   useReadOnly,
 } from 'platejs/react';
 
-import { Checkbox } from '@/components/ui/checkbox';
+import { Checkbox } from '@/core/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
 const config: Record<
@@ -76,7 +76,7 @@ function TodoLi(props: PlateElementProps) {
       className={cn(
         'list-none',
         (props.element.checked as boolean) &&
-          'text-muted-foreground line-through'
+        'text-muted-foreground line-through'
       )}
     >
       {props.children}

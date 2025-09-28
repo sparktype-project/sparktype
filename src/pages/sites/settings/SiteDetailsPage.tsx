@@ -78,7 +78,7 @@ export default function SiteSettingsPage() {
     setThemeDataChanged(true);
     setHasChanges(true);
   }, []);
-  
+
   const handleFormChange = useCallback((newData: PageFormData) => {
     setFormData(newData);
     setHasChanges(true);
@@ -86,11 +86,11 @@ export default function SiteSettingsPage() {
 
   const handleSave = async () => {
     if (!site?.manifest || !formData) {
-        toast.error("Form data is not ready. Cannot save.");
-        return;
+      toast.error("Form data is not ready. Cannot save.");
+      return;
     }
     setIsLoading(true);
-    
+
     const newManifest: Manifest = {
       ...site.manifest,
       title: formData.title.trim(),

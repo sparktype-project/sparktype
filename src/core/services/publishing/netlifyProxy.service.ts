@@ -1,4 +1,4 @@
-import { BaseProvider } from './BaseProvider';
+import { BaseProvider } from './basePublishing.service';
 import type { PublishingResult, ValidationResult, PublishingConfigSchema } from './types';
 import type { LocalSiteData } from '@/core/types';
 

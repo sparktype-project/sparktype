@@ -33,6 +33,7 @@ interface PageFrontmatter extends MarkdownFrontmatter { menuTitle?: string; }
 export function useFileContent(siteId: string, filePath: string, isNewFileMode: boolean, collectionContext: CollectionContext) {
   const navigate = useNavigate(); // <--- Use the navigate hook
   const site = useAppStore(state => state.getSiteById(siteId));
+  const contentFiles = useAppStore(state => state.getSiteById(siteId)?.contentFiles);
   const isSlugChangeInProgress = useAppStore(state => state.isSlugChangeInProgress(siteId));
   const { setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave } = useEditor();
 
@@ -49,7 +50,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         setStatus('loading');
         return;
       }
-      if (!site?.contentFiles) {
+      if (!contentFiles) {
         console.log('useFileContent - no contentFiles, setting loading status');
         setStatus('loading');
         return;
@@ -81,8 +82,8 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         setPendingSlug(null); // Clear any pending changes for new file
        } else {
         console.log('useFileContent - looking for existing file at path:', filePath);
-        console.log('useFileContent - available contentFiles:', site.contentFiles?.map(f => f.path));
-        fileData = site.contentFiles.find(f => f.path === filePath);
+        console.log('useFileContent - available contentFiles:', contentFiles?.map(f => f.path));
+        fileData = contentFiles.find(f => f.path === filePath);
         if (!fileData) {
           console.log('useFileContent - file not found!');
 
@@ -95,7 +96,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
 
           // Check if we might be in the middle of a slug change by looking for similar files
           const possibleSlug = filePath.replace(/^content\//, '').replace(/\.md$/, '');
-          const similarFiles = site.contentFiles.filter(f =>
+          const similarFiles = contentFiles.filter(f =>
             f.slug.includes(possibleSlug) || possibleSlug.includes(f.slug)
           );
 
@@ -128,8 +129,8 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
     };
 
     loadData();
-    
-  }, [site, filePath, isNewFileMode, collectionContext, siteId, navigate, setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave, isSlugChangeInProgress]);
+
+  }, [contentFiles, filePath, isNewFileMode, collectionContext, siteId, navigate, setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave, isSlugChangeInProgress]);
 
   // Callback to signal that some content (either body or frontmatter) has changed.
   const onContentModified = useCallback(() => {

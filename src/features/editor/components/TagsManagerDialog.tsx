@@ -53,18 +53,18 @@ export default function TagsManagerDialog({ siteId, tagGroup, open, onOpenChange
 
   const handleCreateTag = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!newTagName.trim() || !tagGroup) return;
-    
+
     try {
       const tagData: Omit<Tag, 'id'> = {
         name: newTagName.trim(),
         groupId: tagGroup.id,
         description: newTagDescription.trim() || undefined,
       };
-      
+
       await createTag(siteId, tagData);
-      
+
       // Reset form
       setNewTagName('');
       setNewTagDescription('');
@@ -90,7 +90,7 @@ export default function TagsManagerDialog({ siteId, tagGroup, open, onOpenChange
 
   const confirmDeleteTag = async () => {
     if (!tagToDelete) return;
-    
+
     try {
       await deleteTag(siteId, tagToDelete.id);
     } catch (error) {
@@ -123,21 +123,21 @@ export default function TagsManagerDialog({ siteId, tagGroup, open, onOpenChange
               Add, edit, and organize tags for this tag group. These tags will be available when editing content from the associated collections.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex flex-col gap-4 py-4">
             {/* Search and Add */}
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input 
-                  placeholder="Search tags..." 
-                  value={searchFilter} 
-                  onChange={(e) => setSearchFilter(e.target.value)} 
-                  className="pl-8" 
+                <Input
+                  placeholder="Search tags..."
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  className="pl-8"
                 />
               </div>
-              <Button 
-                onClick={() => setIsCreating(true)} 
+              <Button
+                onClick={() => setIsCreating(true)}
                 disabled={isCreating}
                 size="sm"
               >
@@ -160,8 +160,8 @@ export default function TagsManagerDialog({ siteId, tagGroup, open, onOpenChange
                       required
                     />
                   </div>
-                  
-                  
+
+
                   <div className="grid gap-2">
                     <Label htmlFor="new-tag-description">Description (optional)</Label>
                     <Input
@@ -171,7 +171,7 @@ export default function TagsManagerDialog({ siteId, tagGroup, open, onOpenChange
                       onChange={(e) => setNewTagDescription(e.target.value)}
                     />
                   </div>
-                  
+
                   <div className="flex gap-2">
                     <Button type="submit" size="sm" disabled={!newTagName.trim()}>
                       Create Tag

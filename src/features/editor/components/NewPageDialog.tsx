@@ -53,15 +53,15 @@ export default function NewPageDialog({ siteId, children, onComplete }: NewPageD
 
     const slugExists = site?.contentFiles?.some(f => f.slug === slug);
     if (slugExists) {
-        toast.error(`A page with the slug "${slug}" already exists.`);
-        setIsSubmitting(false);
-        return;
+      toast.error(`A page with the slug "${slug}" already exists.`);
+      setIsSubmitting(false);
+      return;
     }
-    
+
     const frontmatter: MarkdownFrontmatter = {
-        title: title.trim(),
-        layout: DEFAULT_PAGE_LAYOUT_PATH,
-        date: new Date().toISOString().split('T')[0],
+      title: title.trim(),
+      layout: DEFAULT_PAGE_LAYOUT_PATH,
+      date: new Date().toISOString().split('T')[0],
     };
 
     const initialContent = `---\n${yaml.dump(frontmatter)}---\n\nStart writing your content here.\n`;
@@ -72,10 +72,10 @@ export default function NewPageDialog({ siteId, children, onComplete }: NewPageD
         toast.success(`Page "${title}" created!`);
         handleOpenChange(false);
         onComplete?.();
-        
+
         // --- CHANGE: Use navigate to redirect to the new page's editor ---
         navigate(`/sites/${siteId}/edit/content/${slug}`);
-      } else { 
+      } else {
         throw new Error("Failed to update manifest or save file.");
       }
     } catch (error) {
@@ -98,10 +98,10 @@ export default function NewPageDialog({ siteId, children, onComplete }: NewPageD
           <div className="grid gap-4 py-4">
             <div className="space-y-1">
               <Label htmlFor="title">Page title</Label>
-              <Input 
-                id="title" 
-                value={title} 
-                onChange={(e) => setTitle(e.target.value)} 
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., About us"
                 autoFocus
               />

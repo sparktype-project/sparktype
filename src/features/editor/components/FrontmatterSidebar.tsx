@@ -51,15 +51,15 @@ export default function FrontmatterSidebar({
   const setAsHomepage = useAppStore(state => state.setAsHomepage);
   const [allLayouts, setAllLayouts] = useState<LayoutManifest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Homepage state - read directly from store for reactivity
   const currentFile = useAppStore(useCallback((state) => {
     const site = state.getSiteById(siteId);
     return site?.contentFiles?.find(f => f.path === filePath);
   }, [siteId, filePath]));
-  
+
   const isHomepage = currentFile?.frontmatter?.homepage === true;
-  
+
   // Handle homepage toggle
   const handleHomepageToggle = useCallback(async (checked: boolean) => {
     if (checked && !isHomepage) {
@@ -117,18 +117,18 @@ export default function FrontmatterSidebar({
   const handleTagsChange = useCallback((groupId: string, tagIds: string[]) => {
     const currentTags = frontmatter.tags || {};
     const newTags = { ...currentTags };
-    
+
     if (tagIds.length === 0) {
       // Remove the group if no tags selected
       delete newTags[groupId];
     } else {
       newTags[groupId] = tagIds;
     }
-    
+
     // If no tag groups left, remove the entire tags property
     const hasAnyTags = Object.keys(newTags).length > 0;
-    onFrontmatterChange({ 
-      tags: hasAnyTags ? newTags : undefined 
+    onFrontmatterChange({
+      tags: hasAnyTags ? newTags : undefined
     });
   }, [frontmatter.tags, onFrontmatterChange]);
 
@@ -146,8 +146,8 @@ export default function FrontmatterSidebar({
 
   return (
     <div className="h-full flex flex-col">
-      
-      
+
+
       <div className="flex-grow overflow-y-auto">
         <Accordion type="multiple" defaultValue={defaultOpenSections} className="w-full">
 
@@ -219,20 +219,20 @@ export default function FrontmatterSidebar({
                 onSlugChange={onSlugChange}
                 isNewFileMode={isNewFileMode}
               />
-              
+
               {/* Homepage Toggle */}
               {!isNewFileMode && (
                 <div className="flex items-center justify-between py-2">
                   <div className="space-y-0.5">
-                    <Label 
-                      htmlFor="homepage-toggle" 
+                    <Label
+                      htmlFor="homepage-toggle"
                       className="text-sm font-medium flex items-center gap-2"
                     >
                       <Home className="h-4 w-4" />
                       Set as homepage
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      {isHomepage 
+                      {isHomepage
                         ? "This page is currently the site homepage"
                         : "Make this page the homepage for your site"
                       }
@@ -246,7 +246,7 @@ export default function FrontmatterSidebar({
                   />
                 </div>
               )}
-              
+
               {!isNewFileMode && (
                 <div className="pt-4 border-t">
                   <AlertDialog>
@@ -256,14 +256,14 @@ export default function FrontmatterSidebar({
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                          <AlertDialogDescription>This will permanently delete this page and cannot be undone.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={onDelete} className="bg-destructive hover:bg-destructive/90">Delete Page</AlertDialogAction>
-                        </AlertDialogFooter>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>This will permanently delete this page and cannot be undone.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={onDelete} className="bg-destructive hover:bg-destructive/90">Delete Page</AlertDialogAction>
+                      </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
                 </div>

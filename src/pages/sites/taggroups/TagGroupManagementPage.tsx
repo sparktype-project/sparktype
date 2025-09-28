@@ -37,7 +37,7 @@ function TagGroupLoadingSkeleton() {
  */
 function TagGroupNotFound({ siteId, tagGroupId }: { siteId: string; tagGroupId: string }) {
   const navigate = useNavigate();
-  
+
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-6">
       <div className="text-center">
@@ -59,7 +59,7 @@ function TagGroupNotFound({ siteId, tagGroupId }: { siteId: string; tagGroupId: 
  */
 function TagGroupManagementPageInternal() {
   const { siteId = '', tagGroupId = '' } = useParams<{ siteId: string; tagGroupId: string }>();
-  
+
   const site = useAppStore(useCallback((state) => state.getSiteById(siteId), [siteId]));
   const tagGroup = useMemo(() => site ? getTagGroup(site.manifest, tagGroupId) : null, [site, tagGroupId]);
 
@@ -90,7 +90,7 @@ function TagGroupManagementPageInternal() {
   return (
     <>
       <title>{pageTitle}</title>
-      <ThreeColumnLayout leftSidebar={<LeftSidebar />} rightSidebar={<TagGroupSettingsSidebar siteId={siteId} tagGroupId={tagGroupId}/>}>
+      <ThreeColumnLayout leftSidebar={<LeftSidebar />} rightSidebar={<TagGroupSettingsSidebar siteId={siteId} tagGroupId={tagGroupId} />}>
         <div className="container mx-auto max-w-[900px] p-6">
           <div className="shrink-0 mb-6">
             <div className="flex items-center gap-2 mb-1">

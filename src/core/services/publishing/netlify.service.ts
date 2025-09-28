@@ -1,7 +1,7 @@
-import { BaseProvider } from './BaseProvider';
+import { BaseProvider } from './basePublishing.service';
 import type { PublishingResult, ValidationResult, PublishingConfigSchema } from './types';
 import type { LocalSiteData } from '@/core/types';
-import { netlifyTauriService } from '@/core/services/netlify.tauri.service';
+import { netlifyTauriService } from '@/core/services/publishing/netlify.tauri.service';
 import { loadSiteSecretsFromDb } from '@/core/services/siteSecrets.service';
 import { isTauriApp } from '@/core/utils/platform';
 

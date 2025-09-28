@@ -14,11 +14,11 @@ import { Eye, PanelLeft, UploadCloud, PanelRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Services
-import { publishSite } from '@/core/services/publishing.service';
+import { publishSite } from '@/core/services/publishing/publishing.service';
 
 // Components
 import { SyncStatusIndicator } from '@/features/editor/components/SyncStatusIndicator';
-import { TooltipTrigger, Tooltip, TooltipContent } from '@/components/ui/tooltip';
+import { TooltipTrigger, Tooltip, TooltipContent } from '@/core/components/ui/tooltip';
 
 interface EditorHeaderContentProps {
   actions?: ReactNode;
@@ -129,23 +129,23 @@ export default function EditorHeaderContent({ actions, siteId: propSiteId }: Edi
         {/* Left sidebar toggle button */}
         {isLeftAvailable && (
           <Tooltip>
-          <TooltipTrigger>
-            <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 hover:cursor-pointer"
-            onClick={toggleLeftSidebar}
-            onMouseDown={(e) => e.stopPropagation()} // Prevent dragging on button
-            aria-label="Toggle left sidebar"
-          >
-            <PanelLeft className="h-5 w-5" />
-          </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Toggle sidebar</p>
-          </TooltipContent>
-        </Tooltip>   
-          
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 hover:cursor-pointer"
+                onClick={toggleLeftSidebar}
+                onMouseDown={(e) => e.stopPropagation()} // Prevent dragging on button
+                aria-label="Toggle left sidebar"
+              >
+                <PanelLeft className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Toggle sidebar</p>
+            </TooltipContent>
+          </Tooltip>
+
         )}
       </div>
 
@@ -165,10 +165,10 @@ export default function EditorHeaderContent({ actions, siteId: propSiteId }: Edi
         {/* GitHub sync status indicator - prevent dragging */}
         <SyncStatusIndicator siteId={siteId} site={site} />
 
-        
-        
+
+
         <Tooltip>
-          <TooltipTrigger>
+          <TooltipTrigger asChild>
             <Button
               size="sm"
               variant="ghost"
@@ -185,10 +185,10 @@ export default function EditorHeaderContent({ actions, siteId: propSiteId }: Edi
           <TooltipContent>
             <p>Preview</p>
           </TooltipContent>
-        </Tooltip>    
+        </Tooltip>
 
         <Tooltip>
-          <TooltipTrigger>
+          <TooltipTrigger asChild>
             <Button
               size="sm"
               variant="ghost"
@@ -203,29 +203,29 @@ export default function EditorHeaderContent({ actions, siteId: propSiteId }: Edi
           <TooltipContent>
             <p>Publish</p>
           </TooltipContent>
-        </Tooltip>   
-        
+        </Tooltip>
+
 
         {/* Right sidebar toggle button */}
         {isRightAvailable && (
           <Tooltip>
-          <TooltipTrigger>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 hover:cursor-pointer"
-              onClick={toggleRightSidebar}
-              onMouseDown={(e) => e.stopPropagation()} // Prevent dragging on button
-              aria-label="Toggle right sidebar"
-            >
-              <PanelRight className="h-5 w-5" />
-          </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Toggle sidebar</p>
-          </TooltipContent>
-        </Tooltip>   
-          
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 hover:cursor-pointer"
+                onClick={toggleRightSidebar}
+                onMouseDown={(e) => e.stopPropagation()} // Prevent dragging on button
+                aria-label="Toggle right sidebar"
+              >
+                <PanelRight className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Toggle sidebar</p>
+            </TooltipContent>
+          </Tooltip>
+
         )}
       </div>
     </>

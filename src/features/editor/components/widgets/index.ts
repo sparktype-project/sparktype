@@ -7,7 +7,6 @@ import type { WidgetProps } from '@rjsf/utils';
 import ImageUploadWidget from './ImageUploadWidget';
 import DataSourceSelectWidget from './DataSourceSelectWidget';
 import SwitchWidget from './SwitchWidget';
-import RichTextWidget from './RichTextWidget';
 import PartialSelectorWidget from './PartialSelectorWidget';
 
 /**
@@ -21,7 +20,6 @@ export const editorWidgets: Record<string, ComponentType<WidgetProps>> = {
   switch: SwitchWidget,
   
   // New block-specific widgets
-  richText: RichTextWidget,
   partialSelector: PartialSelectorWidget,
 };
 
@@ -43,5 +41,4 @@ export function getAvailableWidgets(): string[] {
 export { default as ImageUploadWidget } from './ImageUploadWidget';
 export { default as DataSourceSelectWidget } from './DataSourceSelectWidget';
 export { default as SwitchWidget } from './SwitchWidget';
-export { default as RichTextWidget } from './RichTextWidget';
 export { default as PartialSelectorWidget } from './PartialSelectorWidget';

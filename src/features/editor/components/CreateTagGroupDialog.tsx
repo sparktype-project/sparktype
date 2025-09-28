@@ -33,11 +33,11 @@ export default function CreateTagGroupDialog({ siteId, open, onOpenChange }: Cre
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name.trim()) return;
-    
+
     setIsSubmitting(true);
-    
+
     try {
       const tagGroupData: Omit<TagGroup, 'id'> = {
         name: name.trim(),
@@ -45,9 +45,9 @@ export default function CreateTagGroupDialog({ siteId, open, onOpenChange }: Cre
         applicableCollections: selectedCollections,
         settings: {}
       };
-      
+
       await createTagGroup(siteId, tagGroupData);
-      
+
       // Reset form
       setName('');
       setDescription('');
@@ -85,7 +85,7 @@ export default function CreateTagGroupDialog({ siteId, open, onOpenChange }: Cre
               Create a new tag group that can be applied to specific collections. Tags in this group will appear in the sidebar when editing content from the selected collections.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Name *</Label>
@@ -97,7 +97,7 @@ export default function CreateTagGroupDialog({ siteId, open, onOpenChange }: Cre
                 required
               />
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
@@ -108,13 +108,13 @@ export default function CreateTagGroupDialog({ siteId, open, onOpenChange }: Cre
                 rows={2}
               />
             </div>
-            
+
             <div className="grid gap-2">
               <Label>Applicable Collections</Label>
               <div className="text-sm text-muted-foreground mb-2">
                 Select which collections this tag group should appear for when editing content.
               </div>
-              
+
               {collections.length === 0 ? (
                 <div className="text-sm text-muted-foreground p-3 border rounded-md bg-muted/50">
                   No collections available. Create a collection first to assign tag groups to it.
@@ -138,7 +138,7 @@ export default function CreateTagGroupDialog({ siteId, open, onOpenChange }: Cre
               )}
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel

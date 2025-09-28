@@ -124,9 +124,17 @@ export function useFilePersistence({
 
     } else {
       // --- UPDATE LOGIC (Subsequent Saves) ---
-      await addOrUpdateContentFile(siteId, filePath, rawMarkdown);
+      // Use silent mode for existing files to prevent component recreation
+      const fileToUpdate = {
+        path: filePath,
+        frontmatter: frontmatter,
+        content: markdownContent,
+        slug: frontmatter.title ? frontmatter.title.toLowerCase().replace(/\s+/g, '-') : '',
+        blocks: [] // Legacy blocks field (empty)
+      };
+      await updateContentFileOnly(siteId, fileToUpdate, true); // Silent mode
     }
-  }, [siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent, addOrUpdateContentFile, getSiteById, navigate, applyPendingSlugChange]);
+  }, [siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent, addOrUpdateContentFile, updateContentFileOnly, getSiteById, navigate, applyPendingSlugChange]);
 
   const handleDelete = useCallback(async () => {
     if (isNewFileMode || !frontmatter) return;

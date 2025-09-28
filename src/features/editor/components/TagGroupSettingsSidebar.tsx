@@ -101,8 +101,8 @@ export default function TagGroupSettingsSidebar({ siteId, tagGroupId }: TagGroup
     if (!siteData || !tagGroup) return;
     try {
       setIsLoading(true);
-      const updates = { 
-        name: name.trim(), 
+      const updates = {
+        name: name.trim(),
         description: description.trim() || undefined,
         applicableCollections
       };
@@ -136,11 +136,11 @@ export default function TagGroupSettingsSidebar({ siteId, tagGroupId }: TagGroup
     return <div className="p-4"><p className="text-sm text-muted-foreground">Tag group not found</p></div>;
   }
 
-  const hasChanges = name !== tagGroup.name || 
-                    description !== (tagGroup.description || '') ||
-                    JSON.stringify(applicableCollections.sort()) !== JSON.stringify(tagGroup.applicableCollections.sort());
+  const hasChanges = name !== tagGroup.name ||
+    description !== (tagGroup.description || '') ||
+    JSON.stringify(applicableCollections.sort()) !== JSON.stringify(tagGroup.applicableCollections.sort());
 
- 
+
   return (
     <div className="h-full flex flex-col">
 
@@ -166,7 +166,7 @@ export default function TagGroupSettingsSidebar({ siteId, tagGroupId }: TagGroup
               </div>
             </AccordionContent>
           </AccordionItem>
-          
+
           <AccordionItem value="collections">
             <AccordionTrigger className="px-4">Collections</AccordionTrigger>
             <AccordionContent>
@@ -184,8 +184,8 @@ export default function TagGroupSettingsSidebar({ siteId, tagGroupId }: TagGroup
                           onCheckedChange={(checked) => handleCollectionToggle(collection.id, !!checked)}
                           disabled={isLoading}
                         />
-                        <Label 
-                          htmlFor={`collection-${collection.id}`} 
+                        <Label
+                          htmlFor={`collection-${collection.id}`}
                           className="text-sm font-normal cursor-pointer flex-1"
                         >
                           {collection.name}
@@ -201,8 +201,8 @@ export default function TagGroupSettingsSidebar({ siteId, tagGroupId }: TagGroup
               </div>
             </AccordionContent>
           </AccordionItem>
-          
-          
+
+
         </Accordion>
       </div>
       <div className="p-4 border-t">

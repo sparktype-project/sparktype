@@ -20,7 +20,7 @@ export default function MarketingHomePage() {
       */}
       <title>Sparktype - Own Your Content</title>
       <meta name="description" content="A simple, private, and portable publishing platform that puts you back in control." />
-      
+
       <UnifiedHeader>
         <MarketingHeaderContent />
       </UnifiedHeader>

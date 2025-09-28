@@ -23,7 +23,6 @@ interface PlateEditorProps {
   className?: string;
   siteId?: string;
   collections?: Array<{ id: string; name: string }>;
-  ready?: boolean;
 }
 
 // Export the ref type for external use
@@ -39,8 +38,7 @@ export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
   placeholder = "Start writing...",
   className = "",
   siteId,
-  collections = [],
-  ready = false
+  collections = []
 }, ref) => {
 
   // Create SparkType MediaKit with siteId if available, otherwise use empty array
@@ -65,8 +63,9 @@ export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
       ...sparkTypeMediaKit,
       ...collectionViewKit,
     ],
-    skipInitialization: true, // Don't initialize immediately
+    // Let editor initialize normally
   });
+
 
 
   // Set up change listener - simplified since we don't need the value
@@ -79,10 +78,16 @@ export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
   // Method to get current content as markdown
   const getMarkdown = useCallback(() => {
     if (editor?.api?.markdown) {
-      const serialized = editor.api.markdown.serialize();
-      console.log('PlateJS getMarkdown serialized:', serialized);
-      return serialized;
+      try {
+        const serialized = editor.api.markdown.serialize();
+        console.log('PlateJS getMarkdown serialized:', serialized);
+        return serialized;
+      } catch (error) {
+        console.warn('PlateJS getMarkdown error:', error);
+        return '';
+      }
     }
+    console.log('PlateJS getMarkdown called but editor not ready');
     return '';
   }, [editor]);
 
@@ -94,16 +99,52 @@ export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
     }
   }, [editor]);
 
-  // Method to initialize editor with content using proper PlateJS pattern
-  const initializeWithContent = useCallback((markdown: string) => {
-    if (editor?.api?.markdown) {
-      const plateValue = editor.api.markdown.deserialize(markdown);
-      editor.tf.init({
-        value: plateValue,
-        autoSelect: 'end'
-      });
-      console.log('PlateJS initialized with content length:', markdown.length);
+  // Method to initialize editor with content
+  const initializeWithContent = useCallback((markdown: string, onReady?: () => void) => {
+    console.log('PlateJS initializeWithContent called with markdown length:', markdown.length);
+
+    if (!editor) {
+      console.log('PlateJS editor not available');
+      return;
     }
+
+    // Wait for the editor and its API to be ready
+    const attemptSetContent = () => {
+      if (editor.api?.markdown) {
+        try {
+          const plateValue = editor.api.markdown.deserialize(markdown);
+          console.log('PlateJS deserialized markdown to plateValue:', plateValue);
+          editor.tf.setValue(plateValue);
+          console.log('PlateJS content set successfully');
+          if (onReady) onReady();
+          return true;
+        } catch (error) {
+          console.warn('PlateJS setValue error:', error);
+          return false;
+        }
+      }
+      return false;
+    };
+
+    // Try immediately
+    if (attemptSetContent()) {
+      return;
+    }
+
+    // If not ready, try again after a short delay
+    let attempts = 0;
+    const maxAttempts = 5;
+    const retryInterval = setInterval(() => {
+      attempts++;
+      console.log(`PlateJS retry attempt ${attempts}/${maxAttempts}`);
+
+      if (attemptSetContent() || attempts >= maxAttempts) {
+        clearInterval(retryInterval);
+        if (attempts >= maxAttempts) {
+          console.warn('PlateJS failed to set content after maximum attempts');
+        }
+      }
+    }, 200);
   }, [editor]);
 
   // Expose methods via ref
@@ -112,17 +153,6 @@ export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
     setMarkdown,
     initializeWithContent,
   }), [getMarkdown, setMarkdown, initializeWithContent]);
-
-  // Show loading state until editor is ready
-  if (!ready) {
-    return (
-      <div className={className}>
-        <div className="flex items-center justify-center h-32 text-muted-foreground">
-          Loading editor...
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={className}>

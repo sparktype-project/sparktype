@@ -58,10 +58,10 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   const handleRetryAuth = async () => {
     if (!siteId) return;
-    
+
     setIsRetrying(true);
     setLoadError(undefined);
-    
+
     try {
       await loadSite(siteId);
     } catch (error) {
@@ -100,7 +100,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   // Show error if site loading failed (including auth failure)
   if (loadError || (siteId && !site)) {
     const isAuthError = loadError?.includes('Authentication failed') || loadError?.includes('Access denied');
-    
+
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center max-w-md mx-auto">
@@ -109,21 +109,21 @@ export default function AuthGuard({ children }: AuthGuardProps) {
           ) : (
             <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           )}
-          
+
           <h2 className="text-lg font-semibold mb-2">
             {isAuthError ? 'Authentication Required' : 'Unable to Access Site'}
           </h2>
-          
+
           <p className="text-sm text-muted-foreground mb-6">
-            {isAuthError 
+            {isAuthError
               ? 'This site is protected and requires a passkey to edit. Use your device\'s biometric authentication or security key to continue.'
               : loadError || 'The requested site could not be found.'
             }
           </p>
-          
+
           <div className="flex flex-col gap-3">
             {isAuthError ? (
-              <Button 
+              <Button
                 onClick={handleRetryAuth}
                 disabled={isRetrying}
                 className="gap-2"
@@ -132,16 +132,16 @@ export default function AuthGuard({ children }: AuthGuardProps) {
                 {isRetrying ? 'Authenticating...' : 'Authenticate with Passkey'}
               </Button>
             ) : (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => window.history.back()}
               >
                 Go Back
               </Button>
             )}
-            
-            <Button 
-              variant="ghost" 
+
+            <Button
+              variant="ghost"
               size="sm"
               onClick={() => window.history.back()}
             >

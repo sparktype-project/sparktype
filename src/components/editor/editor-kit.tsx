@@ -12,7 +12,6 @@ import { BlockPlaceholderKit } from './plugins/block-placeholder-kit';
 import { CodeBlockKit } from './plugins/code-block-kit';
 import { ColumnKit } from './plugins/column-kit';
 import { CursorOverlayKit } from './plugins/cursor-overlay-kit';
-import { DateKit } from './plugins/date-kit';
 import { DndKit } from './plugins/dnd-kit';
 
 import { ExitBreakKit } from './plugins/exit-break-kit';
@@ -22,7 +21,6 @@ import { LinkKit } from './plugins/link-kit';
 import { ListKit } from './plugins/list-kit';
 import { MarkdownKit } from './plugins/markdown-kit';
 import { SlashKit } from './plugins/slash-kit';
-import { TableKit } from './plugins/table-kit';
 
 export const EditorKit = [
   ...BlockMenuKit,
@@ -30,9 +28,7 @@ export const EditorKit = [
   // Elements
   ...BasicBlocksKit,
   ...CodeBlockKit,
-  ...TableKit,
   ...ColumnKit,
-  ...DateKit,
   ...LinkKit,
 
   // Marks

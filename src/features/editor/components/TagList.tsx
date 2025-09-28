@@ -40,7 +40,7 @@ export default function TagList({ siteId, tagGroupId }: TagListProps) {
 
   const filteredTags = useMemo(() => {
     let filteredList = tags;
-    
+
     if (searchFilter.trim()) {
       const filter = searchFilter.toLowerCase();
       filteredList = tags.filter(tag =>
@@ -48,25 +48,25 @@ export default function TagList({ siteId, tagGroupId }: TagListProps) {
         tag.description?.toLowerCase().includes(filter)
       );
     }
-    
+
     // Sort alphabetically by name
     return filteredList.sort((a, b) => a.name.localeCompare(b.name));
   }, [tags, searchFilter]);
 
   const handleCreateTag = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!newTagName.trim()) return;
-    
+
     try {
       const tagData: Omit<Tag, 'id'> = {
         name: newTagName.trim(),
         groupId: tagGroupId,
         description: newTagDescription.trim() || undefined,
       };
-      
+
       await createTag(siteId, tagData);
-      
+
       // Reset form but keep it open
       setNewTagName('');
       setNewTagDescription('');
@@ -91,7 +91,7 @@ export default function TagList({ siteId, tagGroupId }: TagListProps) {
 
   const confirmDeleteTag = useCallback(async () => {
     if (!tagToDelete) return;
-    
+
     try {
       await deleteTag(siteId, tagToDelete.id);
     } catch (error) {
@@ -107,7 +107,7 @@ export default function TagList({ siteId, tagGroupId }: TagListProps) {
     <>
       <div className="space-y-6">
         {/* Header Actions */}
-        
+
 
         {/* Add New Tag Form - Always Visible */}
         <form onSubmit={handleCreateTag} className="border rounded-lg p-4 bg-muted/50">
@@ -127,7 +127,7 @@ export default function TagList({ siteId, tagGroupId }: TagListProps) {
                 autoComplete="off"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="new-tag-description">Description (optional)</Label>
               <Input

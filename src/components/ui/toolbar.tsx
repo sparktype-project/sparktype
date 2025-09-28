@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import * as React from 'react';
 
 import * as ToolbarPrimitive from '@radix-ui/react-toolbar';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
@@ -304,9 +304,9 @@ function withTooltip<T extends React.ElementType>(Component: T) {
     tooltipTriggerProps,
     ...props
   }: TooltipProps<T>) {
-    const [mounted, setMounted] = useState(false);
+    const [mounted, setMounted] = React.useState(false);
 
-    useEffect(() => {
+    React.useEffect(() => {
       setMounted(true);
     }, []);
 

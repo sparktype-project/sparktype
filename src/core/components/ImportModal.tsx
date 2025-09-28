@@ -58,7 +58,7 @@ export default function ImportModal({ open, onOpenChange, onImport }: ImportModa
             {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="import-value">
@@ -73,7 +73,7 @@ export default function ImportModal({ open, onOpenChange, onImport }: ImportModa
               required
             />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="branch">Branch (optional)</Label>
             <Input
@@ -87,18 +87,18 @@ export default function ImportModal({ open, onOpenChange, onImport }: ImportModa
               Leave empty to use the default branch (main/master)
             </p>
           </div>
-          
+
           <AlertDialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={handleCancel}
               disabled={isImporting}
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={isImporting || !value.trim()}
             >
               {isImporting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

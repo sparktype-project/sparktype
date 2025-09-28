@@ -8,7 +8,7 @@ import { Label } from '@/core/components/ui/label';
 // Using standard HTML radio inputs since RadioGroup component doesn't exist
 import { Card, CardContent } from '@/core/components/ui/card';
 import { Badge } from '@/core/components/ui/badge';
-import type { SimpleConflict, ConflictChoice, ConflictResolution } from '@/core/services/gitSync.service';
+import type { SimpleConflict, ConflictChoice, ConflictResolution } from '@/core/services/publishing/gitSync.service';
 
 interface ConflictResolutionDialogProps {
   open: boolean;
@@ -53,7 +53,7 @@ function ConflictItem({ conflict, choice, onChange }: ConflictItemProps) {
           <div className="flex-shrink-0 mt-1">
             {getConflictIcon()}
           </div>
-          
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
               <h4 className="font-medium text-gray-900">{conflict.fileName}</h4>
@@ -61,7 +61,7 @@ function ConflictItem({ conflict, choice, onChange }: ConflictItemProps) {
                 {getConflictLabel()}
               </Badge>
             </div>
-            
+
             <div className="text-sm text-gray-600 space-y-1 mb-3">
               <div className="flex items-center gap-2">
                 <Clock className="h-3 w-3" />
@@ -90,7 +90,7 @@ function ConflictItem({ conflict, choice, onChange }: ConflictItemProps) {
                   onChange={(e) => onChange(e.target.value as ConflictResolution)}
                   className="h-4 w-4"
                 />
-                <Label 
+                <Label
                   htmlFor={`${conflict.filePath}-local`}
                   className="flex-1 cursor-pointer text-sm"
                 >
@@ -98,7 +98,7 @@ function ConflictItem({ conflict, choice, onChange }: ConflictItemProps) {
                   <span className="text-gray-500 block">Use my current changes</span>
                 </Label>
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <input
                   type="radio"
@@ -109,7 +109,7 @@ function ConflictItem({ conflict, choice, onChange }: ConflictItemProps) {
                   onChange={(e) => onChange(e.target.value as ConflictResolution)}
                   className="h-4 w-4"
                 />
-                <Label 
+                <Label
                   htmlFor={`${conflict.filePath}-remote`}
                   className="flex-1 cursor-pointer text-sm"
                 >
@@ -125,12 +125,12 @@ function ConflictItem({ conflict, choice, onChange }: ConflictItemProps) {
   );
 }
 
-export function ConflictResolutionDialog({ 
-  open, 
-  onOpenChange, 
-  conflicts, 
-  onResolve, 
-  isLoading = false 
+export function ConflictResolutionDialog({
+  open,
+  onOpenChange,
+  conflicts,
+  onResolve,
+  isLoading = false
 }: ConflictResolutionDialogProps) {
   const [choices, setChoices] = useState<Record<string, ConflictResolution>>({});
 
@@ -143,7 +143,7 @@ export function ConflictResolutionDialog({
       filePath: conflict.filePath,
       resolution: choices[conflict.filePath] || 'keep-local'
     }));
-    
+
     onResolve(resolutions);
   };
 
@@ -176,16 +176,16 @@ export function ConflictResolutionDialog({
             <div className="mb-4 p-3 bg-gray-50 rounded-lg">
               <p className="text-sm text-gray-700 mb-2">Apply to all conflicts:</p>
               <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => handleApplyToAll('keep-local')}
                   className="text-blue-600"
                 >
                   Keep All Local
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => handleApplyToAll('accept-remote')}
                   className="text-green-600"
@@ -217,15 +217,15 @@ export function ConflictResolutionDialog({
                 </p>
               )}
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handleResolve} 
+            <Button
+              onClick={handleResolve}
               disabled={isLoading}
             >
               {isLoading ? 'Resolving...' : 'Resolve Conflicts'}

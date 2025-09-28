@@ -49,9 +49,9 @@ export default function ThemeSettingsPage() {
 
         const currentThemeName = site.manifest.theme.name || 'default';
         const savedConfig = site.manifest.theme.config || {};
-        
+
         const { schema: themeSchema, initialConfig } = await getMergedThemeDataForForm(currentThemeName, savedConfig);
-        
+
         setSchema(themeSchema);
         setFormData(initialConfig);
         setSelectedTheme(currentThemeName);
@@ -77,21 +77,21 @@ export default function ThemeSettingsPage() {
     if (newThemeName === selectedTheme || !site) return;
     setIsLoading(true);
     try {
-        const { schema: newSchema, initialConfig: newMergedConfig } = await getMergedThemeDataForForm(
-            newThemeName, 
-            site.manifest.theme.config, 
-            selectedTheme
-        );
+      const { schema: newSchema, initialConfig: newMergedConfig } = await getMergedThemeDataForForm(
+        newThemeName,
+        site.manifest.theme.config,
+        selectedTheme
+      );
 
-        setSchema(newSchema);
-        setFormData(newMergedConfig);
-        setSelectedTheme(newThemeName);
-        setHasChanges(true);
+      setSchema(newSchema);
+      setFormData(newMergedConfig);
+      setSelectedTheme(newThemeName);
+      setHasChanges(true);
     } catch (error) {
-        console.error('Failed to load new theme:', error);
-        toast.error(`Failed to load theme "${newThemeName}"`);
+      console.error('Failed to load new theme:', error);
+      toast.error(`Failed to load theme "${newThemeName}"`);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   }, [selectedTheme, site]);
 
@@ -122,7 +122,7 @@ export default function ThemeSettingsPage() {
       setIsSaving(false);
     }
   };
-  
+
   const pageTitle = `Theme Settings - ${site?.manifest?.title || 'Loading...'}`;
 
   if (isLoading) {
@@ -130,10 +130,10 @@ export default function ThemeSettingsPage() {
       <>
         <title>{pageTitle}</title>
         <div className="space-y-6 max-w-2xl p-6">
-            <div>
-                <h1 className="text-2xl font-bold">Appearance</h1>
-                <p className="text-muted-foreground">Loading appearance settings...</p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold">Appearance</h1>
+            <p className="text-muted-foreground">Loading appearance settings...</p>
+          </div>
         </div>
       </>
     );
@@ -151,8 +151,8 @@ export default function ThemeSettingsPage() {
         <div className="border-t pt-6 space-y-6">
           <div>
             <Label htmlFor="theme-select">Active theme</Label>
-            <Select 
-              value={selectedTheme} 
+            <Select
+              value={selectedTheme}
               onValueChange={handleThemeChange}
               disabled={isSaving || isLoading}
             >
@@ -168,11 +168,11 @@ export default function ThemeSettingsPage() {
               </SelectContent>
             </Select>
           </div>
-          
+
           {schema?.properties && Object.keys(schema.properties).length > 0 ? (
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Theme customisation</h3>
-              <SchemaDrivenForm 
+              <SchemaDrivenForm
                 schema={schema}
                 formData={formData}
                 onFormChange={handleFormChange}
@@ -189,9 +189,9 @@ export default function ThemeSettingsPage() {
         </div>
 
         <div className="flex justify-end pt-4 border-t">
-          <Button 
-            onClick={handleSave} 
-            disabled={isSaving || !hasChanges || isLoading} 
+          <Button
+            onClick={handleSave}
+            disabled={isSaving || !hasChanges || isLoading}
             size="lg"
           >
             {isSaving ? 'Saving...' : 'Save theme'}

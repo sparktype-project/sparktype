@@ -7,11 +7,9 @@ import React from 'react';
 import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu';
 
 import {
-  CalendarIcon,
-  ChevronRightIcon,
+  
   Columns3Icon,
-  FileCodeIcon,
-  FilmIcon,
+ 
   Heading1Icon,
   Heading2Icon,
   Heading3Icon,
@@ -23,10 +21,7 @@ import {
   PilcrowIcon,
   PlusIcon,
   QuoteIcon,
-  RadicalIcon,
-  SquareIcon,
-  TableIcon,
-  TableOfContentsIcon,
+
 } from 'lucide-react';
 import { KEYS } from 'platejs';
 import { type PlateEditor, useEditorRef } from 'platejs/react';
@@ -82,16 +77,6 @@ const groups: Group[] = [
         value: 'h3',
       },
       {
-        icon: <TableIcon />,
-        label: 'Table',
-        value: KEYS.table,
-      },
-      {
-        icon: <FileCodeIcon />,
-        label: 'Code',
-        value: KEYS.codeBlock,
-      },
-      {
         icon: <QuoteIcon />,
         label: 'Quote',
         value: KEYS.blockquote,
@@ -121,16 +106,7 @@ const groups: Group[] = [
         label: 'Numbered list',
         value: KEYS.ol,
       },
-      {
-        icon: <SquareIcon />,
-        label: 'To-do list',
-        value: KEYS.listTodo,
-      },
-      {
-        icon: <ChevronRightIcon />,
-        label: 'Toggle list',
-        value: KEYS.toggle,
-      },
+      
     ].map((item) => ({
       ...item,
       onSelect: (editor, value) => {
@@ -146,11 +122,7 @@ const groups: Group[] = [
         label: 'Image',
         value: KEYS.img,
       },
-      {
-        icon: <FilmIcon />,
-        label: 'Embed',
-        value: KEYS.mediaEmbed,
-      },
+      
     ].map((item) => ({
       ...item,
       onSelect: (editor, value) => {
@@ -161,22 +133,13 @@ const groups: Group[] = [
   {
     group: 'Advanced blocks',
     items: [
-      {
-        icon: <TableOfContentsIcon />,
-        label: 'Table of contents',
-        value: KEYS.toc,
-      },
+     
       {
         icon: <Columns3Icon />,
         label: '3 columns',
         value: 'action_three_columns',
       },
-      {
-        focusEditor: false,
-        icon: <RadicalIcon />,
-        label: 'Equation',
-        value: KEYS.equation,
-      },
+     
     ].map((item) => ({
       ...item,
       onSelect: (editor, value) => {
@@ -192,18 +155,7 @@ const groups: Group[] = [
         label: 'Link',
         value: KEYS.link,
       },
-      {
-        focusEditor: true,
-        icon: <CalendarIcon />,
-        label: 'Date',
-        value: KEYS.date,
-      },
-      {
-        focusEditor: false,
-        icon: <RadicalIcon />,
-        label: 'Inline Equation',
-        value: KEYS.inlineEquation,
-      },
+     
     ].map((item) => ({
       ...item,
       onSelect: (editor, value) => {

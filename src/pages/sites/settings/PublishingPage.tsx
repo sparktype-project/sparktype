@@ -50,7 +50,7 @@ export default function PublishingSettingsPage() {
   const { siteId } = useParams<{ siteId: string }>();
   const { getSiteById, updateManifest, updateSiteSecrets, loadSite } = useAppStore();
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Publishing configuration state
   const [provider, setProvider] = useState<PublishingProvider>('zip');
   const [netlifyConfig, setNetlifyConfig] = useState<NetlifyConfigUI>({
@@ -90,7 +90,7 @@ export default function PublishingSettingsPage() {
     if (site?.manifest.publishingConfig) {
       const config = site.manifest.publishingConfig;
       setProvider(config.provider);
-      
+
       // Load Netlify configuration
       const netlifyApiToken = site.secrets?.publishing?.netlify?.apiToken || '';
       const netlifyProxySettings = site.secrets?.publishing?.netlify?.proxySettings;
@@ -156,7 +156,7 @@ export default function PublishingSettingsPage() {
       // Separate public config from secrets for both providers
       const { apiToken, useAppProxy, customProxyUrl, ...publicNetlifyConfig } = netlifyConfig;
       const { accessToken, ...publicGithubConfig } = githubConfig;
-      
+
       const publishingConfig: PublishingConfig = {
         provider,
         ...(provider === 'netlify' && { netlify: publicNetlifyConfig }),
@@ -213,7 +213,7 @@ export default function PublishingSettingsPage() {
     return <div>Site not found</div>;
   }
 
-   const pageTitle = `Publishing - ${site?.manifest?.title || 'Loading...'}`;
+  const pageTitle = `Publishing - ${site?.manifest?.title || 'Loading...'}`;
 
   if (isLoading || !site) {
     return (
@@ -226,17 +226,17 @@ export default function PublishingSettingsPage() {
 
   return (
     <>
-    <title>{pageTitle}</title>
+      <title>{pageTitle}</title>
 
-    <div className="space-y-6 max-w-2xl p-6">
-      <div>
-        <h1 className="text-2xl font-bold">Publishing</h1>
-        <p className="text-muted-foreground">
-          Configure how you want to publish your site
-        </p>
-      </div>
+      <div className="space-y-6 max-w-2xl p-6">
+        <div>
+          <h1 className="text-2xl font-bold">Publishing</h1>
+          <p className="text-muted-foreground">
+            Configure how you want to publish your site
+          </p>
+        </div>
 
-      <div className="space-y-4">
+        <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="provider-select">Publishing provider</Label>
             <Select value={provider} onValueChange={(value: PublishingProvider) => setProvider(value)}>
@@ -272,7 +272,7 @@ export default function PublishingSettingsPage() {
               <Separator />
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Netlify Configuration</h3>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="netlify-token">API Token</Label>
                   <Input
@@ -384,7 +384,7 @@ export default function PublishingSettingsPage() {
               <Separator />
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">GitHub configuration</h3>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="github-token">Personal access token</Label>
                   <Input
@@ -396,9 +396,9 @@ export default function PublishingSettingsPage() {
                   />
                   <p className="text-xs text-muted-foreground">
                     Create a personal access token at{' '}
-                    <a 
-                      href="https://github.com/settings/tokens" 
-                      target="_blank" 
+                    <a
+                      href="https://github.com/settings/tokens"
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-500 hover:underline"
                     >
@@ -482,10 +482,10 @@ export default function PublishingSettingsPage() {
               {isLoading ? 'Saving...' : 'Save settings'}
             </Button>
           </div>
-          
-          
+
+
+        </div>
       </div>
-    </div>
     </>
   );
 }

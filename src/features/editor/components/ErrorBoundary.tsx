@@ -52,9 +52,9 @@ export class CollectionErrorBoundary extends React.Component<ErrorBoundaryProps,
             <Button onClick={this.retry} variant="outline" size="sm">
               Try Again
             </Button>
-            <Button 
-              onClick={() => window.location.reload()} 
-              variant="destructive" 
+            <Button
+              onClick={() => window.location.reload()}
+              variant="destructive"
               size="sm"
             >
               Reload Page

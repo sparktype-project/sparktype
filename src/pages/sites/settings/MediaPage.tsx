@@ -47,12 +47,12 @@ export default function ImageSettingsPage() {
       setIsLoading(false);
     }
   }, [site]); // Re-run if the site object in the store changes.
-  
+
   const handleServiceChange = (value: string) => {
     setSelectedService(value as ImageServiceId);
     setHasChanges(true);
   };
-  
+
   const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
     setter(value);
     setHasChanges(true);
@@ -71,7 +71,7 @@ export default function ImageSettingsPage() {
         ...site.manifest.settings,
         imageService: selectedService,
         cloudinary: {
-            cloudName: cloudinaryCloudName.trim(),
+          cloudName: cloudinaryCloudName.trim(),
         },
       },
     };
@@ -79,7 +79,7 @@ export default function ImageSettingsPage() {
     const newSecrets: SiteSecrets = {
       ...site.secrets, // Preserve other potential secrets
       cloudinary: {
-          uploadPreset: cloudinaryUploadPreset.trim(),
+        uploadPreset: cloudinaryUploadPreset.trim(),
       }
     };
 
@@ -89,7 +89,7 @@ export default function ImageSettingsPage() {
       await updateManifestAction(siteId, newManifest);
       await updateSiteSecretsAction(siteId, newSecrets);
       setHasChanges(false);
-    } catch(error) {
+    } catch (error) {
       console.error("An error occurred during save:", error);
       // Let the action's own toast handle the error message.
     } finally {
@@ -107,7 +107,7 @@ export default function ImageSettingsPage() {
       </>
     );
   }
-  
+
   return (
     <>
       <title>{pageTitle}</title>
@@ -131,7 +131,7 @@ export default function ImageSettingsPage() {
             </Select>
             <p className="text-xs text-muted-foreground">"Store in site" is best for portability. "Cloudinary" is best for performance.</p>
           </div>
-          
+
           {selectedService === 'cloudinary' && (
             <div className="p-4 border rounded-lg bg-card space-y-4">
               <h3 className="font-semibold text-card-foreground">Cloudinary Settings</h3>

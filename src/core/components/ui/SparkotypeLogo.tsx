@@ -31,9 +31,9 @@ export default function SparkotypeLogo({
       <path d="M328.212 919L485.952 571.735L243 593.192L680.395 105L537.044 452.258L780 430.8L328.212 919Z" fill="url(#paint0_linear_1717_1427)"/>
       <defs>
       <linearGradient id="paint0_linear_1717_1427" x1="522.308" y1="916" x2="522.308" y2="140" gradientUnits="userSpaceOnUse">
-      <stop offset="0.216346" stop-color="#FF00FF"/>
-      <stop offset="0.504808" stop-color="hsla(61, 100%, 50%, 1.00)"/>
-      <stop offset="0.764423" stop-color="#00FFFF"/>
+      <stop offset="0.216346" stopColor="#FF00FF"/>
+      <stop offset="0.504808" stopColor="hsla(61, 100%, 50%, 1.00)"/>
+      <stop offset="0.764423" stopColor="#00FFFF"/>
       </linearGradient>
       </defs>
   </svg>

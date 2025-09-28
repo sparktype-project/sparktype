@@ -36,10 +36,10 @@ export default function HomePageDashboard() {
     try {
       const { imageAssetsToSave, ...siteDataToSave } = data;
       await addSite(siteDataToSave);
-      if(siteDataToSave.secrets) {
+      if (siteDataToSave.secrets) {
         await updateSiteSecrets(siteDataToSave.siteId, siteDataToSave.secrets);
       }
-      if(imageAssetsToSave) {
+      if (imageAssetsToSave) {
         await saveAllImageAssetsForSite(siteDataToSave.siteId, imageAssetsToSave);
       }
       toast.success(`Site "${data.manifest.title}" imported successfully!`);
@@ -77,25 +77,25 @@ export default function HomePageDashboard() {
     setIsOverwriteDialogOpen(false);
     setImportedData(null);
   };
-  
+
   const handleExportBackup = async (siteId: string) => {
     toast.info("Preparing site backup...");
     try {
-        await loadSite(siteId);
-        const siteToExport = getSiteById(siteId);
-        if (!siteToExport) throw new Error("Could not load site data for export.");
-        const blob = await exportSiteBackup(siteToExport);
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `${slugify(siteToExport.manifest.title || 'signum-backup')}.zip`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
-        toast.success("Site backup downloaded!");
+      await loadSite(siteId);
+      const siteToExport = getSiteById(siteId);
+      if (!siteToExport) throw new Error("Could not load site data for export.");
+      const blob = await exportSiteBackup(siteToExport);
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${slugify(siteToExport.manifest.title || 'signum-backup')}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+      toast.success("Site backup downloaded!");
     } catch (error) {
-        console.error("Failed to export site:", error);
-        toast.error(`Export failed: ${(error as Error).message}`);
+      console.error("Failed to export site:", error);
+      toast.error(`Export failed: ${(error as Error).message}`);
     }
   };
 
@@ -147,7 +147,7 @@ export default function HomePageDashboard() {
 
   return (
     <>
-       <title>My sites | Sparktype</title>
+      <title>My sites | Sparktype</title>
 
       <UnifiedHeader>
         <></>
@@ -216,40 +216,40 @@ export default function HomePageDashboard() {
                     <Link to={`/sites/${site.siteId}/edit`}><Edit3 className="mr-2 h-4 w-4" /> Edit</Link>
                   </Button>
                   <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm"><MoreVertical className="h-4 w-4" /></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {/*
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm"><MoreVertical className="h-4 w-4" /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {/*
                           The "View Live Preview" link now correctly navigates to the hash-based route.
                           `target="_blank"` will open a new browser tab with the hash URL, which works perfectly.
                         */}
-                        <DropdownMenuItem asChild>
-                          <Link to={`/sites/${site.siteId}/view`} target="_blank" rel="noopener noreferrer">
-                            <Eye className="mr-2 h-4 w-4" /> View site
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleExportBackup(site.siteId)}><Archive className="mr-2 h-4 w-4" /> Export backup</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem onSelect={(e: Event) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete site
-                            </DropdownMenuItem>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                              <AlertDialogDescription>This action will permanently delete "{site.manifest.title}" and cannot be undone.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteSite(site.siteId, site.manifest.title)} className="bg-destructive hover:bg-destructive/90">Yes, delete site</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      <DropdownMenuItem asChild>
+                        <Link to={`/sites/${site.siteId}/view`} target="_blank" rel="noopener noreferrer">
+                          <Eye className="mr-2 h-4 w-4" /> View site
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleExportBackup(site.siteId)}><Archive className="mr-2 h-4 w-4" /> Export backup</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem onSelect={(e: Event) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete site
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>This action will permanently delete "{site.manifest.title}" and cannot be undone.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteSite(site.siteId, site.manifest.title)} className="bg-destructive hover:bg-destructive/90">Yes, delete site</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
 
@@ -267,7 +267,7 @@ export default function HomePageDashboard() {
             <AlertDialogTitle>Site Already Exists</AlertDialogTitle>
             <AlertDialogDescription>
               A site with the ID "{importedData?.siteId}" already exists. Do you want to overwrite it with the data from the backup file?
-              <br/><br/>
+              <br /><br />
               <strong>This action cannot be undone.</strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -279,9 +279,9 @@ export default function HomePageDashboard() {
       </AlertDialog>
 
       {/* Create Site Modal */}
-      <CreateSiteModal 
-        open={isCreateModalOpen} 
-        onOpenChange={setIsCreateModalOpen} 
+      <CreateSiteModal
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
       />
 
       {/* GitHub Import Modal - Available on both web and Tauri */}

@@ -2,23 +2,18 @@
 
 import { CaptionPlugin } from '@platejs/caption/react';
 import {
-  AudioPlugin,
-  FilePlugin,
+
   ImagePlugin,
   MediaEmbedPlugin,
   PlaceholderPlugin,
-  VideoPlugin,
 } from '@platejs/media/react';
 import { KEYS } from 'platejs';
 
-import { AudioElement } from '@/components/ui/media-audio-node';
 import { MediaEmbedElement } from '@/components/ui/media-embed-node';
-import { FileElement } from '@/components/ui/media-file-node';
 import { SparkTypeImageElement } from '@/components/ui/sparktype-image-element';
 import { SparkTypePlaceholderElement } from '@/components/ui/sparktype-media-placeholder';
 import { MediaPreviewDialog } from '@/components/ui/media-preview-dialog';
 import { MediaUploadToast } from '@/components/ui/media-upload-toast';
-import { VideoElement } from '@/components/ui/media-video-node';
 import { createMarkdownKit } from './markdown-kit';
 
 export function createSparkTypeMediaKit(siteId: string) {
@@ -30,9 +25,7 @@ export function createSparkTypeMediaKit(siteId: string) {
       render: { afterEditable: MediaPreviewDialog, node: SparkTypeImageElement },
     }),
     MediaEmbedPlugin.withComponent(MediaEmbedElement),
-    VideoPlugin.withComponent(VideoElement),
-    AudioPlugin.withComponent(AudioElement),
-    FilePlugin.withComponent(FileElement),
+
     PlaceholderPlugin.configure({
       options: { disableEmptyPlaceholder: true },
       render: { 

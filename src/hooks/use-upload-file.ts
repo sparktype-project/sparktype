@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import * as React from 'react';
 
 import type { OurFileRouter } from '@/lib/uploadthing';
 import type {
@@ -26,10 +26,10 @@ export function useUploadFile({
   onUploadError,
   ...props
 }: UseUploadFileProps = {}) {
-  const [uploadedFile, setUploadedFile] = useState<UploadedFile>();
-  const [uploadingFile, setUploadingFile] = useState<File>();
-  const [progress, setProgress] = useState<number>(0);
-  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedFile, setUploadedFile] = React.useState<UploadedFile>();
+  const [uploadingFile, setUploadingFile] = React.useState<File>();
+  const [progress, setProgress] = React.useState<number>(0);
+  const [isUploading, setIsUploading] = React.useState(false);
 
   async function uploadThing(file: File) {
     setIsUploading(true);

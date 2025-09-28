@@ -43,7 +43,7 @@ export default function SiteAssetUploader({ siteId, label, value, onChange, onRe
       }
     };
     generatePreview();
-    
+
     return () => {
       if (objectUrl) {
         URL.revokeObjectURL(objectUrl);
@@ -70,7 +70,7 @@ export default function SiteAssetUploader({ siteId, label, value, onChange, onRe
       event.target.value = '';
       return;
     }
-    
+
     setIsUploading(true);
     try {
       const service = getActiveImageService(site.manifest);
@@ -107,12 +107,12 @@ export default function SiteAssetUploader({ siteId, label, value, onChange, onRe
               {isUploading ? 'Uploading...' : (value ? 'Change...' : 'Upload...')}
             </label>
           </Button>
-          <input 
-            type="file" 
-            id={inputId} 
-            className="hidden" 
-            onChange={handleFileSelect} 
-            accept={MEMORY_CONFIG.SUPPORTED_EXTENSIONS.join(',')} 
+          <input
+            type="file"
+            id={inputId}
+            className="hidden"
+            onChange={handleFileSelect}
+            accept={MEMORY_CONFIG.SUPPORTED_EXTENSIONS.join(',')}
           />
           {value && (
             <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={onRemove}>
