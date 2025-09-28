@@ -1,4 +1,4 @@
-'use client';
+
 
 import React from 'react';
 
@@ -7,9 +7,9 @@ import React from 'react';
 import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu';
 
 import {
-  
+
   Columns3Icon,
- 
+
   Heading1Icon,
   Heading2Icon,
   Heading3Icon,
@@ -106,7 +106,7 @@ const groups: Group[] = [
         label: 'Numbered list',
         value: KEYS.ol,
       },
-      
+
     ].map((item) => ({
       ...item,
       onSelect: (editor, value) => {
@@ -122,7 +122,7 @@ const groups: Group[] = [
         label: 'Image',
         value: KEYS.img,
       },
-      
+
     ].map((item) => ({
       ...item,
       onSelect: (editor, value) => {
@@ -133,13 +133,13 @@ const groups: Group[] = [
   {
     group: 'Advanced blocks',
     items: [
-     
+
       {
         icon: <Columns3Icon />,
         label: '3 columns',
         value: 'action_three_columns',
       },
-     
+
     ].map((item) => ({
       ...item,
       onSelect: (editor, value) => {
@@ -155,7 +155,7 @@ const groups: Group[] = [
         label: 'Link',
         value: KEYS.link,
       },
-     
+
     ].map((item) => ({
       ...item,
       onSelect: (editor, value) => {

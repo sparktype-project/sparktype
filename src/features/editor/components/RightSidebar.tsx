@@ -1,4 +1,4 @@
-'use client';
+
 
 import { type ReactNode } from 'react';
 import { useUIStore } from '@/core/state/uiStore';
@@ -16,7 +16,7 @@ export default function RightSidebar({ children }: RightSidebarProps) {
       className={cn(
         // Base styles
         'h-full w-80 shrink-0 border-l bg-muted/20 transition-all duration-300 ease-in-out',
-        
+
         // Hide/Show Logic
         isRightOpen ? 'ml-0' : '-mr-[320px] w-0 border-l-0 opacity-0'
       )}

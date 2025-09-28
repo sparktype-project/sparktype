@@ -1,4 +1,4 @@
-'use client';
+
 
 import React from 'react';
 
@@ -44,7 +44,7 @@ export const SparkTypeImageElement = withHOC(
 
     // Try to get siteId from element or derive it from the editor
     const elementSiteId = props.element.siteId;
-    
+
     // If no ImageRef metadata but we have an asset path, try to reconstruct ImageRef
     let effectiveImageRef = imageRef;
     if (!imageRef && props.element.url.startsWith('assets/images/')) {
@@ -61,7 +61,7 @@ export const SparkTypeImageElement = withHOC(
 
     // Generate proper display URLs using ImageRef
     const [displayUrl, setDisplayUrl] = React.useState<string>(props.element.url);
-    
+
     React.useEffect(() => {
       const generateDisplayUrl = async () => {
         if (!effectiveImageRef) {
@@ -79,7 +79,7 @@ export const SparkTypeImageElement = withHOC(
             const siteIdMatch = currentPath.match(/\/sites\/([^\/]+)/);
             siteId = siteIdMatch?.[1];
           }
-          
+
           if (!siteId) {
             console.log('No siteId available, using element URL');
             setDisplayUrl(props.element.url);
@@ -94,18 +94,18 @@ export const SparkTypeImageElement = withHOC(
           }
 
           const imageService = getActiveImageService(site.manifest);
-          
+
           // Generate display URL for browser preview (blob URL for live preview)
           const url = await imageService.getDisplayUrl(
             site.manifest,
             effectiveImageRef,
-            { 
-              width: typeof width === 'string' ? parseInt(width, 10) : (width || effectiveImageRef.width), 
-              height: effectiveImageRef.height 
+            {
+              width: typeof width === 'string' ? parseInt(width, 10) : (width || effectiveImageRef.width),
+              height: effectiveImageRef.height
             },
             false // isExport = false generates blob URLs for browser display
           );
-          
+
           console.log('Generated display URL:', url);
           console.log('URL type:', url.startsWith('blob:') ? 'blob URL' : 'other');
           setDisplayUrl(url);

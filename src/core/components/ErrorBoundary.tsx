@@ -1,5 +1,5 @@
 // src/components/core/ErrorBoundary.tsx
-'use client';
+
 
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
@@ -27,7 +27,7 @@ class ErrorBoundary extends Component<Props, State> {
     console.error("Uncaught error:", error, errorInfo);
   }
 
-  
+
   public render() {
     if (this.state.hasError) {
       // You can render any custom fallback UI
@@ -40,10 +40,10 @@ class ErrorBoundary extends Component<Props, State> {
           </p>
           {this.state.error && (
             <details className="w-full max-w-lg text-left bg-background p-2 rounded border mb-4">
-                <summary className="cursor-pointer text-sm font-medium">Error Details</summary>
-                <pre className="mt-2 text-xs text-muted-foreground whitespace-pre-wrap break-all">
-                    {this.state.error.message}
-                </pre>
+              <summary className="cursor-pointer text-sm font-medium">Error Details</summary>
+              <pre className="mt-2 text-xs text-muted-foreground whitespace-pre-wrap break-all">
+                {this.state.error.message}
+              </pre>
             </details>
           )}
 

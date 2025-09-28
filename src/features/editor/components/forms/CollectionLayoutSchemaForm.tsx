@@ -1,5 +1,5 @@
 // src/features/editor/components/forms/CollectionLayoutSchemaForm.tsx
-'use client';
+
 
 // Imports are identical to PageLayoutSchemaForm
 import type { MarkdownFrontmatter, LayoutManifest } from '@/core/types';
@@ -23,8 +23,8 @@ export default function CollectionLayoutSchemaForm({
   frontmatter,
   onFrontmatterChange,
 }: CollectionLayoutSchemaFormProps) {
-  
-  const customWidgets = { 
+
+  const customWidgets = {
     imageUploader: ImageUploadWidget,
     switch: SwitchWidget
   };
@@ -34,7 +34,7 @@ export default function CollectionLayoutSchemaForm({
   }
 
   return (
-    <SchemaDrivenForm 
+    <SchemaDrivenForm
       schema={layoutManifest.schema}
       uiSchema={layoutManifest.uiSchema ?? undefined}
       formData={frontmatter}

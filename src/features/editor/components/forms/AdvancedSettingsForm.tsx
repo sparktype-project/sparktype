@@ -1,5 +1,5 @@
 // src/features/editor/components/forms/AdvancedSettingsForm.tsx
-'use client';
+
 
 import { Label } from '@/core/components/ui/label';
 import { Input } from '@/core/components/ui/input';

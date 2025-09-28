@@ -1,5 +1,5 @@
 // src/features/site-settings/components/SiteSettingsForm.tsx
-'use client';
+
 
 import { Label } from '@/core/components/ui/label';
 import { Input } from '@/core/components/ui/input';
@@ -25,15 +25,15 @@ interface SiteSettingsFormProps {
   onThemeDataChange?: (newData: Record<string, unknown>) => void;
 }
 
-export default function SiteSettingsForm({ 
-  siteId, 
-  formData, 
-  onFormChange, 
-  themeDataSchema, 
-  themeData, 
-  onThemeDataChange 
+export default function SiteSettingsForm({
+  siteId,
+  formData,
+  onFormChange,
+  themeDataSchema,
+  themeData,
+  onThemeDataChange
 }: SiteSettingsFormProps) {
-  
+
   // FIX: Typed the 'value' parameter to 'unknown' for better type safety.
   const handleChange = (field: keyof typeof formData, value: unknown) => {
     onFormChange({ ...formData, [field]: value });
@@ -43,7 +43,7 @@ export default function SiteSettingsForm({
     <div className="space-y-6">
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">Site identity</h2>
-        <SiteAssetUploader 
+        <SiteAssetUploader
           siteId={siteId}
           label="Site logo"
           value={formData.logo}
@@ -62,42 +62,42 @@ export default function SiteSettingsForm({
       <div className="border-t pt-6 space-y-4">
         <h2 className="text-lg font-semibold">Core details</h2>
         <div className="space-y-2">
-            <Label htmlFor="title">Site title</Label>
-            <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => handleChange('title', e.target.value)}
-                placeholder="My amazing site"
-            />
+          <Label htmlFor="title">Site title</Label>
+          <Input
+            id="title"
+            value={formData.title}
+            onChange={(e) => handleChange('title', e.target.value)}
+            placeholder="My amazing site"
+          />
         </div>
         <div className="space-y-2">
-            <Label htmlFor="description">Site description</Label>
-            <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => handleChange('description', e.target.value)}
-                placeholder="A short, catchy description."
-                rows={3}
-            />
+          <Label htmlFor="description">Site description</Label>
+          <Textarea
+            id="description"
+            value={formData.description}
+            onChange={(e) => handleChange('description', e.target.value)}
+            placeholder="A short, catchy description."
+            rows={3}
+          />
         </div>
         <div className="space-y-2">
-            <Label htmlFor="author">Author (optional)</Label>
-            <Input
-                id="author"
-                value={formData.author}
-                onChange={(e) => handleChange('author', e.target.value)}
-                placeholder="Your Name or Organization"
-            />
+          <Label htmlFor="author">Author (optional)</Label>
+          <Input
+            id="author"
+            value={formData.author}
+            onChange={(e) => handleChange('author', e.target.value)}
+            placeholder="Your Name or Organization"
+          />
         </div>
         <div className="space-y-2">
-            <Label htmlFor="baseUrl">Base URL</Label>
-            <Input
-                id="baseUrl"
-                type="url"
-                value={formData.baseUrl}
-                onChange={(e) => handleChange('baseUrl', e.target.value)}
-                placeholder="https://www.my-awesome-site.com"
-            />
+          <Label htmlFor="baseUrl">Base URL</Label>
+          <Input
+            id="baseUrl"
+            type="url"
+            value={formData.baseUrl}
+            onChange={(e) => handleChange('baseUrl', e.target.value)}
+            placeholder="https://www.my-awesome-site.com"
+          />
         </div>
       </div>
 

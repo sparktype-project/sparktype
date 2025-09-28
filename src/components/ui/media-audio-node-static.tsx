@@ -1,4 +1,3 @@
-import * as React from 'react';
 
 import type { SlateElementProps, TAudioElement } from 'platejs';
 

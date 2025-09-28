@@ -1,4 +1,4 @@
-'use client';
+
 
 import { ColumnItemPlugin, ColumnPlugin } from '@platejs/layout/react';
 
@@ -38,9 +38,9 @@ export const ColumnKit = [
           parse: ({ element }) => {
             console.log('ColumnKit: Parsing COLUMN element:', element);
             console.log('ColumnKit: Element innerHTML:', element.innerHTML);
-            return { 
+            return {
               type: 'column',
-              width: element.getAttribute('width') || undefined 
+              width: element.getAttribute('width') || undefined
             };
           },
           rules: [

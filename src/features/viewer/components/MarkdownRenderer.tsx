@@ -1,5 +1,5 @@
 // src/components/browsing/MarkdownRenderer.tsx
-'use client'; 
+
 
 import { remark } from 'remark';
 import remarkDirective from 'remark-directive';
@@ -22,11 +22,11 @@ export default function MarkdownRenderer({ markdown }: MarkdownRendererProps) {
         .use(remarkDirective)
         .use(remarkRehype, { allowDangerousHtml: true })
         .use(rehypeStringify, { allowDangerousHtml: true });
-      
+
       const result = processor.processSync(markdown);
       const rawHtml = String(result);
-      
-      if (typeof window !== 'undefined') { 
+
+      if (typeof window !== 'undefined') {
         return DOMPurify.sanitize(rawHtml);
       }
       return rawHtml;

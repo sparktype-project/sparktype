@@ -1,5 +1,5 @@
 // src/features/editor/components/forms/CoreSchemaForm.tsx
-'use client';
+
 
 import type { MarkdownFrontmatter } from '@/core/types';
 import SchemaDrivenForm from '@/core/components/SchemaDrivenForm';
@@ -22,17 +22,17 @@ export default function CoreSchemaForm({
   frontmatter,
   onFrontmatterChange,
 }: CoreSchemaFormProps) {
-  
+
   // Use the base schema without modification - date field is always visible
   const schema: RJSFSchema = { ...BASE_SCHEMA.schema } as RJSFSchema;
   const uiSchema: UiSchema = { ...BASE_SCHEMA.uiSchema };
-    const customWidgets = { 
-      imageUploader: ImageUploadWidget,
-      switch: SwitchWidget
-    };
+  const customWidgets = {
+    imageUploader: ImageUploadWidget,
+    switch: SwitchWidget
+  };
 
   return (
-    <SchemaDrivenForm 
+    <SchemaDrivenForm
       schema={schema}
       uiSchema={uiSchema}
       formData={frontmatter}

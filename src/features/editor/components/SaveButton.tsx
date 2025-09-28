@@ -1,5 +1,5 @@
 // src/features/editor/components/SaveButton.tsx
-'use client';
+
 
 import { useEditor } from '@/features/editor/contexts/useEditor';
 import { Button } from '@/core/components/ui/button';

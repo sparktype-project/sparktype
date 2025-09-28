@@ -1,4 +1,4 @@
-'use client';
+
 
 import type { PlateEditor } from 'platejs/react';
 

@@ -1,5 +1,5 @@
 // src/features/editor/components/forms/PageMetadataForm.tsx
-'use client';
+
 
 import { useMemo } from 'react';
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
@@ -44,7 +44,7 @@ export default function PageMetadataForm({
 }: PageMetadataFormProps) {
 
   // Define the custom widgets that can be used by the SchemaDrivenForm.
-  const customWidgets = { 
+  const customWidgets = {
     imageUploader: ImageUploadWidget,
     switch: SwitchWidget
   };
@@ -81,12 +81,12 @@ export default function PageMetadataForm({
       // Combine required fields, ensuring no duplicates.
       finalSchema.required = [...new Set([...(finalSchema.required || []), ...(customSchema.required || [])])];
     }
-    
+
     // Merge the custom UI schema.
     if (customUiSchema) {
       Object.assign(finalUiSchema, customUiSchema);
     }
-    
+
     // Schema is ready - no contextual adjustments needed
 
     return { schema: finalSchema, uiSchema: finalUiSchema };

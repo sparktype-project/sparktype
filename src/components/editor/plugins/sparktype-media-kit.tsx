@@ -1,4 +1,4 @@
-'use client';
+
 
 import { CaptionPlugin } from '@platejs/caption/react';
 import {
@@ -28,8 +28,8 @@ export function createSparkTypeMediaKit(siteId: string) {
 
     PlaceholderPlugin.configure({
       options: { disableEmptyPlaceholder: true },
-      render: { 
-        afterEditable: MediaUploadToast, 
+      render: {
+        afterEditable: MediaUploadToast,
         node: (props) => <SparkTypePlaceholderElement {...props} siteId={siteId} />
       },
     }),

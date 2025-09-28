@@ -1,5 +1,5 @@
 // src/components/publishing/PrimaryContentFields.tsx
-'use client';
+
 
 import { Input } from '@/core/components/ui/input';
 import { Textarea } from '@/core/components/ui/textarea';
@@ -47,20 +47,20 @@ export default function PrimaryContentFields({
         />
       </div>
 
-        <div className="space-y-2 mb-6 border-b pb-3">
-          <Label htmlFor="content-description" className="text-[10px] font-medium uppercase text-gray-400">
-            Description
-          </Label>
-          <Textarea
-            
-            placeholder="Add a short description..."
-            value={frontmatter.description || ''}
-            onChange={(e) => handleChange('description', e.target.value)}
-            // Style for a clean, borderless textarea
-            className="p-0 border-0 shadow-none focus-visible:ring-0 bg-none resize-none text-xl md:text-xl"
-            rows={1}
-          />
-        </div>
+      <div className="space-y-2 mb-6 border-b pb-3">
+        <Label htmlFor="content-description" className="text-[10px] font-medium uppercase text-gray-400">
+          Description
+        </Label>
+        <Textarea
+
+          placeholder="Add a short description..."
+          value={frontmatter.description || ''}
+          onChange={(e) => handleChange('description', e.target.value)}
+          // Style for a clean, borderless textarea
+          className="p-0 border-0 shadow-none focus-visible:ring-0 bg-none resize-none text-xl md:text-xl"
+          rows={1}
+        />
+      </div>
     </div>
   );
 }

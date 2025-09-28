@@ -1,4 +1,4 @@
-'use client';
+
 
 import { createPlatePlugin } from 'platejs/react';
 import { CollectionViewElement } from '@/components/ui/collection-view-node';

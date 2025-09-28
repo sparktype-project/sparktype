@@ -1,4 +1,4 @@
-'use client';
+
 
 import { TextAlignPlugin } from '@platejs/basic-styles/react';
 import { KEYS } from 'platejs';

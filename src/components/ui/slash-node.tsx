@@ -1,4 +1,4 @@
-'use client';
+
 
 
 
@@ -87,7 +87,7 @@ const groups: Group[] = [
         label: 'Numbered list',
         value: KEYS.ol,
       },
-      
+
       {
         icon: <Code2 />,
         keywords: ['```'],
@@ -105,7 +105,7 @@ const groups: Group[] = [
         label: 'Blockquote',
         value: KEYS.blockquote,
       },
-      
+
     ].map((item) => ({
       ...item,
       onSelect: (editor, value) => {
@@ -127,7 +127,7 @@ const groups: Group[] = [
         label: '3 columns',
         value: 'action_three_columns',
       },
-    
+
     ].map((item) => ({
       ...item,
       onSelect: (editor, value) => {

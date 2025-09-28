@@ -1,5 +1,5 @@
 // React import removed - not needed with react-jsx
-'use client';
+
 import type { TListElement } from 'platejs';
 
 import { isOrderedList } from '@platejs/list';

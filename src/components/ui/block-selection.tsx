@@ -1,4 +1,4 @@
-'use client';
+
 
 // React import removed as not needed with react-jsx
 

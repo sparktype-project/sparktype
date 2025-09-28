@@ -1,4 +1,4 @@
-'use client';
+
 
 import { useState, useEffect, useMemo } from 'react';
 import type { PlateElementProps } from 'platejs/react';

@@ -1,5 +1,5 @@
 // src/core/components/ui/HashLink.tsx
-'use client';
+
 
 import { type AnchorHTMLAttributes, type FC, forwardRef } from 'react';
 import { cn } from '@/core/libraries/utils';

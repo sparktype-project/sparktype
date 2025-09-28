@@ -1,5 +1,3 @@
-// React import removed - not needed with react-jsx
-
 import type { SlateElementProps } from 'platejs';
 
 import { SlateElement } from 'platejs';

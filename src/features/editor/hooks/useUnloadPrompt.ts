@@ -1,5 +1,5 @@
 // src/features/editor/hooks/useUnloadPrompt.ts
-'use client';
+
 
 import { useEffect } from 'react';
 

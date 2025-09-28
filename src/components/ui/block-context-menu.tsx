@@ -1,4 +1,4 @@
-'use client';
+
 
 import React from 'react';
 
@@ -98,7 +98,7 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
           e.preventDefault();
           editor.getApi(BlockSelectionPlugin).blockSelection.focus();
 
-          
+
 
         }}
       >

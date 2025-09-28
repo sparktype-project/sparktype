@@ -1,5 +1,5 @@
 // src/features/editor/hooks/useFileContent.ts
-'use client';
+
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom'; 

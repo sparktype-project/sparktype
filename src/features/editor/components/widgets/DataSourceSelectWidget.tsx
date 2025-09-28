@@ -1,5 +1,5 @@
 // src/features/editor/components/DataSourceSelectWidget.tsx
-'use client';
+
 
 import { useEffect, useState, useMemo } from 'react';
 import { getAvailableLayouts } from '@/core/services/config/configHelpers.service';
@@ -14,9 +14,9 @@ interface SelectOption {
 }
 
 interface DataSourceSelectWidgetProps extends WidgetProps {
-    formContext?: {
-        site?: LocalSiteData;
-    };
+  formContext?: {
+    site?: LocalSiteData;
+  };
 }
 
 const DataSourceSelectWidget = ({ id, label, options, value, onChange, required, formContext }: DataSourceSelectWidgetProps) => {
