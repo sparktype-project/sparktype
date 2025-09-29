@@ -107,16 +107,21 @@ export default function SiteViewer() {
           // Handle all link clicks
           document.addEventListener('click', function(e) {
             const link = e.target.closest('a');
-            if (!link || !link.href) return;
+            if (!link) return;
 
-            // Skip external links
+            // Get the original href attribute (not the resolved URL)
+            const href = link.getAttribute('href') || '';
+            if (!href) return;
+
+            // Skip external links - check original href attribute
             if (link.target === '_blank' ||
-                (link.href.startsWith('http') && !link.href.includes(window.location.hostname))) {
+                href.startsWith('http://') ||
+                href.startsWith('https://')) {
               return; // Allow default behavior for external links
             }
 
             // Skip anchor links on same page
-            if (link.href.includes('#') && !link.href.includes('#/sites/')) {
+            if (href.startsWith('#')) {
               return; // Allow default behavior for anchor links
             }
 
@@ -124,7 +129,7 @@ export default function SiteViewer() {
             e.preventDefault();
 
             // Extract relative path from href
-            let relativePath = link.getAttribute('href') || '';
+            let relativePath = href;
 
             // Handle different URL formats
             if (relativePath.startsWith('/')) {
@@ -173,7 +178,8 @@ export default function SiteViewer() {
   // This effect listens for messages from the iframe to update the browser's URL bar.
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
+      // Accept messages from same-origin OR from sandboxed iframe (null origin)
+      if (event.origin !== window.location.origin && event.origin !== 'null') return;
 
       const { type, path } = event.data;
       if (type === 'SIGNUM_NAVIGATE' && typeof path === 'string' && path.trim() !== '') {
