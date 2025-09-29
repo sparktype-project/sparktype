@@ -20,7 +20,6 @@ export default defineConfig({
           vendor: ['react', 'react-dom'],
           router: ['react-router-dom'],
           ui: ['lucide-react', '@radix-ui/react-dialog'],
-          editor: ['@blocknote/core', '@blocknote/react'],
         },
       },
     },
