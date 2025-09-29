@@ -17,7 +17,7 @@ function buildNavLinks(
     siteData: LocalSiteData,
     nodes: StructureNode[],
     currentPagePath: string,
-    options: Pick<RenderOptions, 'isExport' | 'siteRootPath'>
+    options: Pick<RenderOptions, 'isExport' | 'siteRootPath' | 'forIframe'>
 ): NavLinkItem[] {
   const siteId = siteData.manifest.siteId || 'unknown';
 
@@ -27,10 +27,13 @@ function buildNavLinks(
     .map(node => {
       let href: string;
 
-      if (options.isExport) {
-        // For export mode, generate clean directory URLs and relative paths
-        const exportUrl = generateExportUrl(node, siteData.manifest, undefined, siteData);
-        if (exportUrl === '') {
+      if (options.isExport || options.forIframe) {
+        // For export mode and iframe, generate clean directory URLs and relative paths
+        const exportUrl = generateExportUrl(node, siteData.manifest, undefined, siteData, undefined, false, options.forIframe);
+        if (options.forIframe) {
+          // For iframe, use the URL directly (already has leading slash)
+          href = exportUrl;
+        } else if (exportUrl === '') {
           // Homepage - calculate relative path to homepage
           href = getRelativePath(currentPagePath, 'index.html');
         } else {
@@ -60,7 +63,7 @@ function buildNavLinks(
 export function generateNavLinks(
   siteData: LocalSiteData,
   currentPagePath: string,
-  options: Pick<RenderOptions, 'isExport' | 'siteRootPath'>
+  options: Pick<RenderOptions, 'isExport' | 'siteRootPath' | 'forIframe'>
 ): NavLinkItem[] {
   const { structure } = siteData.manifest;
   return buildNavLinks(siteData, structure, currentPagePath, options);

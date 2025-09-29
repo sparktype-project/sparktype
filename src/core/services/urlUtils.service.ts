@@ -147,6 +147,7 @@ export function generatePreviewUrl(
  * Generates an export URL for static site generation.
  * Creates directory-based URLs without index.html in links.
  * Optionally generates relative paths from a current page.
+ * When forIframe=true, adds leading slash for iframe navigation.
  */
 export function generateExportUrl(
   node: StructureNode | CollectionItemRef,
@@ -154,7 +155,8 @@ export function generateExportUrl(
   pageNumber?: number,
   siteData?: { contentFiles?: Array<{ path: string; frontmatter: { homepage?: boolean } }> },
   currentPagePath?: string,
-  forFilePath = false
+  forFilePath = false,
+  forIframe = false
 ): string {
   const basePath = getBasePath(node, manifest, siteData);
 
@@ -177,7 +179,7 @@ export function generateExportUrl(
   }
 
   // If currentPagePath is provided, calculate relative path
-  if (currentPagePath && !forFilePath) {
+  if (currentPagePath && !forFilePath && !forIframe) {
     if (exportPath === '') {
       // Link to homepage
       const depth = (currentPagePath.match(/\//g) || []).length;
@@ -187,6 +189,12 @@ export function generateExportUrl(
       const { getRelativePath } = require('./relativePaths.service');
       return getRelativePath(currentPagePath, exportPath);
     }
+  }
+
+  // For iframe navigation, return relative paths without leading slash
+  // This ensures URLs stay within the iframe (e.g., "about" not "/about")
+  if (forIframe) {
+    return exportPath; // Return as-is: "" for homepage, "about" for pages
   }
 
   return exportPath;

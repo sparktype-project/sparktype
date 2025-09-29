@@ -446,6 +446,50 @@ describe('urlUtils.service', () => {
         const relativePath = generateExportUrl(aboutNode, manifest, undefined, undefined, currentPath);
         expect(relativePath).toBe('../about');
       });
+
+      test('generates iframe URLs without leading slash when forIframe=true', () => {
+        const homeNode = sampleStructure[0];
+        const aboutNode = sampleStructure[1];
+        const blogNode = sampleStructure[2];
+
+        // Homepage should return empty string for iframe (relative to current page)
+        expect(generateExportUrl(homeNode, manifest, undefined, siteDataWithHomepage, undefined, false, true))
+          .toBe('');
+
+        // Regular pages should be relative without leading slash
+        expect(generateExportUrl(aboutNode, manifest, undefined, undefined, undefined, false, true))
+          .toBe('about');
+
+        // Paginated pages should be relative without leading slash
+        expect(generateExportUrl(blogNode, manifest, 2, undefined, undefined, false, true))
+          .toBe('blog/page/2');
+      });
+
+      test('generates iframe URLs for collection items without leading slash', () => {
+        const collectionItem: CollectionItemRef = {
+          collectionId: 'blog',
+          slug: 'my-post',
+          path: 'content/blog/my-post.md',
+          title: 'My Post',
+          url: ''
+        };
+
+        expect(generateExportUrl(collectionItem, manifest, undefined, undefined, undefined, false, true))
+          .toBe('blog/my-post');
+      });
+
+      test('forIframe parameter overrides relative path calculation', () => {
+        const aboutNode = sampleStructure[1];
+        const currentPath = 'blog/index.html';
+
+        // With forIframe=true, should ignore currentPagePath and return relative iframe path
+        const iframeUrl = generateExportUrl(aboutNode, manifest, undefined, undefined, currentPath, false, true);
+        expect(iframeUrl).toBe('about');
+
+        // Without forIframe, should calculate relative path
+        const relativePath = generateExportUrl(aboutNode, manifest, undefined, undefined, currentPath, false, false);
+        expect(relativePath).toBe('../about');
+      });
     });
 
     describe('Cross-context consistency', () => {

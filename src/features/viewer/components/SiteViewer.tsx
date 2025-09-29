@@ -71,8 +71,8 @@ export default function SiteViewer() {
 
     try {
       const pureHtml = await renderWithTheme(site, resolution, {
-        // Use direct hash-based URLs for preview navigation
-        siteRootPath: `#/sites/${siteId}/view`,
+        // Use relative paths for iframe internal navigation (no leading slash)
+        siteRootPath: '',
         isExport: false,
         forIframe: true, // Use data URLs instead of blob URLs for iframe compatibility
       });
@@ -85,26 +85,22 @@ export default function SiteViewer() {
             const link = e.target.closest('a');
             if (!link || !link.href) return;
 
-            // Allow external links to open in new tab
-            if (link.href.startsWith('http://') || link.href.startsWith('https://')) {
-              try {
-                const linkUrl = new URL(link.href);
-                const isExternal = linkUrl.hostname !== 'localhost' &&
-                                 linkUrl.hostname !== '127.0.0.1' &&
-                                 linkUrl.hostname !== location.hostname;
-                if (isExternal) {
-                  link.target = '_blank';
-                  return; // Allow default behavior for external links
-                }
-              } catch (e) {
-                // If URL parsing fails, treat as external
-                link.target = '_blank';
-                return;
-              }
+            // Allow links with target="_blank" to open in new tab/window
+            if (link.target === '_blank') {
+              return; // Allow default behavior
             }
 
-            // Skip anchor links on same page
-            if (link.href.includes('#') && !link.href.includes('#/sites/')) {
+            // Get the original href attribute (not the resolved URL)
+            const href = link.getAttribute('href') || '';
+
+            // External links: any full URL with http:// or https://
+            if (href.startsWith('http://') || href.startsWith('https://')) {
+              link.target = '_blank';
+              return; // Allow default behavior for external links
+            }
+
+            // Anchor links: allow normal scrolling behavior within iframe
+            if (href.startsWith('#')) {
               return; // Allow default behavior for anchor links
             }
 
@@ -113,23 +109,14 @@ export default function SiteViewer() {
 
             let targetPath = '';
 
-            // Handle different URL formats
-            if (link.href.includes('#/sites/')) {
-              // Full hash URL - extract the path part
-              const hashIndex = link.href.indexOf('#/sites/${siteId}/view');
-              if (hashIndex !== -1) {
-                targetPath = link.href.substring(hashIndex + '#/sites/${siteId}/view'.length);
-              }
+            // Convert relative iframe URLs to absolute paths for parent navigation
+            if (href.startsWith('/')) {
+              targetPath = href; // Already absolute path
+            } else if (href === '' || href === './') {
+              targetPath = '/'; // Homepage
             } else {
-              // Relative path
-              let href = link.getAttribute('href') || '';
-              if (href.startsWith('/')) {
-                targetPath = href; // Keep leading slash
-              } else if (href === '') {
-                targetPath = '/'; // Homepage
-              } else {
-                targetPath = '/' + href; // Add leading slash
-              }
+              // Relative path: add leading slash for parent navigation
+              targetPath = '/' + href;
             }
 
             // Send navigation message to parent
@@ -181,8 +168,8 @@ export default function SiteViewer() {
   }, [siteId, location.pathname, navigate]);
 
 
-  // Sandbox attributes - allow same-origin in all environments since we now use SAMEORIGIN X-Frame-Options
-  const sandboxAttributes = 'allow-scripts allow-forms allow-same-origin';
+  // Sandbox attributes - allow same-origin and popups for proper link handling
+  const sandboxAttributes = 'allow-scripts allow-forms allow-same-origin allow-popups';
 
   // Loading state
   if (isLoading) {

@@ -19,6 +19,7 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
     const options = args.pop() as HelperOptions;
     const node = args[0] as StructureNode | CollectionItemRef | Record<string, any>;
     const isExport = options.data.root.options?.isExport === true;
+    const forIframe = options.data.root.options?.forIframe === true;
     const siteId = siteData.manifest.siteId || 'unknown';
 
     if (!node || typeof node !== 'object') {
@@ -62,8 +63,8 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
       targetNode = node as StructureNode;
     }
 
-    if (isExport) {
-      return generateExportUrl(targetNode, siteData.manifest, undefined, siteData);
+    if (isExport || forIframe) {
+      return generateExportUrl(targetNode, siteData.manifest, undefined, siteData, undefined, false, forIframe);
     } else {
       return generatePreviewUrl(targetNode, siteData.manifest, siteId, undefined, siteData);
     }
@@ -77,6 +78,7 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
     const options = args.pop() as HelperOptions;
     const node = args[0] as StructureNode;
     const isExport = options.data.root.options?.isExport === true;
+    const forIframe = options.data.root.options?.forIframe === true;
     const siteId = siteData.manifest.siteId || 'unknown';
 
     if (!node || !('path' in node) || !('slug' in node)) {
@@ -84,8 +86,8 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
       return '#error-invalid-page';
     }
 
-    if (isExport) {
-      return generateExportUrl(node, siteData.manifest, undefined, siteData);
+    if (isExport || forIframe) {
+      return generateExportUrl(node, siteData.manifest, undefined, siteData, undefined, false, forIframe);
     } else {
       return generatePreviewUrl(node, siteData.manifest, siteId, undefined, siteData);
     }
@@ -99,6 +101,7 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
     const options = args.pop() as HelperOptions;
     const item = args[0] as CollectionItemRef | Record<string, any>;
     const isExport = options.data.root.options?.isExport === true;
+    const forIframe = options.data.root.options?.forIframe === true;
     const siteId = siteData.manifest.siteId || 'unknown';
 
     if (!item || typeof item !== 'object') {
@@ -132,8 +135,8 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
       return '#error-unrecognized-format';
     }
 
-    if (isExport) {
-      return generateExportUrl(targetItem, siteData.manifest, undefined, siteData);
+    if (isExport || forIframe) {
+      return generateExportUrl(targetItem, siteData.manifest, undefined, siteData, undefined, false, forIframe);
     } else {
       return generatePreviewUrl(targetItem, siteData.manifest, siteId, undefined, siteData);
     }

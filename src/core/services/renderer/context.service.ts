@@ -57,8 +57,8 @@ export async function assemblePageContext(
             };
             
             const siteId = siteData.manifest.siteId || 'unknown';
-            const urlSegment = options.isExport
-              ? generateExportUrl(itemRef, manifest, undefined, siteData)
+            const urlSegment = (options.isExport || options.forIframe)
+              ? generateExportUrl(itemRef, manifest, undefined, siteData, undefined, false, options.forIframe)
               : generatePreviewUrl(itemRef, manifest, siteId, undefined, siteData);
             
             // Create a `StructureNode` for the current (parent) page to get its path.
@@ -68,13 +68,13 @@ export async function assemblePageContext(
               path: resolution.contentFile.path,
               slug: resolution.contentFile.slug
             };
-            const currentPagePath = options.isExport
-              ? generateExportUrl(currentPageNode, manifest, undefined, siteData)
+            const currentPagePath = (options.isExport || options.forIframe)
+              ? generateExportUrl(currentPageNode, manifest, undefined, siteData, undefined, false, options.forIframe)
               : generatePreviewUrl(currentPageNode, manifest, siteId, undefined, siteData);
 
             let itemUrl: string;
-            if (options.isExport) {
-                // For export, urlSegment is already the correct path, calculate relative link
+            if (options.isExport || options.forIframe) {
+                // For export and iframe, urlSegment is already the correct path, calculate relative link
                 const targetPath = urlSegment === '' ? 'index.html' : `${urlSegment}/index.html`;
                 itemUrl = getRelativePath(currentPagePath === '' ? 'index.html' : `${currentPagePath}/index.html`, targetPath);
             } else {
@@ -138,8 +138,8 @@ export async function assembleBaseContext(
         manifest,
         options,
         pageContext,
-        navLinks: generateNavLinks(siteData, options.isExport
-          ? generateExportUrl(urlNode, manifest, undefined, siteData)
+        navLinks: generateNavLinks(siteData, (options.isExport || options.forIframe)
+          ? generateExportUrl(urlNode, manifest, undefined, siteData, undefined, false, options.forIframe)
           : generatePreviewUrl(urlNode, manifest, siteData.manifest.siteId || 'unknown', undefined, siteData), options),
         headContext: {
             pageTitle: resolution.pageTitle,
