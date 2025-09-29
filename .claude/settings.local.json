@@ -27,9 +27,6 @@
       "WebFetch(domain:ratulmaharaj.com)",
       "Bash(npm run tauri:dev:*)",
       "Bash(git checkout:*)",
-      "Bash(git pull:*)",
-      "Bash(git pull:*)",
-      "Bash(git stash push:*)"
       "Bash(git pull:*)"
     ]
   },
