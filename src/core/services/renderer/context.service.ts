@@ -12,7 +12,7 @@ import type {
 } from '@/core/types';
 import { PageType } from '@/core/types';
 import { generateNavLinks } from '@/core/services/navigationStructure.service';
-import { generatePreviewUrl, generateExportUrl } from '@/core/services/urlUtils.service';
+import { getUrlForNode } from '@/core/services/urlUtils.service';
 import { generateStyleOverrides } from './asset.service';
 import { type RenderOptions } from './render.service';
 import { getRelativePath } from '@/core/services/relativePaths.service';
@@ -55,12 +55,9 @@ export async function assemblePageContext(
                 title: item.frontmatter.title,
                 url: '' // Will be generated next
             };
-            
-            const siteId = siteData.manifest.siteId || 'unknown';
-            const urlSegment = (options.isExport || options.forIframe)
-              ? generateExportUrl(itemRef, manifest, undefined, siteData, undefined, false, options.forIframe)
-              : generatePreviewUrl(itemRef, manifest, siteId, undefined, siteData);
-            
+
+            const urlSegment = getUrlForNode(itemRef, manifest, options.isExport, undefined, siteData);
+
             // Create a `StructureNode` for the current (parent) page to get its path.
             const currentPageNode: StructureNode = {
               type: 'page',
@@ -68,18 +65,14 @@ export async function assemblePageContext(
               path: resolution.contentFile.path,
               slug: resolution.contentFile.slug
             };
-            const currentPagePath = (options.isExport || options.forIframe)
-              ? generateExportUrl(currentPageNode, manifest, undefined, siteData, undefined, false, options.forIframe)
-              : generatePreviewUrl(currentPageNode, manifest, siteId, undefined, siteData);
+            const currentPagePath = getUrlForNode(currentPageNode, manifest, options.isExport, undefined, siteData);
 
             let itemUrl: string;
-            if (options.isExport || options.forIframe) {
-                // For export and iframe, urlSegment is already the correct path, calculate relative link
-                const targetPath = urlSegment === '' ? 'index.html' : `${urlSegment}/index.html`;
-                itemUrl = getRelativePath(currentPagePath === '' ? 'index.html' : `${currentPagePath}/index.html`, targetPath);
+            if (options.isExport) {
+                itemUrl = getRelativePath(currentPagePath, urlSegment);
             } else {
-                // For preview, urlSegment is already the full hash URL
-                itemUrl = urlSegment;
+                const path = `/${urlSegment}`.replace(/\/$/, '') || '/';
+                itemUrl = `${options.siteRootPath}${path === '/' ? '' : path}`;
             }
 
             return {
@@ -116,7 +109,7 @@ export async function assembleBaseContext(
     const logoUrl = manifest.logo ? await _imageService.getDisplayUrl(manifest, manifest.logo, { height: 32 }, options.isExport) : undefined;
     const faviconUrl = manifest.favicon ? await _imageService.getDisplayUrl(manifest, manifest.favicon, { width: 32, height: 32 }, options.isExport) : undefined;
     // OpenGraph image is now handled by the image helper in templates
-    
+
     // CORRECTED: Create the appropriate `StructureNode` or `CollectionItemRef` before passing to `getUrlForNode`.
     // We check the manifest to see if the resolved content file is a known collection item.
     const isItem = manifest.collectionItems?.some(item => item.path === resolution.contentFile.path);
@@ -132,20 +125,18 @@ export async function assembleBaseContext(
         slug: resolution.contentFile.slug,
       };
     }
-    
+
     return {
         siteData,
         manifest,
         options,
         pageContext,
-        navLinks: generateNavLinks(siteData, (options.isExport || options.forIframe)
-          ? generateExportUrl(urlNode, manifest, undefined, siteData, undefined, false, options.forIframe)
-          : generatePreviewUrl(urlNode, manifest, siteData.manifest.siteId || 'unknown', undefined, siteData), options),
+        navLinks: generateNavLinks(siteData, getUrlForNode(urlNode, manifest, true, undefined, siteData), options),
         headContext: {
             pageTitle: resolution.pageTitle,
             manifest,
             contentFile: resolution.contentFile,
-            canonicalUrl: new URL(generateExportUrl(urlNode, manifest, undefined, siteData), manifest.baseUrl || 'https://example.com').href,
+            canonicalUrl: new URL(getUrlForNode(urlNode, manifest, false, undefined, siteData), manifest.baseUrl || 'https://example.com').href,
             baseUrl: options.relativeAssetPath ?? '/',
             styleOverrides: new Handlebars.SafeString(generateStyleOverrides(manifest.theme.config)),
             faviconUrl,

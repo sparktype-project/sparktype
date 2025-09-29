@@ -33,7 +33,7 @@ export async function resolvePageContent(
     if (slugArray.length === 0 || (slugArray.length === 1 && slugArray[0] === '')) {
         const homepageNode = manifest.structure[0];
         if (!homepageNode) {
-            return { type: PageType.NotFound, errorMessage: "No pages have been created yet." };
+            return { type: PageType.NotFound, errorMessage: "No homepage has been designated for this site." };
         }
         const contentFile = contentFiles?.find(f => f.path === homepageNode.path);
         if (!contentFile) {

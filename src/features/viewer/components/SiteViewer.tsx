@@ -71,64 +71,87 @@ export default function SiteViewer() {
 
     try {
       const pureHtml = await renderWithTheme(site, resolution, {
-        // Use relative paths for iframe internal navigation (no leading slash)
-        siteRootPath: '',
+        // Generate relative URLs like in export mode for isolated iframe routing
+        siteRootPath: '/',
         isExport: false,
         forIframe: true, // Use data URLs instead of blob URLs for iframe compatibility
       });
 
-      // Navigation script: Handle internal navigation with postMessage
-      const navigationScript = `
+      // Virtual site navigation: Handle routing within iframe but sync URL bar
+      const communicationScript = `
         <script>
-          // Handle link clicks for internal navigation
+          // Store all site pages for client-side navigation
+          const sitePages = new Map();
+          let currentPath = '${currentRelativePath}';
+
+          // Function to load and render a page within the iframe
+          async function navigateToPage(relativePath) {
+            try {
+              // Normalize the path
+              const normalizedPath = relativePath === '/' ? '' : relativePath.replace(/^\\//, '');
+
+              // Notify parent of navigation for URL bar update
+              window.parent.postMessage({
+                type: 'SIGNUM_NAVIGATE',
+                path: '${viewRootPath}' + (normalizedPath ? '/' + normalizedPath : '')
+              }, '*');
+
+              // For now, let the parent handle the actual page loading
+              // In future we could cache pages and handle navigation entirely in iframe
+
+            } catch (error) {
+              console.error('IFRAME: Navigation error:', error);
+            }
+          }
+
+          // Handle all link clicks
           document.addEventListener('click', function(e) {
             const link = e.target.closest('a');
             if (!link || !link.href) return;
 
-            // Allow links with target="_blank" to open in new tab/window
-            if (link.target === '_blank') {
-              return; // Allow default behavior
-            }
-
-            // Get the original href attribute (not the resolved URL)
-            const href = link.getAttribute('href') || '';
-
-            // External links: any full URL with http:// or https://
-            if (href.startsWith('http://') || href.startsWith('https://')) {
-              link.target = '_blank';
+            // Skip external links
+            if (link.target === '_blank' ||
+                (link.href.startsWith('http') && !link.href.includes(window.location.hostname))) {
               return; // Allow default behavior for external links
             }
 
-            // Anchor links: allow normal scrolling behavior within iframe
-            if (href.startsWith('#')) {
+            // Skip anchor links on same page
+            if (link.href.includes('#') && !link.href.includes('#/sites/')) {
               return; // Allow default behavior for anchor links
             }
 
-            // Prevent default and handle internal navigation
+            // Prevent default navigation
             e.preventDefault();
 
-            let targetPath = '';
+            // Extract relative path from href
+            let relativePath = link.getAttribute('href') || '';
 
-            // Convert relative iframe URLs to absolute paths for parent navigation
-            if (href.startsWith('/')) {
-              targetPath = href; // Already absolute path
-            } else if (href === '' || href === './') {
-              targetPath = '/'; // Homepage
+            // Handle different URL formats
+            if (relativePath.startsWith('/')) {
+              // Absolute path: /about -> about
+              relativePath = relativePath.substring(1);
+            } else if (relativePath.includes('/')) {
+              // Relative path: portfolio/item-1 -> portfolio/item-1
+              // Keep as is
             } else {
-              // Relative path: add leading slash for parent navigation
-              targetPath = '/' + href;
+              // Simple path: about -> about
+              // Keep as is
             }
 
-            // Send navigation message to parent
-            window.parent.postMessage({
-              type: 'SITE_NAVIGATE',
-              path: targetPath
-            }, '*');
+            // Navigate to the page
+            navigateToPage(relativePath || '/');
+          });
+
+          // Handle browser back/forward (if implemented)
+          window.addEventListener('popstate', function(e) {
+            if (e.state && e.state.path) {
+              navigateToPage(e.state.path);
+            }
           });
         </script>
       `;
 
-      const finalHtml = pureHtml.replace('</body>', `${navigationScript}</body>`);
+      const finalHtml = pureHtml.replace('</body>', `${communicationScript}</body>`);
       setHtmlContent(finalHtml);
       setIsLoading(false);
       setErrorMessage(null);
@@ -146,30 +169,34 @@ export default function SiteViewer() {
     updateIframeContent();
   }, [updateIframeContent]);
 
-  // Handle navigation messages from iframe
+  // --- 3. Manage Browser History with useNavigate ---
+  // This effect listens for messages from the iframe to update the browser's URL bar.
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      const { type, path } = event.data || {};
-      if (type !== 'SITE_NAVIGATE' || typeof path !== 'string') {
-        return;
-      }
+      if (event.origin !== window.location.origin) return;
 
-      // Construct the full navigation path
-      const newPath = `/sites/${siteId}/view${path}`;
-
-      // Only navigate if the path is actually different
-      if (newPath !== location.pathname) {
-        navigate(newPath);
+      const { type, path } = event.data;
+      if (type === 'SIGNUM_NAVIGATE' && typeof path === 'string' && path.trim() !== '') {
+        // Only navigate if the path is actually different to prevent infinite loops
+        if (path !== location.pathname) {
+          console.log('[SiteViewer] Navigating to:', path);
+          navigate(path);
+        }
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [siteId, location.pathname, navigate]);
+
+    // We don't need the 'popstate' listener anymore because `useLocation` from react-router-dom handles it.
+  }, [location.pathname, navigate]);
 
 
-  // Sandbox attributes - allow same-origin and popups for proper link handling
-  const sandboxAttributes = 'allow-scripts allow-forms allow-same-origin allow-popups';
+  // Sandbox attributes remain the same
+  const sandboxAttributes =
+    process.env.NODE_ENV === 'development'
+      ? 'allow-scripts allow-forms allow-same-origin'
+      : 'allow-scripts allow-forms';
 
   // Loading state
   if (isLoading) {

@@ -1,144 +1,137 @@
 // src/core/services/renderer/helpers/getUrl.helper.ts
 
 import type { SparktypeHelper } from './types';
-import { generatePreviewUrl, generateExportUrl } from '@/core/services/urlUtils.service';
-import type { StructureNode, CollectionItemRef } from '@/core/types';
+import { getUrlForNode as getUrlUtil } from '@/core/services/urlUtils.service';
+import type { StructureNode } from '@/core/types';
 import type { HelperOptions } from 'handlebars';
 
 /**
- * Simplified Handlebars URL helpers using the new URL generation functions.
- * Provides clean, predictable URLs for both preview and export contexts.
+ * A Handlebars helper factory that exposes URL generation utilities to templates.
+ * This ensures that all links generated in themes are consistent and correct
+ * for both live preview and static export modes.
  */
 export const getUrlHelper: SparktypeHelper = (siteData) => ({
   /**
-   * Universal URL helper - works for both pages and collection items.
-   * Automatically detects context and generates appropriate URLs.
-   * @example <a href="{{getUrl this}}">Link</a>
+   * DEPRECATED: A simplified getUrl helper for backward compatibility.
+   * Users should prefer the more specific helpers below.
    */
   getUrl: function(this: unknown, ...args: unknown[]): string {
     const options = args.pop() as HelperOptions;
-    const node = args[0] as StructureNode | CollectionItemRef | Record<string, any>;
+    const node = args[0] as StructureNode;
     const isExport = options.data.root.options?.isExport === true;
-    const forIframe = options.data.root.options?.forIframe === true;
-    const siteId = siteData.manifest.siteId || 'unknown';
+    const siteRootPath = options.data.root.options?.siteRootPath;
 
-    if (!node || typeof node !== 'object') {
-      console.warn('Handlebars "getUrl" helper called with invalid node:', node);
-      return '#error-invalid-node';
+    const baseUrl = getUrlUtil(node, siteData.manifest, isExport, undefined, siteData);
+
+    // For preview mode with iframe routing, use relative URLs like export mode
+    if (!isExport && siteRootPath === '/') {
+      // Generate relative URLs for virtual site navigation
+      return baseUrl;
     }
 
-    let targetNode: StructureNode | CollectionItemRef;
-
-    // Handle different node types
-    if ('collectionId' in node && 'slug' in node) {
-      // Already a CollectionItemRef
-      targetNode = node as CollectionItemRef;
-    } else if ('path' in node && 'slug' in node) {
-      // Handle ParsedMarkdownFile - convert to appropriate type
-      if (typeof node.path === 'string' && node.path.includes('/')) {
-        const pathParts = node.path.split('/');
-        if (pathParts.length >= 3 && pathParts[0] === 'content') {
-          // Collection item
-          targetNode = {
-            collectionId: pathParts[1],
-            slug: node.slug as string,
-            path: node.path,
-            title: node.frontmatter?.title || node.slug,
-            url: ''
-          } as CollectionItemRef;
-        } else {
-          // Regular page
-          targetNode = {
-            type: 'page',
-            title: node.frontmatter?.title || node.slug,
-            path: node.path,
-            slug: node.slug as string
-          } as StructureNode;
-        }
-      } else {
-        targetNode = node as StructureNode;
-      }
-    } else {
-      // Assume it's a StructureNode
-      targetNode = node as StructureNode;
+    // Apply siteRootPath for other preview modes (legacy hash-based navigation)
+    if (!isExport && siteRootPath) {
+      const basePath = siteRootPath.replace(/\/$/, ''); // Remove trailing slash
+      const segmentPath = baseUrl ? `/${baseUrl}` : '';  // Add leading slash if URL exists
+      return `${basePath}${segmentPath}`;
     }
 
-    if (isExport || forIframe) {
-      return generateExportUrl(targetNode, siteData.manifest, undefined, siteData, undefined, false, forIframe);
-    } else {
-      return generatePreviewUrl(targetNode, siteData.manifest, siteId, undefined, siteData);
-    }
+    return baseUrl;
   },
 
   /**
-   * Page-specific URL helper for StructureNode objects.
-   * @example <a href="{{getPageUrl this}}">{{title}}</a>
+   * Generates a context-aware URL for a regular page (a StructureNode).
+   * @example <a href="{{getPageUrl this isExport=../options.isExport}}">Link</a>
    */
   getPageUrl: function(this: unknown, ...args: unknown[]): string {
     const options = args.pop() as HelperOptions;
     const node = args[0] as StructureNode;
     const isExport = options.data.root.options?.isExport === true;
-    const forIframe = options.data.root.options?.forIframe === true;
-    const siteId = siteData.manifest.siteId || 'unknown';
+    const siteRootPath = options.data.root.options?.siteRootPath;
 
     if (!node || !('path' in node) || !('slug' in node)) {
-      console.warn('Handlebars "getPageUrl" helper called with invalid page node:', node);
-      return '#error-invalid-page';
+      console.warn('Handlebars "getPageUrl" helper called with an invalid node object.');
+      return '#error-invalid-node';
     }
 
-    if (isExport || forIframe) {
-      return generateExportUrl(node, siteData.manifest, undefined, siteData, undefined, false, forIframe);
-    } else {
-      return generatePreviewUrl(node, siteData.manifest, siteId, undefined, siteData);
+    const baseUrl = getUrlUtil(node, siteData.manifest, isExport, undefined, siteData, false);
+
+    // Apply siteRootPath for preview mode (iframe navigation)
+    if (!isExport && siteRootPath) {
+      const basePath = siteRootPath.replace(/\/$/, ''); // Remove trailing slash
+      const segmentPath = baseUrl ? `/${baseUrl}` : '';  // Add leading slash if URL exists
+      return `${basePath}${segmentPath}`;
     }
+
+    return baseUrl;
   },
 
   /**
-   * Collection item URL helper for both CollectionItemRef and ParsedMarkdownFile objects.
-   * @example <a href="{{getCollectionItemUrl this}}">{{title}}</a>
+   * The primary helper for generating a URL for a collection item.
+   * This now uses the unified URL service to create static-friendly paths.
+   * @example <a href="{{getCollectionItemUrl this}}">Read More</a>
    */
   getCollectionItemUrl: function(this: unknown, ...args: unknown[]): string {
     const options = args.pop() as HelperOptions;
-    const item = args[0] as CollectionItemRef | Record<string, any>;
+    const item = args[0] as Record<string, any>; // Type as generic object to allow property checks
     const isExport = options.data.root.options?.isExport === true;
-    const forIframe = options.data.root.options?.forIframe === true;
-    const siteId = siteData.manifest.siteId || 'unknown';
+    const siteRootPath = options.data.root.options?.siteRootPath;
 
+    // Handle both CollectionItemRef and ParsedMarkdownFile objects
     if (!item || typeof item !== 'object') {
-      console.warn('Handlebars "getCollectionItemUrl" helper called with invalid item:', item);
-      return '#error-invalid-item';
+      console.warn('Handlebars "getCollectionItemUrl" helper called with null/undefined item.');
+      return '#error-null-item';
     }
 
-    let targetItem: CollectionItemRef;
+    let baseUrl: string;
 
-    // Handle different item formats
+    // If it's a CollectionItemRef (has collectionId and slug)
     if ('collectionId' in item && 'slug' in item) {
-      // Already a CollectionItemRef
-      targetItem = item as CollectionItemRef;
-    } else if ('path' in item && 'slug' in item && typeof item.path === 'string') {
-      // ParsedMarkdownFile - extract collection ID from path
+      baseUrl = getUrlUtil(item as StructureNode, siteData.manifest, isExport, undefined, siteData, isExport);
+    }
+    // If it's a ParsedMarkdownFile (has path and slug), convert to CollectionItemRef format
+    else if ('path' in item && 'slug' in item && typeof item.path === 'string') {
+      // Extract collection ID from the path (e.g., "content/blog/post.md" -> "blog")
       const pathParts = item.path.split('/');
       if (pathParts.length >= 3 && pathParts[0] === 'content') {
-        targetItem = {
-          collectionId: pathParts[1],
+        const collectionId = pathParts[1];
+        const collectionItemRef: StructureNode = {
+          type: 'page' as const,
+          collectionId,
           slug: item.slug as string,
           path: item.path,
           title: item.frontmatter?.title || item.slug,
-          url: ''
-        } as CollectionItemRef;
+          url: '' // Let URL service handle this properly
+        };
+        baseUrl = getUrlUtil(collectionItemRef, siteData.manifest, isExport, undefined, siteData, isExport);
       } else {
-        console.warn('Handlebars "getCollectionItemUrl" helper: invalid collection item path:', item.path);
-        return '#error-invalid-collection-path';
+        console.warn('Handlebars "getCollectionItemUrl" helper called with an invalid item object:', item);
+        return '#error-invalid-item';
       }
     } else {
-      console.warn('Handlebars "getCollectionItemUrl" helper: unrecognized item format:', item);
-      return '#error-unrecognized-format';
+      console.warn('Handlebars "getCollectionItemUrl" helper called with an invalid item object:', item);
+      return '#error-invalid-item';
     }
 
-    if (isExport || forIframe) {
-      return generateExportUrl(targetItem, siteData.manifest, undefined, siteData, undefined, false, forIframe);
-    } else {
-      return generatePreviewUrl(targetItem, siteData.manifest, siteId, undefined, siteData);
+    // For export mode, collection item links should be absolute paths from site root
+    // This ensures collection links work correctly regardless of the current page depth
+    if (isExport) {
+      return baseUrl ? `/${baseUrl.replace(/\/index\.html$/, '/').replace(/\.html$/, '/')}` : '/';
     }
+
+    // For preview mode with iframe routing, use relative URLs like export mode
+    if (!isExport && siteRootPath === '/') {
+      // Generate relative URLs for virtual site navigation
+      return baseUrl;
+    }
+
+    // Apply siteRootPath for other preview modes (legacy hash-based navigation)
+    if (!isExport && siteRootPath) {
+      const basePath = siteRootPath.replace(/\/$/, ''); // Remove trailing slash
+      const segmentPath = baseUrl ? `/${baseUrl}` : '';  // Add leading slash if URL exists
+      return `${basePath}${segmentPath}`;
+    }
+
+    return baseUrl;
   }
 });
