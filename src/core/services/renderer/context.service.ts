@@ -56,7 +56,8 @@ export async function assemblePageContext(
                 url: '' // Will be generated next
             };
 
-            const urlSegment = getUrlForNode(itemRef, manifest, options.isExport, undefined, siteData);
+            // For collection item URLs, we need forFilePath=true to get full paths with index.html
+            const urlSegment = getUrlForNode(itemRef, manifest, options.isExport, undefined, siteData, true);
 
             // Create a `StructureNode` for the current (parent) page to get its path.
             const currentPageNode: StructureNode = {
@@ -65,7 +66,8 @@ export async function assemblePageContext(
               path: resolution.contentFile.path,
               slug: resolution.contentFile.slug
             };
-            const currentPagePath = getUrlForNode(currentPageNode, manifest, options.isExport, undefined, siteData);
+            // Also need forFilePath=true for the current page path
+            const currentPagePath = getUrlForNode(currentPageNode, manifest, options.isExport, undefined, siteData, true);
 
             let itemUrl: string;
             if (options.isExport) {
@@ -126,12 +128,16 @@ export async function assembleBaseContext(
       };
     }
 
+    // For navigation link calculation, we need the full file path (with index.html)
+    // to correctly calculate relative paths from the current page
+    const currentPagePath = getUrlForNode(urlNode, manifest, true, undefined, siteData, true);
+
     return {
         siteData,
         manifest,
         options,
         pageContext,
-        navLinks: generateNavLinks(siteData, getUrlForNode(urlNode, manifest, true, undefined, siteData), options),
+        navLinks: generateNavLinks(siteData, currentPagePath, options),
         headContext: {
             pageTitle: resolution.pageTitle,
             manifest,
