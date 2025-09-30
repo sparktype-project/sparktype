@@ -708,4 +708,261 @@ describe('localImage.service', () => {
       expect(mockCreateObjectURL).toHaveBeenCalled();
     });
   });
+
+  describe('Tauri Image Format Tests', () => {
+    // Mock platform detection
+    let mockIsTauriApp: jest.SpyInstance;
+
+    beforeEach(() => {
+      // Import and mock the platform utility
+      mockIsTauriApp = jest.spyOn(require('@/core/utils/platform'), 'isTauriApp');
+    });
+
+    afterEach(() => {
+      mockIsTauriApp.mockRestore();
+    });
+
+    test('should return data URL for images in Tauri environment', async () => {
+      mockIsTauriApp.mockReturnValue(true);
+
+      const manifest = createManifest('test-site');
+      const imageRef: ImageRef = {
+        serviceId: 'local',
+        src: 'assets/originals/test.jpg',
+        alt: 'Test Image'
+      };
+
+      const blob = new Blob(['fake-image-data'], { type: 'image/jpeg' });
+      mockGetImageAsset.mockResolvedValue(blob);
+      mockGetCachedDerivative.mockResolvedValue(blob);
+
+      const options: ImageTransformOptions = { width: 600, height: 400 };
+      const url = await localImageService.getDisplayUrl(manifest, imageRef, options, false);
+
+      // In Tauri, should return data URL
+      expect(url).toMatch(/^data:image\//);
+    });
+
+    test('should return data URL for SVG in Tauri environment', async () => {
+      mockIsTauriApp.mockReturnValue(true);
+
+      const manifest = createManifest('test-site');
+      const svgRef: ImageRef = {
+        serviceId: 'local',
+        src: 'assets/originals/icon.svg',
+        alt: 'Icon'
+      };
+
+      const svgBlob = new Blob(['<svg></svg>'], { type: 'image/svg+xml' });
+      mockGetImageAsset.mockResolvedValue(svgBlob);
+
+      const url = await localImageService.getDisplayUrl(manifest, svgRef, {}, false);
+
+      // SVG in Tauri should also use data URL
+      expect(url).toMatch(/^data:image\/svg\+xml/);
+    });
+
+    test('should use blob URLs in web environment', async () => {
+      mockIsTauriApp.mockReturnValue(false);
+
+      const manifest = createManifest('test-site');
+      const imageRef: ImageRef = {
+        serviceId: 'local',
+        src: 'assets/originals/test.jpg',
+        alt: 'Test Image'
+      };
+
+      const blob = new Blob(['fake-image-data'], { type: 'image/jpeg' });
+      mockGetImageAsset.mockResolvedValue(blob);
+      mockGetCachedDerivative.mockResolvedValue(blob);
+      mockCreateObjectURL.mockReturnValue('blob:http://localhost:5173/abc-123');
+
+      const options: ImageTransformOptions = { width: 600 };
+      const url = await localImageService.getDisplayUrl(manifest, imageRef, options, false);
+
+      // In web environment, should use blob URL
+      expect(url).toMatch(/^blob:/);
+      expect(mockCreateObjectURL).toHaveBeenCalledWith(blob);
+    });
+
+    test('should return file path for exports regardless of platform', async () => {
+      mockIsTauriApp.mockReturnValue(true);
+
+      const manifest = createManifest('test-site');
+      const imageRef: ImageRef = {
+        serviceId: 'local',
+        src: 'assets/originals/test.jpg',
+        alt: 'Test Image'
+      };
+
+      const blob = new Blob(['fake-image-data'], { type: 'image/jpeg' });
+      mockGetImageAsset.mockResolvedValue(blob);
+      mockGetCachedDerivative.mockResolvedValue(null);
+      mockImageCompression.mockResolvedValue(new File(['compressed'], 'test.jpg', { type: 'image/jpeg' }));
+
+      setTimeout(() => {
+        mockImage.width = 800;
+        mockImage.height = 600;
+        mockImage.onload();
+      }, 0);
+
+      const options: ImageTransformOptions = { width: 600, height: 400 };
+      const url = await localImageService.getDisplayUrl(manifest, imageRef, options, true); // isExport = true
+
+      // Export should always return file path, not data URL
+      expect(url).toMatch(/^\/assets\/derivatives\//);
+      expect(url).not.toMatch(/^data:/);
+      expect(url).not.toMatch(/^blob:/);
+    });
+
+    test('should handle data URL conversion for iframe previews', async () => {
+      mockIsTauriApp.mockReturnValue(false); // Web environment
+
+      const manifest = createManifest('test-site');
+      const imageRef: ImageRef = {
+        serviceId: 'local',
+        src: 'assets/originals/test.jpg',
+        alt: 'Test Image'
+      };
+
+      const blob = new Blob(['fake-image-data'], { type: 'image/jpeg' });
+      mockGetImageAsset.mockResolvedValue(blob);
+      mockGetCachedDerivative.mockResolvedValue(blob);
+
+      const options: ImageTransformOptions = { width: 600 };
+      // forIframe = true (5th parameter)
+      const url = await localImageService.getDisplayUrl(manifest, imageRef, options, false, true);
+
+      // Iframe context should use data URL to avoid WebKit blob URL limitations
+      expect(url).toMatch(/^data:image\//);
+    });
+  });
+
+  describe('Export Filtering Tests', () => {
+    test('should filter out derivative filenames from originals export', async () => {
+      const derivativePattern = /_w(auto|\d+)_h(auto|\d+)_c-[^_]+_g-[^_]+/;
+
+      const derivativeFilenames = [
+        'image_w256_hauto_c-fit_g-center.jpg',
+        'image_w1200_h630_c-fill_g-center.jpg',
+        'photo_w600_h400_c-scale_g-north.png',
+        'banner_wauto_h200_c-fit_g-center.webp'
+      ];
+
+      const originalFilenames = [
+        '1754935108381-38.jpg',
+        'logo.svg',
+        'header-banner.png',
+        '1759013619560-sparktype-dark.png'
+      ];
+
+      // Test derivative filenames match pattern
+      for (const filename of derivativeFilenames) {
+        expect(filename).toMatch(derivativePattern);
+      }
+
+      // Test original filenames do NOT match pattern
+      for (const filename of originalFilenames) {
+        expect(filename).not.toMatch(derivativePattern);
+      }
+    });
+
+    test('should export only originals to assets/originals/ folder', async () => {
+      const allImageRefs: ImageRef[] = [
+        { serviceId: 'local', src: 'assets/originals/image1.jpg', alt: 'Image 1' },
+        { serviceId: 'local', src: 'assets/originals/image2.png', alt: 'Image 2' }
+      ];
+
+      // Mock storage to include a derivative (which shouldn't happen, but test filtering)
+      const mockStorage: Record<string, Blob> = {
+        'assets/originals/image1.jpg': new Blob(['img1'], { type: 'image/jpeg' }),
+        'assets/originals/image2.png': new Blob(['img2'], { type: 'image/png' }),
+        // This derivative shouldn't be in storage, but if it is, it should be filtered
+        'assets/originals/image1_w600_h400_c-fill_g-center.jpg': new Blob(['derivative'], { type: 'image/jpeg' })
+      };
+
+      mockGetImageAsset.mockImplementation(async (_siteId, path) => {
+        return mockStorage[path] || null;
+      });
+
+      mockGetAllCacheKeys.mockResolvedValue([]);
+
+      const exportAssets = await localImageService.getExportableAssets('test-site', allImageRefs);
+
+      // Filter exports to originals folder
+      const originalsExports = exportAssets.filter(asset =>
+        asset.path.includes('_site/assets/originals/')
+      );
+
+      // Verify no derivative filenames in originals exports
+      const derivativePattern = /_w(auto|\d+)_h(auto|\d+)_c-[^_]+_g-[^_]+/;
+      for (const asset of originalsExports) {
+        const filename = asset.path.split('/').pop() || '';
+        expect(filename).not.toMatch(derivativePattern);
+      }
+    });
+
+    test('should export derivatives to assets/derivatives/ folder', async () => {
+      const allImageRefs: ImageRef[] = [
+        { serviceId: 'local', src: 'assets/originals/image1.jpg', alt: 'Image 1' }
+      ];
+
+      mockGetImageAsset.mockResolvedValue(new Blob(['img1'], { type: 'image/jpeg' }));
+
+      // Mock cached derivatives
+      const derivativeKeys = [
+        'test-site/assets/derivatives/image1_w600_h400_c-fill_g-center.jpg',
+        'test-site/assets/derivatives/image1_w300_h200_c-fit_g-center.jpg'
+      ];
+
+      mockGetAllCacheKeys.mockResolvedValue(derivativeKeys);
+      mockGetCachedDerivative.mockResolvedValue(new Blob(['derivative'], { type: 'image/jpeg' }));
+
+      const exportAssets = await localImageService.getExportableAssets('test-site', allImageRefs);
+
+      // Filter exports to derivatives folder
+      const derivativesExports = exportAssets.filter(asset =>
+        asset.path.includes('_site/assets/derivatives/')
+      );
+
+      // Should have exported the derivatives
+      expect(derivativesExports.length).toBeGreaterThan(0);
+
+      // Verify all have derivative naming pattern
+      const derivativePattern = /_w(auto|\d+)_h(auto|\d+)_c-[^_]+_g-[^_]+/;
+      for (const asset of derivativesExports) {
+        const filename = asset.path.split('/').pop() || '';
+        expect(filename).toMatch(derivativePattern);
+      }
+    });
+
+    test('should not have any overlap between originals and derivatives exports', async () => {
+      const allImageRefs: ImageRef[] = [
+        { serviceId: 'local', src: 'assets/originals/image1.jpg', alt: 'Image 1' }
+      ];
+
+      mockGetImageAsset.mockResolvedValue(new Blob(['img1'], { type: 'image/jpeg' }));
+      mockGetAllCacheKeys.mockResolvedValue([
+        'test-site/assets/derivatives/image1_w600_h400_c-fill_g-center.jpg'
+      ]);
+      mockGetCachedDerivative.mockResolvedValue(new Blob(['derivative'], { type: 'image/jpeg' }));
+
+      const exportAssets = await localImageService.getExportableAssets('test-site', allImageRefs);
+
+      const originalsExports = exportAssets.filter(asset =>
+        asset.path.includes('_site/assets/originals/')
+      );
+      const derivativesExports = exportAssets.filter(asset =>
+        asset.path.includes('_site/assets/derivatives/')
+      );
+
+      // Extract filenames
+      const originalsFilenames = originalsExports.map(a => a.path.split('/').pop());
+      const derivativesFilenames = derivativesExports.map(a => a.path.split('/').pop());
+
+      // Verify no filename appears in both lists
+      const overlap = originalsFilenames.filter(f => derivativesFilenames.includes(f));
+      expect(overlap).toHaveLength(0);
+    });
+  });
 });

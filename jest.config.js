@@ -9,7 +9,12 @@ export default {
   ],
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
-      useESM: true
+      useESM: true,
+      tsconfig: {
+        verbatimModuleSyntax: false,
+        esModuleInterop: true,
+        module: 'esnext'
+      }
     }]
   },
   collectCoverageFrom: [

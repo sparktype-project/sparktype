@@ -43,7 +43,10 @@
       "Read(//Users/mattkevan/Downloads/boing-5/_site/assets/derivatives/**)",
       "Read(//Users/mattkevan/Downloads/boing-5/_site/data/**)",
       "Read(//Users/mattkevan/Downloads/boing-5/_site/**)",
-      "Read(//Users/mattkevan/Downloads/boing-5/**)"
+      "Read(//Users/mattkevan/Downloads/boing-5/**)",
+      "Bash(npm test:*)",
+      "mcp__browsermcp__browser_navigate",
+      "mcp__browsermcp__browser_get_console_logs"
     ]
   },
   "enableAllProjectMcpServers": true,
