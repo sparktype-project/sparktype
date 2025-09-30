@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "imageService": "local",
+  "images": {
+    "assets/originals/1759013591643-sparktype-logo2.svg": {
+      "referencedIn": [
+        "content/about-us2.md"
+      ],
+      "metadata": {
+        "sizeBytes": 788,
+        "width": 1024,
+        "height": 1024,
+        "alt": "Sparktype-logo2.svg"
+      }
+    },
+    "assets/originals/1759013619560-sparktype-dark.png": {
+      "referencedIn": [
+        "content/about-us2.md"
+      ],
+      "metadata": {
+        "sizeBytes": 1419482,
+        "width": 1024,
+        "height": 1024,
+        "alt": "sparktype-dark.png"
+      }
+    }
+  }
+}

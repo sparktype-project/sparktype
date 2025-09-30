@@ -348,7 +348,7 @@ class LocalImageService implements ImageService {
           
           finalBlob = await Promise.race([compressionPromise, timeoutPromise]);
         }
-        
+
         // 4. Store the result in the persistent cache.
         await setCachedDerivative(cacheKey, finalBlob);
 
@@ -433,13 +433,25 @@ class LocalImageService implements ImageService {
     console.log(`[LocalImageService] Starting export for ${allImageRefs.length} image references`);
     
     // 1. Add all original source images for this site to the export map.
+    // IMPORTANT: Only export images that are true originals, not derivatives
+    // Derivatives have transform parameters in their filenames like _w256_hauto_c-fit_g-center
+    // Pattern matches: _w{width}_h{height}_c-{crop}_g-{gravity}
+    const derivativePattern = /_w(auto|\d+)_h(auto|\d+)_c-[^_]+_g-[^_]+/;
+
     for (const ref of allImageRefs) {
       if (ref.serviceId === 'local' && !exportableMap.has(ref.src)) {
+        const filename = ref.src.split('/').pop() || '';
+
+        // Skip if this looks like a derivative image (has transform parameters in filename)
+        if (derivativePattern.test(filename)) {
+          console.log(`[LocalImageService] Skipping derivative image from originals export: ${ref.src}`);
+          continue;
+        }
+
         try {
           const sourceBlob = await localSiteFs.getImageAsset(siteId, ref.src);
           if (sourceBlob) {
             // Export originals to _site/assets/originals/
-            const filename = ref.src.split('/').pop();
             const exportPath = `_site/assets/originals/${filename}`;
             exportableMap.set(exportPath, sourceBlob);
             console.log(`[LocalImageService] Added source image: ${exportPath}`);
@@ -466,16 +478,17 @@ class LocalImageService implements ImageService {
     try {
       const derivativeKeys = await getAllCacheKeys(siteId);
       console.log(`[LocalImageService] Found ${derivativeKeys.length} cached derivative keys`);
-      
+
       for (const key of derivativeKeys) {
         // Extract the path after siteId/ (should be assets/derivatives/filename)
         const relativePath = key.substring(siteId.length + 1);
-        if (!exportableMap.has(relativePath)) {
+        const bundlePath = `_site/${relativePath}`;
+        if (!exportableMap.has(bundlePath)) {
           try {
             const derivativeBlob = await getCachedDerivative(key);
             if (derivativeBlob) {
-              exportableMap.set(relativePath, derivativeBlob);
-              console.log(`[LocalImageService] Added cached derivative: ${relativePath}`);
+              exportableMap.set(bundlePath, derivativeBlob);
+              console.log(`[LocalImageService] Added cached derivative: ${bundlePath}`);
             } else {
               console.warn(`[LocalImageService] Derivative blob is null for key: ${key}`);
             }

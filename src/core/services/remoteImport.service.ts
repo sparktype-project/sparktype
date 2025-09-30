@@ -139,32 +139,12 @@ export async function processSiteZip(zipData: ArrayBuffer): Promise<LocalSiteDat
   const layoutFiles = await Promise.all(layoutPromises);
 
   const imageAssets: { [path: string]: Blob } = {};
-  
-  // Handle originals
-  const originalsFolder = signumFolder.folder('assets/originals');
-  if (originalsFolder) {
-    for (const filename in originalsFolder.files) {
-      const file = originalsFolder.files[filename];
-      if (!file.dir) {
-        const path = `assets/originals/${file.name.split('/').pop()}`;
-        imageAssets[path] = await file.async('blob');
-      }
-    }
-  }
 
-  // Handle derivatives  
-  const derivativesFolder = signumFolder.folder('assets/derivatives');
-  if (derivativesFolder) {
-    for (const filename in derivativesFolder.files) {
-      const file = derivativesFolder.files[filename];
-      if (!file.dir) {
-        const path = `assets/derivatives/${file.name.split('/').pop()}`;
-        imageAssets[path] = await file.async('blob');
-      }
-    }
-  }
+  // IMPORTANT: Only import ORIGINAL images listed in media.json
+  // Derivatives will be regenerated automatically on-demand
+  // This ensures siteImageAssetsStore only contains user-uploaded originals
 
-  // Handle data files (e.g., media.json)
+  // Handle data files (e.g., media.json) FIRST to know which images to import
   let mediaManifestProcessed = false;
   const dataFolder = signumFolder.folder('data');
   if (dataFolder && manifest.dataFiles?.includes('data/media.json')) {
@@ -185,6 +165,22 @@ export async function processSiteZip(zipData: ArrayBuffer): Promise<LocalSiteDat
         if (importResult.success) {
           console.log(`[ZipImport] ✅ Media manifest imported: ${importResult.imagesImported} images processed`);
           mediaManifestProcessed = true;
+
+          // Now import the actual image files listed in media.json
+          console.log('[ZipImport] Importing original image files from media.json...');
+          for (const imagePath of Object.keys(mediaManifest.images)) {
+            const filename = imagePath.split('/').pop();
+            if (!filename) continue;
+
+            // Try to find the image file in the originals folder
+            const imageFile = signumFolder.file(`assets/originals/${filename}`);
+            if (imageFile && !imageFile.dir) {
+              imageAssets[imagePath] = await imageFile.async('blob');
+              console.log(`[ZipImport] Imported original: ${imagePath}`);
+            } else {
+              console.warn(`[ZipImport] Image listed in media.json not found: ${imagePath}`);
+            }
+          }
         } else {
           console.warn(`[ZipImport] ⚠️ Media manifest import failed:`, importResult.errors);
         }
@@ -194,12 +190,12 @@ export async function processSiteZip(zipData: ArrayBuffer): Promise<LocalSiteDat
     }
   }
 
-  // Images are discovered from content and/or media manifest
+  // Log image import results
   const totalImages = Object.keys(imageAssets).length;
   if (mediaManifestProcessed) {
-    console.log(`[ZipImport] Processed ${totalImages} image files and imported media registry`);
+    console.log(`[ZipImport] ✅ Imported ${totalImages} original images from media.json`);
   } else {
-    console.log(`[ZipImport] Discovered ${totalImages} images from content scanning (no media.json found)`);
+    console.warn(`[ZipImport] ⚠️ No media.json found - no images imported. Derivatives will be regenerated on-demand.`);
   }
 
   return {

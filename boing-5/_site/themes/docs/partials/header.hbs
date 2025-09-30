@@ -1,0 +1,24 @@
+{{!-- Clean header for documentation --}}
+<header class="shadow">
+  <div class="max-w-7xl mx-auto px-4 py-2">
+    <div class="flex items-center justify-between">
+      {{!-- Page breadcrumb or title --}}
+      <div class="flex items-center space-x-4">
+        <p class="font-bold text-heading mb-0 font-headings">
+          {{#if contentFile.frontmatter.title}}
+            {{contentFile.frontmatter.title}}
+          {{else}}
+            {{manifest.title}}
+          {{/if}}
+        </p>
+      </div>
+
+      {{!-- Header content --}}
+      {{#if (themeData 'header_content')}}
+        <div class="flex-1 ml-6">
+          {{{themeData 'header_content'}}}
+        </div>
+      {{/if}}
+    </div>
+  </div>
+</header>

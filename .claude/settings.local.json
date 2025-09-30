@@ -38,7 +38,12 @@
       "Read(//Users/mattkevan/Downloads/boing-3/blog/**)",
       "Read(//Users/mattkevan/Downloads/boing-3/_site/assets/**)",
       "Read(//Users/mattkevan/Downloads/boing-3/**)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Read(//Users/mattkevan/Downloads/boing-5/_site/assets/originals/**)",
+      "Read(//Users/mattkevan/Downloads/boing-5/_site/assets/derivatives/**)",
+      "Read(//Users/mattkevan/Downloads/boing-5/_site/data/**)",
+      "Read(//Users/mattkevan/Downloads/boing-5/_site/**)",
+      "Read(//Users/mattkevan/Downloads/boing-5/**)"
     ]
   },
   "enableAllProjectMcpServers": true,

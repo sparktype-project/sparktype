@@ -132,29 +132,42 @@ export async function importSiteFromZip(zipFile: File): Promise<LocalSiteData & 
     const layoutFiles = await Promise.all(layoutPromises);
 
     const imageAssets: { [path: string]: Blob } = {};
-    
-    // Handle originals
-    const originalsFolder = signumFolder.folder('assets/originals');
-    if (originalsFolder) {
-        for (const filename in originalsFolder.files) {
-            const file = originalsFolder.files[filename];
-            if (!file.dir) {
-                const path = `assets/originals/${file.name.split('/').pop()}`;
-                imageAssets[path] = await file.async('blob');
-            }
-        }
-    }
 
-    // Handle derivatives  
-    const derivativesFolder = signumFolder.folder('assets/derivatives');
-    if (derivativesFolder) {
-        for (const filename in derivativesFolder.files) {
-            const file = derivativesFolder.files[filename];
-            if (!file.dir) {
-                const path = `assets/derivatives/${file.name.split('/').pop()}`;
-                imageAssets[path] = await file.async('blob');
+    // IMPORTANT: Only import ORIGINAL images listed in media.json
+    // Derivatives will be regenerated automatically on-demand
+    // This ensures siteImageAssetsStore only contains user-uploaded originals
+    const mediaFile = signumFolder.file('data/media.json');
+    if (mediaFile) {
+        try {
+            const mediaContent = await mediaFile.async('string');
+            const mediaManifest = JSON.parse(mediaContent);
+
+            console.log('[SiteBackup] Importing images from media.json...');
+
+            // Import only originals listed in media.json
+            if (mediaManifest.images && typeof mediaManifest.images === 'object') {
+                for (const imagePath of Object.keys(mediaManifest.images)) {
+                    // Extract filename from path (e.g., "assets/originals/photo.jpg" -> "photo.jpg")
+                    const filename = imagePath.split('/').pop();
+                    if (!filename) continue;
+
+                    // Try to find the image file in the originals folder
+                    const imageFile = signumFolder.file(`assets/originals/${filename}`);
+                    if (imageFile && !imageFile.dir) {
+                        imageAssets[imagePath] = await imageFile.async('blob');
+                        console.log(`[SiteBackup] Imported original: ${imagePath}`);
+                    } else {
+                        console.warn(`[SiteBackup] Image listed in media.json not found: ${imagePath}`);
+                    }
+                }
             }
+
+            console.log(`[SiteBackup] Imported ${Object.keys(imageAssets).length} original images from media.json`);
+        } catch (error) {
+            console.error('[SiteBackup] Failed to parse media.json, skipping image import:', error);
         }
+    } else {
+        console.warn('[SiteBackup] No media.json found, skipping image import');
     }
 
     return {
