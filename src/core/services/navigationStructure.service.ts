@@ -31,8 +31,8 @@ function buildNavLinks(
         // For export mode and iframe, generate clean directory URLs and relative paths
         const exportUrl = generateExportUrl(node, siteData.manifest, undefined, siteData, undefined, false, options.forIframe);
         if (options.forIframe) {
-          // For iframe, use the URL directly (already has leading slash)
-          href = exportUrl;
+          // For iframe, use the URL directly - convert empty string to "/" for homepage
+          href = exportUrl === '' ? '/' : exportUrl;
         } else if (exportUrl === '') {
           // Homepage - calculate relative path to homepage
           href = getRelativePath(currentPagePath, 'index.html');
