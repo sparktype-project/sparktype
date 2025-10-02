@@ -190,7 +190,7 @@
 .z-30 { z-index: 30; }
 .z-40 { z-index: 40; }
 .z-50 { z-index: 50; }
-
+.z-100 { z-index: 100; }
 /* Overflow */
 .overflow-auto { overflow: auto; }
 .overflow-hidden { overflow: hidden; }
@@ -775,6 +775,34 @@
 .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
 
 /* ==========================================================================
+   OPACITY
+   ========================================================================== */
+
+.opacity-0 {
+  opacity: 0;
+}
+
+.opacity-10 {
+  opacity: 0.1;
+}
+
+.opacity-20 {
+  opacity: 0.2;
+}
+
+.opacity-40 {
+  opacity: 0.4;
+}
+
+.opacity-60 {
+  opacity: 0.6;
+}
+
+.opacity-80 {
+  opacity: 0.8;
+}
+
+/* ==========================================================================
    BACKDROP AND FILTER UTILITIES
    ========================================================================== */
 .backdrop-blur-sm { backdrop-filter: blur(4px); }
@@ -831,6 +859,7 @@
   .sm\:px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
   .sm\:py-4 { padding-top: 1rem; padding-bottom: 1rem; }
   .sm\:py-6 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+
   
   .sm\:gap-4 { gap: 1rem; }
   .sm\:gap-6 { gap: 1.5rem; }
@@ -870,6 +899,7 @@
   .md\:text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
   .md\:text-5xl { font-size: 3rem; line-height: 1; }
   
+  .m\:p-0 { padding: 0;}
   .md\:p-4 { padding: 1rem; }
   .md\:p-6 { padding: 1.5rem; }
   .md\:p-8 { padding: 2rem; }
@@ -885,6 +915,12 @@
   .md\:gap-8 { gap: 2rem; }
   .md\:gap-10 { gap: 2.5rem; }
   .md\:gap-12 { gap: 3rem; }
+  
+  .md\:mt-0 {margin-top: 0;}
+
+  .md\:relative { position: relative; }
+  .md\:z-0 { z-index: 0; }
+  .md\:translate-x-0 { transform: translateX(0); }
 }
 
 /* Large screens and up (desktops) */

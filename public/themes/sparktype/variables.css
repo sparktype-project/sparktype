@@ -20,6 +20,9 @@
   --color-primary: #3b82f6;
   --color-border: #e5e7eb;
   
+  .bg-page {
+   background-color: var(--color-background);
+  }
   /* ==========================================================================
      SEMANTIC COLOR VARIATIONS
      ========================================================================== */
