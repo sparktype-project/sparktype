@@ -27,7 +27,6 @@ export default function SparkotypeLogo({
 
   return (
     <svg className="rounded-lg m-auto" width={size} height={size} viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="1024" height="1024" fill="black"/>
       <path d="M328.212 919L485.952 571.735L243 593.192L680.395 105L537.044 452.258L780 430.8L328.212 919Z" fill="url(#paint0_linear_1717_1427)"/>
       <defs>
       <linearGradient id="paint0_linear_1717_1427" x1="522.308" y1="916" x2="522.308" y2="140" gradientUnits="userSpaceOnUse">

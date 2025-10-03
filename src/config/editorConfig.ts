@@ -100,12 +100,11 @@ export const CORE_THEMES: ThemeInfo[] = [
     path: 'sparktype'
   },
   {
-    id: 'docs',
-    name: 'Documentation',
-    path: 'docs'
+    id: 'sparkdocs',
+    name: 'Sparkdocs',
+    path: 'sparkdocs'
   },
 ];
-// Note: CORE_BLOCKS removed - collection views now use layout partials directly
 
 /**
  * Default configuration for a new site's homepage (index.md).

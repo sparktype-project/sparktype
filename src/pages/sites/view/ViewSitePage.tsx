@@ -3,14 +3,14 @@
 import SiteViewer from '@/features/viewer/components/SiteViewer';
 import ViewHeaderContent from '@/features/viewer/components/ViewHeaderContent';
 import { useAppStore } from '@/core/state/useAppStore';
-import { useCallback, useEffect, useContext } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { HeaderContext } from '@/core/contexts/HeaderContext';
+import { useHeaderContext } from '@/core/contexts/HeaderContext';
 
 export default function ViewSitePage() {
   const { siteId = '' } = useParams<{ siteId: string }>();
   const site = useAppStore(useCallback((state) => state.getSiteById(siteId), [siteId]));
-  const { setHeaderContent } = useContext(HeaderContext);
+  const { setHeaderContent } = useHeaderContext();
 
   const pageTitle = `Preview: ${site?.manifest?.title || 'Loading...'}`;
 

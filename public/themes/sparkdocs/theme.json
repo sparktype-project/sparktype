@@ -1,5 +1,5 @@
 {
-  "name": "Documentation",
+  "name": "Sparkdocs",
   "version": "1.0.0",
   "files": [
     { "path": "theme.json", "type": "manifest" },
@@ -118,8 +118,22 @@
       "header_content": {
         "type": "string",
         "title": "Header content",
-        "description": "Optional HTML content for the header bar",
+        "description": "Optional HTML content for the header area",
         "format": "textarea",
+        "default": ""
+      },
+      "github_link": {
+        "type": "string",
+        "title": "Github link",
+        "description": "Link to a Github repository.",
+        "format": "textfield",
+        "default": ""
+      },
+      "discord_link": {
+        "type": "string",
+        "title": "Discord link",
+        "description": "Link do a Discord server.",
+        "format": "textfield",
         "default": ""
       },
       "footer_content": {
@@ -127,7 +141,7 @@
         "title": "Footer content",
         "description": "Optional HTML content for the footer",
         "format": "textarea",
-        "default": "© 2024 Documentation Site"
+        "default": ""
       }
     }
   }

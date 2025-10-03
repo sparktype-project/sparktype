@@ -5,7 +5,7 @@
 }}
 <div x-data="{ isMobileMenuOpen: false }" @keydown.escape.window="isMobileMenuOpen = false">
 <header class="sticky top-0 z-40 border-b border-border bg-background backdrop-blur supports-[backdrop-filter]:bg-background/95 font-headings">
-    <div class=" px-6">
+    <div class="px-4 md:px-6">
         <div class="flex h-14 items-center justify-between">
             
             {{!-- Site Logo/Title --}}
@@ -19,7 +19,7 @@
             </div>
 
             {{!-- Desktop Navigation --}}
-            <nav class="hidden md:flex items-center space-x-6">
+            <nav class="hidden md:flex items-center gap-4">
                 {{#each @root.navLinks}}
                     {{#if this.children.length}}
                         <div class="relative" 
@@ -38,7 +38,7 @@
                             @mouseleave="handleMouseLeave()">
                             
                             <a href="{{this.href}}" 
-                               class="flex items-center space-x-1 text-text hover:text-primary transition-colors font-medium"
+                               class="flex items-center space-x-1 text-text hover:text-primary transition-colors"
                                :aria-expanded="open.toString()">
                                 <span>{{this.label}}</span>
                                 <svg class="w-4 h-4 transform transition-transform duration-200" 
@@ -71,11 +71,15 @@
                         </div>
                     {{else}}
                         <a href="{{this.href}}" 
-                           class="text-text hover:text-primary transition-colors font-medium">
+                           class="text-text hover:text-primary transition-colors">
                             {{this.label}}
                         </a>
                     {{/if}}
                 {{/each}}
+
+                {{#if (themeData 'header_content')}}
+                    {{{themeData 'header_content'}}}
+                {{/if}}
             </nav>
 
             {{!-- Mobile Menu Button --}}
@@ -95,16 +99,6 @@
         </div>
     </div>
     
-    {{!-- Header Announcement Banner --}}
-    {{#if (themeData 'header_announcement')}}
-        <div class="bg-primary/10 border-t border-border">
-            <div class="container mx-auto px-4 py-2">
-                <div class="text-center text-sm text-primary">
-                    {{{themeData 'header_announcement'}}}
-                </div>
-            </div>
-        </div>
-    {{/if}}
 </header>
 
 {{!-- Mobile Menu Backdrop --}}
@@ -149,8 +143,8 @@
     </div>
 
     {{!-- Mobile Navigation --}}
-    <nav class="flex-1 overflow-y-auto p-4">
-        <div class="space-y-2">
+    <nav class="flex-1 overflow-y-auto p-4 font-headings">
+        <div class="flex gap-4 flex-col">
             {{#each @root.navLinks}}
                 {{#if this.children.length}}
                     {{!-- Navigation Item with Submenu --}}
@@ -194,12 +188,15 @@
                 {{else}}
                     {{!-- Simple Navigation Item --}}
                     <a href="{{this.href}}" 
-                       class="block px-3 py-2 text-base font-medium text-text hover:text-primary hover:bg-muted rounded-md transition-colors"
+                       class="block text-base text-text hover:text-primary hover:bg-muted rounded-md transition-colors"
                        @click="isMobileMenuOpen = false">
                         {{this.label}}
                     </a>
                 {{/if}}
             {{/each}}
+            {{#if (themeData 'header_content')}}
+                    {{{themeData 'header_content'}}}
+                {{/if}}
         </div>
     </nav>
 </div>

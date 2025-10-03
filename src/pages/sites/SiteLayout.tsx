@@ -64,7 +64,7 @@ function SiteIcon({ site }: { site: AppStore['sites'][0] }) {
   
   return (
     <div className="flex h-full w-full items-center justify-center border rounded-lg text-muted-foreground">
-      <span className="text-xl font-semibold">{firstLetter}</span>
+      <span className="text-lg font-semibold">{firstLetter}</span>
     </div>
   );
 }
@@ -143,7 +143,7 @@ export default function SiteLayout() {
                     to={item.to}
                     title={item.title}
                     className={cn(
-                      'flex h-8 w-8 items-center justify-center rounded-lg transition-colors overflow-hidden',
+                      'flex h-[32px] w-[32px] items-center justify-center rounded-lg transition-colors overflow-hidden',
                       item.isActive
                         ? 'bg-accent text-accent-foreground'
                         : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
