@@ -62,7 +62,9 @@
       "Bash(npx shadcn@latest add https://originui.com/r/comp-569.json --overwrite)",
       "Bash(cat:*)",
       "Bash(npm ls:*)",
-      "mcp__browsermcp__browser_press_key"
+      "mcp__browsermcp__browser_press_key",
+      "WebFetch(domain:docusaurus.io)",
+      "Bash(osascript:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

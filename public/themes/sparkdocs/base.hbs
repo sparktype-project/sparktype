@@ -50,22 +50,15 @@
   {{> header}}
 
   {{!-- Unified Layout: Flex on mobile, Grid on desktop --}}
-  <div class="flex flex-col md:grid md:grid-areas-sidebar-main min-h-screen" style="grid-template-columns: var(--sidebar-width) 1fr;">
+  <div class="flex flex-col lg:grid lg:grid-cols-[var(--sidebar-width)_1fr] min-h-screen">
     {{!-- Sidebar --}}
     {{> sidebar}}
 
     {{!-- Main Content --}}
-    <div class="flex flex-col flex-1 md:grid-area-main">
+    <div class="flex flex-col flex-1">
       {{!-- Page Content --}}
       <main class="flex-1">
-        {{#if contentFile.frontmatter.banner_image}}
-            <div class="">
-                {{{image fieldname="banner_image" class="w-full h-72 cover bg-center" alt=contentFile.frontmatter.title}}}
-            </div>
-        {{/if}}
-          {{{body}}}
-        </div>
-        
+        {{{body}}}
       </main>
 
       {{!-- Footer --}}
@@ -89,5 +82,27 @@
 
 
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+  {{!-- TOC Active Section Highlighting --}}
+  <script>
+    (function() {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const id = entry.target.getAttribute('id');
+          const link = document.querySelector(`.toc-link[href="#${id}"]`);
+
+          if (entry.isIntersecting) {
+            document.querySelectorAll('.toc-link').forEach(l => l.classList.remove('active'));
+            if (link) link.classList.add('active');
+          }
+        });
+      }, { rootMargin: '-80px 0px -80% 0px' });
+
+      // Observe all headings with IDs
+      document.querySelectorAll('h2[id], h3[id], h4[id]').forEach(heading => {
+        observer.observe(heading);
+      });
+    })();
+  </script>
 </body>
 </html>

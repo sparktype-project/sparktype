@@ -135,13 +135,13 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
       console.error('SavedFile is undefined in updateContentFileOnly');
       return;
     }
-    
+
     // Get site data for manifest and serialization options
     // const _site = get().getSiteById(siteId); // Not currently used
 
     // Serialize to markdown (blocks are empty in our current implementation)
     const markdownContent = stringifyToMarkdown(savedFile.frontmatter, savedFile.content);
-    
+
     await localSiteFs.saveContentFile(siteId, savedFile.path, markdownContent);
 
     // Update image references in registry
@@ -156,16 +156,12 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
       // Don't fail content saving if registry update fails
     }
 
-    // If silent mode (for autosave), skip state updates to prevent re-renders
-    if (silent) {
-      console.log('Silent mode: Skipping state updates to prevent re-renders');
-      return;
-    }
-
+    // ALWAYS update the Zustand store to keep it in sync with disk
+    // Silent mode is no longer used to skip updates - this was causing stale data bugs
     set(produce((draft: SiteSlice) => {
       const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
       if (!siteToUpdate?.contentFiles) return;
-      
+
       const fileIndex = siteToUpdate.contentFiles.findIndex(f => f.path === savedFile.path);
       if (fileIndex !== -1) siteToUpdate.contentFiles[fileIndex] = savedFile;
       else siteToUpdate.contentFiles.push(savedFile);
@@ -176,7 +172,7 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
 
     const newManifest = produce(siteData.manifest, (draft: any) => {
         draft.collectionItems = buildCollectionItemRefs(siteData as LocalSiteData);
-        
+
         // Sync frontmatter changes to structure nodes
         const findAndUpdateStructureNode = (nodes: StructureNode[]): void => {
           for (const node of nodes) {

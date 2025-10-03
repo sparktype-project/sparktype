@@ -8,7 +8,8 @@
     { "path": "partials/head.hbs", "type": "partial", "name": "head" },
     { "path": "partials/header.hbs", "type": "partial", "name": "header" },
     { "path": "partials/sidebar.hbs", "type": "partial", "name": "sidebar" },
-    { "path": "partials/footer.hbs", "type": "partial", "name": "footer" }
+    { "path": "partials/footer.hbs", "type": "partial", "name": "footer" },
+    { "path": "partials/toc.hbs", "type": "partial", "name": "toc" }
   ],
   "appearanceSchema": {
     "description": "Customise the colors, fonts and layout of your site.",

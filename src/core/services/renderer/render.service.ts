@@ -95,6 +95,7 @@ export async function render(
     const { remark } = await import('remark');
     const { default: remarkDirective } = await import('remark-directive');
     const { default: remarkRehype } = await import('remark-rehype');
+    const { default: rehypeSlug } = await import('rehype-slug');
     const { default: rehypeStringify } = await import('rehype-stringify');
     const { visit } = await import('unist-util-visit');
     
@@ -141,6 +142,7 @@ export async function render(
             };
           })
           .use(remarkRehype, { allowDangerousHtml: true })
+          .use(rehypeSlug) // Add unique IDs to all headings for TOC anchor navigation
           .use(rehypeStringify, { allowDangerousHtml: true });
         
         // Process markdown to HTML

@@ -120,9 +120,15 @@ export default function SiteViewer() {
               return; // Allow default behavior for external links
             }
 
-            // Skip anchor links on same page
+            // Handle anchor links on same page
             if (href.startsWith('#')) {
-              return; // Allow default behavior for anchor links
+              e.preventDefault();
+              const targetId = href.substring(1);
+              const targetElement = document.getElementById(targetId);
+              if (targetElement) {
+                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+              return;
             }
 
             // Prevent default navigation
