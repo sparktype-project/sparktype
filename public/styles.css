@@ -147,6 +147,12 @@
 .py-6 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
 .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
 
+/* Positioning */
+
+.top-0 {
+  top: 0;
+}
+.top-50px { top: 50px; }
 /* ==========================================================================
    LAYOUT UTILITIES
    Display, position, overflow, etc.
@@ -498,6 +504,7 @@
 .max-h-px { max-height: 1px; }
 .max-h-full { max-height: 100%; }
 .max-h-screen { max-height: 100vh; }
+.max-h-screen-minus-header { max-height: calc(100vh - 50px); }
 
 /* ==========================================================================
    TYPOGRAPHY UTILITIES
@@ -638,7 +645,10 @@
 .border-r-2 { border-right-width: 2px; }
 .border-r-4 { border-right-width: 4px; }
 .border-r-8 { border-right-width: 8px; }
-.border-r { border-right-width: 1px; }
+.border-r { 
+  border-right-width: 1px; 
+  border-right-style: solid;
+}
 
 .border-b-0 { border-bottom-width: 0px; }
 .border-b-1 { border-bottom-width: 1px; }
@@ -652,10 +662,10 @@
 .border-l-2 { border-left-width: 2px; }
 .border-l-4 { border-left-width: 4px; }
 .border-l-8 { border-left-width: 8px; }
-
-
-.border-b { border-width: 0 0 1px 0; }
-.border-l { border-width: 0 0 0 1px; }
+.border-l { 
+  border-left-width: 1px; 
+  border-left-style: solid;
+}
 
 /* Border Colors */
 .border-background { border-color: var(--color-background); }
@@ -921,6 +931,8 @@
   .md\:relative { position: relative; }
   .md\:z-0 { z-index: 0; }
   .md\:translate-x-0 { transform: translateX(0); }
+  .md\:top-50px { top: 50px; }
+
 }
 
 /* Large screens and up (desktops) */
@@ -1102,6 +1114,7 @@ html {
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
   -moz-tab-size: 4;
+  scroll-padding-top: 60px;
   tab-size: 4;
 }
 
@@ -1329,4 +1342,106 @@ img {
 }
 .bg-center {
   background-position: center;
+}
+
+
+
+/* ==========================================================================
+   TABLE OF CONTENTS (TOC) STYLES
+   ========================================================================== */
+.toc-container {
+  padding: 1.5rem 1rem;
+  border-left: 1px solid var(--color-border);
+}
+
+.toc-wrapper {
+  position: sticky;
+  top: 5rem;
+  max-height: calc(100vh - 6rem);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.toc-wrapper::-webkit-scrollbar {
+  width: 4px;
+}
+
+.toc-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.toc-wrapper::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+.toc-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+  color: var(--color-heading);
+  font-family: var(--font-headings);
+}
+
+.toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-headings);
+}
+
+.toc-item {
+  margin: 0;
+}
+
+.toc-level-2 {
+  margin-top: 0.5rem;
+}
+
+.toc-level-3 {
+  padding-left: 1rem;
+}
+
+.toc-level-4 {
+  padding-left: 2rem;
+}
+
+.toc-level-5 {
+  padding-left: 3rem;
+}
+
+.toc-level-6 {
+  padding-left: 4rem;
+}
+
+.toc-link {
+  display: block;
+  padding: 0.2rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-muted);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: all var(--transition-fast);
+ 
+}
+
+.toc-link:hover {
+  text-decoration: underline;
+}
+
+.toc-link.active {
+  color: var(--color-primary);
+  border-left-color: var(--color-primary);
+  font-weight: 500;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+/* Nested list styling */
+.toc-list .toc-list {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
 }

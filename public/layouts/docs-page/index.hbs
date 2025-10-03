@@ -9,7 +9,7 @@
 {{! Check if TOC should be shown (hide only when explicitly set to false) }}
 {{#if (eq contentFile.frontmatter.showToc false)}}
     {{! Single column layout without TOC }}
-    <article class="max-w-4xl mx-auto px-4 py-8 lg:px-8">
+    <article class="max-w-4xl px-4 py-8 lg:px-8">
         <h1>{{contentFile.frontmatter.title}}</h1>
         <p class="text-xl">{{contentFile.frontmatter.description}}</p>
 
@@ -28,8 +28,8 @@
     </article>
 {{else}}
     {{! Two-column layout with TOC (default) }}
-    <div class="flex flex-col lg:grid lg:grid-cols-[1fr_240px] lg:gap-8 max-w-7xl mx-auto px-4 lg:px-8">
-        <article class="py-8 max-w-4xl">
+    <div class="flex flex-row min-h-screen">
+        <article class="py-8 px-4 md:px-6 flex-1">
             <h1>{{contentFile.frontmatter.title}}</h1>
             <p class="text-xl">{{contentFile.frontmatter.description}}</p>
 
@@ -48,8 +48,15 @@
         </article>
 
         {{! Table of Contents }}
-        <div class="hidden lg:block">
-            {{> toc content=content}}
+        <div class="hidden md:block w-64 border-l border-border sticky top-50px max-h-screen-minus-header overflow-y-auto font-headings">
+           {{#if content}}
+            {{#if (toc content minLevel=2 maxLevel=4)}}
+                <aside class="py-6 px-4">
+                    <h2 class="text-xs font-semibold uppercase mb-3 mt-0 text-heading font-headings">On this page</h2>
+                    {{{toc_html content minLevel=2 maxLevel=4}}}
+                </aside>
+            {{/if}}
+            {{/if}}
         </div>
     </div>
 {{/if}}

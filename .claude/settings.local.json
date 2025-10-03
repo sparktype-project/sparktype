@@ -64,7 +64,10 @@
       "Bash(npm ls:*)",
       "mcp__browsermcp__browser_press_key",
       "WebFetch(domain:docusaurus.io)",
-      "Bash(osascript:*)"
+      "Bash(osascript:*)",
+      "Bash(for i in {1..20})",
+      "Bash(do echo \"Arrow down $i\")",
+      "Bash(done)"
     ]
   },
   "enableAllProjectMcpServers": true,
