@@ -1,8 +1,7 @@
 // src/features/editor/hooks/useUnloadPrompt.ts
 
 
-import { useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 
 /**
  * A hook that shows confirmation dialogs when the user attempts to navigate
@@ -18,7 +17,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
  * @param {boolean} shouldPrompt - A flag that determines whether the prompt should be shown.
  */
 export function useUnloadPrompt(shouldPrompt: boolean) {
-  const location = useLocation();
 
   // Handle browser navigation (refresh, close, external navigation)
   useEffect(() => {

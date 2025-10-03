@@ -130,7 +130,7 @@ export interface ContentSlice {
 
 export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], ContentSlice> = (set, get) => ({
   
-  updateContentFileOnly: async (siteId, savedFile, silent = false) => {
+  updateContentFileOnly: async (siteId, savedFile) => {
     if (!savedFile) {
       console.error('SavedFile is undefined in updateContentFileOnly');
       return;
