@@ -67,6 +67,12 @@
   --transition-slow: 500ms ease-in-out;
 }
 
+.geist-mono {
+  font-family: "Geist Mono", monospace;
+  font-weight: 400;
+  font-style: normal;
+}
+
 .gentium-book-plus-regular {
   font-family: "Gentium Book Plus", serif;
   font-weight: 400;
@@ -102,5 +108,12 @@
   font-family: "Inter", sans-serif;
   font-optical-sizing: auto;
   font-weight: 700;
+  font-style: normal;
+}
+
+.inter-regular {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
   font-style: normal;
 }

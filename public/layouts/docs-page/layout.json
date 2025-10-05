@@ -2,7 +2,7 @@
   "name": "Documentation page",
   "version": "1.0.0",
   "description": "A clean layout for documentation pages with optional table of contents.",
-  "layoutType": "single",
+  "layoutType": "page",
   "files": [
     { "path": "layout.json", "type": "manifest" },
     { "path": "index.hbs", "type": "template" }

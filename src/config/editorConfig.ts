@@ -63,6 +63,13 @@ export const CORE_LAYOUTS: LayoutInfo[] = [
     path: 'docs-page',
     description: "A clean, single-column layout for documentation pages'."
   },
+  {
+    id: 'hero-page',
+    name: 'Hero page',
+    type: 'single', // For individual content pages
+    path: 'hero-page',
+    description: "A clean, single-column layout for documentation pages'."
+  },
   // --- "Blog" Content Layouts ---
   {
     id: 'blog-post',
