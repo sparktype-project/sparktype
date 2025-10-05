@@ -1,0 +1,30 @@
+{
+  "name": "Portfolio Grid",
+  "version": "1.0.0",
+  "description": "Displays a visual grid of items from a 'Portfolio' collection.",
+  "layoutType": "collection",
+  "templateType": "collection",
+  "parentLayout": "base",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" },
+    { "path": "partials/project-card.hbs", "type": "partial" }
+  ],
+  "itemSchema": {
+    "title": "Portfolio Project",
+    "description": "This layout displays items that conform to the 'Portfolio Project' schema.",
+    "type": "object",
+    "properties": {
+      "title": { "type": "string" },
+      "client": { "type": "string" },
+      "featured_image": { "type": "string" }
+    }
+  },
+  "displayTypes": {
+    "project-card": {
+      "partial": "project-card",
+      "imageContext": "grid",
+      "description": "Square grid cards showcasing portfolio projects"
+    }
+  }
+}

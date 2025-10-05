@@ -1,7 +1,7 @@
 // src/core/services/builder/asset.service.ts
 
 import type { LocalSiteData, SiteBundle, ImageRef, ThemeManifest, LayoutManifest } from '@/core/types';
-import { getAssetContent, getJsonAsset } from '@/core/services/config/configHelpers.service';
+import { getAssetContent, getJsonAsset, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
 import { getActiveImageService } from '@/core/services/images/images.service';
 import { cleanupOrphanedImages } from '@/core/services/images/imageCleanup.service';
 import { CSS_CONFIG } from '@/config/editorConfig';
@@ -180,36 +180,68 @@ export async function bundleAllAssets(bundle: SiteBundle, siteData: LocalSiteDat
         // Don't throw - allow export to continue even if image bundling fails
     }
 
-    // 4. Bundle the active theme's files
+    // 4. Bundle the active theme's files (base.hbs, partials, stylesheets)
     try {
-        console.log(`[AssetBuilder] Bundling theme: ${siteData.manifest.theme.name}`);
-        await bundleAssetFiles(bundle, siteData, 'theme', siteData.manifest.theme.name);
-        console.log(`[AssetBuilder] ✅ Theme bundled successfully`);
+        const themeName = siteData.manifest.theme.name;
+        console.log(`[AssetBuilder] Bundling theme: ${themeName}`);
+
+        const themeManifest = await getJsonAsset<ThemeManifest>(siteData, 'theme', themeName, 'theme.json');
+        if (!themeManifest) {
+            throw new Error(`Theme manifest not found: ${themeName}`);
+        }
+
+        // Bundle theme manifest
+        bundle[`_site/themes/${themeName}/theme.json`] = JSON.stringify(themeManifest, null, 2);
+
+        // Bundle theme files (base.hbs, partials, stylesheets)
+        await Promise.all(themeManifest.files.map(async (file) => {
+            const content = await getThemeAssetContent(siteData, themeName, file.path);
+            if (content) {
+                bundle[`_site/themes/${themeName}/${file.path}`] = content;
+            }
+        }));
+
+        // 5. Bundle all theme layouts and their files
+        if (themeManifest.layouts && siteData.contentFiles) {
+            const usedLayoutIds = [...new Set(siteData.contentFiles.map(f => f.frontmatter.layout))];
+            console.log(`[AssetBuilder] Bundling ${usedLayoutIds.length} theme layouts: ${usedLayoutIds.join(', ')}`);
+
+            for (const layoutId of usedLayoutIds) {
+                const layoutRef = themeManifest.layouts.find(l => l.id === layoutId);
+                if (!layoutRef || layoutRef.type === 'base') continue;
+
+                // Load layout manifest
+                const layoutManifestContent = await getThemeAssetContent(
+                    siteData,
+                    themeName,
+                    `${layoutRef.path}/layout.json`
+                );
+
+                if (layoutManifestContent) {
+                    const layoutManifest = JSON.parse(layoutManifestContent) as LayoutManifest;
+
+                    // Bundle layout manifest
+                    bundle[`_site/themes/${themeName}/${layoutRef.path}/layout.json`] = layoutManifestContent;
+
+                    // Bundle all layout files (templates and partials)
+                    await Promise.all((layoutManifest.files || []).map(async (file) => {
+                        const content = await getThemeAssetContent(
+                            siteData,
+                            themeName,
+                            `${layoutRef.path}/${file.path}`
+                        );
+                        if (content) {
+                            bundle[`_site/themes/${themeName}/${layoutRef.path}/${file.path}`] = content;
+                        }
+                    }));
+                }
+            }
+        }
+
+        console.log(`[AssetBuilder] ✅ Theme and layouts bundled successfully`);
     } catch (error) {
         console.error(`[AssetBuilder] ❌ Theme bundling failed:`, error);
         console.warn(`[AssetBuilder] Site export will continue without theme files - styling may not work correctly`);
-    }
-
-    // 5. Bundle all unique, used layouts' files
-    try {
-        if (siteData.contentFiles) {
-            const usedLayoutIds = [...new Set(siteData.contentFiles.map(f => f.frontmatter.layout))];
-            console.log(`[AssetBuilder] Bundling ${usedLayoutIds.length} layouts: ${usedLayoutIds.join(', ')}`);
-
-            await Promise.all(
-                usedLayoutIds.map(async (layoutId) => {
-                    try {
-                        await bundleAssetFiles(bundle, siteData, 'layout', layoutId);
-                    } catch (error) {
-                        console.warn(`[AssetBuilder] Failed to bundle layout ${layoutId}:`, error);
-                    }
-                })
-            );
-            console.log(`[AssetBuilder] ✅ Layouts bundled successfully`);
-        }
-    } catch (error) {
-        console.error(`[AssetBuilder] ❌ Layout bundling failed:`, error);
-        console.warn(`[AssetBuilder] Site export will continue without layout files - layouts may not work correctly`);
     }
 
     // 6. Generate media.json data file

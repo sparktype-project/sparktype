@@ -1,6 +1,6 @@
 {
   "name": "Sparktype theme",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "files": [
     { "path": "theme.json", "type": "manifest" },
     { "path": "base.hbs", "type": "base" },
@@ -8,6 +8,66 @@
     { "path": "partials/head.hbs", "type": "partial", "name": "head" },
     { "path": "partials/header.hbs", "type": "partial", "name": "header" },
     { "path": "partials/footer.hbs", "type": "partial", "name": "footer" }
+  ],
+  "stylesheets": [
+    { "path": "variables.css", "type": "main" }
+  ],
+  "layouts": [
+    {
+      "id": "base",
+      "name": "Base Layout",
+      "type": "base",
+      "path": "base",
+      "description": "Root layout providing HTML structure"
+    },
+    {
+      "id": "page",
+      "name": "Standard Page",
+      "type": "layout",
+      "path": "layouts/page",
+      "layoutType": "single",
+      "description": "Clean single-column layout for standard pages"
+    },
+    {
+      "id": "hero-page",
+      "name": "Hero Page",
+      "type": "layout",
+      "path": "layouts/hero-page",
+      "layoutType": "single",
+      "description": "Landing page with bold title and call to action"
+    },
+    {
+      "id": "blog-post",
+      "name": "Blog Post",
+      "type": "layout",
+      "path": "layouts/blog-post",
+      "layoutType": "single",
+      "description": "Layout for individual blog post articles"
+    },
+    {
+      "id": "blog-listing",
+      "name": "Blog Listing",
+      "type": "layout",
+      "path": "layouts/blog-listing",
+      "layoutType": "collection",
+      "description": "Displays a list of blog posts"
+    },
+    {
+      "id": "portfolio-project",
+      "name": "Portfolio Project",
+      "type": "layout",
+      "path": "layouts/portfolio-project",
+      "layoutType": "single",
+      "description": "Detailed portfolio project page"
+    },
+    {
+      "id": "portfolio-grid",
+      "name": "Portfolio Grid",
+      "type": "layout",
+      "path": "layouts/portfolio-grid",
+      "layoutType": "collection",
+      "description": "Visual grid of portfolio projects"
+    }
   ],
   "appearanceSchema": {
     "title": "Theme customisation",

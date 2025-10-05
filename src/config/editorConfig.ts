@@ -42,75 +42,21 @@ export const DEFAULT_PAGE_LAYOUT_PATH = 'page';
 /**
  * Layout definitions
  *
- * - `type: 'single'`: A blueprint for a single piece of content (e.g., a blog post).
- * - `type: 'collection'`: A blueprint for a page that displays a list of other
- *   content items (e.g., a blog listing page).
+ * NOTE: Layouts are now defined within themes (see theme.json -> layouts array).
+ * This array is kept for backward compatibility but will be empty.
+ * Use getAvailableLayouts() from configHelpers.service to get layouts from the active theme.
  * ============================================================================
  */
-export const CORE_LAYOUTS: LayoutInfo[] = [
-  // --- Standard Page Layouts ---
-  {
-    id: 'page',
-    name: 'Standard page',
-    type: 'single', // For individual content pages
-    path: 'page',
-    description: "A clean, single-column layout for standard pages like 'About Us'."
-  },
-  {
-    id: 'docs-page',
-    name: 'Documentation page',
-    type: 'single', // For individual content pages
-    path: 'docs-page',
-    description: "A clean, single-column layout for documentation pages'."
-  },
-  {
-    id: 'hero-page',
-    name: 'Hero page',
-    type: 'single', // For individual content pages
-    path: 'hero-page',
-    description: "A clean, single-column layout for documentation pages'."
-  },
-  // --- "Blog" Content Layouts ---
-  {
-    id: 'blog-post',
-    name: 'Blog post',
-    type: 'single', // A blueprint for one blog post
-    path: 'blog-post', // Corresponds to the folder /public/layouts/blog-post/
-    description: "The standard layout for an individual blog post article."
-  },
-  {
-    id: 'blog-listing',
-    name: 'Blog listing',
-    type: 'collection', // This layout is designed to display a list of items
-    path: 'blog-listing', // Corresponds to the folder /public/layouts/blog-listing/
-    description: "Displays a paginated list of items from a 'Blog' collection."
-  },
-
-  // --- "Portfolio" Content Layouts ---
-  {
-    id: 'portfolio-project',
-    name: 'Portfolio project',
-    type: 'single', // A blueprint for one portfolio project
-    path: 'portfolio-project',
-    description: "The layout for a single, detailed portfolio project page."
-  },
-  {
-    id: 'portfolio-grid',
-    name: 'Portfolio grid',
-    type: 'collection', // This layout displays a list of portfolio projects
-    path: 'portfolio-grid',
-    description: "Displays a visual grid of items from a 'Portfolio' collection."
-  },
-];
+export const CORE_LAYOUTS: LayoutInfo[] = [];
 
 /**
- * The master list of all built-in themes. 
+ * The master list of all built-in themes.
  */
 export const CORE_THEMES: ThemeInfo[] = [
   {
-    id: 'default',
-    name: 'Sparktype',
-    path: 'sparktype'
+    id: 'sparksite',
+    name: 'Sparksite',
+    path: 'sparksite'
   },
   {
     id: 'sparkdocs',

@@ -1,0 +1,63 @@
+{
+  "name": "Portfolio Project",
+  "version": "1.0.0",
+  "description": "The layout for a single, detailed portfolio project page.",
+  "layoutType": "single",
+  "templateType": "item",
+  "parentLayout": "base",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" }
+  ],
+  "schema": {
+    "title": "Portfolio Project Fields",
+    "type": "object",
+    "properties": {
+      "client": {
+        "type": "string",
+        "title": "Client Name"
+      },
+      "project_url": {
+        "type": "string",
+        "format": "uri",
+        "title": "Live Project URL"
+      },
+      "technologies": {
+        "type": "array",
+        "title": "Technologies Used",
+        "items": { "type": "string" }
+      },
+      "gallery": {
+        "type": "array",
+        "title": "Image Gallery",
+        "items": {
+          "type": "string",
+          "title": "Gallery Image"
+        }
+      }
+    }
+  },
+  "uiSchema": {
+    "gallery": {
+      "items": {
+        "ui:widget": "imageUploader"
+      }
+    }
+  },
+  "image_presets": {
+    "featured_image": {
+      "contexts": {
+        "grid": "thumbnail",
+        "full": "hero"
+      },
+      "default": "hero"
+    },
+    "gallery": {
+      "contexts": {
+        "grid": "thumbnail",
+        "full": "gallery"
+      },
+      "default": "gallery"
+    }
+  }
+}

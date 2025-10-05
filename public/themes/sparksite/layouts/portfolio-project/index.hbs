@@ -1,0 +1,68 @@
+<article class="mw8 ph3 pv4 center">
+    <div class="project-details">
+        {{! Project Header }}
+        <header class="mb4">
+            <h1 class="f1 lh-title mb1">{{contentFile.frontmatter.title}}</h1>
+            {{#if contentFile.frontmatter.client}}
+                <h2 class="f4 fw4 mid-gray mt0">Client: {{contentFile.frontmatter.client}}</h2>
+            {{/if}}
+        </header>
+
+        {{! Featured Image }}
+        {{#if contentFile.frontmatter.featured_image}}
+            <figure class="featured-image-wrapper mv4">
+                {{{image fieldname="featured_image" class="db center mw-100" alt=contentFile.frontmatter.title}}}
+            </figure>
+        {{/if}}
+
+        {{! Main Project Description }}
+        <div>
+            {{#if blocks}}
+                {{{render_blocks blocks}}}
+            {{else}}
+                {{{markdown contentFile.content}}}
+            {{/if}}
+        </div>
+
+        {{! Project Metadata Sidebar }}
+        <aside class="mt5">
+            {{#if contentFile.frontmatter.project_url}}
+                <a href="{{contentFile.frontmatter.project_url}}" target="_blank" rel="noopener" class="db link br2 bg-blue white tc pa3 f5 fw6 mb3">
+                    View Live Project
+                </a>
+            {{/if}}
+
+            {{#if contentFile.frontmatter.technologies}}
+                <div class="ba b--black-10 br2 pa3">
+                    <h4 class="f6 fw6 mt0 mb3">Technologies Used</h4>
+                    <ul class="list pa0 ma0">
+                        {{#each contentFile.frontmatter.technologies}}
+                            <li class="dib mr2 mb2"><span class="f7 br-pill bg-light-gray pa2">{{this}}</span></li>
+                        {{/each}}
+                    </ul>
+                </div>
+            {{/if}}
+        </aside>
+
+        {{! Image Gallery Section }}
+        {{#if contentFile.frontmatter.gallery}}
+            <section class="gallery mt5">
+                <h3 class="f3">Project Gallery</h3>
+                <div class="gallery-grid grid gap3">
+                    {{#each contentFile.frontmatter.gallery}}
+                        <div class="gallery-item">
+                            {{{image src=this alt="Project gallery image"}}}
+                        </div>
+                    {{/each}}
+                </div>
+            </section>
+        {{/if}}
+    </div>
+</article>
+
+<style>
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+</style>

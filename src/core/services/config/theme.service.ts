@@ -143,12 +143,27 @@ export const getMergedThemeDataFieldsForForm = async (
   }
 };
 
+// Theme name compatibility mapping for migration
+const THEME_NAME_MAPPING: Record<string, string> = {
+  'docs': 'sparkdocs',
+  'default': 'sparksite',
+  'sparktype': 'sparksite'
+};
+
+// Helper function to normalize theme names for backward compatibility
+const normalizeThemeName = (themeName: string): string => {
+  return THEME_NAME_MAPPING[themeName] || themeName;
+};
+
 // Helper function to get theme data using existing infrastructure
 const getThemeData = async (themeName: string) => {
+  // Normalize theme name for backward compatibility
+  const normalizedName = normalizeThemeName(themeName);
+
   // Use the existing infrastructure to load theme.json
-  const response = await fetch(`/themes/${themeName}/theme.json`);
+  const response = await fetch(`/themes/${normalizedName}/theme.json`);
   if (!response.ok) {
-    throw new Error(`Failed to load theme: ${themeName}`);
+    throw new Error(`Failed to load theme: ${normalizedName} (original: ${themeName})`);
   }
   return response.json();
 };

@@ -3,7 +3,7 @@
 import Handlebars from 'handlebars';
 import type { LocalSiteData, PageResolutionResult } from '@/core/types';
 import { PageType } from '@/core/types';
-import { getAssetContent, getLayoutManifest } from '@/core/services/config/configHelpers.service';
+import { getAssetContent, getLayoutManifest, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
 import { getActiveImageService } from '@/core/services/images/images.service';
 import { getMergedThemeDataForForm } from '@/core/services/config/theme.service';
 import { prepareRenderEnvironment } from './asset.service';
@@ -22,6 +22,91 @@ export interface RenderOptions {
     isExport: boolean;
     relativeAssetPath?: string;
     forIframe?: boolean;
+}
+
+/**
+ * Renders a layout and its parent hierarchy (Jekyll-style inheritance).
+ * This function recursively renders layouts from child to parent until reaching the base layout.
+ *
+ * @param siteData Site data with manifest and theme information
+ * @param layoutId The layout ID to render (e.g., "page", "blog-post")
+ * @param context The Handlebars context data
+ * @param childHtml Optional HTML from child layout (passed as {{{body}}})
+ * @returns Rendered HTML string
+ */
+async function renderLayoutHierarchy(
+    siteData: LocalSiteData,
+    layoutId: string,
+    context: Record<string, unknown>,
+    childHtml?: string
+): Promise<string> {
+    const themeName = siteData.manifest.theme.name;
+
+    console.log(`[renderLayoutHierarchy] Rendering layout: ${layoutId}`);
+
+    // Special case: "base" layout is referenced directly from theme root
+    if (layoutId === 'base') {
+        const templateSource = await getThemeAssetContent(siteData, themeName, 'base.hbs');
+        if (!templateSource) {
+            throw new Error(`Base template not found: themes/${themeName}/base.hbs`);
+        }
+
+        const template = Handlebars.compile(templateSource);
+        const contextWithBody = {
+            ...context,
+            body: childHtml ? new Handlebars.SafeString(childHtml) : undefined
+        };
+
+        return template(contextWithBody);
+    }
+
+    // Get layout manifest to find its parent
+    const layoutManifest = await getLayoutManifest(siteData, layoutId);
+    if (!layoutManifest) {
+        throw new Error(`Layout manifest not found: ${layoutId}`);
+    }
+
+    // Load layout template from theme directory
+    const themeManifest = await getAssetContent(siteData, 'theme', themeName, 'theme.json');
+    if (!themeManifest) {
+        throw new Error(`Theme manifest not found: ${themeName}`);
+    }
+
+    const themeData = JSON.parse(themeManifest);
+    const layoutRef = themeData.layouts?.find((l: any) => l.id === layoutId);
+    if (!layoutRef) {
+        throw new Error(`Layout reference not found in theme: ${layoutId}`);
+    }
+
+    const templatePath = `${layoutRef.path}/index.hbs`;
+    const templateSource = await getThemeAssetContent(siteData, themeName, templatePath);
+
+    if (!templateSource) {
+        throw new Error(`Template not found: themes/${themeName}/${templatePath}`);
+    }
+
+    // Compile and render this layout level
+    const template = Handlebars.compile(templateSource);
+    const contextWithBody = {
+        ...context,
+        body: childHtml ? new Handlebars.SafeString(childHtml) : undefined
+    };
+    const html = template(contextWithBody);
+
+    // If this layout has a parent, recursively render the parent
+    if (layoutManifest.parentLayout) {
+        console.log(`[renderLayoutHierarchy] Layout ${layoutId} has parent: ${layoutManifest.parentLayout}`);
+        return renderLayoutHierarchy(
+            siteData,
+            layoutManifest.parentLayout,
+            context,
+            html  // Pass this level's output as {{{body}}} to parent
+        );
+    }
+
+    // This is the root layout - return final HTML
+    console.log(`[renderLayoutHierarchy] Layout ${layoutId} is root (no parent)`);
+    return html;
 }
 
 /**
@@ -81,10 +166,18 @@ export async function render(
     const pageContext = await assemblePageContext(synchronizedSiteData, enrichedResolution, options, imageService, pageLayoutManifest);
     const baseContext = await assembleBaseContext(synchronizedSiteData, enrichedResolution, options, imageService, pageContext);
 
-    // 4. Compile and Render the Main Body Content (Legacy mode - plain markdown)
-    const bodyTemplatePath = pageLayoutManifest.layoutType === 'collection' ? 'index.hbs' : 'index.hbs';
-    const bodyTemplateSource = await getAssetContent(synchronizedSiteData, 'layout', enrichedResolution.layoutPath, bodyTemplatePath);
-    if (!bodyTemplateSource) throw new Error(`Body template not found: layouts/${enrichedResolution.layoutPath}/${bodyTemplatePath}`);
+    // 4. Load layout template from theme directory
+    const themeName = synchronizedSiteData.manifest.theme.name;
+    const themeManifest = await getAssetContent(synchronizedSiteData, 'theme', themeName, 'theme.json');
+    if (!themeManifest) throw new Error(`Theme manifest not found: ${themeName}`);
+
+    const themeData = JSON.parse(themeManifest);
+    const layoutRef = themeData.layouts?.find((l: any) => l.id === enrichedResolution.layoutPath);
+    if (!layoutRef) throw new Error(`Layout not found in theme: ${enrichedResolution.layoutPath}`);
+
+    const bodyTemplatePath = `${layoutRef.path}/index.hbs`;
+    const bodyTemplateSource = await getThemeAssetContent(synchronizedSiteData, themeName, bodyTemplatePath);
+    if (!bodyTemplateSource) throw new Error(`Body template not found: themes/${themeName}/${bodyTemplatePath}`);
 
     // Process markdown content using the existing markdown helper
     const markdownContent = enrichedResolution.contentFile.content || '';
@@ -182,19 +275,25 @@ export async function render(
     
     const contentContext = {
         ...pageContext,
-        content: new Handlebars.SafeString(processedContent) 
+        content: new Handlebars.SafeString(processedContent)
     };
-    
+
     const bodyTemplate = Handlebars.compile(bodyTemplateSource);
     const bodyHtml = bodyTemplate(contentContext);
 
-    // 5. Compile and Render the Final Page Shell (base.hbs)
-    const baseTemplateSource = await getAssetContent(synchronizedSiteData, 'theme', synchronizedSiteData.manifest.theme.name, 'base.hbs');
-    if (!baseTemplateSource) throw new Error('Base theme template (base.hbs) not found.');
+    // 5. Use nested layout rendering (Jekyll-style inheritance)
+    console.log(`[Render Service] Starting nested layout rendering for: ${enrichedResolution.layoutPath}`);
 
-    const finalContextWithBody = { ...baseContext, body: new Handlebars.SafeString(bodyHtml) };
-    const baseTemplate = Handlebars.compile(baseTemplateSource);
-    return baseTemplate(finalContextWithBody);
+    const fullContext = { ...baseContext, ...contentContext };
+    const finalHtml = await renderLayoutHierarchy(
+        synchronizedSiteData,
+        enrichedResolution.layoutPath,
+        fullContext,
+        bodyHtml
+    );
+
+    console.log(`[Render Service] Nested layout rendering complete`);
+    return finalHtml;
 }
 
 /**

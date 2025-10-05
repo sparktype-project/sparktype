@@ -1,0 +1,26 @@
+{{! layouts/page/page.hbs }}
+
+{{#if contentFile.frontmatter.banner_image}}
+    <div class="">
+        {{{image fieldname="banner_image" class="w-full h-72 cover bg-center" alt=contentFile.frontmatter.title}}}
+    </div>
+{{/if}}
+
+<article class="max-w-4xl mx-auto px-4 py-8 lg:px-8">
+    
+    <h1>{{contentFile.frontmatter.title}}</h1>
+    <p class="text-xl">{{contentFile.frontmatter.description}} </p>
+
+    {{#if contentFile.frontmatter.featured_image}}
+        <div class="mb-6">
+            {{{image fieldname="featured_image" class="w-full" alt=contentFile.frontmatter.title}}}
+        </div>
+    {{/if}}
+    
+    {{{content}}}
+
+    {{#if contentFile.frontmatter.layoutConfig}}
+        <hr/>
+        {{{render_collection contentFile.frontmatter.layoutConfig}}}
+    {{/if}}
+</article>

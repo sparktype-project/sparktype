@@ -1,0 +1,53 @@
+{
+  "name": "Blog post",
+  "version": "1.0.0",
+  "description": "The standard layout for an individual blog post article.",
+  "layoutType": "single",
+  "templateType": "item",
+  "parentLayout": "base",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" }
+  ],
+  "schema": {
+    "title": "Blog Post Fields",
+    "type": "object",
+    "properties": {
+      "author": {
+        "type": "string",
+        "title": "Author Name"
+      },
+      "excerpt": {
+        "type": "string",
+        "title": "Excerpt",
+        "description": "A short summary of the post, used in listings and social media previews."
+      },
+      "tags": {
+        "type": "array",
+        "title": "Tags",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "uiSchema": {
+    "excerpt": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 4
+      }
+    }
+  },
+  "image_presets": {
+    "featured_image": {
+      "contexts": {
+        "card": "thumbnail",
+        "list": "banner_small",
+        "full": "page_display"
+      },
+      "default": "page_display"
+    },
+    "banner_image": "hero"
+  }
+}

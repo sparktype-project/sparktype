@@ -92,11 +92,40 @@ export default function FrontmatterSidebar({
     return allLayouts.find(l => l.id === frontmatter.layout) ?? null;
   }, [allLayouts, frontmatter.layout]);
 
+  // Display collection toggle state - determines if this page shows collection content
+  const isDisplayingCollection = useMemo(() => {
+    const templateType = currentLayoutManifest?.templateType ||
+      (currentLayoutManifest?.layoutType === 'collection' ? 'collection' : 'page');
+    return templateType === 'collection';
+  }, [currentLayoutManifest]);
+
   // If this is a collection item, its schema is defined by its parent collection's default item layout.
   const itemSchemaLayoutManifest = useMemo(() => {
     if (!isCollectionItem || !parentCollection) return null;
     return allLayouts.find(l => l.id === parentCollection.defaultItemLayout) ?? null;
   }, [allLayouts, isCollectionItem, parentCollection]);
+
+  const handleDisplayCollectionToggle = useCallback((checked: boolean) => {
+    if (checked) {
+      // Switching to collection mode - select first available collection layout
+      const collectionLayout = allLayouts.find(l => {
+        const type = l.templateType || (l.layoutType === 'collection' ? 'collection' : 'page');
+        return type === 'collection';
+      });
+      if (collectionLayout) {
+        onFrontmatterChange({ layout: collectionLayout.id, layoutConfig: undefined });
+      }
+    } else {
+      // Switching to page mode - select first available page layout
+      const pageLayout = allLayouts.find(l => {
+        const type = l.templateType || (l.layoutType === 'single' ? 'page' : 'collection');
+        return type === 'page';
+      });
+      if (pageLayout) {
+        onFrontmatterChange({ layout: pageLayout.id, layoutConfig: undefined });
+      }
+    }
+  }, [allLayouts, onFrontmatterChange]);
 
   const handleLayoutChange = useCallback((newLayoutId: string) => {
     const selectedLayout = allLayouts.find(l => l.id === newLayoutId);
@@ -104,7 +133,8 @@ export default function FrontmatterSidebar({
 
     // When layout changes, reset layoutConfig if the new layout is not a collection type.
     const newFrontmatter: Partial<MarkdownFrontmatter> = { layout: newLayoutId };
-    if (selectedLayout.layoutType !== 'collection') {
+    const type = selectedLayout.templateType || (selectedLayout.layoutType === 'collection' ? 'collection' : 'page');
+    if (type !== 'collection') {
       newFrontmatter.layoutConfig = undefined;
     }
     onFrontmatterChange(newFrontmatter);
@@ -155,18 +185,40 @@ export default function FrontmatterSidebar({
           {!isCollectionItem && (
             <AccordionItem value="layout">
               <AccordionTrigger>Layout</AccordionTrigger>
-              <AccordionContent className='p-2'>
+              <AccordionContent className='p-2 space-y-4'>
+                {/* Display Collection Toggle */}
+                <div className="flex items-center justify-between py-2 border-b">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="display-collection-toggle" className="text-sm font-medium">
+                      Display collection
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {isDisplayingCollection
+                        ? "This page displays a collection of items"
+                        : "This page displays standalone content"
+                      }
+                    </p>
+                  </div>
+                  <Switch
+                    id="display-collection-toggle"
+                    checked={isDisplayingCollection}
+                    onCheckedChange={handleDisplayCollectionToggle}
+                  />
+                </div>
+
+                {/* Layout Selector - filtered by mode */}
                 <LayoutSelector
                   siteId={siteId}
                   selectedLayoutId={frontmatter.layout || ''}
                   onChange={handleLayoutChange}
+                  filterByType={isDisplayingCollection ? 'collection' : 'page'}
                 />
               </AccordionContent>
             </AccordionItem>
           )}
 
-          {/* Collection Configuration - Shown only for pages using a 'collection' layout. */}
-          {currentLayoutManifest?.layoutType === 'collection' && (
+          {/* Collection Configuration - Shown only when displaying collection */}
+          {isDisplayingCollection && (
             <AccordionItem value="collection-config">
               <AccordionTrigger>Collection display</AccordionTrigger>
               <AccordionContent className='p-2'>

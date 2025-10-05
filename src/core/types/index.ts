@@ -20,6 +20,22 @@ export interface BaseAssetManifest {
 export interface ThemeManifest extends BaseAssetManifest {
   appearanceSchema?: import('@rjsf/utils').RJSFSchema;
   themeDataSchema?: import('@rjsf/utils').RJSFSchema;
+
+  // Theme-specific stylesheets
+  stylesheets?: Array<{
+    path: string;
+    type: 'main' | 'print' | 'addon';
+  }>;
+
+  // Layouts provided by this theme
+  layouts?: Array<{
+    id: string;
+    name: string;
+    type: 'base' | 'layout';
+    path: string;
+    layoutType?: 'single' | 'collection';
+    description?: string;
+  }>;
 }
 
 export interface ImagePreset {
@@ -67,6 +83,12 @@ interface DynamicRoute {
 export interface LayoutManifest extends BaseAssetManifest {
   id: string;
   layoutType: 'single' | 'collection';
+
+  // New template type system for clearer separation of concerns
+  templateType?: 'base' | 'page' | 'collection' | 'item';
+
+  // Parent layout for Jekyll-style inheritance
+  parentLayout?: string;
 
   // Schema for the page using this layout
   schema?: import('@rjsf/utils').RJSFSchema;

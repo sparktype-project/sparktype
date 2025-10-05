@@ -11,6 +11,7 @@ interface LayoutSelectorProps {
   siteId: string;
   selectedLayoutId: string;
   onChange: (newLayoutId: string) => void;
+  filterByType?: 'page' | 'collection' | 'item';
 }
 
 /**
@@ -18,7 +19,7 @@ interface LayoutSelectorProps {
  * It fetches all available layouts (both 'single' and 'collection' types)
  * and groups them in the dropdown for a better user experience.
  */
-export default function LayoutSelector({ siteId, selectedLayoutId, onChange }: LayoutSelectorProps) {
+export default function LayoutSelector({ siteId, selectedLayoutId, onChange, filterByType }: LayoutSelectorProps) {
   const [availableLayouts, setAvailableLayouts] = useState<LayoutManifest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,11 +47,22 @@ export default function LayoutSelector({ siteId, selectedLayoutId, onChange }: L
     loadLayouts();
   }, [siteData]);
 
+  // Filter layouts by templateType if specified
+  const filteredLayouts = useMemo(() => {
+    if (!filterByType) return availableLayouts;
+
+    return availableLayouts.filter(layout => {
+      // Use templateType if available, otherwise fall back to layoutType
+      const type = layout.templateType || (layout.layoutType === 'collection' ? 'collection' : 'page');
+      return type === filterByType;
+    });
+  }, [availableLayouts, filterByType]);
+
   // Group layouts for display in the Select component.
   // This uses a conceptual 'group' property from the layout's manifest.
   const groupedLayouts = useMemo(() => {
     const groups: Record<string, LayoutManifest[]> = {};
-    availableLayouts.forEach(layout => {
+    filteredLayouts.forEach(layout => {
       const groupName = (layout as any).group || (layout.layoutType === 'collection' ? 'Collection Layouts' : 'Page Layouts');
       if (!groups[groupName]) {
         groups[groupName] = [];
@@ -58,7 +70,7 @@ export default function LayoutSelector({ siteId, selectedLayoutId, onChange }: L
       groups[groupName].push(layout);
     });
     return groups;
-  }, [availableLayouts]);
+  }, [filteredLayouts]);
 
   const selectedLayout = availableLayouts.find(layout => layout.id === selectedLayoutId);
 

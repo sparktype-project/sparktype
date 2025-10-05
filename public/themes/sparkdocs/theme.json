@@ -1,6 +1,6 @@
 {
   "name": "Sparkdocs",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "files": [
     { "path": "theme.json", "type": "manifest" },
     { "path": "base.hbs", "type": "base" },
@@ -9,7 +9,59 @@
     { "path": "partials/header.hbs", "type": "partial", "name": "header" },
     { "path": "partials/sidebar.hbs", "type": "partial", "name": "sidebar" },
     { "path": "partials/footer.hbs", "type": "partial", "name": "footer" }
-    ],
+  ],
+  "stylesheets": [
+    { "path": "variables.css", "type": "main" }
+  ],
+  "layouts": [
+    {
+      "id": "base",
+      "name": "Base Layout",
+      "type": "base",
+      "path": "base",
+      "description": "Root layout providing HTML structure"
+    },
+    {
+      "id": "page",
+      "name": "Standard Page",
+      "type": "layout",
+      "path": "layouts/page",
+      "layoutType": "single",
+      "description": "Clean single-column layout for standard pages"
+    },
+    {
+      "id": "docs-page",
+      "name": "Documentation Page",
+      "type": "layout",
+      "path": "layouts/docs-page",
+      "layoutType": "single",
+      "description": "Documentation page with optional table of contents"
+    },
+    {
+      "id": "blog-post",
+      "name": "Blog Post",
+      "type": "layout",
+      "path": "layouts/blog-post",
+      "layoutType": "single",
+      "description": "Layout for individual blog post articles"
+    },
+    {
+      "id": "blog-listing",
+      "name": "Blog Listing",
+      "type": "layout",
+      "path": "layouts/blog-listing",
+      "layoutType": "collection",
+      "description": "Displays a list of blog posts"
+    },
+    {
+      "id": "hero-page",
+      "name": "Hero Page",
+      "type": "layout",
+      "path": "layouts/hero-page",
+      "layoutType": "single",
+      "description": "Landing page with bold title and call to action"
+    }
+  ],
   "appearanceSchema": {
     "description": "Customise the colors, fonts and layout of your site.",
     "type": "object",

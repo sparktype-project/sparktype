@@ -2,7 +2,7 @@
 
 import Handlebars from 'handlebars';
 import type { LocalSiteData, ThemeManifest, LayoutManifest, AssetFile } from '@/core/types';
-import { getJsonAsset, getAssetContent, getAvailableLayouts } from '@/core/services/config/configHelpers.service';
+import { getJsonAsset, getAssetContent, getAvailableLayouts, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
 // Block service removed - using layout partials instead
 import { coreHelpers } from './helpers';
 
@@ -20,7 +20,7 @@ function registerCoreHelpers(siteData: LocalSiteData): void {
 
 /**
  * Pre-compiles and registers all available theme, layout, and block templates with Handlebars.
- * This function registers partials from themes, layouts, and blocks to make them available
+ * This function registers partials from themes and layouts (now within themes) to make them available
  * during rendering.
  *
  * @param siteData The full site data, used to discover all available assets.
@@ -30,37 +30,43 @@ async function cacheAllTemplates(siteData: LocalSiteData): Promise<void> {
     Object.keys(Handlebars.partials).forEach(p => Handlebars.unregisterPartial(p));
 
     const { manifest } = siteData;
+    const themeName = manifest.theme.name;
     const allLayouts = await getAvailableLayouts(siteData);
 
-    // 2. Register partials from all available Layouts.
-    const layoutPromises = allLayouts.flatMap((layout: LayoutManifest) =>
-        (layout.files || []).filter((file: AssetFile) => file.type === 'partial').map(async (file: AssetFile) => {
-            const source = await getAssetContent(siteData, 'layout', layout.id, file.path);
-            if (source) {
-                // Register partials with a namespace to prevent collisions, e.g., 'blog-listing/partials/post-card'
-                const partialName = `${layout.id}/${file.path.replace('.hbs', '')}`;
-                Handlebars.registerPartial(partialName, source);
-            }
-        })
-    );
-
-    // 3. Register partials from the active Theme.
-    const themeManifest = await getJsonAsset<ThemeManifest>(siteData, 'theme', manifest.theme.name, 'theme.json');
+    // 2. Register theme partials (head, header, footer, sidebar, etc.)
+    const themeManifest = await getJsonAsset<ThemeManifest>(siteData, 'theme', themeName, 'theme.json');
     const themePartialPromises = (themeManifest?.files || [])
         .filter((file: AssetFile) => file.type === 'partial' && file.name)
         .map(async (partial: AssetFile) => {
-            const source = await getAssetContent(siteData, 'theme', manifest.theme.name, partial.path);
+            const source = await getThemeAssetContent(siteData, themeName, partial.path);
             if (source) {
                 // Theme partials are registered by their given name, e.g., 'header', 'footer'.
                 Handlebars.registerPartial(partial.name!, source);
             }
         });
 
-    // 4. Block templates removed - using layout partials instead
-    const blockTemplatePromises: Promise<void>[] = [];
+    // 3. Register layout partials from all theme layouts
+    const layoutPartialPromises = allLayouts.flatMap((layout: LayoutManifest) => {
+        // Get layout path from theme manifest
+        const layoutRef = themeManifest?.layouts?.find(l => l.id === layout.id);
+        if (!layoutRef) return [];
 
-    // 5. Wait for all file reading and registration to complete.
-    await Promise.all([...layoutPromises, ...themePartialPromises, ...blockTemplatePromises]);
+        return (layout.files || [])
+            .filter((file: AssetFile) => file.type === 'partial')
+            .map(async (file: AssetFile) => {
+                const partialPath = `${layoutRef.path}/${file.path}`;
+                const source = await getThemeAssetContent(siteData, themeName, partialPath);
+                if (source) {
+                    // Register partials with a namespace to prevent collisions
+                    // e.g., 'blog-listing/partials/post-card'
+                    const partialName = `${layout.id}/${file.path.replace('.hbs', '')}`;
+                    Handlebars.registerPartial(partialName, source);
+                }
+            });
+    });
+
+    // 4. Wait for all file reading and registration to complete.
+    await Promise.all([...themePartialPromises, ...layoutPartialPromises]);
 }
 
 /** Generates an inline <style> block from the theme configuration. */

@@ -1,0 +1,73 @@
+{
+  "name": "Blog listing",
+  "version": "1.0.0",
+  "description": "Displays a paginated list of items from a 'Blog' collection.",
+  "layoutType": "collection",
+  "templateType": "collection",
+  "parentLayout": "base",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" },
+    { "path": "partials/post-card.hbs", "type": "partial" },
+    { "path": "partials/post-full.hbs", "type": "partial" }
+  ],
+  "partials": [
+    {
+      "path": "partials/post-card.hbs",
+      "name": "Card View",
+      "description": "Compact cards with title, excerpt, and read more links",
+      "isDefault": true
+    },
+    {
+      "path": "partials/post-full.hbs",
+      "name": "Full Content",
+      "description": "Complete posts with full content displayed"
+    }
+  ],
+  "schema": {
+    "title": "Blog listing options",
+    "type": "object",
+    "properties": {
+      "listing_title": {
+        "type": "string",
+        "title": "Custom Page Title",
+        "description": "Override the default page title for this listing."
+      },
+      "listing_intro": {
+        "type": "string",
+        "title": "Introductory Text",
+        "description": "A paragraph of text to display above the list of posts."
+      }
+    }
+  },
+  "uiSchema": {
+    "listing_intro": {
+      "ui:widget": "textarea"
+    }
+  },
+  "itemSchema": {
+    "title": "Blog post",
+    "description": "This layout displays items that conform to the 'Blog Post' schema.",
+    "type": "object",
+    "properties": {
+      "title": { "type": "string" },
+      "date": { "type": "string", "format": "date" },
+      "author": { "type": "string" },
+      "excerpt": { "type": "string" },
+      "tags": { "type": "array", "items": { "type": "string" } },
+      "featured_image": { "type": "string" }
+    }
+  },
+  "displayTypes": {
+    "post-card": {
+      "partial": "post-card",
+      "imageContext": "card",
+      "description": "Compact cards with title, excerpt, and read more links"
+    },
+    "post-full": {
+      "partial": "post-full", 
+      "imageContext": "full",
+      "description": "Complete posts with full content displayed"
+    }
+  }
+}

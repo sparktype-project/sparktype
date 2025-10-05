@@ -1,0 +1,38 @@
+{
+  "name": "Hero page",
+  "version": "1.0.0",
+  "description": "A landing page layout with a bold title and call to action.",
+  "layoutType": "single",
+  "parentLayout": "base",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" }
+  ],
+  
+  "image_presets": {
+    "banner_image": {
+      "width": 1200,
+      "height": 660,
+      "crop": "scale"
+    },
+    "featured_image": {
+      "width": 600,
+      "crop": "scale"
+    }
+  },
+  "schema": {
+    "type": "object",
+    "properties": {
+      "cta_text": {
+        "type": "string",
+        "title": "Hero CTA text",
+        "description": "Call to action text."
+      },
+      "cta_link": {
+        "type": "string",
+        "title": "CTA link",
+        "description": "Call to action URL."
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "Standard page",
+  "version": "1.0.0",
+  "description": "A clean, single-column layout for standard pages like 'About Us'.",
+  "layoutType": "single",
+  "templateType": "page",
+  "parentLayout": "base",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" }
+  ],
+  
+  "image_presets": {
+    "banner_image": {
+      "width": 1200,
+      "height": 360,
+      "crop": "scale"
+    },
+    "featured_image": {
+      "width": 600,
+      "crop": "scale"
+    }
+  }
+}

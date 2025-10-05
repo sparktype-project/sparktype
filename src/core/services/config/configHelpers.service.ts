@@ -56,6 +56,32 @@ export function mergeUiSchemas(...schemas: (UiSchema | null | undefined)[]): UiS
 }
 
 /**
+ * Fetches asset content from theme directory (for layouts within themes).
+ * @param context The site context
+ * @param themeName The theme name
+ * @param assetPath The path within the theme (e.g., "layouts/page/index.hbs")
+ * @returns Promise resolving to file content or null
+ */
+export async function getThemeAssetContent(
+  context: { siteId: string },
+  themeName: string,
+  assetPath: string
+): Promise<string | null> {
+    const fullPath = `/themes/${themeName}/${assetPath}`;
+
+    if (fileContentCache.has(fullPath)) {
+        return fileContentCache.get(fullPath)!;
+    }
+
+    const promise = fetch(fullPath)
+        .then(res => (res.ok ? res.text() : null))
+        .catch(() => null);
+
+    fileContentCache.set(fullPath, promise);
+    return promise;
+}
+
+/**
  * Fetches the raw string content of any asset (theme, layout, or block).
  * It intelligently delegates loading to the appropriate source: public assets for core types,
  * and the dedicated assetStorage service for all custom, site-specific types.
@@ -146,24 +172,64 @@ export function getAvailableThemes(manifest?: Manifest): ThemeInfo[] {
 }
 
 /**
- * Fetches and processes the manifest for a specific layout.
+ * Fetches and processes the manifest for a specific layout from the active theme.
  * @param context The site context, containing siteId and the manifest.
  * @param layoutPath The ID of the layout to fetch (e.g., 'blog-post').
  * @returns The parsed LayoutManifest object, or null if not found.
  */
 export async function getLayoutManifest(context: SiteDataForAssets, layoutPath: string): Promise<LayoutManifest | null> {
-    const manifest = await getJsonAsset<LayoutManifest>(context, 'layout', layoutPath, 'layout.json');
-    if (manifest) {
-        manifest.id = layoutPath; // Ensure the manifest object includes its own ID
+    if (!context.manifest?.theme?.name) {
+        console.warn('[getLayoutManifest] No active theme found');
+        return null;
     }
-    return manifest;
+
+    const themeName = context.manifest.theme.name;
+
+    // Load theme manifest to find layout path
+    const themeManifest = await getJsonAsset<import('@/core/types').ThemeManifest>(
+        context,
+        'theme',
+        themeName,
+        'theme.json'
+    );
+
+    if (!themeManifest?.layouts) {
+        console.warn(`[getLayoutManifest] Theme ${themeName} has no layouts`);
+        return null;
+    }
+
+    const layoutRef = themeManifest.layouts.find(l => l.id === layoutPath);
+    if (!layoutRef || layoutRef.type === 'base') {
+        return null;
+    }
+
+    // Load layout manifest from theme directory
+    const manifestContent = await getThemeAssetContent(
+        context,
+        themeName,
+        `${layoutRef.path}/layout.json`
+    );
+
+    if (!manifestContent) {
+        console.warn(`[getLayoutManifest] Layout manifest not found: ${layoutRef.path}/layout.json`);
+        return null;
+    }
+
+    try {
+        const manifest = JSON.parse(manifestContent) as LayoutManifest;
+        manifest.id = layoutPath;
+        return manifest;
+    } catch (error) {
+        console.error(`[getLayoutManifest] Failed to parse layout manifest for ${layoutPath}:`, error);
+        return null;
+    }
 }
 
 /**
- * Gets a list of the full manifest objects for all available layouts,
+ * Gets a list of the full manifest objects for all available layouts from the ACTIVE THEME,
  * optionally filtered by a specific layout type ('single' or 'collection').
  *
- * @param context The site context, used to find custom layouts registered in the manifest.
+ * @param context The site context, used to find the active theme.
  * @param type An optional filter to return only 'single' or 'collection' layouts.
  * @returns A promise that resolves to an array of LayoutManifest objects.
  */
@@ -171,19 +237,40 @@ export async function getAvailableLayouts(
   context: SiteDataForAssets,
   type?: LayoutManifest['layoutType']
 ): Promise<LayoutManifest[]> {
-  if (!context.manifest) return [];
+  if (!context.manifest?.theme?.name) {
+    console.warn('[getAvailableLayouts] No active theme found');
+    return [];
+  }
 
-  const coreLayoutIds = CORE_LAYOUTS.map(l => l.id);
-  const customLayoutIds = context.manifest.layouts?.map(l => l.id) || [];
-  const allLayoutIds = [...new Set([...coreLayoutIds, ...customLayoutIds])];
+  const themeName = context.manifest.theme.name;
 
-  const manifestPromises = allLayoutIds.map(layoutId =>
+  // Load theme manifest to get its layouts
+  const themeManifest = await getJsonAsset<import('@/core/types').ThemeManifest>(
+    context,
+    'theme',
+    themeName,
+    'theme.json'
+  );
+
+  if (!themeManifest?.layouts) {
+    console.warn(`[getAvailableLayouts] Theme ${themeName} has no layouts`);
+    return [];
+  }
+
+  // Get layout IDs from theme (excluding 'base' type)
+  const layoutIds = themeManifest.layouts
+    .filter(l => l.type === 'layout')
+    .map(l => l.id);
+
+  // Load all layout manifests
+  const manifestPromises = layoutIds.map(layoutId =>
     getLayoutManifest(context, layoutId)
   );
 
   const allManifests = (await Promise.all(manifestPromises))
     .filter((m): m is LayoutManifest => m !== null);
 
+  // Filter by type if specified
   if (type) {
     return allManifests.filter(m => m.layoutType === type);
   }

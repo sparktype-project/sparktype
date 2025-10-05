@@ -67,7 +67,8 @@
       "Bash(osascript:*)",
       "Bash(for i in {1..20})",
       "Bash(do echo \"Arrow down $i\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(python3:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
