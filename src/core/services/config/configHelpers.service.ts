@@ -118,9 +118,8 @@ export async function getAssetContent(
     } else {
         // Custom assets are fetched from the dedicated assetStorage service.
         switch (assetType) {
-            // Note: When custom themes/layouts are implemented, their loaders will be added here.
-            // case 'theme':
-            //   return assetStorage.getCustomThemeFileContent(context.siteId, assetPath, fileName);
+            case 'theme':
+                return assetStorage.getCustomThemeFileContent(context.siteId, assetPath, fileName);
             // case 'layout':
             //   return assetStorage.getCustomLayoutFileContent(context.siteId, assetPath, fileName);
             case 'block':

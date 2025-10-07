@@ -283,3 +283,127 @@ export const AUTH_CONFIG = {
    */
   EDITING_DOMAIN: 'app.sparktype.org',
 } as const;
+
+/**
+ * Security configuration for external integrations and theme validation.
+ * Controls which external resources themes can load and import security policies.
+ */
+export const SECURITY_CONFIG = {
+  /**
+   * Trusted CDN domains allowed for external scripts in themes.
+   * These scripts will only load in published/exported sites, NOT in preview.
+   *
+   * External scripts must be declared in theme manifests and are subject to validation.
+   */
+  TRUSTED_SCRIPT_DOMAINS: [
+    // CDN Providers
+    'cdn.jsdelivr.net',
+    'unpkg.com',
+    'cdnjs.cloudflare.com',
+
+    // E-commerce
+    'cdn.snipcart.com',
+    'js.stripe.com',
+    'www.paypal.com',
+    'cdn.paddle.com',
+
+    // Analytics
+    'www.google-analytics.com',
+    'www.googletagmanager.com',
+    'plausible.io',
+    'cdn.usefathom.com',
+
+    // Forms & Captcha
+    'js.hcaptcha.com',
+    'www.google.com', // reCAPTCHA
+
+    // Social
+    'platform.twitter.com',
+    'connect.facebook.net',
+
+    // Icon Libraries
+    'kit.fontawesome.com',
+    'use.fontawesome.com',
+  ] as const,
+
+  /**
+   * Trusted font provider domains for CSS @import and url().
+   * Includes both commercial and privacy-focused font services.
+   *
+   * Themes can use @import from these domains in CSS files.
+   */
+  TRUSTED_FONT_DOMAINS: [
+    // Google Fonts
+    'fonts.googleapis.com',
+    'fonts.gstatic.com',
+
+    // Adobe Fonts (Typekit)
+    'use.typekit.net',
+    'use.typekit.com', // Legacy domain
+
+    // Fonts.com (Monotype)
+    'fast.fonts.net',
+    'fonts.com',
+
+    // Bunny Fonts (Privacy-friendly Google Fonts alternative, GDPR-compliant)
+    'fonts.bunny.net',
+
+    // Font Awesome (when using CSS)
+    'use.fontawesome.com',
+
+    // Other popular font CDNs
+    'fonts.adobe.com',
+    'cloud.typography.com', // Hoefler & Co.
+  ] as const,
+
+  /**
+   * File size limits for theme imports.
+   * Prevents zip bombs and excessive resource usage.
+   */
+  THEME_IMPORT_LIMITS: {
+    /** Maximum size for a single file within a theme (5MB) */
+    MAX_FILE_SIZE: 5 * 1024 * 1024,
+
+    /** Maximum total size for an entire theme package (20MB) */
+    MAX_TOTAL_SIZE: 20 * 1024 * 1024,
+
+    /** Maximum number of files in a theme package (500) */
+    MAX_FILE_COUNT: 500,
+
+    /** Maximum compression ratio to prevent zip bombs (100:1) */
+    MAX_DECOMPRESSION_RATIO: 100,
+  },
+
+  /**
+   * Allowed file extensions for theme imports.
+   * Only files with these extensions can be included in theme packages.
+   */
+  THEME_ALLOWED_EXTENSIONS: [
+    // Templates & Configuration
+    '.hbs', '.json', '.css',
+
+    // Fonts (including legacy .eot for older browser support)
+    '.woff', '.woff2', '.ttf', '.otf', '.eot',
+
+    // Images
+    '.svg', '.png', '.jpg', '.jpeg', '.gif', '.webp',
+
+    // Documentation
+    '.md', '.txt',
+  ] as const,
+
+  /**
+   * Blocked file extensions (security risk).
+   * These file types are never allowed in theme packages.
+   */
+  THEME_BLOCKED_EXTENSIONS: [
+    // JavaScript (themes must not ship executable code)
+    '.js', '.mjs', '.ts', '.jsx', '.tsx',
+
+    // Executables
+    '.exe', '.sh', '.bat', '.cmd', '.app',
+
+    // Server-side scripts
+    '.php', '.py', '.rb', '.pl', '.asp', '.jsp',
+  ] as const,
+} as const;

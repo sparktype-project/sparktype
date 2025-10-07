@@ -4,14 +4,14 @@
   "files": [
     { "path": "theme.json", "type": "manifest" },
     { "path": "base.hbs", "type": "base" },
-    { "path": "variables.css", "type": "stylesheet" },
+    { "path": "styles.css", "type": "stylesheet" },
     { "path": "partials/head.hbs", "type": "partial", "name": "head" },
     { "path": "partials/header.hbs", "type": "partial", "name": "header" },
     { "path": "partials/sidebar.hbs", "type": "partial", "name": "sidebar" },
     { "path": "partials/footer.hbs", "type": "partial", "name": "footer" }
   ],
   "stylesheets": [
-    { "path": "variables.css", "type": "main" }
+    { "path": "styles.css", "type": "main" }
   ],
   "layouts": [
     {
@@ -66,55 +66,55 @@
     "description": "Customise the colors, fonts and layout of your site.",
     "type": "object",
     "properties": {
-      "color_background": {
+      "--color-background": {
         "type": "string",
         "title": "Page background",
         "format": "color",
         "default": "#ffffff"
       },
-      "color_text": {
+      "--color-text": {
         "type": "string",
         "title": "Body text",
         "format": "color",
-        "default": "#333333"
+        "default": "#1f2937"
       },
-      "color_headings": {
+      "--color-heading": {
         "type": "string",
         "title": "Headings",
         "format": "color",
-        "default": "#111111"
+        "default": "#111827"
       },
-      "color_primary": {
+      "--color-primary": {
         "type": "string",
         "title": "Primary accent",
         "format": "color",
         "default": "#3b82f6"
       },
-      "color_border": {
+      "--color-border": {
         "type": "string",
         "title": "Borders",
         "format": "color",
-        "default": "#e5e5e5"
+        "default": "#e5e7eb"
       },
-      "color_sidebar": {
+      "--color-sidebar": {
         "type": "string",
         "title": "Sidebar background",
         "format": "color",
-        "default": "#fff"
+        "default": "#ffffff"
       },
-      "font_headings": {
+      "--font-sans": {
         "type": "string",
         "title": "Headings font",
         "description": "Choose the font for all headings.",
         "enum": [
-          "Geist",
-          "Geist Mono",
-          "Gentium Book Plus",
-          "IBM Plex Mono",
-          "IBM Plex Sans",
-          "IBM Plex Serif",
-          "Instrument Serif",
-          "Inter"
+          "Geist, system-ui, sans-serif",
+          "\"Geist Mono\", monospace",
+          "\"Gentium Book Plus\", Georgia, serif",
+          "\"IBM Plex Mono\", monospace",
+          "\"IBM Plex Sans\", sans-serif",
+          "\"IBM Plex Serif\", serif",
+          "\"Instrument Serif\", serif",
+          "Inter, system-ui, sans-serif"
         ],
         "enumNames": [
           "Geist (Sans)",
@@ -126,21 +126,21 @@
           "Instrument Serif (Serif)",
           "Inter (Sans)"
         ],
-        "default": "Inter"
+        "default": "Inter, system-ui, sans-serif"
       },
-      "font_text": {
+      "--font-serif": {
         "type": "string",
         "title": "Body text font",
         "description": "Choose the font for all paragraphs and lists.",
         "enum": [
-          "Geist",
-          "Geist Mono",
-          "Gentium Book Plus",
-          "IBM Plex Mono",
-          "IBM Plex Sans",
-          "IBM Plex Serif",
-          "Instrument Serif",
-          "Inter"
+          "Geist, system-ui, sans-serif",
+          "\"Geist Mono\", monospace",
+          "\"Gentium Book Plus\", Georgia, serif",
+          "\"IBM Plex Mono\", monospace",
+          "\"IBM Plex Sans\", sans-serif",
+          "\"IBM Plex Serif\", serif",
+          "\"Instrument Serif\", serif",
+          "Inter, system-ui, sans-serif"
         ],
         "enumNames": [
           "Geist (Sans)",
@@ -152,9 +152,9 @@
           "Instrument Serif (Serif)",
           "Inter (Sans)"
         ],
-        "default": "IBM Plex Sans"
+        "default": "\"IBM Plex Sans\", sans-serif"
       },
-      "sidebar_width": {
+      "--sidebar-width": {
         "type": "string",
         "title": "Sidebar width",
         "description": "Choose the width of the navigation sidebar.",

@@ -4,13 +4,13 @@
   "files": [
     { "path": "theme.json", "type": "manifest" },
     { "path": "base.hbs", "type": "base" },
-    { "path": "variables.css", "type": "stylesheet" },
+    { "path": "styles.css", "type": "stylesheet" },
     { "path": "partials/head.hbs", "type": "partial", "name": "head" },
     { "path": "partials/header.hbs", "type": "partial", "name": "header" },
     { "path": "partials/footer.hbs", "type": "partial", "name": "footer" }
   ],
   "stylesheets": [
-    { "path": "variables.css", "type": "main" }
+    { "path": "styles.css", "type": "main" }
   ],
   "layouts": [
     {
@@ -74,44 +74,44 @@
     "description": "Customise the core fonts and colors of your site.",
     "type": "object",
     "properties": {
-      "color_background": {
+      "--color-background": {
         "type": "string",
         "title": "Page background colour",
         "format": "color",
         "default": "#f8f9fa"
       },
-      "color_text": {
+      "--color-text": {
         "type": "string",
         "title": "Body text colour",
         "format": "color",
         "default": "#212529"
       },
-      "color_headings": {
+      "--color-headings": {
         "type": "string",
         "title": "Headings colour",
         "format": "color",
         "default": "#000000"
       },
-      "color_primary": {
+      "--color-primary": {
         "type": "string",
         "title": "Primary accent colour",
         "format": "color",
         "default": "#0d6efd"
       },
 
-      "font_headings": {
+      "--font-headings": {
         "type": "string",
-        "title": "Heading style",
+        "title": "Headings style",
         "description": "Choose the font family for all headlines.",
         "enum": [
-          "Geist",
-          "Geist Mono",
-          "Gentium Book Plus",
-          "IBM Plex Mono",
-          "IBM Plex Sans",
-          "IBM Plex Serif",
-          "Instrument Serif",
-          "Inter"
+          "Geist, system-ui, sans-serif",
+          "\"Geist Mono\", monospace",
+          "\"Gentium Book Plus\", Georgia, serif",
+          "\"IBM Plex Mono\", monospace",
+          "\"IBM Plex Sans\", sans-serif",
+          "\"IBM Plex Serif\", serif",
+          "\"Instrument Serif\", serif",
+          "Inter, system-ui, sans-serif"
         ],
         "enumNames": [
           "Geist (Sans)",
@@ -123,22 +123,22 @@
           "Instrument Serif (Serif)",
           "Inter (Sans)"
         ],
-        "default": "Inter"
+        "default": "Inter, system-ui, sans-serif"
       },
-      
-      "font_text": {
+
+      "--font-body": {
         "type": "string",
-        "title": "Text style",
+        "title": "Body text style",
         "description": "Choose the font family for all paragraphs and lists.",
         "enum": [
-          "Geist",
-          "Geist Mono",
-          "Gentium Book Plus",
-          "IBM Plex Mono",
-          "IBM Plex Sans",
-          "IBM Plex Serif",
-          "Instrument Serif",
-          "Inter"
+          "Geist, system-ui, sans-serif",
+          "\"Geist Mono\", monospace",
+          "\"Gentium Book Plus\", Georgia, serif",
+          "\"IBM Plex Mono\", monospace",
+          "\"IBM Plex Sans\", sans-serif",
+          "\"IBM Plex Serif\", serif",
+          "\"Instrument Serif\", serif",
+          "Inter, system-ui, sans-serif"
         ],
         "enumNames": [
           "Geist (Sans)",
@@ -150,7 +150,7 @@
           "Instrument Serif (Serif)",
           "Inter (Sans)"
         ],
-        "default": "Gentium Book Plus"
+        "default": "\"Gentium Book Plus\", Georgia, serif"
       }
     }
   },

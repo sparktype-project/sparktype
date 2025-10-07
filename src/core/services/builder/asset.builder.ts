@@ -4,7 +4,6 @@ import type { LocalSiteData, SiteBundle, ImageRef, ThemeManifest, LayoutManifest
 import { getAssetContent, getJsonAsset, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
 import { getActiveImageService } from '@/core/services/images/images.service';
 import { cleanupOrphanedImages } from '@/core/services/images/imageCleanup.service';
-import { CSS_CONFIG } from '@/config/editorConfig';
 import { generateMediaManifest } from '../images/mediaManifest.service';
 
 /**
@@ -102,28 +101,7 @@ async function generateMediaDataFile(bundle: SiteBundle, siteData: LocalSiteData
  * Gathers and adds all site assets (images, themes, layouts) to the bundle.
  */
 export async function bundleAllAssets(bundle: SiteBundle, siteData: LocalSiteData): Promise<void> {
-    // 1. Bundle main styles CSS via HTTP request (using configurable paths)
-    try {
-        console.log(`[AssetBuilder] Attempting to fetch CSS from: ${CSS_CONFIG.MAIN_STYLESHEET_PATH}`);
-        const response = await fetch(CSS_CONFIG.MAIN_STYLESHEET_PATH);
-
-        if (response.ok) {
-            const stylesCSS = await response.text();
-            bundle[CSS_CONFIG.EXPORT_BUNDLE_PATH] = stylesCSS;
-            console.log(`[AssetBuilder] ✅ Successfully bundled main styles CSS (${stylesCSS.length} characters)`);
-            console.log(`[AssetBuilder] CSS bundled: ${CSS_CONFIG.MAIN_STYLESHEET_PATH} -> ${CSS_CONFIG.EXPORT_BUNDLE_PATH}`);
-        } else {
-            console.warn(`[AssetBuilder] ⚠️ CSS fetch failed - HTTP ${response.status}: ${response.statusText}`);
-            console.warn(`[AssetBuilder] URL attempted: ${CSS_CONFIG.MAIN_STYLESHEET_PATH}`);
-            console.warn(`[AssetBuilder] Site export will continue without bundled CSS - styles may not appear correctly`);
-        }
-    } catch (error) {
-        console.error(`[AssetBuilder] ❌ CSS fetch error for ${CSS_CONFIG.MAIN_STYLESHEET_PATH}:`, error);
-        console.warn(`[AssetBuilder] Site export will continue without bundled CSS - styles may not appear correctly`);
-        // Don't throw - allow export to continue even if CSS fails
-    }
-
-    // 2. Cleanup orphaned images before bundling
+    // 1. Cleanup orphaned images before bundling
     try {
         console.log(`[AssetBuilder] Starting image cleanup...`);
 
@@ -142,7 +120,7 @@ export async function bundleAllAssets(bundle: SiteBundle, siteData: LocalSiteDat
         // Export continues even if cleanup fails - this ensures exports always work
     }
 
-    // 3. Bundle images (now only the referenced ones remain)
+    // 2. Bundle images (now only the referenced ones remain)
     try {
         const allImageRefs = findAllImageRefs(siteData);
         console.log(`[AssetBuilder] Found ${allImageRefs.length} image references`);
@@ -180,7 +158,7 @@ export async function bundleAllAssets(bundle: SiteBundle, siteData: LocalSiteDat
         // Don't throw - allow export to continue even if image bundling fails
     }
 
-    // 4. Bundle the active theme's files (base.hbs, partials, stylesheets)
+    // 3. Bundle the active theme's files (base.hbs, partials, stylesheets)
     try {
         const themeName = siteData.manifest.theme.name;
         console.log(`[AssetBuilder] Bundling theme: ${themeName}`);
@@ -201,7 +179,7 @@ export async function bundleAllAssets(bundle: SiteBundle, siteData: LocalSiteDat
             }
         }));
 
-        // 5. Bundle all theme layouts and their files
+        // 4. Bundle all theme layouts and their files
         if (themeManifest.layouts && siteData.contentFiles) {
             const usedLayoutIds = [...new Set(siteData.contentFiles.map(f => f.frontmatter.layout))];
             console.log(`[AssetBuilder] Bundling ${usedLayoutIds.length} theme layouts: ${usedLayoutIds.join(', ')}`);
@@ -244,6 +222,6 @@ export async function bundleAllAssets(bundle: SiteBundle, siteData: LocalSiteDat
         console.warn(`[AssetBuilder] Site export will continue without theme files - styling may not work correctly`);
     }
 
-    // 6. Generate media.json data file
+    // 5. Generate media.json data file
     await generateMediaDataFile(bundle, siteData);
 }

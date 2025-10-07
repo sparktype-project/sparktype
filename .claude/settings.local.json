@@ -68,7 +68,9 @@
       "Bash(for i in {1..20})",
       "Bash(do echo \"Arrow down $i\")",
       "Bash(done)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(npm run copy:*)",
+      "Read(//Users/mattkevan/**)"
     ]
   },
   "enableAllProjectMcpServers": true,

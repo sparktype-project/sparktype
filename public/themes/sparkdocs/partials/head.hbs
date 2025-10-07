@@ -64,11 +64,9 @@
 </style>
 
 {{#if @root.options.isExport}}
-    <link rel="stylesheet" href="{{@root.options.relativeAssetPath}}assets/css/styles.css">
-    <link rel="stylesheet" href="{{@root.options.relativeAssetPath}}_site/themes/{{manifest.theme.name}}/variables.css">
+    <link rel="stylesheet" href="{{@root.options.relativeAssetPath}}_site/themes/{{manifest.theme.name}}/styles.css">
 {{else}}
-    <link rel="stylesheet" href="/styles.css">
-    <link rel="stylesheet" href="/themes/{{manifest.theme.name}}/variables.css">
+    <link rel="stylesheet" href="/themes/{{manifest.theme.name}}/styles.css">
 {{/if}}
 
 {{!-- This is where the user's custom choices are injected as CSS variables --}}

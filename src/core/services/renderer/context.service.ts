@@ -16,6 +16,7 @@ import { getUrlForNode } from '@/core/services/urlUtils.service';
 import { generateStyleOverrides } from './asset.service';
 import { type RenderOptions } from './render.service';
 import { getRelativePath } from '@/core/services/relativePaths.service';
+import { getTagsByIds } from '@/core/services/tags.service';
 
 // The context object passed into the main body template.
 type EnrichedPageContext = (PageResolutionResult & {
@@ -24,6 +25,25 @@ type EnrichedPageContext = (PageResolutionResult & {
     layoutManifest?: LayoutManifest | null;
     options?: RenderOptions;
 });
+
+/**
+ * Resolves tag IDs to full tag objects with names for all tag groups in content.
+ */
+function resolveContentTags(contentFile: ParsedMarkdownFile, siteData: LocalSiteData): Record<string, any[]> {
+    const result: Record<string, any[]> = {};
+
+    if (!contentFile.frontmatter.tags) return result;
+
+    const { manifest } = siteData;
+
+    for (const [groupId, tagIds] of Object.entries(contentFile.frontmatter.tags)) {
+        if (Array.isArray(tagIds)) {
+            result[groupId] = getTagsByIds(manifest, tagIds);
+        }
+    }
+
+    return result;
+}
 
 
 /**
@@ -80,6 +100,7 @@ export async function assemblePageContext(
             return {
                 ...item,
                 url: itemUrl,
+                resolvedTags: resolveContentTags(item, siteData),
             };
         }))
         : [];
@@ -90,6 +111,7 @@ export async function assemblePageContext(
         collectionItems: processedCollectionItems,
         layoutManifest: pageLayoutManifest,
         options: options, // Add render options to context for helpers
+        resolvedTags: resolveContentTags(resolution.contentFile, siteData),
     };
 }
 
