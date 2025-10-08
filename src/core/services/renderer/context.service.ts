@@ -21,9 +21,10 @@ import { getTagsByIds } from '@/core/services/tags.service';
 // The context object passed into the main body template.
 type EnrichedPageContext = (PageResolutionResult & {
     siteData?: LocalSiteData;
-    collectionItems?: (ParsedMarkdownFile & { url: string })[];
+    collectionItems?: (ParsedMarkdownFile & { url: string; resolvedTags?: Record<string, any[]> })[];
     layoutManifest?: LayoutManifest | null;
     options?: RenderOptions;
+    resolvedTags?: Record<string, any[]>;
 });
 
 /**

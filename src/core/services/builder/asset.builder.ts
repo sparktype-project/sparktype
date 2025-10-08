@@ -28,6 +28,7 @@ function findAllImageRefs(siteData: LocalSiteData): ImageRef[] {
 /**
  * Bundles all files associated with a single theme or layout.
  */
+// @ts-expect-error - Function will be used in future implementation
 async function bundleAssetFiles(
     bundle: SiteBundle,
     siteData: LocalSiteData,

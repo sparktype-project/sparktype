@@ -2,7 +2,7 @@
 
 import Handlebars from 'handlebars';
 import type { LocalSiteData, ThemeManifest, LayoutManifest, AssetFile } from '@/core/types';
-import { getJsonAsset, getAssetContent, getAvailableLayouts, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
+import { getJsonAsset, getAvailableLayouts, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
 // Block service removed - using layout partials instead
 import { coreHelpers } from './helpers';
 

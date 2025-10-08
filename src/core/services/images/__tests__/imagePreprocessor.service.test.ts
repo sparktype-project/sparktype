@@ -362,13 +362,13 @@ describe('ImagePreprocessorService (Declarative System)', () => {
 
       await service.preprocessImages(siteData, false);
 
-      const cardUrl = service.getProcessedImageUrlForField(
+      const cardUrl = service.getProcessedImageUrl(
         'content/blog/post1.md',
         'featured_image',
-        'card'
+        'thumbnail'
       );
-      
-      const fullUrl = service.getProcessedImageUrlForField(
+
+      const fullUrl = service.getProcessedImageUrl(
         'content/blog/post1.md',
         'featured_image',
         'full'
@@ -378,7 +378,7 @@ describe('ImagePreprocessorService (Declarative System)', () => {
       expect(fullUrl).toBe('https://example.com/full.jpg');
     });
 
-    test('falls back to any available URL when context not found', async () => {
+    test('returns null when preset not found', async () => {
       const siteData = createMockSiteData([
         {
           path: 'content/page.md',
@@ -391,17 +391,17 @@ describe('ImagePreprocessorService (Declarative System)', () => {
 
       await service.preprocessImages(siteData, false);
 
-      const url = service.getProcessedImageUrlForField(
+      const url = service.getProcessedImageUrl(
         'content/page.md',
         'featured_image',
-        'card' // Request card but only full was generated
+        'nonexistent_preset'
       );
 
-      expect(url).toBe('https://example.com/processed.jpg');
+      expect(url).toBeNull();
     });
 
     test('returns null for non-existent images', () => {
-      const url = service.getProcessedImageUrlForField(
+      const url = service.getProcessedImageUrl(
         'content/nonexistent.md',
         'featured_image',
         'full'

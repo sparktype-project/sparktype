@@ -63,7 +63,7 @@ export function mergeUiSchemas(...schemas: (UiSchema | null | undefined)[]): UiS
  * @returns Promise resolving to file content or null
  */
 export async function getThemeAssetContent(
-  context: { siteId: string },
+  _context: { siteId: string },
   themeName: string,
   assetPath: string
 ): Promise<string | null> {

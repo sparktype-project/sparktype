@@ -216,9 +216,9 @@ export async function importThemeFromZip(
  * @param siteId The ID of the site to import the theme for
  */
 export async function importThemeFromGitHub(
-  repoInfo: { owner: string; repo: string; branch?: string },
-  themePath: string,
-  siteId: string
+  _repoInfo: { owner: string; repo: string; branch?: string },
+  _themePath: string,
+  _siteId: string
 ): Promise<ThemeImportResult> {
   // TODO: Phase 2 implementation
   return {
@@ -235,8 +235,8 @@ export async function importThemeFromGitHub(
  * @param siteId The ID of the site to import the theme for
  */
 export async function importThemeFromUrl(
-  url: string,
-  siteId: string
+  _url: string,
+  _siteId: string
 ): Promise<ThemeImportResult> {
   // TODO: Phase 2 implementation
   return {

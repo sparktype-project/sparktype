@@ -223,9 +223,9 @@ export class ImagePreprocessorService {
    * For now, generates common presets. In the future, this could scan templates.
    */
   private getPresetsForField(
-    siteData: LocalSiteData,
-    fieldName: string,
-    layoutPath: string
+    _siteData: LocalSiteData,
+    _fieldName: string,
+    _layoutPath: string
   ): string[] {
     // TODO: Scan template files to find which presets are actually used
     // For now, generate common presets that templates are likely to use
@@ -309,9 +309,9 @@ export class ImagePreprocessorService {
     }
 
     console.log(`[ImagePreprocessor] Resolved preset '${presetName}':`, {
-      core: corePreset ? `${corePreset.width}x${corePreset.height}` : 'none',
-      site: sitePreset ? `${sitePreset.width}x${sitePreset.height}` : 'none',
-      layout: layoutPreset ? `${layoutPreset.width}x${layoutPreset.height}` : 'none',
+      core: corePreset ? `${'width' in corePreset ? corePreset.width : 'auto'}x${'height' in corePreset ? corePreset.height : 'auto'}` : 'none',
+      site: sitePreset ? `${sitePreset.width || 'auto'}x${sitePreset.height || 'auto'}` : 'none',
+      layout: layoutPreset ? `${layoutPreset.width || 'auto'}x${layoutPreset.height || 'auto'}` : 'none',
       final: `${preset.width || 'auto'}x${preset.height || 'auto'}`
     });
 
