@@ -6,10 +6,12 @@
     
 
     {{! Post Header: Title and Metadata }}
-    <header class="mb-8">
+    <header class="mb-8 mt-12">
         <h1 class="text-4xl lg:text-5xl font-bold text-heading mb-4 leading-tight">
             {{contentFile.frontmatter.title}}
         </h1>
+            <p class="text-xl">{{contentFile.frontmatter.description}} </p>
+
         <div class="flex flex-wrap items-center gap-2 text-sm text-muted">
             {{#if contentFile.frontmatter.date}}
                 <time datetime="{{contentFile.frontmatter.date}}" class="font-medium">
@@ -30,9 +32,10 @@
     {{! Display the featured image if one is set in the frontmatter }}
     {{#if contentFile.frontmatter.featured_image}}
         <div class="mb-8">
-            {{{image 
-                fieldname="featured_image" 
-                class="w-full" 
+            {{{image
+                fieldname="featured_image"
+                preset="full"
+                class="w-full"
                 alt="Featured image"
             }}}
         </div>

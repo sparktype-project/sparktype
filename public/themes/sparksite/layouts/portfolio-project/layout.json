@@ -43,21 +43,5 @@
         "ui:widget": "imageUploader"
       }
     }
-  },
-  "image_presets": {
-    "featured_image": {
-      "contexts": {
-        "grid": "thumbnail",
-        "full": "hero"
-      },
-      "default": "hero"
-    },
-    "gallery": {
-      "contexts": {
-        "grid": "thumbnail",
-        "full": "gallery"
-      },
-      "default": "gallery"
-    }
   }
 }

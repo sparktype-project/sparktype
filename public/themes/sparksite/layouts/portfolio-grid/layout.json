@@ -23,7 +23,6 @@
   "displayTypes": {
     "project-card": {
       "partial": "project-card",
-      "imageContext": "grid",
       "description": "Square grid cards showcasing portfolio projects"
     }
   }

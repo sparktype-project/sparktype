@@ -22,53 +22,32 @@ interface RootTemplateContext {
 }
 
 export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => {
-  /**
-   * Helper function to resolve imageContext from displayType using layout configuration
-   */
-  const getImageContextFromDisplayType = (displayType: string, rootContext: RootTemplateContext): string | undefined => {
-    // Find the collection layout that's rendering this content
-    const collectionLayoutPath = rootContext.layoutConfig?.layout || 'page';
-    const collectionLayoutFile = siteData.layoutFiles?.find(
-      file => file.path === `layouts/${collectionLayoutPath}/layout.json`
-    );
-    
-    if (!collectionLayoutFile) {
-      return undefined;
-    }
-    
-    try {
-      const collectionLayoutManifest = JSON.parse(collectionLayoutFile.content);
-      const displayTypeConfig = collectionLayoutManifest?.displayTypes?.[displayType];
-      return displayTypeConfig?.imageContext;
-    } catch (error) {
-      console.warn(`[ImageHelper] Failed to parse collection layout manifest for ${collectionLayoutPath}:`, error);
-      return undefined;
-    }
-  };
-
   return {
     /**
-     * A synchronous, context-aware Handlebars helper for images.
+     * A synchronous Handlebars helper for images with explicit preset selection.
      * Returns URL-only for meta tags, full <img> tag elsewhere.
-     * Uses presets defined in manifests - no manual dimensions needed.
-     * 
+     *
      * @example
-     * {{{image fieldname="featured_image"}}} → <img> tag with preset dimensions
-     * {{{image fieldname="featured_image" url_only=true}}} → URL only for meta tags
-     * {{{image fieldname="featured_image" class="hero-image" alt="Hero"}}} → <img> with custom attributes
+     * {{{image fieldname="featured_image" preset="thumbnail"}}} → <img> tag with thumbnail preset
+     * {{{image fieldname="featured_image" preset="hero" url_only=true}}} → URL only for meta tags
+     * {{{image fieldname="featured_image" preset="full" class="hero-image" alt="Hero"}}} → <img> with custom attributes
+     * {{{image fieldname="featured_image"}}} → Uses 'original' preset by default
      */
     image: function(this: any, ...args: unknown[]): Handlebars.SafeString {
     const options = args[args.length - 1] as Handlebars.HelperOptions;
     const rootContext = options.data.root as RootTemplateContext;
-    
+
     // Context-aware: detect if we're inside a meta tag
     const isInMetaTag = this?.tagName?.toLowerCase() === 'meta' || options.hash.url_only;
-    
-    // Get field name - this is the only supported way to use the helper
+
+    // Get field name - required
     const fieldName = options.hash.fieldname;
     if (!fieldName) {
-      return new Handlebars.SafeString('<!-- No fieldname provided: use {{{image fieldname="field_name"}}} -->');
+      return new Handlebars.SafeString('<!-- No fieldname provided: use {{{image fieldname="field_name" preset="preset_name"}}} -->');
     }
+
+    // Get preset name - defaults to 'original'
+    const presetName = options.hash.preset || 'original';
     
     // Find the image field value in the appropriate context
     let imageRef: ImageRef | null = null;
@@ -103,42 +82,16 @@ export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => {
         console.warn(`[ImageHelper] No content path found for field '${fieldName}'`);
         return new Handlebars.SafeString('<!-- No content path -->');
       }
-      
-      // Determine the rendering context using declarative displayType configuration
-      let context: string | undefined = undefined;
-      
-      // Collection item context: this.path exists (item being rendered by collection page)
-      if (this?.path && rootContext.layoutConfig) {
-        const displayType = rootContext.layoutConfig.displayType;
-        
-        // Look up imageContext from collection layout's displayTypes configuration
-        if (displayType) {
-          context = getImageContextFromDisplayType(displayType, rootContext);
-        }
-        
-        // Fallback to 'listing' for collection rendering if no specific context found
-        if (!context) {
-          context = 'listing';
-        }
-      }
-      // Individual page context: rootContext.contentFile exists, no this.path
-      else if (rootContext.contentFile && !this?.path) {
-        context = 'full';
-      }
-      // Fallback: if we can't determine context, let preprocessor decide
-      else {
-        context = undefined;
-      }
-      
-      // Try to get preprocessed URL with context awareness
-      let processedUrl = imagePreprocessor.getProcessedImageUrlForField(contentPath, fieldName, context);
-      
-      console.log(`[ImageHelper] Field '${fieldName}' in '${contentPath}' with context '${context}':`, processedUrl);
-      
+
+      // Get preprocessed URL for this field + preset combination
+      let processedUrl = imagePreprocessor.getProcessedImageUrl(contentPath, fieldName, presetName);
+
+      console.log(`[ImageHelper] Field '${fieldName}' in '${contentPath}' with preset '${presetName}':`, processedUrl);
+
       if (!processedUrl) {
-        console.warn(`[ImageHelper] No preprocessed URL found for field '${fieldName}' in ${contentPath}`);
+        console.warn(`[ImageHelper] No preprocessed URL found for field '${fieldName}' with preset '${presetName}' in ${contentPath}`);
         console.warn(`[ImageHelper] Available processed paths:`, Array.from(imagePreprocessor.getProcessedImages().keys()));
-        return new Handlebars.SafeString('<!-- Image not preprocessed -->');
+        return new Handlebars.SafeString(`<!-- Image not preprocessed: ${fieldName} with preset ${presetName} -->`);
       }
 
       // Convert to relative path for export mode

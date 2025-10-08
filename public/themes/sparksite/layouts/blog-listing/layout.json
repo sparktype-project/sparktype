@@ -61,12 +61,10 @@
   "displayTypes": {
     "post-card": {
       "partial": "post-card",
-      "imageContext": "card",
       "description": "Compact cards with title, excerpt, and read more links"
     },
     "post-full": {
-      "partial": "post-full", 
-      "imageContext": "full",
+      "partial": "post-full",
       "description": "Complete posts with full content displayed"
     }
   }

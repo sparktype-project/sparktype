@@ -1,7 +1,7 @@
 <article class="project-card br2 ba b--black-10 overflow-hidden">
     {{#if this.frontmatter.featured_image}}
         <a href="{{this.url}}" class="db aspect-ratio aspect-ratio--4x3">
-            {{{image fieldname="featured_image" alt=this.frontmatter.title class="aspect-ratio--object"}}}
+            {{{image fieldname="featured_image" preset="thumbnail" alt=this.frontmatter.title class="aspect-ratio--object"}}}
         </a>
     {{/if}}
     <div class="pa3">

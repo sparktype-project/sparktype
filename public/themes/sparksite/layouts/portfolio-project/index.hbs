@@ -11,7 +11,7 @@
         {{! Featured Image }}
         {{#if contentFile.frontmatter.featured_image}}
             <figure class="featured-image-wrapper mv4">
-                {{{image fieldname="featured_image" class="db center mw-100" alt=contentFile.frontmatter.title}}}
+                {{{image fieldname="featured_image" preset="hero" class="db center mw-100" alt=contentFile.frontmatter.title}}}
             </figure>
         {{/if}}
 

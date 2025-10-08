@@ -262,6 +262,9 @@ for (const { imageRef, fieldName, layoutPath, contentPath } of allImageRefs) {
 ```
 
 **Declarative Context Detection**:
+
+The system uses **pure declarative lookup** - no pattern matching on field names or displayType strings. Context resolution reads the explicit `imageContext` mapping from layout manifests:
+
 ```typescript
 const getImageContextFromDisplayType = (displayType: string, rootContext: RootTemplateContext): string | undefined => {
   // Find the collection layout that's rendering this content
@@ -269,15 +272,16 @@ const getImageContextFromDisplayType = (displayType: string, rootContext: RootTe
   const collectionLayoutFile = siteData.layoutFiles?.find(
     file => file.path === `layouts/${collectionLayoutPath}/layout.json`
   );
-  
+
   if (!collectionLayoutFile) {
     return undefined;
   }
-  
+
   try {
     const collectionLayoutManifest = JSON.parse(collectionLayoutFile.content);
+    // Direct lookup of imageContext from displayTypes configuration
     const displayTypeConfig = collectionLayoutManifest?.displayTypes?.[displayType];
-    return displayTypeConfig?.imageContext;
+    return displayTypeConfig?.imageContext;  // e.g., "card", "full", "list"
   } catch (error) {
     console.warn(`[ImageHelper] Failed to parse collection layout manifest for ${collectionLayoutPath}:`, error);
     return undefined;
@@ -285,7 +289,7 @@ const getImageContextFromDisplayType = (displayType: string, rootContext: RootTe
 };
 ```
 
-**Context Resolution**:
+**Context Resolution Flow**:
 ```typescript
 // Determine the rendering context using declarative displayType configuration
 let context: string | undefined = undefined;
@@ -293,12 +297,13 @@ let context: string | undefined = undefined;
 // Collection item context: this.path exists (item being rendered by collection page)
 if (this?.path && rootContext.layoutConfig) {
   const displayType = rootContext.layoutConfig.displayType;
-  
-  // Look up imageContext from collection layout's displayTypes configuration
+
+  // Direct declarative lookup - NO pattern matching on displayType string
   if (displayType) {
     context = getImageContextFromDisplayType(displayType, rootContext);
+    // Example: displayType="post-card" → looks up displayTypes["post-card"].imageContext → "card"
   }
-  
+
   // Fallback to 'listing' for collection rendering if no specific context found
   if (!context) {
     context = 'listing';
@@ -313,6 +318,9 @@ else {
   context = undefined;
 }
 ```
+
+**Key Point:**
+- All mappings are explicit in layout manifests via declarative configuration
 
 **URL Retrieval**:
 ```typescript
@@ -744,22 +752,20 @@ interface ImageRef {
 - **Optimized delivery**: Context-appropriate images automatically selected
 - **Reliable exports**: Complete asset bundling with processed derivatives
 
-## Migration Notes
+## Configuration Philosophy
 
-### From Magic System
-The declarative system replaces field name pattern matching with explicit configuration:
+The image system uses **explicit declarative configuration** throughout:
 
-**Old System**:
-```typescript
-// Detected from field names: hero_image, avatar_image, etc.
-if (fieldLower.includes('hero')) return 'hero';
-```
+### Field to Preset Mapping
 
-**New System**:
+All field-to-preset mappings are configured in layout manifests:
+
 ```json
 {
   "image_presets": {
-    "any_field_name": {
+    "hero_image": "hero",
+    "avatar_image": "avatar",
+    "featured_image": {
       "contexts": {
         "card": "thumbnail",
         "full": "page_display"
@@ -770,8 +776,30 @@ if (fieldLower.includes('hero')) return 'hero';
 }
 ```
 
-**Context Detection**:
-- **Old**: `displayType?.includes('card')` pattern matching
-- **New**: `displayTypes[displayType].imageContext` explicit mapping
+### Display Type to Context Mapping
 
-This pipeline represents a sophisticated, declarative approach to image management that provides explicit control over image processing while maintaining performance, reliability, and ease of use.
+Context detection uses explicit `imageContext` mapping:
+
+```json
+{
+  "displayTypes": {
+    "post-card": {
+      "partial": "post-card",
+      "imageContext": "card"
+    },
+    "post-full": {
+      "partial": "post-full",
+      "imageContext": "full"
+    }
+  }
+}
+```
+
+### Benefits
+
+- **Predictable**: All behavior is explicitly configured
+- **Maintainable**: Configuration is visible and documented in manifests
+- **Flexible**: Use any field names without hidden side effects
+- **Clear**: No magic - what you configure is what you get
+
+This declarative approach provides explicit control over image processing while maintaining performance, reliability, and ease of use.

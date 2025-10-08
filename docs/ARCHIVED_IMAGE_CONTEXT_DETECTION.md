@@ -155,40 +155,56 @@ The `image` helper uses context detection to select the right preprocessed URL:
 
 ## Advanced Context Detection
 
-### Display Type Patterns
+### Declarative Display Type Mapping
 
-The system recognizes these `displayType` patterns:
+The `imageContext` is explicitly mapped in the collection layout's `displayTypes` configuration:
 
-```javascript
-// Listing context triggers
-displayType === 'post-card'      // Exact match
-displayType === 'project-card'   // Exact match  
-displayType?.includes('card')    // Pattern match
-
-// Full context triggers  
-displayType === 'post-full'      // Exact match
-displayType?.includes('full')    // Pattern match
-
-// Default behavior
-// Any other displayType in collection context → listing
-// No collection context → full
+```json
+// Example: blog-listing/layout.json
+{
+  "displayTypes": {
+    "post-card": {
+      "partial": "post-card",
+      "imageContext": "card"    // ← Explicit context mapping
+    },
+    "post-full": {
+      "partial": "post-full",
+      "imageContext": "full"    // ← Explicit context mapping
+    }
+  }
+}
 ```
 
-### Smart Convention Override
+**How it works:**
+1. Collection page sets `displayType: "post-card"` in frontmatter
+2. Template helper reads `displayTypes["post-card"].imageContext` → `"card"`
+3. Preprocessor looks up preset for `featured_image` with context `"card"` → `"thumbnail"`
 
-Field names can override context-based detection:
+**Default behavior:**
+- Collection items without explicit `imageContext` → falls back to `'listing'`
+- Individual pages (not in collections) → always use `'full'` context
 
-```javascript
-// These always use specific presets regardless of context:
-'hero_image'    → 'hero' preset (1200×600)
-'avatar_image'  → 'avatar' preset (150×150)  
-'gallery_photo' → 'gallery' preset (400×400)
-'og_image'      → 'social' preset (1200×630)
+### Field Name to Preset Mapping
 
-// These respect context detection:
-'featured_image' → 'thumbnail' (listing) or 'page_display' (full)
-'main_image'     → 'thumbnail' (listing) or 'page_display' (full)
+Image preset mapping is explicit and configured in your layout's `image_presets` section:
+
+```json
+{
+  "image_presets": {
+    "hero_image": "hero",
+    "avatar_image": "avatar",
+    "featured_image": {
+      "contexts": {
+        "card": "thumbnail",
+        "full": "page_display"
+      },
+      "default": "page_display"
+    }
+  }
+}
 ```
+
+Without explicit configuration, the system will fall back to the `original` preset (no resizing).
 
 ## Debugging Context Detection
 

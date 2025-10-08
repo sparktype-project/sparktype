@@ -38,16 +38,5 @@
         "rows": 4
       }
     }
-  },
-  "image_presets": {
-    "featured_image": {
-      "contexts": {
-        "card": "thumbnail",
-        "list": "banner_small",
-        "full": "page_display"
-      },
-      "default": "page_display"
-    },
-    "banner_image": "hero"
   }
 }

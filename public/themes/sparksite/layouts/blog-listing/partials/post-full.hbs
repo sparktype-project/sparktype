@@ -5,9 +5,10 @@
 <article class="border-b last:border-b-0 last:pb-0 last:mb-0">
     {{#if this.frontmatter.featured_image}}
         <div class="mb-8">
-            {{{image 
-                fieldname="featured_image" 
-                alt=this.frontmatter.title 
+            {{{image
+                fieldname="featured_image"
+                preset="full"
+                alt=this.frontmatter.title
                 class="w-full h-64 md:h-80 object-cover rounded-lg"
             }}}
         </div>

@@ -1,574 +1,625 @@
 # Image Preset System Documentation
 
-The Sparktype image preset system provides **declarative, manifest-driven** image processing that generates context-aware image derivatives based on explicit layout configuration. All images are preprocessed before template rendering for optimal performance.
+The Sparktype image preset system uses **template-based preset selection** with **3-tier inheritance** for simple, explicit image processing. Presets are specified directly in templates, making it clear which image size is used where.
 
 ## Overview
 
-The system follows a **"declarative over magic"** approach:
-- Explicit preset configuration in layout manifests
-- Context-aware processing (card vs list vs full page views)
-- All images preprocessed during build for synchronous template rendering
-- Flexible context mapping for different display types
+The system follows these principles:
+- **Template-level selection**: Templates explicitly specify which preset to use
+- **3-tier inheritance**: Core → Site Config → Layout Config
+- **Preprocessed for performance**: All images generated before template rendering
+- **Simple and explicit**: No hidden context detection or magic
 
 ## How It Works
 
-### 1. Declarative Preset Configuration
+### 1. Template-Based Preset Selection
 
-The system uses explicit configuration in layout manifests instead of field name conventions:
+Templates explicitly specify which preset to use with the `preset` parameter:
 
-```json
-{
-  "name": "Blog Post Layout",
-  "layoutType": "single",
-  "image_presets": {
-    "featured_image": {
-      "contexts": {
-        "card": "thumbnail",
-        "list": "banner_small", 
-        "full": "page_display"
-      },
-      "default": "page_display"
-    },
-    "banner_image": "hero"
-  }
-}
+```handlebars
+{{! Small thumbnail for card views }}
+{{{image fieldname="featured_image" preset="thumbnail" alt="Post image"}}}
+
+{{! Full-size image for individual pages }}
+{{{image fieldname="featured_image" preset="full" alt="Post image"}}}
+
+{{! Large hero image for headers }}
+{{{image fieldname="banner_image" preset="hero" alt="Header image"}}}
+
+{{! No preset specified - uses 'original' (no resizing) }}
+{{{image fieldname="photo"}}}
 ```
 
-### 2. Context-Aware Processing
+### 2. Three-Tier Preset Inheritance
 
-The system detects rendering context through explicit `displayTypes` configuration:
+Presets are defined in three layers, with later layers overriding earlier ones:
 
-**Collection Layout (`blog-listing/layout.json`):**
+```
+Core Presets (BASE_IMAGE_PRESETS in code)
+  ↓ overridden by
+Site Config (manifest.imagePresets)
+  ↓ overridden by
+Layout Config (layout.json presets)
+```
+
+**Example inheritance:**
+
+```typescript
+// Layer 1: Core preset (editorConfig.ts)
+thumbnail: { width: 300, height: 200, crop: 'fill', gravity: 'center' }
+
+// Layer 2: Site config override (manifest.imagePresets)
+thumbnail: { width: 350, height: 250 }  // Overrides core
+
+// Layer 3: Layout config override (layout.json)
+thumbnail: { width: 320, height: 240 }  // Overrides site & core
+```
+
+### 3. Available Base Presets
+
+All core presets are defined in `src/config/editorConfig.ts`:
+
+| Preset | Dimensions | Crop | Use Case |
+|--------|------------|------|----------|
+| `thumbnail` | 300×200 | fill | Card previews and small displays |
+| `full` | 960×360 | fill | Standard page content images |
+| `hero` | 1200×600 | fill | Large header and banner images |
+| `logo` | 200×200 | fit | Logos and icons |
+| `avatar` | 150×150 | fill | Profile and author images |
+| `social` | 1200×630 | fill | Social media sharing (Open Graph, Twitter) |
+| `original` | No resize | scale | Original with optimization only |
+
+## Basic Usage
+
+### In Templates
+
+```handlebars
+{{! Blog post card - small thumbnail }}
+<article class="card">
+  {{{image
+    fieldname="featured_image"
+    preset="thumbnail"
+    alt=this.frontmatter.title
+    class="card-image"
+  }}}
+  <h2>{{this.frontmatter.title}}</h2>
+</article>
+
+{{! Individual blog post - full size }}
+<article class="post">
+  {{{image
+    fieldname="featured_image"
+    preset="full"
+    alt="Featured image"
+    class="post-image"
+  }}}
+  <div class="content">{{content}}</div>
+</article>
+
+{{! Hero section - large banner }}
+<header class="hero">
+  {{{image
+    fieldname="banner_image"
+    preset="hero"
+    alt="Hero banner"
+    class="hero-image"
+  }}}
+</header>
+
+{{! URL only for meta tags }}
+<meta property="og:image" content="{{{image fieldname="featured_image" preset="social" url_only=true}}}" />
+```
+
+## Advanced Configuration
+
+### Overriding Core Presets in Site Config
+
+Override core presets globally for your entire site:
+
 ```json
 {
-  "displayTypes": {
-    "post-card": {
-      "partial": "post-card",
-      "imageContext": "card"
+  "siteId": "my-site",
+  "title": "My Site",
+
+  "imagePresets": {
+    "thumbnail": {
+      "width": 350,
+      "height": 250,
+      "crop": "fill",
+      "gravity": "center",
+      "description": "Custom site-wide thumbnail"
     },
-    "post-full": {
-      "partial": "post-full", 
-      "imageContext": "full"
+    "full": {
+      "width": 1024,
+      "height": 400,
+      "crop": "fill",
+      "gravity": "center"
     }
   }
 }
 ```
 
-### 3. Context Resolution Flow
+Now all templates using `preset="thumbnail"` will get 350×250 images instead of 300×200.
 
-1. Template renders with `displayType: "post-card"`
-2. System looks up `displayTypes["post-card"].imageContext` → `"card"`
-3. System finds field config: `featured_image.contexts.card` → `"thumbnail"`
-4. Returns preprocessed image with thumbnail preset (300×200)
+### Layout-Specific Presets
 
-### 4. Available Base Presets
-
-All presets are defined in `src/config/editorConfig.ts`:
-
-| Preset | Dimensions | Use Case |
-|--------|------------|----------|
-| `thumbnail` | 300×200 | Card previews and small displays |
-| `page_display` | 600×400 | Standard page content images |
-| `hero` | 1200×600 | Large header and banner images |
-| `banner_small` | 600×200 | List view banners |
-| `social` | 1200×630 | Social media sharing (Open Graph, Twitter) |
-| `avatar` | 150×150 | Profile and author images |
-| `gallery` | 400×400 | Square gallery grid images |
-| `original` | No resize | Original with optimization only |
-
-## Basic Usage
-
-### Adding Image Fields to Layouts
-
-1. **Define image fields in your layout schema**:
+Define presets specific to a layout in `layout.json`:
 
 ```json
 {
   "name": "Blog Post",
   "layoutType": "single",
+
   "schema": {
-    "type": "object",
     "properties": {
       "featured_image": {
-        "title": "Featured Image",
-        "description": "Main image for the blog post",
-        "type": "string"
-      },
-      "banner_image": {
-        "title": "Banner Image", 
-        "description": "Large header image",
-        "type": "string"
+        "type": "string",
+        "title": "Featured Image"
       }
     }
   },
+
   "uiSchema": {
     "featured_image": {
       "ui:widget": "imageUploader"
+    }
+  },
+
+  "presets": {
+    "thumbnail": {
+      "width": 320,
+      "height": 240,
+      "crop": "fill",
+      "gravity": "center",
+      "description": "Blog-specific thumbnail"
     },
-    "banner_image": {
-      "ui:widget": "imageUploader"
+    "blog_hero": {
+      "width": 1400,
+      "height": 500,
+      "crop": "fill",
+      "gravity": "center",
+      "description": "Custom blog hero size"
     }
   }
 }
 ```
 
-2. **Configure image presets**:
-
-```json
-{
-  "image_presets": {
-    "featured_image": {
-      "contexts": {
-        "card": "thumbnail",
-        "list": "banner_small",
-        "full": "page_display"
-      },
-      "default": "page_display"
-    },
-    "banner_image": "hero"
-  }
-}
-```
-
-3. **Use in templates** (unchanged syntax):
+**Then use in templates:**
 
 ```handlebars
-{{! Basic usage - preset resolved from context }}
-{{{image fieldname="featured_image"}}}
+{{! Uses layout's thumbnail override (320×240) }}
+{{{image fieldname="featured_image" preset="thumbnail"}}}
 
-{{! For meta tags - returns URL only }}
-<meta property="og:image" content="{{{image fieldname="featured_image" url_only=true}}}" />
+{{! Uses layout-specific preset }}
+{{{image fieldname="banner" preset="blog_hero"}}}
 
-{{! With custom CSS classes and alt text }}
-{{{image fieldname="banner_image" class="hero-image" alt="Article banner"}}}
-
-{{! Disable lazy loading for above-the-fold images }}
-{{{image fieldname="featured_image" lazy=false}}}
+{{! Uses core hero preset (1200×600) }}
+{{{image fieldname="header" preset="hero"}}}
 ```
 
-## Advanced Configuration
+### Custom Site-Wide Presets
 
-### Context-Specific Presets
-
-Define different presets for the same field based on rendering context:
-
-```json
-{
-  "image_presets": {
-    "featured_image": {
-      "contexts": {
-        "card": "thumbnail",      // 300×200 for card views
-        "list": "banner_small",   // 600×200 for list views
-        "grid": "gallery",        // 400×400 for grid views
-        "full": "page_display"    // 600×400 for full page
-      },
-      "default": "page_display"   // Fallback when context not found
-    }
-  }
-}
-```
-
-### Simple String Presets
-
-For fields that always use the same preset:
-
-```json
-{
-  "image_presets": {
-    "banner_image": "hero",
-    "author_avatar": "avatar",
-    "og_image": "social"
-  }
-}
-```
-
-### Display Types Configuration
-
-Map display types to image contexts in collection layouts:
-
-```json
-{
-  "displayTypes": {
-    "post-card": {
-      "partial": "post-card",
-      "imageContext": "card",
-      "description": "Compact cards with title, excerpt, and thumbnail"
-    },
-    "post-list": {
-      "partial": "post-list",
-      "imageContext": "list", 
-      "description": "List items with banner images"
-    },
-    "post-grid": {
-      "partial": "post-grid",
-      "imageContext": "grid",
-      "description": "Grid layout with square images"
-    },
-    "post-full": {
-      "partial": "post-full",
-      "imageContext": "full",
-      "description": "Complete posts with full content"
-    }
-  }
-}
-```
-
-### Custom Site Presets
-
-Add custom presets in your site manifest:
+Add completely new presets in site config:
 
 ```json
 {
   "imagePresets": {
-    "product_thumb": {
-      "width": 250,
-      "height": 250,
+    "product_card": {
+      "width": 400,
+      "height": 400,
       "crop": "fill",
       "gravity": "center",
-      "description": "Product thumbnail for listings"
+      "description": "Square product card"
     },
     "product_detail": {
       "width": 800,
       "height": 600,
       "crop": "fit",
       "gravity": "center",
-      "description": "Product detail page image"
+      "description": "Product detail page"
     }
   }
 }
 ```
 
-Then reference in layout `image_presets`:
-
-```json
-{
-  "image_presets": {
-    "product_image": {
-      "contexts": {
-        "card": "product_thumb",
-        "full": "product_detail"
-      },
-      "default": "product_detail"
-    }
-  }
-}
-```
-
-## Template Usage Examples
-
-### Context-Specific Rendering
-
-Images are automatically preprocessed for all contexts. The same template code works differently based on rendering context:
+**Use in templates:**
 
 ```handlebars
-{{! In a collection listing partial (post-card context) }}
-{{! Example: blog-listing/partials/post-card.hbs }}
-<article class="border-b">
-    {{#if this.frontmatter.featured_image}}
-        <a href="{{getCollectionItemUrl this}}" class="block mb-4">
-            {{{image fieldname="featured_image" alt=this.frontmatter.title class="w-full"}}}
-            {{! ↑ Uses thumbnail preset automatically in card context }}
-        </a>
-    {{/if}}
-</article>
+{{! Product card }}
+{{{image fieldname="product_image" preset="product_card"}}}
 
-{{! In a full post template (full context) }}
-{{! Example: blog-post/index.hbs }}
+{{! Product detail page }}
+{{{image fieldname="product_image" preset="product_detail"}}}
+```
+
+## Complete Examples
+
+### Example 1: Blog with Cards and Full Posts
+
+**Site Config (manifest.json):**
+```json
+{
+  "imagePresets": {
+    "thumbnail": {
+      "width": 350,
+      "height": 250
+    }
+  }
+}
+```
+
+**Blog Card Template (blog-listing/partials/post-card.hbs):**
+```handlebars
+<article class="card">
+  {{{image
+    fieldname="featured_image"
+    preset="thumbnail"
+    alt=this.frontmatter.title
+  }}}
+  <h2>{{this.frontmatter.title}}</h2>
+</article>
+```
+**Result:** Uses site's thumbnail override (350×250)
+
+**Blog Post Template (blog-post/index.hbs):**
+```handlebars
+<article class="post">
+  {{{image
+    fieldname="featured_image"
+    preset="full"
+    alt="Featured image"
+  }}}
+  <div class="content">{{content}}</div>
+</article>
+```
+**Result:** Uses core full preset (960×360)
+
+### Example 2: Portfolio with Layout-Specific Presets
+
+**Portfolio Project Layout (portfolio-project/layout.json):**
+```json
+{
+  "name": "Portfolio Project",
+  "presets": {
+    "portfolio_hero": {
+      "width": 1400,
+      "height": 700,
+      "crop": "fill",
+      "gravity": "center"
+    },
+    "gallery_image": {
+      "width": 600,
+      "height": 450,
+      "crop": "fill",
+      "gravity": "center"
+    }
+  }
+}
+```
+
+**Project Page Template (portfolio-project/index.hbs):**
+```handlebars
 <article>
-    {{#if contentFile.frontmatter.featured_image}}
-        <div class="mb-8">
-            {{{image fieldname="featured_image" class="w-full" alt="Featured image"}}}
-            {{! ↑ Uses page_display preset automatically in full context }}
-        </div>
-    {{/if}}
+  {{! Uses layout's custom preset }}
+  {{{image
+    fieldname="featured_image"
+    preset="portfolio_hero"
+    alt=contentFile.frontmatter.title
+  }}}
+
+  {{! Gallery images }}
+  {{#each contentFile.frontmatter.gallery}}
+    {{{image
+      fieldname="gallery"
+      preset="gallery_image"
+      alt="Gallery image"
+    }}}
+  {{/each}}
 </article>
 ```
 
-### Meta Tags
-
+**Project Card Template (portfolio-grid/partials/project-card.hbs):**
 ```handlebars
-<head>
-  <meta property="og:image" content="{{{image fieldname="featured_image" url_only=true}}}" />
-  <meta name="twitter:image" content="{{{image fieldname="featured_image" url_only=true}}}" />
-</head>
+<article class="project-card">
+  {{! Uses core thumbnail preset }}
+  {{{image
+    fieldname="featured_image"
+    preset="thumbnail"
+    alt=this.frontmatter.title
+  }}}
+  <h3>{{this.frontmatter.title}}</h3>
+</article>
 ```
 
-### Lazy Loading Control
+## Preset Resolution Examples
+
+### Example 1: Core Only
+```typescript
+// Core preset exists
+BASE_IMAGE_PRESETS.avatar = { width: 150, height: 150 }
+
+// No site override
+// No layout override
+
+// Template
+{{{image fieldname="author_photo" preset="avatar"}}}
+
+// Result: 150×150 (core preset)
+```
+
+### Example 2: Site Override
+```typescript
+// Core preset
+BASE_IMAGE_PRESETS.hero = { width: 1200, height: 600 }
+
+// Site override
+manifest.imagePresets.hero = { width: 1400, height: 700 }
+
+// No layout override
+
+// Template
+{{{image fieldname="banner" preset="hero"}}}
+
+// Result: 1400×700 (site override)
+```
+
+### Example 3: Full Override Chain
+```typescript
+// Core preset
+BASE_IMAGE_PRESETS.thumbnail = { width: 300, height: 200, crop: 'fill' }
+
+// Site override
+manifest.imagePresets.thumbnail = { width: 350, height: 250 }
+
+// Layout override
+layout.presets.thumbnail = { width: 320, height: 240 }
+
+// Template
+{{{image fieldname="photo" preset="thumbnail"}}}
+
+// Result: 320×240 (layout override wins)
+```
+
+### Example 4: Custom Preset (No Core)
+```typescript
+// No core preset
+
+// Site defines new preset
+manifest.imagePresets.banner_wide = {
+  width: 1600,
+  height: 400,
+  crop: 'fill',
+  gravity: 'center'
+}
+
+// Template
+{{{image fieldname="header" preset="banner_wide"}}}
+
+// Result: 1600×400 (custom site preset)
+```
+
+## Template Helper Options
+
+The `image` helper accepts these parameters:
+
+| Parameter | Required | Description | Example |
+|-----------|----------|-------------|---------|
+| `fieldname` | Yes | The frontmatter field containing the image | `fieldname="featured_image"` |
+| `preset` | No | Which preset to use (defaults to 'original') | `preset="thumbnail"` |
+| `alt` | No | Alt text for the image | `alt="Description"` |
+| `class` | No | CSS classes to apply | `class="w-full rounded"` |
+| `lazy` | No | Enable lazy loading (default: true) | `lazy=false` |
+| `url_only` | No | Return URL only (for meta tags) | `url_only=true` |
+
+**Examples:**
 
 ```handlebars
+{{! Full featured usage }}
+{{{image
+  fieldname="featured_image"
+  preset="thumbnail"
+  alt="Post thumbnail"
+  class="rounded shadow"
+  lazy=true
+}}}
+
+{{! Minimal usage (uses 'original' preset) }}
+{{{image fieldname="photo"}}}
+
+{{! URL only for meta tags }}
+<meta property="og:image" content="{{{image fieldname="featured_image" preset="social" url_only=true}}}" />
+
 {{! Disable lazy loading for above-the-fold images }}
-{{{image fieldname="featured_image" lazy=false}}}
-
-{{! Default behavior includes lazy loading }}
-{{{image fieldname="featured_image"}}}
+{{{image fieldname="hero" preset="hero" lazy=false}}}
 ```
-
-## Working Example: Blog Collection
-
-### Layout Setup
-
-**Individual Post Layout: `blog-post/layout.json`**
-```json
-{
-  "name": "Blog post",
-  "layoutType": "single",
-  "schema": {
-    "properties": {
-      "featured_image": {
-        "title": "Featured Image",
-        "type": "string"
-      },
-      "banner_image": {
-        "title": "Banner Image", 
-        "type": "string"
-      }
-    }
-  },
-  "uiSchema": {
-    "featured_image": {
-      "ui:widget": "imageUploader"
-    },
-    "banner_image": {
-      "ui:widget": "imageUploader"
-    }
-  },
-  "image_presets": {
-    "featured_image": {
-      "contexts": {
-        "card": "thumbnail",
-        "list": "banner_small", 
-        "full": "page_display"
-      },
-      "default": "page_display"
-    },
-    "banner_image": "hero"
-  }
-}
-```
-
-**Collection Page Layout: `blog-listing/layout.json`**
-```json
-{
-  "name": "Blog listing",
-  "layoutType": "collection",
-  "displayTypes": {
-    "post-card": {
-      "partial": "post-card",
-      "imageContext": "card",
-      "description": "Compact cards with thumbnails"
-    },
-    "post-list": {
-      "partial": "post-list",
-      "imageContext": "list",
-      "description": "List items with banner images"
-    },
-    "post-full": {
-      "partial": "post-full",
-      "imageContext": "full", 
-      "description": "Complete posts with full content"
-    }
-  }
-}
-```
-
-**Collection Page: `blog/index.md`**
-```yaml
----
-layout: blog-listing
-layoutConfig:
-  collectionId: blog
-  displayType: post-card
----
-```
-
-### Automatic Processing Result
-
-With this setup:
-
-1. **Blog posts** (`content/blog/*.md`) with `featured_image` get:
-   - **Card context** (`displayType: post-card`): `thumbnail` preset (300×200)
-   - **List context** (`displayType: post-list`): `banner_small` preset (600×200)  
-   - **Full context** (individual page view): `page_display` preset (600×400)
-
-2. **Blog posts** with `banner_image` get:
-   - **All contexts**: `hero` preset (1200×600) due to simple string configuration
-
-3. **Template rendering**:
-   - `blog-listing/partials/post-card.hbs` automatically shows thumbnails
-   - `blog-listing/partials/post-list.hbs` automatically shows banner_small
-   - `blog-post/index.hbs` automatically shows full-size images
-
-## System Fallbacks
-
-When configuration is missing, the system provides sensible defaults:
-
-### 1. Context Fallbacks
-- If specific context not found in `contexts`, uses `default` preset
-- If no `default` specified, uses system fallback:
-  - `full` context → `page_display` preset
-  - Other contexts → `thumbnail` preset
-
-### 2. Configuration Fallbacks
-- If no `image_presets` in layout, uses system defaults
-- If field not in `image_presets`, uses context-appropriate system preset
-- If layout manifest missing or invalid, logs warning and uses defaults
-
-### 3. Error Handling
-- Invalid JSON in layout manifests: logs warning, continues with defaults
-- Missing presets: logs warning, uses fallback presets
-- Image processing errors: logs error, returns error comment in HTML
 
 ## Best Practices
 
-### 1. Explicit Configuration
+### 1. Use Descriptive Preset Names
+
 ```json
-// Good - clear and declarative
+// Good - clear purpose
 {
-  "image_presets": {
-    "featured_image": {
-      "contexts": {
-        "card": "thumbnail",
-        "full": "page_display"
-      },
-      "default": "page_display"
-    },
-    "hero_image": "hero"
+  "presets": {
+    "product_thumbnail": { "width": 300, "height": 300 },
+    "product_detail": { "width": 800, "height": 600 }
+  }
+}
+
+// Less clear
+{
+  "presets": {
+    "small": { "width": 300, "height": 300 },
+    "big": { "width": 800, "height": 600 }
   }
 }
 ```
 
-### 2. Consistent Context Names
-Use consistent context names across layouts:
-- `card` for compact card views
-- `list` for list item views  
-- `grid` for grid layout views
-- `full` for individual page views
+### 2. Be Consistent Across Templates
 
-### 3. Always Provide Defaults
+Use the same preset names for similar purposes:
+
+```handlebars
+{{! All card views use 'thumbnail' }}
+{{! blog-listing/partials/post-card.hbs }}
+{{{image fieldname="featured_image" preset="thumbnail"}}}
+
+{{! portfolio-grid/partials/project-card.hbs }}
+{{{image fieldname="featured_image" preset="thumbnail"}}}
+
+{{! All full pages use 'full' }}
+{{! blog-post/index.hbs }}
+{{{image fieldname="featured_image" preset="full"}}}
+
+{{! portfolio-project/index.hbs }}
+{{{image fieldname="featured_image" preset="full"}}}
+```
+
+### 3. Override Strategically
+
+- **Core presets**: Good defaults for most sites
+- **Site overrides**: Adjust for your site's design system
+- **Layout overrides**: Only when a layout needs different sizing
+
+### 4. Document Custom Presets
+
+Add descriptions to help other developers:
+
 ```json
 {
-  "image_presets": {
-    "featured_image": {
-      "contexts": {
-        "card": "thumbnail"
-      },
-      "default": "page_display"  // Always include default
+  "presets": {
+    "feature_card": {
+      "width": 400,
+      "height": 300,
+      "crop": "fill",
+      "gravity": "center",
+      "description": "Used in the features section cards on the homepage"
     }
   }
 }
 ```
 
-### 4. Template Consistency
-```handlebars
-{{! Consistent pattern across all templates }}
-{{{image fieldname="featured_image" class="content-image"}}}
-{{{image fieldname="banner_image" class="hero-banner"}}}
+### 5. Use Semantic Names
+
+Preset names should describe their purpose, not their size:
+
+```json
+// Good - semantic
+{
+  "presets": {
+    "card_image": { "width": 300 },
+    "header_banner": { "width": 1200 }
+  }
+}
+
+// Less good - size-based
+{
+  "presets": {
+    "300px": { "width": 300 },
+    "1200px": { "width": 1200 }
+  }
+}
 ```
 
 ## Troubleshooting
 
-### Common Issues
+### Image not appearing
 
-**1. Image not appearing**
-- Check that the field name matches exactly: `{{{image fieldname="featured_image"}}}`
-- Verify the field exists in frontmatter and is a valid ImageRef object
-- Check browser console for preprocessing errors during build
+**Check:**
+1. Field name matches exactly: `fieldname="featured_image"`
+2. Field exists in content frontmatter with valid ImageRef
+3. Preset exists in core, site config, or layout config
+4. Browser console for preprocessing errors
 
-**2. Wrong image size**
-- Check `image_presets` configuration in layout manifest
-- Verify context mapping in collection layout's `displayTypes`
-- Check that `imageContext` matches a context in the field's `contexts`
+### Wrong image size
 
-**3. Context not resolving**
-- Ensure collection layouts define `displayTypes` with `imageContext`
-- Check that `displayType` is set correctly in collection page frontmatter
-- Verify template context (collection items vs individual pages)
+**Check:**
+1. Which preset the template is using: `preset="thumbnail"`
+2. Site config for preset overrides: `manifest.imagePresets.thumbnail`
+3. Layout config for preset overrides: `layout.presets.thumbnail`
+4. Inheritance chain: Core → Site → Layout
 
-### Debug Information
+### Preset not found warning
 
-View preprocessing logs in browser console:
 ```
-[ImagePreprocessor] Starting image preprocessing...
-[ImagePreprocessor] Found X image references  
-[ImagePreprocessor] Processed featured_image with preset 'thumbnail' (card) (300x200): /path/to/image
+[ImagePreprocessor] Preset 'custom_preset' not found in core, site, or layout
 ```
 
-View processed image data in dev tools:
-```javascript
-// Access preprocessor instance
-imagePreprocessor.getProcessedImages()
-```
+**Solution:** Define the preset in site config or layout config:
 
-## Migration from Magic System
-
-The old "smart convention" system has been completely removed. To migrate:
-
-### 1. Remove Field Name Dependencies
-Old system relied on field names like `hero_image`, `avatar_image`, etc. 
-New system uses explicit configuration regardless of field names.
-
-### 2. Add Explicit Presets
 ```json
-// Replace magic field name detection with explicit config
 {
-  "image_presets": {
-    "any_field_name": {
-      "contexts": {
-        "card": "thumbnail",
-        "full": "page_display"  
-      },
-      "default": "page_display"
+  "presets": {
+    "custom_preset": {
+      "width": 500,
+      "height": 400,
+      "crop": "fill",
+      "gravity": "center"
     }
   }
 }
 ```
 
-### 3. Update Context Detection
-Old system detected context from `displayType` containing `card`.
-New system uses explicit `imageContext` mapping in `displayTypes`.
+### Different sizes on different pages
 
-## Technical Implementation
+This is expected! Templates specify which preset to use:
 
-### Architecture Overview
+```handlebars
+{{! Card partial - thumbnail }}
+{{{image fieldname="featured_image" preset="thumbnail"}}}
 
-1. **Preprocessing Phase** (during build):
-   - Scans all content frontmatter for ImageRef objects
-   - Reads layout manifests for `image_presets` configuration
-   - Determines contexts from collection layouts' `displayTypes`  
-   - Generates derivatives for each required context
-   - Stores URLs in memory map with context-aware keys
+{{! Full page - full size }}
+{{{image fieldname="featured_image" preset="full"}}}
+```
 
-2. **Template Rendering** (synchronous):
-   - `image` helper detects current rendering context
-   - Looks up context from `displayTypes` configuration
-   - Retrieves preprocessed URL for field + context combination
-   - Returns HTML `<img>` tag or URL for meta tags
+## Technical Details
 
-3. **Declarative Resolution** (`imagePreprocessor.service.ts:292-316`):
-   - Reads field configuration from layout `image_presets`
-   - Resolves context-specific presets or defaults
-   - No field name pattern matching
+### Preprocessing
 
-4. **Image Services** (`images.service.ts`):
-   - Local file service for development
-   - Cloudinary service for production  
-   - Abstracted through common interface
+Images are preprocessed before template rendering:
+
+1. Preprocessor scans all content for image references
+2. For each image field, generates common presets: `['thumbnail', 'full', 'hero', 'original']`
+3. Each preset is resolved through 3-tier inheritance
+4. Derivatives are generated and cached
+5. URLs stored in memory for synchronous template rendering
+
+### Resolution Algorithm
+
+```typescript
+function resolvePreset(presetName, manifest, layoutManifest) {
+  // 1. Start with core preset (if exists)
+  let preset = BASE_IMAGE_PRESETS[presetName] || { crop: 'scale', gravity: 'center' };
+
+  // 2. Apply site manifest overrides (if exists)
+  if (manifest.imagePresets?.[presetName]) {
+    preset = { ...preset, ...manifest.imagePresets[presetName] };
+  }
+
+  // 3. Apply layout overrides (if exists) - highest priority
+  if (layoutManifest?.presets?.[presetName]) {
+    preset = { ...preset, ...layoutManifest.presets[presetName] };
+  }
+
+  return preset;
+}
+```
 
 ### Key Files
 
-- `src/config/editorConfig.ts` - Base preset definitions
-- `src/core/services/images/imagePreprocessor.service.ts` - Main processing logic
-- `src/core/services/renderer/helpers/image.helper.ts` - Template helper
-- `src/core/types/index.ts` - ImageRef, ImagePreset, and DisplayTypeConfig types
+- **Core presets**: `src/config/editorConfig.ts` (BASE_IMAGE_PRESETS)
+- **Preprocessor**: `src/core/services/images/imagePreprocessor.service.ts`
+- **Template helper**: `src/core/services/renderer/helpers/image.helper.ts`
+- **Types**: `src/core/types/index.ts` (ImageRef, ImagePreset)
 
 ## Summary
 
-The declarative image preset system provides:
+The template-based preset system provides:
 
-- **Explicit configuration** through layout manifests
-- **Context-aware processing** with flexible context mapping
-- **Build-time preprocessing** for optimal performance
-- **Fallback systems** for missing configuration
-- **Template simplicity** with unchanged syntax
+- **Explicit control**: Templates specify exactly which preset to use
+- **Simple inheritance**: Core → Site → Layout (easy to understand)
+- **No magic**: What you see in the template is what you get
+- **Flexible overrides**: Customize at any level as needed
+- **Performance**: All images preprocessed for fast rendering
 
-Configure image presets explicitly in layout manifests, map display types to contexts, and let the system handle preprocessing automatically.
+Use explicit preset selection in templates, override presets at the appropriate level, and let the system handle the rest.

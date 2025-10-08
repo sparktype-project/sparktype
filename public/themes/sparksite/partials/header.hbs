@@ -4,13 +4,13 @@
   Features a clean slide-out mobile menu with backdrop overlay.
 }}
 <div x-data="{ isMobileMenuOpen: false }" @keydown.escape.window="isMobileMenuOpen = false">
-<header class="sticky top-0 z-40 border-b border-gray-200 bg-background backdrop-blur-2xl font-headings">
+<header class="sticky top-0 z-40 font-headings">
     <div class="px-4 md:px-6">
-        <div class="flex h-14 items-center justify-between">
+        <div class="flex h-12 items-center justify-between">
             
             {{!-- Site Logo/Title --}}
             <div class="flex-shrink-0">
-                <a href="{{#if @root.options.isExport}}/index.html{{else}}/{{/if}}" class="flex items-center space-x-2 font-bold text-xl hover:text-primary transition-colors">
+                <a href="{{#if @root.options.isExport}}/index.html{{else}}/{{/if}}" class="flex items-center space-x-2 font-bold text-lg hover:text-primary transition-colors">
                     {{#if @root.headContext.logoUrl}}
                         <img src="{{@root.headContext.logoUrl}}" alt="{{@root.manifest.title}} logo" class="h-10 w-auto">
                     {{/if}}

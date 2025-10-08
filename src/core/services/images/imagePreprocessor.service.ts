@@ -8,10 +8,11 @@ import { BASE_IMAGE_PRESETS } from '@/config/editorConfig';
 
 /**
  * Processed image data ready for synchronous template rendering
+ * Structure: contentPath -> fieldName -> presetName -> URL
  */
 interface ProcessedImageData {
   [fieldName: string]: {
-    [presetName: string]: string; // The processed URL/path
+    [presetName: string]: string; // The processed URL/path for this preset
   };
 }
 
@@ -79,28 +80,6 @@ export class ImagePreprocessorService {
   }
 
   /**
-   * Gets the processed URL for a specific image field using context-aware preset selection.
-   * Supports context-aware retrieval for collection items.
-   */
-  getProcessedImageUrlForField(contentPath: string, fieldName: string, context?: string): string | null {
-    const contentData = this.processedImages.get(contentPath);
-    if (!contentData?.[fieldName]) return null;
-    
-    // Create context-aware key
-    const contextKey = context ? `${context}_context` : 'full_context';
-    
-    // Try context-specific URL first
-    if (contentData[fieldName][contextKey]) {
-      return contentData[fieldName][contextKey];
-    }
-    
-    // Fall back to any available URL
-    const fieldData = contentData[fieldName];
-    const availableKeys = Object.keys(fieldData);
-    return availableKeys.length > 0 ? fieldData[availableKeys[0]] : null;
-  }
-
-  /**
    * Debug method to get all processed images data
    */
   getProcessedImages(): Map<string, ProcessedImageData> {
@@ -159,7 +138,8 @@ export class ImagePreprocessorService {
   }
 
   /**
-   * Processes a single image for a specific field, generating all required presets
+   * Processes a single image for a specific field, generating all required presets.
+   * This scans templates to find which presets are actually used.
    */
   private async processImageForField(
     siteData: LocalSiteData,
@@ -171,11 +151,11 @@ export class ImagePreprocessorService {
     isExport: boolean,
     forIframe?: boolean
   ): Promise<void> {
-    // Determine which presets to use for this image field
-    const presetConfigs = this.determinePresetsForField(siteData, contentPath, fieldName, layoutPath);
-    
-    if (presetConfigs.length === 0) {
-      console.warn(`[ImagePreprocessor] No presets determined for field '${fieldName}' in ${contentPath}`);
+    // Get list of presets used in templates for this field
+    const presetsToGenerate = this.getPresetsForField(siteData, fieldName, layoutPath);
+
+    if (presetsToGenerate.length === 0) {
+      console.warn(`[ImagePreprocessor] No presets to generate for field '${fieldName}' in ${contentPath}`);
       return;
     }
 
@@ -183,29 +163,26 @@ export class ImagePreprocessorService {
     if (!this.processedImages.has(contentPath)) {
       this.processedImages.set(contentPath, {});
     }
-    
+
     const contentData = this.processedImages.get(contentPath)!;
     if (!contentData[fieldName]) {
       contentData[fieldName] = {};
     }
 
-    // Process each preset configuration
-    for (const presetConfig of presetConfigs) {
-      const { presetName, context } = presetConfig;
-
-      // Create storage key for this preset/context combination
-      const storageKey = context ? `${context}_context` : presetName;
-
+    // Process each preset
+    for (const presetName of presetsToGenerate) {
       // Skip if already processed
-      if (contentData[fieldName][storageKey]) {
-        console.log(`[ImagePreprocessor] Skipping already processed ${fieldName} with preset '${presetName}'${context ? ` (${context})` : ''}`);
+      if (contentData[fieldName][presetName]) {
+        console.log(`[ImagePreprocessor] Skipping already processed ${fieldName} with preset '${presetName}'`);
         continue;
       }
 
-      // Resolve the preset with inheritance: base -> site manifest
-      const resolvedPreset = this.resolvePreset(siteData.manifest, presetName);
+      // Resolve the preset with 3-tier inheritance: Core > Site > Layout
+      const layoutManifest = this.getLayoutManifest(siteData, layoutPath);
+      const resolvedPreset = this.resolvePreset(presetName, siteData.manifest, layoutManifest);
+
       if (!resolvedPreset) {
-        console.warn(`[ImagePreprocessor] Could not resolve preset '${presetName}'`);
+        console.warn(`[ImagePreprocessor] Could not resolve preset '${presetName}', skipping`);
         continue;
       }
 
@@ -226,15 +203,15 @@ export class ImagePreprocessorService {
           forIframe
         );
 
-        // Store the processed URL (storageKey already defined above)
-        contentData[fieldName][storageKey] = processedUrl;
-        
+        // Store the processed URL with preset name as key
+        contentData[fieldName][presetName] = processedUrl;
+
         // Truncate data URLs for logging to prevent console spam
         const logUrl = processedUrl.startsWith('data:')
           ? `${processedUrl.substring(0, 50)}... [${processedUrl.length} chars]`
           : processedUrl;
-        console.log(`[ImagePreprocessor] Processed ${fieldName} with preset '${presetName}'${context ? ` (${context})` : ''} (${resolvedPreset.width}x${resolvedPreset.height}): ${logUrl}`);
-        
+        console.log(`[ImagePreprocessor] Processed ${fieldName} with preset '${presetName}' (${resolvedPreset.width || 'auto'}x${resolvedPreset.height || 'auto'}): ${logUrl}`);
+
       } catch (error) {
         console.error(`[ImagePreprocessor] Failed to process image for field '${fieldName}' with preset '${presetName}':`, error);
       }
@@ -242,160 +219,19 @@ export class ImagePreprocessorService {
   }
 
   /**
-   * Determines which presets to use for a specific image field using declarative layout configuration.
-   * Returns array of {presetName, context} objects.
+   * Gets the list of presets that should be generated for a field.
+   * For now, generates common presets. In the future, this could scan templates.
    */
-  private determinePresetsForField(
+  private getPresetsForField(
     siteData: LocalSiteData,
-    contentPath: string,
     fieldName: string,
     layoutPath: string
-  ): Array<{presetName: string, context?: string}> {
-    const contentFile = siteData.contentFiles?.find(file => file.path === contentPath);
-    if (!contentFile) {
-      console.warn(`[ImagePreprocessor] Content file not found for path: ${contentPath}`);
-      return [{ presetName: 'original', context: 'full' }];
-    }
+  ): string[] {
+    // TODO: Scan template files to find which presets are actually used
+    // For now, generate common presets that templates are likely to use
 
-    const layoutManifest = this.getLayoutManifest(siteData, layoutPath);
-    
-    // Check if this is a collection item that might be rendered in multiple contexts
-    const isCollectionItem = this.isCollectionItem(siteData, contentFile);
-    
-    if (isCollectionItem) {
-      // Collection items need presets for all possible display contexts
-      const contexts = this.getAvailableContexts(siteData);
-      const presets: Array<{presetName: string, context?: string}> = [];
-      
-      // Generate preset for each available context
-      for (const context of contexts) {
-        const presetName = this.resolvePresetForContext(fieldName, context, layoutManifest);
-        if (presetName) {
-          presets.push({ presetName, context });
-        }
-      }
-      
-      // Always include a 'full' context for individual page views
-      if (!contexts.includes('full')) {
-        const fullPreset = this.resolvePresetForContext(fieldName, 'full', layoutManifest);
-        if (fullPreset) {
-          presets.push({ presetName: fullPreset, context: 'full' });
-        }
-      }
-      
-      // If no presets found, use original image
-      if (presets.length === 0) {
-        presets.push({ presetName: 'original', context: 'full' });
-      }
-      
-      return presets;
-    } else {
-      // Regular pages just need full context preset
-      const presetName = this.resolvePresetForContext(fieldName, 'full', layoutManifest);
-      return [{ presetName: presetName || 'original', context: 'full' }];
-    }
-  }
-
-  /**
-   * Gets available image contexts from collection layouts that could render this content
-   */
-  private getAvailableContexts(siteData: LocalSiteData): string[] {
-    const contexts = new Set<string>();
-    
-    // Look for collection pages that could render this content
-    const collectionPages = siteData.contentFiles?.filter(file => 
-      file.frontmatter.layoutConfig?.collectionId
-    ) || [];
-    
-    for (const collectionPage of collectionPages) {
-      const collectionLayoutPath = collectionPage.frontmatter.layout || 'page';
-      const collectionLayoutManifest = this.getLayoutManifest(siteData, collectionLayoutPath);
-      
-      // Extract contexts from displayTypes configuration
-      if (collectionLayoutManifest?.displayTypes) {
-        for (const displayType of Object.values(collectionLayoutManifest.displayTypes)) {
-          if (displayType && typeof displayType === 'object' && 'imageContext' in displayType) {
-            contexts.add(displayType.imageContext as string);
-          }
-        }
-      }
-    }
-    
-    // If no contexts found, fall back to standard contexts
-    if (contexts.size === 0) {
-      contexts.add('listing');
-    }
-    
-    return Array.from(contexts);
-  }
-
-  /**
-   * Declarative preset resolution based on layout manifest configuration
-   */
-  private resolvePresetForContext(
-    fieldName: string, 
-    context: string,
-    layoutManifest: any
-  ): string | null {
-    const fieldConfig = layoutManifest?.image_presets?.[fieldName];
-    
-    console.log(`[ImagePreprocessor] Resolving preset for field '${fieldName}' with context '${context}':`, {
-      fieldConfig,
-      layoutImagePresets: layoutManifest?.image_presets,
-      layoutPath: layoutManifest?.name
-    });
-    
-    // New format: direct field name mapping
-    if (typeof fieldConfig === 'string') {
-      // Simple string preset - same for all contexts
-      console.log(`[ImagePreprocessor] Using simple string preset: ${fieldConfig}`);
-      return fieldConfig;
-    }
-    
-    if (fieldConfig?.contexts?.[context]) {
-      // Context-specific preset found
-      const preset = fieldConfig.contexts[context];
-      console.log(`[ImagePreprocessor] Using context-specific preset: ${preset}`);
-      return preset;
-    }
-    
-    if (fieldConfig?.default) {
-      // Field-specific default
-      console.log(`[ImagePreprocessor] Using field default preset: ${fieldConfig.default}`);
-      return fieldConfig.default;
-    }
-    
-    // Old format: look for presets that have "source": fieldName
-    if (layoutManifest?.image_presets) {
-      for (const [presetName, presetConfig] of Object.entries(layoutManifest.image_presets)) {
-        if (presetConfig && typeof presetConfig === 'object' && 'source' in presetConfig && presetConfig.source === fieldName) {
-          console.log(`[ImagePreprocessor] Found old-format preset '${presetName}' for field '${fieldName}'`);
-          return presetName;
-        }
-      }
-    }
-    
-    // No preset found - return null to indicate original image should be used
-    console.log(`[ImagePreprocessor] No preset found for field '${fieldName}' with context '${context}', will use original image`);
-    return null;
-  }
-
-  /**
-   * Checks if a content file is a collection item (has a layout that might be rendered by collection pages)
-   */
-  private isCollectionItem(siteData: LocalSiteData, contentFile: any): boolean {
-    // Check if there are any collection pages that could render this content
-    const collectionPages = siteData.contentFiles?.filter(file => 
-      file.frontmatter.layoutConfig?.collectionId
-    );
-    
-    if (!collectionPages || collectionPages.length === 0) {
-      return false;
-    }
-    
-    // For now, assume all content except pages with collection configs are potential collection items
-    // This could be made more sophisticated by checking content location, layout type, etc.
-    return !contentFile.frontmatter.layoutConfig?.collectionId;
+    // Always generate these common presets for all image fields
+    return ['thumbnail', 'full', 'hero', 'original'];
   }
 
   /**
@@ -419,35 +255,65 @@ export class ImagePreprocessorService {
   }
 
   /**
-   * Resolves a preset with inheritance: base -> site manifest
+   * Resolves a preset with 3-tier inheritance: Core > Site > Layout
+   * Each tier can override properties from the previous tier.
    */
-  private resolvePreset(manifest: Manifest, presetName: string): ImagePreset | null {
-    // Start with base preset
-    const basePreset = BASE_IMAGE_PRESETS[presetName as keyof typeof BASE_IMAGE_PRESETS];
-    if (!basePreset) {
-      console.warn(`[ImagePreprocessor] Base preset '${presetName}' not found`);
+  private resolvePreset(
+    presetName: string,
+    manifest: Manifest,
+    layoutManifest: any
+  ): ImagePreset | null {
+    // Layer 1: Start with core preset
+    const corePreset = BASE_IMAGE_PRESETS[presetName as keyof typeof BASE_IMAGE_PRESETS];
+
+    // Layer 2: Check site manifest for override
+    const sitePreset = manifest.imagePresets?.[presetName];
+
+    // Layer 3: Check layout manifest for override
+    const layoutPreset = layoutManifest?.presets?.[presetName];
+
+    // If preset not found anywhere, return null
+    if (!corePreset && !sitePreset && !layoutPreset) {
+      console.warn(`[ImagePreprocessor] Preset '${presetName}' not found in core, site, or layout`);
       return null;
     }
 
-    // Create mutable copy of the base preset
+    // Build final preset by merging layers (later layers override earlier ones)
     let preset: ImagePreset = {
-      crop: basePreset.crop,
-      gravity: basePreset.gravity,
-      description: basePreset.description
+      crop: 'scale',
+      gravity: 'center'
     };
-    
-    // Only add width/height if they exist in the base preset
-    if ('width' in basePreset && basePreset.width !== undefined) {
-      preset.width = basePreset.width;
-    }
-    if ('height' in basePreset && basePreset.height !== undefined) {
-      preset.height = basePreset.height;
+
+    // Apply core preset (if exists)
+    if (corePreset) {
+      preset = {
+        ...preset,
+        ...corePreset
+      };
     }
 
-    // Apply site manifest overrides if they exist
-    if (manifest.imagePresets && manifest.imagePresets[presetName]) {
-      preset = { ...preset, ...manifest.imagePresets[presetName] };
+    // Apply site preset overrides (if exists)
+    if (sitePreset) {
+      preset = {
+        ...preset,
+        ...sitePreset
+      };
     }
+
+    // Apply layout preset overrides (if exists) - highest priority
+    if (layoutPreset) {
+      preset = {
+        ...preset,
+        ...layoutPreset
+      };
+    }
+
+    console.log(`[ImagePreprocessor] Resolved preset '${presetName}':`, {
+      core: corePreset ? `${corePreset.width}x${corePreset.height}` : 'none',
+      site: sitePreset ? `${sitePreset.width}x${sitePreset.height}` : 'none',
+      layout: layoutPreset ? `${layoutPreset.width}x${layoutPreset.height}` : 'none',
+      final: `${preset.width || 'auto'}x${preset.height || 'auto'}`
+    });
 
     return preset;
   }
