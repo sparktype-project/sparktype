@@ -3,7 +3,7 @@
   It receives `collectionItems` and `pagination` data from the page resolver.
 }}
 <div class="max-w-4xl mx-auto px-4 py-8 lg:px-8">
-    <header class="mb-12">
+    <header class="my-12">
         <h1 class="text-4xl lg:text-5xl font-bold text-heading mb-4 leading-tight">
             {{contentFile.frontmatter.title}}
         </h1>
@@ -15,7 +15,7 @@
     </header>
 
     {{#if collectionItems}}
-        <div class="grid grid-cols-1 gap-6 lg:gap-8">
+        <div class="grid grid-cols-1 gap-6 lg:gap-8 max-w-none">
             {{! Loop through each item provided by the page resolver }}
             {{#each collectionItems}}
                 {{! Render a partial for each item. This keeps the code clean. }}

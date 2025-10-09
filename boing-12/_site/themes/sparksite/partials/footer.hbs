@@ -1,0 +1,11 @@
+<footer class="py-4 mt-auto">
+    <div class=" px-4 pt-4 lg:px-6 font-headings">
+        {{#if (themeData 'footer_content')}}
+            <div class="mb-0 text-xs text-muted">
+                {{{themeData 'footer_content'}}}
+            </div>
+        {{else}}
+            <p class="mb-0 text-xs text-muted">© {{year}} {{manifest.title}}. Built with <a href="https://www.sparktype.org" target="_blank">Sparktype</a>.</p>
+        {{/if}}
+    </div>
+</footer>

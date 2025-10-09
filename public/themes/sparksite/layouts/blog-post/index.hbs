@@ -6,15 +6,16 @@
     
 
     {{! Post Header: Title and Metadata }}
-    <header class="mb-8 mt-12">
+    <header class="mb-6 mt-12">
         <h1 class="text-4xl lg:text-5xl font-bold text-heading mb-4 leading-tight">
             {{contentFile.frontmatter.title}}
         </h1>
-            <p class="text-xl">{{contentFile.frontmatter.description}} </p>
+        
+        <p class="text-2xl font-headings mb-4">{{contentFile.frontmatter.description}} </p>
 
-        <div class="flex flex-wrap items-center gap-2 text-sm text-muted">
+        <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500">
             {{#if contentFile.frontmatter.date}}
-                <time datetime="{{contentFile.frontmatter.date}}" class="font-medium">
+                <time datetime="{{contentFile.frontmatter.date}}" class="font-headings">
                     Published on {{formatDate contentFile.frontmatter.date}}
                 </time>
             {{/if}}
@@ -23,7 +24,7 @@
                 {{#if contentFile.frontmatter.date}}
                     <span class="text-border">•</span>
                 {{/if}}
-                <span class="font-medium">By {{contentFile.frontmatter.author}}</span>
+                <span class="font-headings">By {{contentFile.frontmatter.author}}</span>
             {{/if}}
         </div>
 
@@ -42,7 +43,7 @@
     {{/if}}
 
     {{! The main content of the post, rendered from Markdown or Blocks }}
-    <section class="max-w-none">
+    <section class="max-w-none prose prose-lg">
         {{#if blocks}}
             {{{render_blocks blocks}}}
         {{else}}
@@ -51,14 +52,15 @@
     </section>
 
     {{! Display tags at the bottom of the post }}
-    {{#if contentFile.frontmatter.tags}}
-        <footer class="mt-12 pt-8 border-t border-border">
-            <p class="text-sm font-semibold text-heading mb-3">Tagged In:</p>
+    {{#if resolvedTags}}
+        <footer class="mt-12 pt-8 border-t border-gray-200">
             <div class="flex flex-wrap gap-2">
-                {{#each contentFile.frontmatter.tags}}
-                    <span class="inline-flex items-center px-3 py-1 text-xs font-medium bg-muted text-text rounded-full">
-                        {{this}}
-                    </span>
+                {{#each resolvedTags}}
+                    {{#each this}}
+                        <span class="inline-flex items-center px-3 py-1 text-sm font-headings bg-slate-100 text-text rounded-full hover:bg-muted/80 transition-colors">
+                            {{this.name}}
+                        </span>
+                    {{/each}}
                 {{/each}}
             </div>
         </footer>

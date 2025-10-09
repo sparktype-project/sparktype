@@ -103,15 +103,16 @@ export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => {
           path: rootContext.contentFile.path,
           slug: rootContext.contentFile.path.split('/').pop()?.replace('.md', '') || ''
         };
-        
-        const currentPagePath = getUrlForNode(currentPageNode, siteData.manifest, true, undefined, siteData);
+
+        // Pass forFilePath=true (6th parameter) to get full path with index.html
+        const currentPagePath = getUrlForNode(currentPageNode, siteData.manifest, true, undefined, siteData, true);
         // Strip leading slash from processed URL if present
-        const cleanProcessedUrl = processedUrl.startsWith('/') 
-          ? processedUrl.substring(1) 
+        const cleanProcessedUrl = processedUrl.startsWith('/')
+          ? processedUrl.substring(1)
           : processedUrl;
         const relativePath = getRelativePath(currentPagePath, cleanProcessedUrl);
-        
-        
+
+
         processedUrl = relativePath;
       }
 

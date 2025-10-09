@@ -131,9 +131,6 @@ export async function assembleBaseContext(
     }
 
     const { manifest } = siteData;
-    const logoUrl = manifest.logo ? await _imageService.getDisplayUrl(manifest, manifest.logo, { height: 32 }, options.isExport) : undefined;
-    const faviconUrl = manifest.favicon ? await _imageService.getDisplayUrl(manifest, manifest.favicon, { width: 32, height: 32 }, options.isExport) : undefined;
-    // OpenGraph image is now handled by the image helper in templates
 
     // CORRECTED: Create the appropriate `StructureNode` or `CollectionItemRef` before passing to `getUrlForNode`.
     // We check the manifest to see if the resolved content file is a known collection item.
@@ -154,6 +151,33 @@ export async function assembleBaseContext(
     // For navigation link calculation, we need the full file path (with index.html)
     // to correctly calculate relative paths from the current page
     const currentPagePath = getUrlForNode(urlNode, manifest, true, undefined, siteData, true);
+
+    // Generate logo and favicon URLs, converting to relative paths for export
+    let logoUrl: string | undefined;
+    let faviconUrl: string | undefined;
+
+    if (manifest.logo) {
+      const logoAbsolutePath = await _imageService.getDisplayUrl(manifest, manifest.logo, { height: 32 }, options.isExport);
+      if (options.isExport && logoAbsolutePath.startsWith('/')) {
+        // Convert absolute path to relative path for export
+        const cleanPath = logoAbsolutePath.substring(1); // Remove leading slash
+        logoUrl = getRelativePath(currentPagePath, cleanPath);
+      } else {
+        logoUrl = logoAbsolutePath;
+      }
+    }
+
+    if (manifest.favicon) {
+      const faviconAbsolutePath = await _imageService.getDisplayUrl(manifest, manifest.favicon, { width: 32, height: 32 }, options.isExport);
+      if (options.isExport && faviconAbsolutePath.startsWith('/')) {
+        // Convert absolute path to relative path for export
+        const cleanPath = faviconAbsolutePath.substring(1); // Remove leading slash
+        faviconUrl = getRelativePath(currentPagePath, cleanPath);
+      } else {
+        faviconUrl = faviconAbsolutePath;
+      }
+    }
+    // OpenGraph image is now handled by the image helper in templates
 
     return {
         siteData,

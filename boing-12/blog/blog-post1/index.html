@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog post1 | Boing</title>
+    <link rel="canonical" href="https://example.com/blog/blog-post1">
+    
+        <meta name="description" content="A guide to the image testing system">
+    
+    <meta property="og:title" content="Blog post1">
+        <meta property="og:description" content="A guide to the image testing system">
+    <meta property="og:url" content="https://example.com/blog/blog-post1">
+    <meta property="og:site_name" content="Boing">
+    <meta property="og:type" content="article">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Blog post1">
+        <meta name="twitter:description" content="A guide to the image testing system">
+    
+        <meta property="og:image" content="./_site/assets/derivatives/1754935140540-247_wauto_hauto_c-scale_g-center.jpg">
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+        <meta name="twitter:image" content="./_site/assets/derivatives/1754935140540-247_wauto_hauto_c-scale_g-center.jpg">
+    
+    
+        <link rel="icon" href="/favicon.ico" sizes="any">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    
+        <link rel="alternate" type="application/rss+xml" title="Boing" href="../../rss.xml">
+    
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&family=Gentium+Book+Plus:ital@0;1&family=IBM+Plex+Serif:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=Instrument+Serif:ital@0;1&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+    </style>
+    
+        <link rel="stylesheet" href="../../_site/themes/sparksite/styles.css">
+        <link rel="stylesheet" href="../../_site/themes/sparksite/variables.css">
+    
+    <style id="signum-style-overrides">
+    :root {
+      ----color-background: #f8f9fa;
+      ----color-text: #212529;
+      ----color-headings: #000000;
+      ----color-primary: #0d6efd;
+      ----font-headings: Inter, system-ui, sans-serif;
+      ----font-body: "Gentium Book Plus", Georgia, serif;
+    }
+    </style></head>
+<body>
+    <div x-data="{ isMobileMenuOpen: false }" class="flex flex-col min-h-screen">
+        <div x-data="{ isMobileMenuOpen: false }" @keydown.escape.window="isMobileMenuOpen = false">
+        <header class="sticky top-0 z-40 font-headings">
+            <div class="px-4 md:px-6">
+                <div class="flex h-12 items-center justify-between">
+                    
+                    <div class="flex-shrink-0">
+                        <a href="/index.html" class="flex items-center space-x-2 font-bold text-lg hover:text-primary transition-colors">
+                                <img src="../../_site/assets/derivatives/1759993300352-247_wauto_h32_c-scale_g-center.jpg" alt="Boing logo" class="h-10 w-auto">
+                            <span>Boing</span>
+                        </a>
+                    </div>
+        
+                    <nav class="hidden md:flex items-center gap-4">
+                                <a href="../../index.html" 
+                                   class="text-text hover:text-primary transition-colors">
+                                    Hello
+                                </a>
+                                <a href="../index.html" 
+                                   class="text-text hover:text-primary transition-colors">
+                                    Blog
+                                </a>
+                                <div class="relative" 
+                                    x-data="{ 
+                                        open: false,
+                                        alignRight: false,
+                                        handleMouseEnter() {
+                                            this.open = true;
+                                            this.alignRight = ($el.getBoundingClientRect().right + 200) > window.innerWidth;
+                                        },
+                                        handleMouseLeave() {
+                                            this.open = false;
+                                        }
+                                    }" 
+                                    @mouseenter="handleMouseEnter()" 
+                                    @mouseleave="handleMouseLeave()">
+                                    
+                                    <a href="../../about-us2/index.html" 
+                                       class="flex items-center space-x-1 text-text hover:text-primary transition-colors"
+                                       :aria-expanded="open.toString()">
+                                        <span>Another page</span>
+                                        <svg class="w-4 h-4 transform transition-transform duration-200" 
+                                             :class="{ 'rotate-180': open }" 
+                                             fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </a>
+                                    
+                                    <div x-show="open" 
+                                         x-transition:enter="transition ease-out duration-200"
+                                         x-transition:enter-start="opacity-0 translate-y-1"
+                                         x-transition:enter-end="opacity-100 translate-y-0"
+                                         x-transition:leave="transition ease-in duration-150"
+                                         x-transition:leave-start="opacity-100 translate-y-0"
+                                         x-transition:leave-end="opacity-0 translate-y-1"
+                                         :class="alignRight ? 'right-0' : 'left-0'"
+                                         class="absolute mt-2 w-48 bg-background border border-border rounded-md shadow-lg z-50"
+                                         x-cloak>
+                                        <div class="py-1">
+                                                <a href="../../about-us2/sub-page/index.html" 
+                                                   class="block px-4 py-2 text-sm text-text hover:bg-muted hover:text-heading transition-colors">
+                                                    Sub page
+                                                </a>
+                                        </div>
+                                    </div>
+                                </div>
+        
+                    </nav>
+        
+                    <div class="flex md:hidden">
+                        <div 
+                            @click="isMobileMenuOpen = true" 
+                            type="button" 
+                            class="inline-flex items-center justify-center p-2 rounded-md text-text hover:text-primary transition-colors"
+                            aria-controls="mobile-menu" 
+                            aria-label="Open main menu"
+                        >
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </header>
+        
+        <div x-show="isMobileMenuOpen" 
+             x-transition:enter="transition-opacity ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             @click="isMobileMenuOpen = false"
+             class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+             x-cloak>
+        </div>
+        
+        <div x-show="isMobileMenuOpen" 
+             x-transition:enter="transform transition ease-in-out duration-300"
+             x-transition:enter-start="translate-x-full"
+             x-transition:enter-end="translate-x-0"
+             x-transition:leave="transform transition ease-in-out duration-300"
+             x-transition:leave-start="translate-x-0"
+             x-transition:leave-end="translate-x-full"
+             class="fixed top-0 right-0 bottom-0 z-50 w-80 bg-background border-l border-border shadow-xl flex flex-col md:hidden"
+             id="mobile-menu"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="mobile-menu-title"
+             x-cloak
+             x-trap="isMobileMenuOpen">
+             
+            <div class="flex items-center justify-between p-4 border-b border-border">
+                <div @click="isMobileMenuOpen = false" 
+                        type="button" 
+                        class="inline-flex items-center justify-center p-2 rounded-md text-text hover:text-primary transition-colors"
+                        aria-label="Close menu">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </div>
+            </div>
+        
+            <nav class="flex-1 overflow-y-auto p-4 font-headings">
+                <div class="flex gap-4 flex-col">
+                            <a href="../../index.html" 
+                               class="block text-base text-text hover:text-primary hover:bg-muted rounded-md transition-colors"
+                               @click="isMobileMenuOpen = false">
+                                Hello
+                            </a>
+                            <a href="../index.html" 
+                               class="block text-base text-text hover:text-primary hover:bg-muted rounded-md transition-colors"
+                               @click="isMobileMenuOpen = false">
+                                Blog
+                            </a>
+                            <div x-data="{ open: false }" class="space-y-1">
+                                <div class="flex items-center justify-between font-headings">
+                                    <a href="../../about-us2/index.html" 
+                                       class="flex-1 block px-3 py-2 text-base hover:text-primary hover:bg-muted rounded-md transition-colors"
+                                       @click="isMobileMenuOpen = false">
+                                        Another page
+                                    </a>
+                                    <button @click="open = !open" 
+                                            type="button"
+                                            class="inline-flex items-center justify-center p-1 rounded-md text-muted hover:text-text transition-colors"
+                                            :aria-expanded="open.toString()">
+                                        <svg class="h-4 w-4 transform transition-transform duration-200" 
+                                             :class="{ 'rotate-180': open }"
+                                             fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <div x-show="open" 
+                                     x-transition:enter="transition-all ease-out duration-200"
+                                     x-transition:enter-start="opacity-0 -translate-y-1"
+                                     x-transition:enter-end="opacity-100 translate-y-0"
+                                     x-transition:leave="transition-all ease-in duration-150"
+                                     x-transition:leave-start="opacity-100 translate-y-0"
+                                     x-transition:leave-end="opacity-0 -translate-y-1"
+                                     class="pl-4 space-y-1 border-l-2 border-border ml-3">
+                                        <a href="../../about-us2/sub-page/index.html" 
+                                           class="block px-3 py-2 text-sm text-muted hover:text-text hover:bg-muted rounded-md transition-colors font-headings"
+                                           @click="isMobileMenuOpen = false">
+                                            Sub page
+                                        </a>
+                                </div>
+                            </div>
+                </div>
+            </nav>
+        </div>
+        </div>        <main class="flex-1">
+            <article class="container max-w-4xl mx-auto px-4 py-8 lg:px-8">
+    
+
+    <header class="mb-6 mt-12">
+        <h1 class="text-4xl lg:text-5xl font-bold text-heading mb-4 leading-tight">
+            Blog post1
+        </h1>
+        
+        <p class="text-2xl font-headings mb-4">A guide to the image testing system </p>
+
+        <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                <time datetime="2025-08-11" class="font-headings">
+                    Published on 11 August 2025
+                </time>
+            
+        </div>
+
+    </header>
+
+        <div class="mb-8">
+            <!-- Image not preprocessed: featured_image with preset full -->
+        </div>
+
+    <section class="max-w-none prose prose-lg">
+            <h2> <strong>Quick Commands</strong></h2>
+<p>​</p>
+<p>```bash# Run all image testsnpm test -- --testPathPatterns="image"</p>
+<p>​</p>
+<p># Watch mode during developmentnpm test -- --watch --testPathPatterns="image"</p>
+<p>​</p>
+<p># Full coverage reportnpm run test:coverage -- --testPathPatterns="image"</p>
+<p>​</p>
+<h1>Run specific test suitesnpm test -- localImage.service.test.tsnpm test -- imagePreprocessor.service.test.tsnpm test -- siteBackup.service.test.ts</h1>
+<p>​</p>
+<h1>Run multiple patternsnpm test -- --testPathPatterns="image|storage|siteBackup"```</h1>
+<p>​</p>
+<p><strong>## Before Any Release</strong></p>
+<p>​</p>
+<p>```bash# MUST PASS before merging image changesnpm test -- src/core/services/images/__tests__/npm test -- --testPathPatterns="backup|import"npm test -- --testPathPatterns="storage-contracts"```</p>
+<p>​</p>
+<p><strong>## Testing Checklist</strong></p>
+<p>​</p>
+<p><strong>### After Modifying Image Processing</strong></p>
+<p>​</p>
+<p>- [ ] All unit tests pass: `npm test -- --testPathPatterns="image"`- [ ] Integration tests pass- [ ] Run health check in browser console: `__checkImageHealth('site-id')`- [ ] Test in both web and Tauri environments- [ ] Manually verify export structure- [ ] Check coverage didn't decrease: `npm run test:coverage`</p>
+<p>​</p>
+<p><strong>### After Modifying Import/Export</strong></p>
+<p>​</p>
+<p>- [ ] Import tests pass (media.json-based)- [ ] Export tests pass (derivative filtering)- [ ] Contract tests pass (storage architecture)- [ ] Manual roundtrip test: export → import → export- [ ] Verify media.json matches storage</p>
+<p>​</p>
+<p><strong>### After Modifying URL Generation</strong></p>
+<p>​</p>
+<p>- [ ] URL generation tests pass for all contexts: `npm test -- localImage.service.test.ts`- [ ] Tauri data URL tests pass- [ ] Preview (iframe) data URL tests pass- [ ] Export path tests pass- [ ] Test in actual Tauri app: `npm run tauri:dev`</p>
+<p>​</p>
+<p><strong>## Architecture Invariants</strong></p>
+<p>​</p>
+<p>These must <strong>**ALWAYS**</strong> be true:</p>
+<p>​</p>
+<p><strong>### 1. Storage Separation</strong></p>
+<p>​</p>
+<p>```✅ CORRECT:  siteImageAssetsStore:    - assets/originals/image1.jpg    - assets/originals/image2.png</p>
+<p>​</p>
+<p>  derivativeCacheStore:    - site-123/assets/derivatives/image1_w600_h400_c-fill_g-center.jpg    - site-123/assets/derivatives/image2_w300_h200_c-fit_g-center.png</p>
+<p>​</p>
+<p>❌ WRONG:  siteImageAssetsStore:    - assets/originals/image1.jpg    - assets/derivatives/image1_w600_h400_c-fill_g-center.jpg  ← NO!```</p>
+<p>​</p>
+<p><strong>**Contract**</strong>: `siteImageAssetsStore` contains ONLY user-uploaded originals. Derivatives are ONLY in `derivativeCacheStore`.</p>
+<p>​</p>
+<h3><strong>2. URL Formats by Context</strong></h3>
+<p>​</p>
+<p>| Context | Format | Example ||---------|--------|---------|| <strong>**Export**</strong> | `/assets/derivatives/{file}` | `/assets/derivatives/img_w600_h400_c-fill_g-center.jpg` || <strong>**Preview (iframe)**</strong> | `data:image/...` | `data:image/jpeg;base64,/9j/4AAQ...` || <strong>**Tauri App**</strong> | `data:image/...` | `data:image/png;base64,iVBORw0KGgo...` || <strong>**Web Editor**</strong> | `blob:<a href="http://...%60">http://...`</a> | `blob:http://localhost/abc-123` |</p>
+<p>​</p>
+<p><strong>**Contract**</strong>: Each context must use the correct URL format for that environment.</p>
+<p>​</p>
+<p><strong>### 3. Import Rules</strong></p>
+<p>​</p>
+<p>```typescript// ✅ CORRECT: Import from media.jsonconst mediaManifest = JSON.parse(await mediaFile.async('string'));for (const imagePath of Object.keys(mediaManifest.images)) {  const imageFile = signumFolder.file(`assets/originals/${filename}`);  imageAssets[imagePath] = await imageFile.async('blob');}</p>
+<p>​</p>
+<p>// ❌ WRONG: Scan foldersconst originalsFolder = signumFolder.folder('assets/originals');for (const filename in originalsFolder.files) { ... }```</p>
+<p>​</p>
+<p><strong>**Contract**</strong>:- ONLY import images listed in media.json- NEVER import derivatives from ZIP- Derivatives are regenerated on-demand</p>
+<p>​</p>
+<p><strong>### 4. Export Structure</strong></p>
+<p>​</p>
+<p>```_site/  ├── assets/  │   ├── originals/           ← Only true originals  │   │   ├── 1234-image1.jpg  ✅ No transform params in filename  │   │   └── 5678-image2.png  ✅ No transform params in filename  │   └── derivatives/         ← Only generated derivatives  │       ├── image1_w600_h400_c-fill_g-center.jpg  ✅ Has transform params  │       └── image2_w300_h200_c-fit_g-center.jpg   ✅ Has transform params  └── data/      └── media.json           ← Lists only originals```</p>
+<p>​</p>
+<p><strong>**Contract**</strong>:- Originals folder contains NO files with derivative naming pattern- Derivative pattern: `/_w(auto|\d+)_h(auto|\d+)_c-[^_]+_g-[^_]+/`- media.json keys match exactly with originals in storage</p>
+<p>​</p>
+<p><strong>## Manual Verification</strong></p>
+<p>​</p>
+<p><strong>### Test Export Structure</strong></p>
+<p>​</p>
+<p>1. <strong>**Export a site with images**</strong>   ```typescript   const zip = await exportSiteBackup(siteData);   // Save ZIP to disk   ```</p>
+<p>​</p>
+<p>2. <strong>**Extract and inspect**</strong>   ```bash   unzip site-export.zip   cd _site   ls -la assets/originals/    # Should have NO derivatives   ls -la assets/derivatives/  # Should have derivatives   cat data/media.json         # Should list only originals   ```</p>
+<p>​</p>
+<p>3. <strong>**Verify no derivative contamination**</strong>   ```bash   # This should return NOTHING:   ls assets/originals/ | grep -E '_w[0-9]+.*_h[0-9]+.*_c-.*_g-'   ```</p>
+<p>​</p>
+<p>4. <strong>**Check media.json integrity**</strong>   ```bash   # Extract image paths from media.json   jq '.images | keys[]' data/media.json</p>
+<p>​</p>
+<p>   # Compare with actual files in originals folder   ls assets/originals/   ```</p>
+<p>​</p>
+<p><strong>### Test Tauri App</strong></p>
+<p>​</p>
+<p>1. <strong>**Launch Tauri app**</strong>   ```bash   npm run tauri:dev   ```</p>
+<p>​</p>
+<p>2. <strong>**Upload image and verify**</strong>   - Upload an image   - Open DevTools Console   - Look for: `[LocalImageService] Creating data URL for Tauri`   - Image should display without errors</p>
+<p>​</p>
+<p>3. <strong>**Verify data URLs**</strong>   - Inspect image element in DevTools   - `src` attribute should start with `data:image/`   - Should NOT be blob URL</p>
+<p>​</p>
+<p>4. <strong>**Test export from Tauri**</strong>   - Export site   - Extract ZIP   - Verify structure matches web export</p>
+<p>​</p>
+<p><strong>### Test Import Behavior</strong></p>
+<p>​</p>
+<p>1. <strong>**Create a test site with images**</strong>   - Add 3-5 images   - Export to ZIP</p>
+<p>​</p>
+<p>2. <strong>**Verify export contents**</strong>   - Check `data/media.json` exists and lists images   - Check `assets/originals/` has originals   - Check `assets/derivatives/` has derivatives</p>
+<p>​</p>
+<p>3. <strong>**Import the ZIP**</strong>   ```typescript   const importedData = await importSiteFromZip(zipFile);   ```</p>
+<p>​</p>
+<p>4. <strong>**Verify imported data**</strong>   ```typescript   // Should contain ONLY originals   console.log(Object.keys(importedData.imageAssetsToSave));   // Should NOT contain any derivative filenames   ```</p>
+<p>​</p>
+<p>5. <strong>**Check storage after save**</strong>   ```typescript   const stored = await getAllImageAssetsForSite(siteId);   // Should contain ONLY originals   // Verify no derivative patterns: /_w.*_h.*_c-.*_g-/   ```</p>
+<p>​</p>
+<p><strong>## Browser Console Diagnostics</strong></p>
+<p>​</p>
+<p><strong>### Image Health Check</strong></p>
+<p>​</p>
+<p>```javascript// Run in browser consoleawait __checkImageHealth('your-site-id')</p>
+<p>​</p>
+<p>// Example output:{  status: 'healthy',  issues: [],  metrics: {    originalsCount: 12,    derivativesCount: 48,    storageSizeMB: 8.4  }}</p>
+<p>​</p>
+<p>// OR if issues found:{  status: 'error',  issues: [    '❌ CRITICAL: Derivative in originals: assets/originals/img_w600_h400_c-fill_g-center.jpg',    '⚠️  3 images orphaned in storage'  ],  metrics: { ... }}```</p>
+<p>​</p>
+<p><strong>### Quick Checks</strong></p>
+<p>​</p>
+<p>```javascript// Check if image is in storageawait getImageAsset('site-id', 'assets/originals/image.jpg')</p>
+<p>​</p>
+<p>// List all cached derivativesawait getAllCacheKeys('site-id')</p>
+<p>​</p>
+<p>// Get media manifestawait getMediaManifest('site-id')</p>
+<p>​</p>
+<p>// Check derivative cacheawait getCachedDerivative('site-id/assets/derivatives/img_w600_h400.jpg')```</p>
+<p>​</p>
+<p><strong>## Common Test Failures &amp; Fixes</strong></p>
+<p>​</p>
+<p><strong>### "Derivative found in originals store"</strong></p>
+<p>​</p>
+<p><strong>**Cause**</strong>: Import logic saved derivatives to siteImageAssetsStore</p>
+<p>​</p>
+<p><strong>**Fix**</strong>: Verify `importSiteFromZip` only imports from media.json, not from folder scanning</p>
+<p>​</p>
+<p><strong>**Test**</strong>:```typescripttest('should not import derivatives', async () =&gt; {  // ZIP contains derivatives but they should be ignored  const data = await importSiteFromZip(zipWithDerivatives);  const paths = Object.keys(data.imageAssetsToSave);</p>
+<p>​</p>
+<p>  for (const path of paths) {    expect(path).not.toMatch(/_w.*_h.*_c-.*_g-/);  }});```</p>
+<p>​</p>
+<p><strong>### "Data URL not returned in Tauri context"</strong></p>
+<p>​</p>
+<p><strong>**Cause**</strong>: `isTauriApp()` detection failed or getDisplayUrl not checking properly</p>
+<p>​</p>
+<p><strong>**Fix**</strong>: Mock `isTauriApp()` in tests and verify data URL branch</p>
+<p>​</p>
+<p><strong>**Test**</strong>:```typescripttest('should return data URL in Tauri', async () =&gt; {  jest.mock('@/core/utils/platform', () =&gt; ({    isTauriApp: () =&gt; true  }));</p>
+<p>​</p>
+<p>  const url = await getDisplayUrl(manifest, ref, options, false);  expect(url).toMatch(/^data:image\//);});```</p>
+<p>​</p>
+<p><strong>### "Media.json and storage out of sync"</strong></p>
+<p>​</p>
+<p><strong>**Cause**</strong>: Image added/removed but media.json not updated</p>
+<p>​</p>
+<p><strong>**Fix**</strong>: Ensure media manifest is regenerated on image operations</p>
+<p>​</p>
+<p><strong>**Test**</strong>:```typescripttest('media.json matches storage', async () =&gt; {  const media = await getMediaManifest(siteId);  const stored = await getAllImageAssetsForSite(siteId);</p>
+<p>​</p>
+<p>  expect(Object.keys(media.images).sort()).toEqual(    Object.keys(stored).sort()  );});```</p>
+<p>​</p>
+<p><strong>## Test Coverage Goals</strong></p>
+<p>​</p>
+<p>| Component | Target Coverage | Current ||-----------|----------------|---------|| localImage.service.ts | 90% | Check with `npm run test:coverage` || imagePreprocessor.service.ts | 85% | || derivativeCache.service.ts | 90% | || imageRegistry.service.ts | 85% | || mediaManifest.service.ts | 85% | || siteBackup.service.ts | 80% | || remoteImport.service.ts | 80% | |</p>
+<p>​</p>
+<p><strong>## Continuous Integration</strong></p>
+<p>​</p>
+<p><strong>### Local Pre-commit Hook</strong></p>
+<p>​</p>
+<p>```bash# .husky/pre-commitgit diff --cached --name-only | grep -q "src/core/services/images/" &amp;&amp; {  echo "🧪 Running image tests..."  npm test -- --testPathPatterns="image" --bail}```</p>
+<p>​</p>
+<p><strong>### CI/CD (Future)</strong></p>
+<p>​</p>
+<p>```yaml# .github/workflows/test-images.ymlname: Image Testson:  pull_request:    paths:      - 'src/core/services/images/**'      - 'src/core/services/siteBackup.service.ts'</p>
+<p>​</p>
+<p>jobs:  test:    runs-on: ubuntu-latest    steps:      - run: npm ci      - run: npm test -- --testPathPatterns="image|backup|import"      - run: npm run test:coverage```</p>
+<p>​</p>
+<p><strong>## Resources</strong></p>
+<p>​</p>
+<p>- [IMAGE_PIPELINE_PROCESS.md](<u>./IMAGE_PIPELINE_PROCESS.md</u>) - Complete pipeline documentation- [Jest Documentation](<a href="https://jestjs.io/docs/getting-started"><u>https://jestjs.io/docs/getting-started</u></a>)- [Testing Library](<a href="https://testing-library.com/docs/react-testing-library/intro/"><u>https://testing-library.com/docs/react-testing-library/intro/</u></a>)</p>
+<p>​</p>
+<p><strong>## Questions?</strong></p>
+<p>​</p>
+<p>Check existing tests in `src/core/services/images/__tests__/` for examples.</p>
+    </section>
+
+</article>
+        </main>
+        <footer class="py-4 mt-auto">
+            <div class=" px-4 pt-4 lg:px-6 font-headings">
+                    <p class="mb-0 text-xs text-muted">©  Boing. Built with <a href="https://www.sparktype.org" target="_blank">Sparktype</a>.</p>
+            </div>
+        </footer>    </div>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</body>
+</html>

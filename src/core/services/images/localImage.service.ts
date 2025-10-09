@@ -222,8 +222,8 @@ class LocalImageService implements ImageService {
     console.log(`[LocalImageService] getDisplayUrl - isExport: ${isExport}, forIframe: ${forIframe}, cacheKey: ${cacheKey}, blobSize: ${finalBlob.size}`);
     
     if (isExport) {
-      // For export, derivatives go to assets/derivatives/
-      return `/assets/derivatives/${derivativeFilename}`;
+      // For export, derivatives go to _site/assets/derivatives/
+      return `/_site/assets/derivatives/${derivativeFilename}`;
     } else if (forIframe || isTauriApp()) {
       // For iframe contexts or Tauri apps, use data URLs to avoid WebKit blob URL limitations
       console.log(`[LocalImageService] Creating data URL for ${isTauriApp() ? 'Tauri' : 'iframe'}: ${cacheKey}`);

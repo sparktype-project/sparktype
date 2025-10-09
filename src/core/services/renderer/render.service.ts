@@ -217,17 +217,44 @@ export async function render(
               
               visit(tree, 'leafDirective', processCollectionDirective);
               visit(tree, 'containerDirective', processCollectionDirective);
-              
-              // Process images to mark Sparktype assets
+
+              // Process images to use preprocessed URLs
               visit(tree, 'image', (node: any) => {
                 if (node.url && (node.url.startsWith('assets/originals/') || node.url.startsWith('assets/images/'))) {
-                  console.log('[Render Service] Marking Sparktype asset for processing:', node.url);
-                  // Convert to HTML node with data attribute
-                  const htmlNode = {
-                    type: 'html',
-                    value: `<img src="${node.url}" alt="${node.alt || ''}" title="${node.title || ''}" data-sparktype-asset="true">`
-                  };
-                  Object.assign(node, htmlNode);
+                  console.log('[Render Service] Processing Sparktype markdown image:', node.url);
+
+                  // Get preprocessed URL (page_display preset for markdown images)
+                  const contentPath = enrichedResolution.contentFile.path;
+                  let processedUrl = imagePreprocessor.getProcessedMarkdownImageUrl(contentPath, node.url, 'page_display');
+
+                  if (processedUrl) {
+                    console.log('[Render Service] Using preprocessed URL:', processedUrl);
+
+                    // Convert to relative path for export mode
+                    if (options.isExport) {
+                      const currentPageNode = {
+                        type: 'page' as const,
+                        title: enrichedResolution.contentFile.frontmatter.title,
+                        path: enrichedResolution.contentFile.path,
+                        slug: enrichedResolution.contentFile.slug
+                      };
+                      const currentPagePath = getUrlForNode(currentPageNode, synchronizedSiteData.manifest, true, undefined, synchronizedSiteData);
+
+                      // Strip leading slash from processed URL if present
+                      const cleanProcessedUrl = processedUrl.startsWith('/')
+                        ? processedUrl.substring(1)
+                        : processedUrl;
+                      processedUrl = getRelativePath(currentPagePath, cleanProcessedUrl);
+                      console.log('[Render Service] Converted to relative path for export:', processedUrl);
+                    }
+
+                    // Replace with preprocessed URL
+                    node.url = processedUrl;
+                  } else {
+                    console.warn('[Render Service] No preprocessed URL found for:', node.url, '- falling back to original');
+                    // Fallback: keep original path, which points to assets/originals/
+                    // This will work for preview/export as originals are copied
+                  }
                 } else {
                   console.log('[Render Service] Standard image handling for:', node.url);
                 }

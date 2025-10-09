@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "imageService": "local",
+  "images": {
+    "assets/originals/1759013591643-sparktype-logo2.svg": {
+      "referencedIn": [
+        "content/about-us2.md"
+      ],
+      "metadata": {
+        "sizeBytes": 788,
+        "width": 1024,
+        "height": 1024,
+        "alt": "Sparktype-logo2.svg"
+      }
+    },
+    "assets/originals/1759013619560-sparktype-dark.png": {
+      "referencedIn": [
+        "content/about-us2.md"
+      ],
+      "metadata": {
+        "sizeBytes": 1419482,
+        "width": 1024,
+        "height": 1024,
+        "alt": "sparktype-dark.png"
+      }
+    },
+    "assets/originals/1759362828536-unltddreamco_httpssmjrun5kwkjzagiue_httpssmjruno9qsxyqm1f_9c84a996-6774-4f20-a2ca-94fb34ade790_2.png": {
+      "referencedIn": [
+        "content/hello.md"
+      ],
+      "metadata": {
+        "sizeBytes": 1918485,
+        "width": 928,
+        "height": 1232,
+        "alt": "unltddreamco_httpss.mj.run5kwkjZAgiuE_httpss.mj.runo9QSXYQM1f_9c84a996-6774-4f20-a2ca-94fb34ade790_2.png"
+      }
+    },
+    "assets/originals/1759362853846-unltddreamco_httpssmjrundfzkclohxn4_httpssmjrunhhvqtxvegu_2913843e-656d-4950-bd22-6fdf15347f78_1.png": {
+      "referencedIn": [
+        "content/hello.md"
+      ],
+      "metadata": {
+        "sizeBytes": 2453607,
+        "width": 928,
+        "height": 1232,
+        "alt": "unltddreamco_httpss.mj.rundfZKclOHxn4_httpss.mj.runHHvqTXVEGU_2913843e-656d-4950-bd22-6fdf15347f78_1.png"
+      }
+    },
+    "assets/originals/1759993300352-247.jpg": {
+      "referencedIn": [
+        "manifest.logo"
+      ],
+      "metadata": {
+        "sizeBytes": 588893,
+        "width": 1740,
+        "height": 1799,
+        "alt": "247.jpg"
+      }
+    }
+  }
+}

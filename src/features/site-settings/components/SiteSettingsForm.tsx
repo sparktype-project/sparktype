@@ -1,4 +1,4 @@
-// src/features/site-settings/components/SiteSettingsForm.tsx
+3// src/features/site-settings/components/SiteSettingsForm.tsx
 
 
 import { Label } from '@/core/components/ui/label';
@@ -46,6 +46,7 @@ export default function SiteSettingsForm({
         <SiteAssetUploader
           siteId={siteId}
           label="Site logo"
+          manifestField="logo"
           value={formData.logo}
           onChange={(newRef) => handleChange('logo', newRef)}
           onRemove={() => handleChange('logo', undefined)}
@@ -53,6 +54,7 @@ export default function SiteSettingsForm({
         <SiteAssetUploader
           siteId={siteId}
           label="Favicon"
+          manifestField="favicon"
           value={formData.favicon}
           onChange={(newRef) => handleChange('favicon', newRef)}
           onRemove={() => handleChange('favicon', undefined)}

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hello | Boing</title>
+    <link rel="canonical" href="https://example.com/">
+    
+        <meta name="description" content="kj.khjk.kjhkjhjnkjnkj">
+    
+    <meta property="og:title" content="Hello">
+        <meta property="og:description" content="kj.khjk.kjhkjhjnkjnkj">
+    <meta property="og:url" content="https://example.com/">
+    <meta property="og:site_name" content="Boing">
+    <meta property="og:type" content="article">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Hello">
+        <meta name="twitter:description" content="kj.khjk.kjhkjhjnkjnkj">
+    
+        <meta property="og:image" content="./_site/assets/derivatives/1759362853846-unltddreamco_httpssmjrundfzkclohxn4_httpssmjrunhhvqtxvegu_2913843e-656d-4950-bd22-6fdf15347f78_1_wauto_hauto_c-scale_g-center.png">
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+        <meta name="twitter:image" content="./_site/assets/derivatives/1759362853846-unltddreamco_httpssmjrundfzkclohxn4_httpssmjrunhhvqtxvegu_2913843e-656d-4950-bd22-6fdf15347f78_1_wauto_hauto_c-scale_g-center.png">
+    
+    
+        <link rel="icon" href="/favicon.ico" sizes="any">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    
+        <link rel="alternate" type="application/rss+xml" title="Boing" href="rss.xml">
+    
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&family=Gentium+Book+Plus:ital@0;1&family=IBM+Plex+Serif:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=Instrument+Serif:ital@0;1&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+    </style>
+    
+        <link rel="stylesheet" href="_site/themes/sparksite/styles.css">
+        <link rel="stylesheet" href="_site/themes/sparksite/variables.css">
+    
+    <style id="signum-style-overrides">
+    :root {
+      ----color-background: #f8f9fa;
+      ----color-text: #212529;
+      ----color-headings: #000000;
+      ----color-primary: #0d6efd;
+      ----font-headings: Inter, system-ui, sans-serif;
+      ----font-body: "Gentium Book Plus", Georgia, serif;
+    }
+    </style></head>
+<body>
+    <div x-data="{ isMobileMenuOpen: false }" class="flex flex-col min-h-screen">
+        <div x-data="{ isMobileMenuOpen: false }" @keydown.escape.window="isMobileMenuOpen = false">
+        <header class="sticky top-0 z-40 font-headings">
+            <div class="px-4 md:px-6">
+                <div class="flex h-12 items-center justify-between">
+                    
+                    <div class="flex-shrink-0">
+                        <a href="/index.html" class="flex items-center space-x-2 font-bold text-lg hover:text-primary transition-colors">
+                                <img src="./_site/assets/derivatives/1759993300352-247_wauto_h32_c-scale_g-center.jpg" alt="Boing logo" class="h-10 w-auto">
+                            <span>Boing</span>
+                        </a>
+                    </div>
+        
+                    <nav class="hidden md:flex items-center gap-4">
+                                <a href="index.html" 
+                                   class="text-text hover:text-primary transition-colors">
+                                    Hello
+                                </a>
+                                <a href="./blog/index.html" 
+                                   class="text-text hover:text-primary transition-colors">
+                                    Blog
+                                </a>
+                                <div class="relative" 
+                                    x-data="{ 
+                                        open: false,
+                                        alignRight: false,
+                                        handleMouseEnter() {
+                                            this.open = true;
+                                            this.alignRight = ($el.getBoundingClientRect().right + 200) > window.innerWidth;
+                                        },
+                                        handleMouseLeave() {
+                                            this.open = false;
+                                        }
+                                    }" 
+                                    @mouseenter="handleMouseEnter()" 
+                                    @mouseleave="handleMouseLeave()">
+                                    
+                                    <a href="./about-us2/index.html" 
+                                       class="flex items-center space-x-1 text-text hover:text-primary transition-colors"
+                                       :aria-expanded="open.toString()">
+                                        <span>Another page</span>
+                                        <svg class="w-4 h-4 transform transition-transform duration-200" 
+                                             :class="{ 'rotate-180': open }" 
+                                             fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </a>
+                                    
+                                    <div x-show="open" 
+                                         x-transition:enter="transition ease-out duration-200"
+                                         x-transition:enter-start="opacity-0 translate-y-1"
+                                         x-transition:enter-end="opacity-100 translate-y-0"
+                                         x-transition:leave="transition ease-in duration-150"
+                                         x-transition:leave-start="opacity-100 translate-y-0"
+                                         x-transition:leave-end="opacity-0 translate-y-1"
+                                         :class="alignRight ? 'right-0' : 'left-0'"
+                                         class="absolute mt-2 w-48 bg-background border border-border rounded-md shadow-lg z-50"
+                                         x-cloak>
+                                        <div class="py-1">
+                                                <a href="./about-us2/sub-page/index.html" 
+                                                   class="block px-4 py-2 text-sm text-text hover:bg-muted hover:text-heading transition-colors">
+                                                    Sub page
+                                                </a>
+                                        </div>
+                                    </div>
+                                </div>
+        
+                    </nav>
+        
+                    <div class="flex md:hidden">
+                        <div 
+                            @click="isMobileMenuOpen = true" 
+                            type="button" 
+                            class="inline-flex items-center justify-center p-2 rounded-md text-text hover:text-primary transition-colors"
+                            aria-controls="mobile-menu" 
+                            aria-label="Open main menu"
+                        >
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </header>
+        
+        <div x-show="isMobileMenuOpen" 
+             x-transition:enter="transition-opacity ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             @click="isMobileMenuOpen = false"
+             class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+             x-cloak>
+        </div>
+        
+        <div x-show="isMobileMenuOpen" 
+             x-transition:enter="transform transition ease-in-out duration-300"
+             x-transition:enter-start="translate-x-full"
+             x-transition:enter-end="translate-x-0"
+             x-transition:leave="transform transition ease-in-out duration-300"
+             x-transition:leave-start="translate-x-0"
+             x-transition:leave-end="translate-x-full"
+             class="fixed top-0 right-0 bottom-0 z-50 w-80 bg-background border-l border-border shadow-xl flex flex-col md:hidden"
+             id="mobile-menu"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="mobile-menu-title"
+             x-cloak
+             x-trap="isMobileMenuOpen">
+             
+            <div class="flex items-center justify-between p-4 border-b border-border">
+                <div @click="isMobileMenuOpen = false" 
+                        type="button" 
+                        class="inline-flex items-center justify-center p-2 rounded-md text-text hover:text-primary transition-colors"
+                        aria-label="Close menu">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </div>
+            </div>
+        
+            <nav class="flex-1 overflow-y-auto p-4 font-headings">
+                <div class="flex gap-4 flex-col">
+                            <a href="index.html" 
+                               class="block text-base text-text hover:text-primary hover:bg-muted rounded-md transition-colors"
+                               @click="isMobileMenuOpen = false">
+                                Hello
+                            </a>
+                            <a href="./blog/index.html" 
+                               class="block text-base text-text hover:text-primary hover:bg-muted rounded-md transition-colors"
+                               @click="isMobileMenuOpen = false">
+                                Blog
+                            </a>
+                            <div x-data="{ open: false }" class="space-y-1">
+                                <div class="flex items-center justify-between font-headings">
+                                    <a href="./about-us2/index.html" 
+                                       class="flex-1 block px-3 py-2 text-base hover:text-primary hover:bg-muted rounded-md transition-colors"
+                                       @click="isMobileMenuOpen = false">
+                                        Another page
+                                    </a>
+                                    <button @click="open = !open" 
+                                            type="button"
+                                            class="inline-flex items-center justify-center p-1 rounded-md text-muted hover:text-text transition-colors"
+                                            :aria-expanded="open.toString()">
+                                        <svg class="h-4 w-4 transform transition-transform duration-200" 
+                                             :class="{ 'rotate-180': open }"
+                                             fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <div x-show="open" 
+                                     x-transition:enter="transition-all ease-out duration-200"
+                                     x-transition:enter-start="opacity-0 -translate-y-1"
+                                     x-transition:enter-end="opacity-100 translate-y-0"
+                                     x-transition:leave="transition-all ease-in duration-150"
+                                     x-transition:leave-start="opacity-100 translate-y-0"
+                                     x-transition:leave-end="opacity-0 -translate-y-1"
+                                     class="pl-4 space-y-1 border-l-2 border-border ml-3">
+                                        <a href="./about-us2/sub-page/index.html" 
+                                           class="block px-3 py-2 text-sm text-muted hover:text-text hover:bg-muted rounded-md transition-colors font-headings"
+                                           @click="isMobileMenuOpen = false">
+                                            Sub page
+                                        </a>
+                                </div>
+                            </div>
+                </div>
+            </nav>
+        </div>
+        </div>        <main class="flex-1">
+            
+    <div class="">
+        <img src="./_site/assets/derivatives/1759362828536-unltddreamco_httpssmjrun5kwkjzagiue_httpssmjruno9qsxyqm1f_9c84a996-6774-4f20-a2ca-94fb34ade790_2_wauto_hauto_c-scale_g-center.png" alt="Hello" class="w-full h-72 cover bg-center" loading="lazy">
+    </div>
+<div class="max-w-4xl mx-auto px-4 py-8 lg:px-8 mt-12">
+
+<article class="max-w-none prose prose-lg">
+    <h1>Hello</h1>
+    <p class="text-2xl font-headings">kj.khjk.kjhkjhjnkjnkj </p>
+
+        <div class="mb-6">
+            <img src="./_site/assets/derivatives/1759362853846-unltddreamco_httpssmjrundfzkclohxn4_httpssmjrunhhvqtxvegu_2913843e-656d-4950-bd22-6fdf15347f78_1_wauto_hauto_c-scale_g-center.png" alt="Hello" class="w-full" loading="lazy">
+        </div>
+    
+    <h2 id="implementation-plan-the-views-architecture"><strong>Implementation Plan: The "Views" Architecture</strong></h2>
+<h3 id="1-high-level-description">1. High-Level Description</h3>
+<p>This document outlines a significant architectural evolution for Signum, introducing <strong>Views</strong> as a first-class citizen alongside Themes and Layouts. This feature transforms the platform from a page-based system into a more powerful and user-friendly <strong>declarative query and display system</strong>.</p>
+<p>The core principle is the separation of concerns:</p>
+<ul>
+<li><strong>Collections (<code>Data</code>):</strong> Pure, un-styled buckets of content (e.g., "Blog Posts," "Projects"). By default, they do not have a public-facing page.</li>
+<li><strong>Layouts (<code>Presentation</code>):</strong> Templates focused solely on rendering a <em>single item</em> of content (e.g., a full article, a project case study).</li>
+<li><strong>Views (<code>Query &#x26; Aggregation</code>):</strong> Configurable "recipes" that generate pages by fetching, sorting, and displaying content from one or more Collections, using the appropriate Layouts for presentation.</li>
+</ul>
+<p>This model empowers users to create complex, data-driven pages like blog indexes, galleries, and dashboards through a simple graphical interface, without writing code or complex configuration files.</p>
+<h3 id="2-the-user-workflow">2. The User Workflow</h3>
+<p>The implementation will be designed around the following intuitive user flow:</p>
+<ol>
+<li>
+<p><strong>Start Creation:</strong> The user clicks the "New Page" button in the main file tree navigation.</p>
+</li>
+<li>
+<p><strong>Choose Page Intent:</strong> A modal appears, asking the user to select the page type:</p>
+<ul>
+<li><strong>Content Page:</strong> For creating a standard, static page with manually written content (e.g., "About Us," "Privacy Policy").</li>
+<li><strong>View Page:</strong> For creating a page that automatically lists content from collections (e.g., "Blog," "Portfolio").</li>
+</ul>
+</li>
+<li>
+<p><strong>Configure the Page:</strong></p>
+<ul>
+<li>
+<p><strong>If "View Page" is selected:</strong></p>
+<ul>
+<li>
+<p>The user enters a <strong>Page Title</strong> (e.g., "Latest News"). The URL slug is auto-generated.</p>
+</li>
+<li>
+<p>They select a <strong>View</strong> from a list of available view types (e.g., "Simple List," "Grid Gallery").</p>
+</li>
+<li>
+<p>A dynamic form appears, based on the selected View's schema. Here, the user configures the query:</p>
+<ul>
+<li><strong>Source Collection:</strong> A dropdown lists all existing collections in their site.</li>
+<li><strong>Sort Criteria:</strong> "Date," "Title," etc.</li>
+<li><strong>Display Options:</strong> Any other options defined by the View (e.g., "Items per Page").</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>If "Content Page" is selected:</strong></p>
+<ul>
+<li>The user enters a <strong>Page Title</strong>. The URL slug is auto-generated.</li>
+<li>They select a <strong>Layout</strong> from a list of available content layouts (e.g., "Article," "Contact Form Page").</li>
+<li>(Optional) They select a <strong>Parent Page</strong> to immediately nest the new page.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>Finalize and Redirect:</strong></p>
+<ul>
+<li>Upon creation, a <code>View Page</code> adds a <code>view</code> node to the site structure in the manifest. <strong>No <code>.md</code> file is created.</strong> The user is redirected to the live preview of their new list page.</li>
+<li>Upon creation, a <code>Content Page</code> adds a <code>page</code> node to the manifest and creates a corresponding blank <code>.md</code> file. The user is redirected directly to the editor for that new page.</li>
+</ul>
+</li>
+</ol>
+<h3 id="3-phased-implementation-plan">3. Phased Implementation Plan</h3>
+<p>This is a major feature that should be rolled out in distinct, manageable phases.</p>
+<h4 id="phase-1-foundational-architecture--data-structures"><strong>Phase 1: Foundational Architecture &#x26; Data Structures</strong></h4>
+<p><strong>Goal:</strong> Establish the <code>View</code> as a core asset type and enable the rendering engine to process it. All testing in this phase will be done by manually editing the manifest files.</p>
+<ol>
+<li>
+<p><strong>New Directory Structure:</strong> Create the <code>/public/views/</code> directory. Populate it with at least one example, like <code>/public/views/list/</code>, containing:</p>
+<ul>
+<li><code>view.json</code>: The manifest defining the view's name, icon, and the all-important <code>schema</code> for its configuration form.</li>
+<li><code>template.hbs</code>: The Handlebars template for the view itself.</li>
+</ul>
+</li>
+<li>
+<p><strong>Update Type Definitions:</strong></p>
+<ul>
+<li>In <code>configHelpers.ts</code>, create a new <code>ViewManifest</code> interface and update the <code>AssetFileType</code> union to include <code>"view"</code> and <code>"view-template"</code>.</li>
+<li>The <code>AssetFile</code> type will now cleanly support this new type.</li>
+</ul>
+</li>
+<li>
+<p><strong>Update Site Manifest Structure (<code>types/index.ts</code>):</strong></p>
+<ul>
+<li>A <code>StructureNode</code> can now have a <code>type</code> of <code>"view"</code>.</li>
+<li>A <code>view</code> node will contain <code>view: string</code> (the ID of the view asset) and <code>config: object</code> (the user's saved query settings).</li>
+</ul>
+</li>
+<li>
+<p><strong>Refactor <code>pageResolver.ts</code>:</strong></p>
+<ul>
+<li>Enhance the resolver to recognize <code>type: "view"</code>. When it does, it will not look for a Markdown file. Instead, it will trigger a new "query execution" function.</li>
+<li><strong>New Query Executor Function:</strong> This utility will take the <code>view.config</code> and the full <code>siteData</code> as input. It will perform the logic to find the source collection, filter/sort its items, and apply limits. It will return an array of <code>ParsedMarkdownFile</code> objects.</li>
+<li>The resolver will package this result into a new <code>PageResolutionResult</code> of <code>type: PageType.View</code>.</li>
+</ul>
+</li>
+<li>
+<p><strong>Refactor <code>themeEngine.ts</code>:</strong></p>
+<ul>
+<li>The <code>render</code> function will add a branch to handle <code>PageType.View</code>. It will find and render the correct <code>view.template.hbs</code>, passing the queried items into its context.</li>
+<li>Create the critical <code>render_layout_for_item</code> Handlebars helper. This helper will allow a View's template to correctly render each item in its list using the item's own specified Layout (e.g., rendering a blog post with a "post-card" layout).</li>
+</ul>
+</li>
+</ol>
+<p><strong>Outcome of Phase 1:</strong> The system's backend can render pages generated by Views. The core data flow is established and can be tested programmatically.</p>
+<hr>
+<h4 id="phase-2-user-interface-for-creating--configuring-views"><strong>Phase 2: User Interface for Creating &#x26; Configuring Views</strong></h4>
+<p><strong>Goal:</strong> Build the full user workflow described above, allowing non-technical users to create and manage View pages.</p>
+<ol>
+<li>
+<p><strong>New Page Creation Component:</strong> Build a new React component (e.g., <code>&#x3C;NewPageDialog /></code>) that orchestrates the entire multi-step creation flow.</p>
+</li>
+<li>
+<p><strong>Page Type Selector UI:</strong> The first step in the dialog, presenting the "Content Page" vs. "View Page" choice.</p>
+</li>
+<li>
+<p><strong>View Configuration UI:</strong></p>
+<ul>
+<li>This part of the dialog will dynamically fetch and list all available <code>Views</code> from <code>/public/views/</code>.</li>
+<li>Upon selection, it will fetch the chosen <code>view.json</code>, parse its <code>schema</code>, and render the configuration form using <code>react-jsonschema-form</code>.</li>
+<li>A custom widget must be created for the <code>source_collection</code> field to render a dropdown populated from the site's existing collections.</li>
+</ul>
+</li>
+<li>
+<p><strong>Content Page Configuration UI:</strong></p>
+<ul>
+<li>A simpler form for creating standard pages, which includes a dropdown to select a <code>Layout</code> (populated from <code>/public/layouts/</code>).</li>
+</ul>
+</li>
+<li>
+<p><strong>Update State Management (<code>useAppStore</code>):</strong></p>
+<ul>
+<li>Create a new <code>createViewPage(config)</code> action that writes a <code>view</code> node to the manifest.</li>
+<li>Refactor the existing <code>addOrUpdateContentFile</code> action to be the endpoint for the "Content Page" flow, ensuring it saves the user's chosen <code>layout</code>.</li>
+</ul>
+</li>
+</ol>
+<p><strong>Outcome of Phase 2:</strong> The feature is fully usable by end-users. They can create and manage lists of content declaratively through the editor interface.</p>
+<hr>
+<h4 id="phase-3-advanced-querying-and-extensibility"><strong>Phase 3: Advanced Querying and Extensibility</strong></h4>
+<p><strong>Goal:</strong> Enhance the View system with more powerful features based on the solid foundation.</p>
+<ol>
+<li><strong>Advanced Filtering:</strong> Extend the query executor and the View schema to support filtering by frontmatter fields (e.g., <code>tags</code>, <code>category</code>, or a boolean like <code>featured</code>).</li>
+<li><strong>Pagination:</strong> Implement <code>limit</code> and <code>offset</code>/<code>page</code> logic in the query executor. Pass pagination data (<code>totalPages</code>, <code>nextPageUrl</code>, etc.) to the view's template context so themes can render pagination controls.</li>
+<li><strong>Multi-Collection Views:</strong> Allow the <code>source_collection</code> UI to be a multi-select. The query executor would need to be updated to merge, de-duplicate, and sort items from multiple sources, enabling the creation of true homepage dashboards.</li>
+<li><strong>User-Created Views:</strong> Explore a UI where advanced users could create and save their own <code>Views</code> directly within the Signum editor, effectively building their own reusable query components.</li>
+</ol>
+<p>​</p>
+
+</article>
+    </div>
+
+        </main>
+        <footer class="py-4 mt-auto">
+            <div class=" px-4 pt-4 lg:px-6 font-headings">
+                    <p class="mb-0 text-xs text-muted">©  Boing. Built with <a href="https://www.sparktype.org" target="_blank">Sparktype</a>.</p>
+            </div>
+        </footer>    </div>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</body>
+</html>

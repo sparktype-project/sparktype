@@ -1,0 +1,19 @@
+{{! themes/default/base.hbs }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {{!-- The head partial now receives its own scoped context --}}
+    {{> head headContext}}
+</head>
+<body>
+    <div x-data="{ isMobileMenuOpen: false }" class="flex flex-col min-h-screen">
+        {{> header}}
+        <main class="flex-1">
+            {{!-- The body content is pre-rendered by the render service --}}
+            {{{body}}}
+        </main>
+        {{> footer}}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sub page | Boing</title>
+    <link rel="canonical" href="https://example.com/about-us2/sub-page">
+    
+        <meta name="description" content="">
+    
+    <meta property="og:title" content="Sub page">
+        <meta property="og:description" content="">
+    <meta property="og:url" content="https://example.com/about-us2/sub-page">
+    <meta property="og:site_name" content="Boing">
+    <meta property="og:type" content="article">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Sub page">
+        <meta name="twitter:description" content="">
+    
+    
+    
+        <link rel="icon" href="/favicon.ico" sizes="any">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    
+        <link rel="alternate" type="application/rss+xml" title="Boing" href="../../rss.xml">
+    
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&family=Gentium+Book+Plus:ital@0;1&family=IBM+Plex+Serif:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=Instrument+Serif:ital@0;1&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+    </style>
+    
+        <link rel="stylesheet" href="../../_site/themes/sparksite/styles.css">
+        <link rel="stylesheet" href="../../_site/themes/sparksite/variables.css">
+    
+    <style id="signum-style-overrides">
+    :root {
+      ----color-background: #f8f9fa;
+      ----color-text: #212529;
+      ----color-headings: #000000;
+      ----color-primary: #0d6efd;
+      ----font-headings: Inter, system-ui, sans-serif;
+      ----font-body: "Gentium Book Plus", Georgia, serif;
+    }
+    </style></head>
+<body>
+    <div x-data="{ isMobileMenuOpen: false }" class="flex flex-col min-h-screen">
+        <div x-data="{ isMobileMenuOpen: false }" @keydown.escape.window="isMobileMenuOpen = false">
+        <header class="sticky top-0 z-40 font-headings">
+            <div class="px-4 md:px-6">
+                <div class="flex h-12 items-center justify-between">
+                    
+                    <div class="flex-shrink-0">
+                        <a href="/index.html" class="flex items-center space-x-2 font-bold text-lg hover:text-primary transition-colors">
+                                <img src="/_site/assets/derivatives/1759993300352-247_wauto_h32_c-scale_g-center.jpg" alt="Boing logo" class="h-10 w-auto">
+                            <span>Boing</span>
+                        </a>
+                    </div>
+        
+                    <nav class="hidden md:flex items-center gap-4">
+                                <a href="../../index.html" 
+                                   class="text-text hover:text-primary transition-colors">
+                                    Hello
+                                </a>
+                                <a href="../../blog/index.html" 
+                                   class="text-text hover:text-primary transition-colors">
+                                    Blog
+                                </a>
+                                <div class="relative" 
+                                    x-data="{ 
+                                        open: false,
+                                        alignRight: false,
+                                        handleMouseEnter() {
+                                            this.open = true;
+                                            this.alignRight = ($el.getBoundingClientRect().right + 200) > window.innerWidth;
+                                        },
+                                        handleMouseLeave() {
+                                            this.open = false;
+                                        }
+                                    }" 
+                                    @mouseenter="handleMouseEnter()" 
+                                    @mouseleave="handleMouseLeave()">
+                                    
+                                    <a href="../index.html" 
+                                       class="flex items-center space-x-1 text-text hover:text-primary transition-colors"
+                                       :aria-expanded="open.toString()">
+                                        <span>Another page</span>
+                                        <svg class="w-4 h-4 transform transition-transform duration-200" 
+                                             :class="{ 'rotate-180': open }" 
+                                             fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </a>
+                                    
+                                    <div x-show="open" 
+                                         x-transition:enter="transition ease-out duration-200"
+                                         x-transition:enter-start="opacity-0 translate-y-1"
+                                         x-transition:enter-end="opacity-100 translate-y-0"
+                                         x-transition:leave="transition ease-in duration-150"
+                                         x-transition:leave-start="opacity-100 translate-y-0"
+                                         x-transition:leave-end="opacity-0 translate-y-1"
+                                         :class="alignRight ? 'right-0' : 'left-0'"
+                                         class="absolute mt-2 w-48 bg-background border border-border rounded-md shadow-lg z-50"
+                                         x-cloak>
+                                        <div class="py-1">
+                                                <a href="index.html" 
+                                                   class="block px-4 py-2 text-sm text-text hover:bg-muted hover:text-heading transition-colors">
+                                                    Sub page
+                                                </a>
+                                        </div>
+                                    </div>
+                                </div>
+        
+                    </nav>
+        
+                    <div class="flex md:hidden">
+                        <div 
+                            @click="isMobileMenuOpen = true" 
+                            type="button" 
+                            class="inline-flex items-center justify-center p-2 rounded-md text-text hover:text-primary transition-colors"
+                            aria-controls="mobile-menu" 
+                            aria-label="Open main menu"
+                        >
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </header>
+        
+        <div x-show="isMobileMenuOpen" 
+             x-transition:enter="transition-opacity ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             @click="isMobileMenuOpen = false"
+             class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+             x-cloak>
+        </div>
+        
+        <div x-show="isMobileMenuOpen" 
+             x-transition:enter="transform transition ease-in-out duration-300"
+             x-transition:enter-start="translate-x-full"
+             x-transition:enter-end="translate-x-0"
+             x-transition:leave="transform transition ease-in-out duration-300"
+             x-transition:leave-start="translate-x-0"
+             x-transition:leave-end="translate-x-full"
+             class="fixed top-0 right-0 bottom-0 z-50 w-80 bg-background border-l border-border shadow-xl flex flex-col md:hidden"
+             id="mobile-menu"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="mobile-menu-title"
+             x-cloak
+             x-trap="isMobileMenuOpen">
+             
+            <div class="flex items-center justify-between p-4 border-b border-border">
+                <div @click="isMobileMenuOpen = false" 
+                        type="button" 
+                        class="inline-flex items-center justify-center p-2 rounded-md text-text hover:text-primary transition-colors"
+                        aria-label="Close menu">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </div>
+            </div>
+        
+            <nav class="flex-1 overflow-y-auto p-4 font-headings">
+                <div class="flex gap-4 flex-col">
+                            <a href="../../index.html" 
+                               class="block text-base text-text hover:text-primary hover:bg-muted rounded-md transition-colors"
+                               @click="isMobileMenuOpen = false">
+                                Hello
+                            </a>
+                            <a href="../../blog/index.html" 
+                               class="block text-base text-text hover:text-primary hover:bg-muted rounded-md transition-colors"
+                               @click="isMobileMenuOpen = false">
+                                Blog
+                            </a>
+                            <div x-data="{ open: false }" class="space-y-1">
+                                <div class="flex items-center justify-between font-headings">
+                                    <a href="../index.html" 
+                                       class="flex-1 block px-3 py-2 text-base hover:text-primary hover:bg-muted rounded-md transition-colors"
+                                       @click="isMobileMenuOpen = false">
+                                        Another page
+                                    </a>
+                                    <button @click="open = !open" 
+                                            type="button"
+                                            class="inline-flex items-center justify-center p-1 rounded-md text-muted hover:text-text transition-colors"
+                                            :aria-expanded="open.toString()">
+                                        <svg class="h-4 w-4 transform transition-transform duration-200" 
+                                             :class="{ 'rotate-180': open }"
+                                             fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <div x-show="open" 
+                                     x-transition:enter="transition-all ease-out duration-200"
+                                     x-transition:enter-start="opacity-0 -translate-y-1"
+                                     x-transition:enter-end="opacity-100 translate-y-0"
+                                     x-transition:leave="transition-all ease-in duration-150"
+                                     x-transition:leave-start="opacity-100 translate-y-0"
+                                     x-transition:leave-end="opacity-0 -translate-y-1"
+                                     class="pl-4 space-y-1 border-l-2 border-border ml-3">
+                                        <a href="index.html" 
+                                           class="block px-3 py-2 text-sm text-muted hover:text-text hover:bg-muted rounded-md transition-colors font-headings"
+                                           @click="isMobileMenuOpen = false">
+                                            Sub page
+                                        </a>
+                                </div>
+                            </div>
+                </div>
+            </nav>
+        </div>
+        </div>        <main class="flex-1">
+            
+<div class="max-w-4xl mx-auto px-4 py-8 lg:px-8 mt-12">
+
+<article class="max-w-none prose prose-lg">
+    <h1>Sub page</h1>
+    <p class="text-2xl font-headings"> </p>
+
+    
+    <p>Start writing your content here.</p>
+
+</article>
+    </div>
+
+        </main>
+        <footer class="py-4 mt-auto">
+            <div class=" px-4 pt-4 lg:px-6 font-headings">
+                    <p class="mb-0 text-xs text-muted">©  Boing. Built with <a href="https://www.sparktype.org" target="_blank">Sparktype</a>.</p>
+            </div>
+        </footer>    </div>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</body>
+</html>

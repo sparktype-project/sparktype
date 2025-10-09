@@ -1,0 +1,207 @@
+{
+  "name": "Sparktype theme",
+  "version": "2.0.0",
+  "files": [
+    { "path": "theme.json", "type": "manifest" },
+    { "path": "base.hbs", "type": "base" },
+    { "path": "styles.css", "type": "stylesheet" },
+    { "path": "partials/head.hbs", "type": "partial", "name": "head" },
+    { "path": "partials/header.hbs", "type": "partial", "name": "header" },
+    { "path": "partials/footer.hbs", "type": "partial", "name": "footer" }
+  ],
+  "stylesheets": [
+    { "path": "styles.css", "type": "main" }
+  ],
+  "layouts": [
+    {
+      "id": "base",
+      "name": "Base Layout",
+      "type": "base",
+      "path": "base",
+      "description": "Root layout providing HTML structure"
+    },
+    {
+      "id": "page",
+      "name": "Standard Page",
+      "type": "layout",
+      "path": "layouts/page",
+      "layoutType": "single",
+      "description": "Clean single-column layout for standard pages"
+    },
+    {
+      "id": "hero-page",
+      "name": "Hero Page",
+      "type": "layout",
+      "path": "layouts/hero-page",
+      "layoutType": "single",
+      "description": "Landing page with bold title and call to action"
+    },
+    {
+      "id": "blog-post",
+      "name": "Blog Post",
+      "type": "layout",
+      "path": "layouts/blog-post",
+      "layoutType": "single",
+      "description": "Layout for individual blog post articles"
+    },
+    {
+      "id": "blog-listing",
+      "name": "Blog Listing",
+      "type": "layout",
+      "path": "layouts/blog-listing",
+      "layoutType": "collection",
+      "description": "Displays a list of blog posts"
+    },
+    {
+      "id": "portfolio-project",
+      "name": "Portfolio Project",
+      "type": "layout",
+      "path": "layouts/portfolio-project",
+      "layoutType": "single",
+      "description": "Detailed portfolio project page"
+    },
+    {
+      "id": "portfolio-grid",
+      "name": "Portfolio Grid",
+      "type": "layout",
+      "path": "layouts/portfolio-grid",
+      "layoutType": "collection",
+      "description": "Visual grid of portfolio projects"
+    }
+  ],
+  "appearanceSchema": {
+    "title": "Theme customisation",
+    "description": "Customise the core fonts and colors of your site.",
+    "type": "object",
+    "properties": {
+      "--color-background": {
+        "type": "string",
+        "title": "Page background colour",
+        "format": "color",
+        "default": "#f8f9fa"
+      },
+      "--color-text": {
+        "type": "string",
+        "title": "Body text colour",
+        "format": "color",
+        "default": "#212529"
+      },
+      "--color-headings": {
+        "type": "string",
+        "title": "Headings colour",
+        "format": "color",
+        "default": "#000000"
+      },
+      "--color-primary": {
+        "type": "string",
+        "title": "Primary accent colour",
+        "format": "color",
+        "default": "#0d6efd"
+      },
+
+      "--font-headings": {
+        "type": "string",
+        "title": "Headings style",
+        "description": "Choose the font family for all headlines.",
+        "enum": [
+          "Geist, system-ui, sans-serif",
+          "\"Geist Mono\", monospace",
+          "\"Gentium Book Plus\", Georgia, serif",
+          "\"IBM Plex Mono\", monospace",
+          "\"IBM Plex Sans\", sans-serif",
+          "\"IBM Plex Serif\", serif",
+          "\"Instrument Serif\", serif",
+          "Inter, system-ui, sans-serif"
+        ],
+        "enumNames": [
+          "Geist (Sans)",
+          "Geist Mono (Monospace)",
+          "Gentium Book Plus (Serif)",
+          "IBM Plex Mono (Monospace)",
+          "IBM Plex Sans (Sans)",
+          "IBM Plex Serif (Serif)",
+          "Instrument Serif (Serif)",
+          "Inter (Sans)"
+        ],
+        "default": "Inter, system-ui, sans-serif"
+      },
+
+      "--font-body": {
+        "type": "string",
+        "title": "Body text style",
+        "description": "Choose the font family for all paragraphs and lists.",
+        "enum": [
+          "Geist, system-ui, sans-serif",
+          "\"Geist Mono\", monospace",
+          "\"Gentium Book Plus\", Georgia, serif",
+          "\"IBM Plex Mono\", monospace",
+          "\"IBM Plex Sans\", sans-serif",
+          "\"IBM Plex Serif\", serif",
+          "\"Instrument Serif\", serif",
+          "Inter, system-ui, sans-serif"
+        ],
+        "enumNames": [
+          "Geist (Sans)",
+          "Geist Mono (Monospace)",
+          "Gentium Book Plus (Serif)",
+          "IBM Plex Mono (Monospace)",
+          "IBM Plex Sans (Sans)",
+          "IBM Plex Serif (Serif)",
+          "Instrument Serif (Serif)",
+          "Inter (Sans)"
+        ],
+        "default": "\"Gentium Book Plus\", Georgia, serif"
+      }
+    }
+  },
+  "themeDataSchema": {
+    "description": "Configure additional content fields for your site.",
+    "type": "object",
+    "properties": {
+      "footer_content": {
+        "type": "string",
+        "title": "Footer content",
+        "description": "Optional footer HTML content.",
+        "format": "textarea",
+        "default": "<p>&copy; 2024 Your Site Name. All rights reserved.</p>"
+      },
+      "header_content": {
+        "type": "string", 
+        "title": "Header content",
+        "description": "Optional header HTML content.",
+        "format": "textarea",
+        "default": ""
+      }
+    }
+  },
+  "image_presets": {
+    "social": {
+      "width": 1200,
+      "height": 630,
+      "crop": "fill",
+      "gravity": "center",
+      "description": "Social media sharing image (Open Graph)"
+    },
+    "thumbnail": {
+      "width": 300,
+      "height": 200,
+      "crop": "fill",
+      "gravity": "center",
+      "description": "Small thumbnail for cards and previews"
+    },
+    "banner": {
+      "width": 800,
+      "height": 256,
+      "crop": "fill",
+      "gravity": "center",
+      "description": "Standard banner image for headers"
+    },
+    "hero": {
+      "width": 1200,
+      "height": 600,
+      "crop": "fill",
+      "gravity": "center",
+      "description": "Large hero image for landing pages"
+    }
+  }
+}

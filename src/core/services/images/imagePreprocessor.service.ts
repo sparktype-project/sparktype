@@ -9,11 +9,25 @@ import { BASE_IMAGE_PRESETS } from '@/config/editorConfig';
 /**
  * Processed image data ready for synchronous template rendering
  * Structure: contentPath -> fieldName -> presetName -> URL
+ * Note: We store different URLs for different contexts (export vs preview)
  */
+interface FieldPresets {
+  [presetName: string]: string | undefined | 'export' | 'preview' | 'iframe'; // The processed URL/path for this preset, or metadata
+  _originalSrc?: string; // Original source path (for markdown images only)
+  _context?: 'export' | 'preview' | 'iframe'; // Context this URL was generated for
+}
+
 interface ProcessedImageData {
-  [fieldName: string]: {
-    [presetName: string]: string; // The processed URL/path for this preset
-  };
+  [fieldName: string]: FieldPresets;
+}
+
+/**
+ * Determines the rendering context based on flags
+ */
+function getRenderContext(isExport: boolean, forIframe?: boolean): 'export' | 'preview' | 'iframe' {
+  if (isExport) return 'export';
+  if (forIframe) return 'iframe';
+  return 'preview';
 }
 
 /**
@@ -30,8 +44,9 @@ export class ImagePreprocessorService {
    * according to theme and layout presets with proper inheritance.
    */
   async preprocessImages(siteData: LocalSiteData, isExport: boolean, forIframe?: boolean): Promise<void> {
+    const context = getRenderContext(isExport, forIframe);
     console.log('[ImagePreprocessor] Starting image preprocessing...');
-    console.log(`[ImagePreprocessor] Site data contains ${siteData.contentFiles?.length || 0} content files`);
+    console.log(`[ImagePreprocessor] Context: ${context}, Site data contains ${siteData.contentFiles?.length || 0} content files`);
 
     const imageService = getActiveImageService(siteData.manifest);
 
@@ -46,10 +61,22 @@ export class ImagePreprocessorService {
     const currentContentPaths = new Set(siteData.contentFiles?.map(file => file.path) || []);
 
     // Remove processed images for content that no longer exists
+    // OR if the context has changed (export vs preview)
     for (const contentPath of this.processedImages.keys()) {
       if (!currentContentPaths.has(contentPath)) {
         console.log(`[ImagePreprocessor] Removing processed images for deleted content: ${contentPath}`);
         this.processedImages.delete(contentPath);
+      } else {
+        // Check if context changed for existing content
+        const contentData = this.processedImages.get(contentPath);
+        const firstField = Object.keys(contentData || {})[0];
+        const existingContext = firstField ? contentData![firstField]._context : undefined;
+
+        // If context is undefined (old cache) or different from current, clear cache
+        if (firstField && (existingContext === undefined || existingContext !== context)) {
+          console.log(`[ImagePreprocessor] Context changed for ${contentPath} (${existingContext || 'undefined'} -> ${context}), clearing cache`);
+          this.processedImages.delete(contentPath);
+        }
       }
     }
 
@@ -63,10 +90,11 @@ export class ImagePreprocessorService {
         contentPath,
         imageService,
         isExport,
-        forIframe
+        forIframe,
+        context
       );
     }
-    
+
     console.log('[ImagePreprocessor] Image preprocessing complete');
   }
 
@@ -77,6 +105,25 @@ export class ImagePreprocessorService {
   getProcessedImageUrl(contentPath: string, fieldName: string, presetName: string): string | null {
     const contentData = this.processedImages.get(contentPath);
     return contentData?.[fieldName]?.[presetName] || null;
+  }
+
+  /**
+   * Gets the processed URL for a markdown image by its source path.
+   * Used by the markdown renderer to replace image URLs with preprocessed derivatives.
+   */
+  getProcessedMarkdownImageUrl(contentPath: string, imageSrc: string, presetName: string = 'page_display'): string | null {
+    const contentData = this.processedImages.get(contentPath);
+    if (!contentData) return null;
+
+    // Find the markdown image field that matches this source
+    for (const [fieldName, presets] of Object.entries(contentData)) {
+      if (fieldName.startsWith('markdown_image_') && presets._originalSrc === imageSrc) {
+        // Try the requested preset first, fallback to original
+        return presets[presetName] || presets['original'] || null;
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -130,8 +177,43 @@ export class ImagePreprocessorService {
         }
       }
 
-      // Note: This preprocessor only handles frontmatter image fields.
-      // Markdown content images are handled separately by the markdown renderer.
+      // Extract markdown images from content body
+      if (contentFile.content) {
+        const markdownImageRefs = this.extractMarkdownImages(contentFile.content, contentFile.path);
+        imageRefs.push(...markdownImageRefs.map((ref, index) => ({
+          imageRef: ref,
+          fieldName: `markdown_image_${index}`,
+          layoutPath,
+          contentPath: contentFile.path
+        })));
+      }
+    }
+
+    return imageRefs;
+  }
+
+  /**
+   * Extracts image references from markdown content.
+   * Matches markdown image syntax: ![alt](assets/originals/image.jpg) or ![alt](assets/images/image.jpg)
+   */
+  private extractMarkdownImages(content: string, contentPath: string): ImageRef[] {
+    const imageRefs: ImageRef[] = [];
+
+    // Regex to match markdown images with sparktype asset paths
+    const markdownImageRegex = /!\[([^\]]*)\]\((assets\/(?:originals|images)\/[^)]+)\)/g;
+
+    let match;
+    while ((match = markdownImageRegex.exec(content)) !== null) {
+      const [, alt, src] = match;
+      console.log(`[ImagePreprocessor] Found markdown image in ${contentPath}: ${src}`);
+
+      imageRefs.push({
+        serviceId: 'local',
+        src,
+        alt: alt || '',
+        width: 0,
+        height: 0
+      });
     }
 
     return imageRefs;
@@ -149,7 +231,8 @@ export class ImagePreprocessorService {
     contentPath: string,
     imageService: any,
     isExport: boolean,
-    forIframe?: boolean
+    forIframe?: boolean,
+    context?: 'export' | 'preview' | 'iframe'
   ): Promise<void> {
     // Get list of presets used in templates for this field
     const presetsToGenerate = this.getPresetsForField(siteData, fieldName, layoutPath);
@@ -167,6 +250,14 @@ export class ImagePreprocessorService {
     const contentData = this.processedImages.get(contentPath)!;
     if (!contentData[fieldName]) {
       contentData[fieldName] = {};
+    }
+
+    // Store metadata
+    if (fieldName.startsWith('markdown_image_')) {
+      contentData[fieldName]._originalSrc = imageRef.src;
+    }
+    if (context) {
+      contentData[fieldName]._context = context;
     }
 
     // Process each preset
@@ -224,13 +315,18 @@ export class ImagePreprocessorService {
    */
   private getPresetsForField(
     _siteData: LocalSiteData,
-    _fieldName: string,
+    fieldName: string,
     _layoutPath: string
   ): string[] {
     // TODO: Scan template files to find which presets are actually used
     // For now, generate common presets that templates are likely to use
 
-    // Always generate these common presets for all image fields
+    // Markdown images use page_display preset, falling back to original
+    if (fieldName.startsWith('markdown_image_')) {
+      return ['page_display', 'original'];
+    }
+
+    // Frontmatter image fields generate common presets for templates
     return ['thumbnail', 'full', 'hero', 'original'];
   }
 

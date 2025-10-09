@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { type ImageRef } from '@/core/types';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getActiveImageService } from '@/core/services/images/images.service';
+import { updateImageReferences } from '@/core/services/images/imageRegistry.service';
 import { Button } from '@/core/components/ui/button';
 import { UploadCloud, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -16,9 +17,11 @@ interface SiteAssetUploaderProps {
   value: ImageRef | undefined;
   onChange: (newRef: ImageRef) => void;
   onRemove: () => void;
+  /** The manifest field this uploader is for (e.g., 'logo' or 'favicon') */
+  manifestField: 'logo' | 'favicon';
 }
 
-export default function SiteAssetUploader({ siteId, label, value, onChange, onRemove }: SiteAssetUploaderProps) {
+export default function SiteAssetUploader({ siteId, label, value, onChange, onRemove, manifestField }: SiteAssetUploaderProps) {
   const site = useAppStore(state => state.getSiteById(siteId));
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -75,6 +78,20 @@ export default function SiteAssetUploader({ siteId, label, value, onChange, onRe
     try {
       const service = getActiveImageService(site.manifest);
       const newRef = await service.upload(file, siteId);
+
+      // Track this image as referenced by the manifest field
+      try {
+        await updateImageReferences(
+          siteId,
+          `manifest.${manifestField}`,
+          [newRef.src]
+        );
+        console.log(`[SiteAssetUploader] Registered ${manifestField} image reference:`, newRef.src);
+      } catch (registryError) {
+        console.warn(`[SiteAssetUploader] Failed to update image registry for ${manifestField}:`, registryError);
+        // Don't fail the upload if registry update fails
+      }
+
       onChange(newRef);
       toast.success(`${label} uploaded successfully.`);
     } catch (error) {
@@ -83,6 +100,23 @@ export default function SiteAssetUploader({ siteId, label, value, onChange, onRe
       setIsUploading(false);
       event.target.value = '';
     }
+  };
+
+  const handleRemove = async () => {
+    // Clear the registry reference when removing the image
+    try {
+      await updateImageReferences(
+        siteId,
+        `manifest.${manifestField}`,
+        [] // Empty array = no references
+      );
+      console.log(`[SiteAssetUploader] Cleared ${manifestField} image reference`);
+    } catch (registryError) {
+      console.warn(`[SiteAssetUploader] Failed to clear image registry for ${manifestField}:`, registryError);
+      // Don't fail the removal if registry update fails
+    }
+
+    onRemove();
   };
 
   const inputId = `uploader-${label.toLowerCase().replace(/\s/g, '-')}`;
@@ -115,7 +149,7 @@ export default function SiteAssetUploader({ siteId, label, value, onChange, onRe
             accept={MEMORY_CONFIG.SUPPORTED_EXTENSIONS.join(',')}
           />
           {value && (
-            <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={onRemove}>
+            <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={handleRemove}>
               <XCircle className="w-4 h-4 mr-1" />
               Remove
             </Button>
