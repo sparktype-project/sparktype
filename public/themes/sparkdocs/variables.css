@@ -1,0 +1,119 @@
+/* ==========================================================================
+   DOCS THEME VARIABLES
+   CSS variables that work with the SparkType Design System
+   ========================================================================== */
+
+:root {
+  /* ==========================================================================
+     FONT STACKS
+     ========================================================================== */
+  --font-stack-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  --font-stack-serif: Iowan Old Style, 'Apple Garamond', Baskerville, 'Times New Roman', Droid Serif, Times, 'Source Serif Pro', serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  --font-stack-mono: 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+  /* ==========================================================================
+     CORE COLOR PALETTE
+     ========================================================================== */
+  --color-background: #ffffff;
+  --color-text: #1f2937;
+  --color-heading: #111827;
+  --color-primary: #3b82f6;
+  --color-border: #e5e7eb;
+  
+  /* ==========================================================================
+     SEMANTIC COLOR VARIATIONS
+     ========================================================================== */
+  --color-muted: #9ca3af;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  
+  /* ==========================================================================
+     DEFAULT FONT ASSIGNMENTS
+     These defaults will be overridden by theme config via styleOverrides
+     ========================================================================== */
+  --font-headings: "Inter", sans-serif;
+  --font-text: "Gentium Book Plus", serif;
+
+  /* ==========================================================================
+     MAPPED FONTS (Used by Design System)
+     These map to the theme config overrides
+     ========================================================================== */
+  --font-sans: var(--font-text);
+  --font-serif: var(--font-headings);
+  --font-mono: var(--font-stack-mono);
+
+  /* ==========================================================================
+     COMPONENT-SPECIFIC VARIABLES
+     ========================================================================== */
+  --header-height: 60px;
+  --sidebar-width: 280px;
+  --toc-width: 240px;
+  --content-max-width: 1200px;
+  
+  /* ==========================================================================
+     SHADOWS & EFFECTS
+     ========================================================================== */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  
+  /* ==========================================================================
+     TRANSITIONS
+     ========================================================================== */
+  --transition-fast: 150ms ease-in-out;
+  --transition-medium: 300ms ease-in-out;
+  --transition-slow: 500ms ease-in-out;
+}
+
+.geist-mono {
+  font-family: "Geist Mono", monospace;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.gentium-book-plus-regular {
+  font-family: "Gentium Book Plus", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.gentium-book-plus-regular-italic {
+  font-family: "Gentium Book Plus", serif;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.instrument-serif-regular {
+  font-family: "Instrument Serif", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.instrument-serif-regular-italic {
+  font-family: "Instrument Serif", serif;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.inter-regular {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.inter-bold {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.inter-regular {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}

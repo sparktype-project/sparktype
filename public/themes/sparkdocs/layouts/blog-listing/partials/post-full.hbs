@@ -58,14 +58,12 @@
     {{/if}}
 
     <footer class="mt-4 pt-4 border-t border-border">
-         {{#if this.resolvedTags}}
+         {{#if this.frontmatter.tags}}
                 <div class="flex flex-wrap gap-2">
-                    {{#each this.resolvedTags}}
-                        {{#each this}}
-                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                                {{this.name}}
-                            </span>
-                        {{/each}}
+                    {{#each this.frontmatter.tags}}
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                            {{this}}
+                        </span>
                     {{/each}}
                 </div>
             {{/if}}
