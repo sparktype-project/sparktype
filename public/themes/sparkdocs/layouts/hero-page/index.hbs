@@ -1,36 +1,48 @@
-{{! layouts/page/page.hbs }}
+{{! layouts/hero-page/index.hbs }}
 
-<div class=" text-center bg-gray-900 text-white" style="background-color: black; padding:160px 0;">
-<div class="max-w-4xl mx-auto px-4 py-8 lg:px-8">
-        <h1 class="text-6xl text-white mb-4">{{contentFile.frontmatter.title}}</h1>
-            <p class="text-xl">{{contentFile.frontmatter.description}} </p>
-            <p class="">
-                <a href="{{contentFile.frontmatter.cta_link }}" target="_blank">{{contentFile.frontmatter.cta_text }}</a>
-                </p>
+{{! Hero Section }}
+<div class="text-center bg-slate-900 dark:bg-slate-950 text-white py-20 md:py-32">
+    <div class="max-w-4xl mx-auto px-4 lg:px-8">
+        <h1 class="font-display text-4xl md:text-6xl tracking-tight text-white mb-4">
+            {{contentFile.frontmatter.title}}
+        </h1>
+        {{#if contentFile.frontmatter.description}}
+            <p class="text-xl md:text-2xl text-slate-300 mb-8">
+                {{contentFile.frontmatter.description}}
+            </p>
+        {{/if}}
+        {{#if contentFile.frontmatter.cta_text}}
+            <p>
+                <a href="{{contentFile.frontmatter.cta_link}}"
+                   class="inline-flex items-center justify-center px-6 py-3 text-base font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors">
+                    {{contentFile.frontmatter.cta_text}}
+                </a>
+            </p>
+        {{/if}}
+    </div>
+</div>
 
-</div>
-</div>
 {{#if contentFile.frontmatter.banner_image}}
-    <div class="">
-
-        {{{image fieldname="banner_image" class="w-full h-72 cover bg-center" alt=contentFile.frontmatter.title}}}
-
+    <div class="mb-6">
+        {{{image fieldname="banner_image" class="w-full h-72 object-cover" alt=contentFile.frontmatter.title}}}
     </div>
 {{/if}}
 
-<article class="max-w-4xl mx-auto px-4 py-8 lg:px-8">
-    
+<div class="max-w-2xl min-w-0 flex-auto px-4 py-16 lg:max-w-none lg:pr-0 lg:pl-8 xl:px-16">
+    <article>
+        {{#if contentFile.frontmatter.featured_image}}
+            <div class="mb-6">
+                {{{image fieldname="featured_image" class="w-full rounded-lg" alt=contentFile.frontmatter.title}}}
+            </div>
+        {{/if}}
 
-    {{#if contentFile.frontmatter.featured_image}}
-        <div class="mb-6">
-            {{{image fieldname="featured_image" class="w-full" alt=contentFile.frontmatter.title}}}
+        <div class="prose">
+            {{{content}}}
         </div>
-    {{/if}}
-    
-    {{{content}}}
 
-    {{#if contentFile.frontmatter.layoutConfig}}
-        <hr/>
-        {{{render_collection contentFile.frontmatter.layoutConfig}}}
-    {{/if}}
-</article>
+        {{#if contentFile.frontmatter.layoutConfig}}
+            <hr class="my-8"/>
+            {{{render_collection contentFile.frontmatter.layoutConfig}}}
+        {{/if}}
+    </article>
+</div>

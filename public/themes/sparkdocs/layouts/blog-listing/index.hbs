@@ -1,21 +1,20 @@
 {{!
-  Template for the blog listing page using SparkType Design System utilities.
-  It receives `collectionItems` and `pagination` data from the page resolver.
+  Template for the blog listing page
 }}
-<div class="max-w-4xl mx-auto px-4 py-8 lg:px-8">
-    <header class="mb-12">
-        <h1 class="text-4xl lg:text-5xl font-bold text-heading mb-4 leading-tight">
+<div class="max-w-2xl min-w-0 flex-auto px-4 py-16 lg:max-w-none lg:pr-0 lg:pl-8 xl:px-16">
+    <header class="mb-9 space-y-1">
+        <h1 class="font-display text-3xl tracking-tight text-slate-900 dark:text-white">
             {{contentFile.frontmatter.title}}
         </h1>
         {{#if contentFile.frontmatter.listing_intro}}
-            <p class="text-lg text-muted max-w-3xl">
+            <p class="text-xl text-slate-500 dark:text-slate-400">
                 {{contentFile.frontmatter.listing_intro}}
             </p>
         {{/if}}
     </header>
 
     {{#if collectionItems}}
-        <div class="grid grid-cols-1 gap-6 lg:gap-8">
+        <div class="space-y-8">
             {{! Loop through each item provided by the page resolver }}
             {{#each collectionItems}}
                 {{! Render a partial for each item. This keeps the code clean. }}
@@ -37,7 +36,7 @@
         {{/if}}
     {{else}}
         <div class="text-center py-16">
-            <p class="text-lg text-muted">No blog posts have been published yet.</p>
+            <p class="text-lg text-slate-500 dark:text-slate-400">No blog posts have been published yet.</p>
         </div>
     {{/if}}
 </div>

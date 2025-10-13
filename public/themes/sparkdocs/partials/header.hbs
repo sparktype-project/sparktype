@@ -1,33 +1,34 @@
-{{!-- Clean header for documentation --}}
-<header class="sticky top-0 bg-white border-b border-border z-30 md:ml-64">
-  <div class="flex items-center justify-between px-6 py-4">
-    {{!-- Left side: Mobile menu + Logo --}}
-    <div class="flex items-center gap-4">
-      {{!-- Mobile menu toggle --}}
-      <button @click="sidebarOpen = true"
-              class="md:hidden inline-flex items-center justify-center p-2 rounded-md text-text hover:text-primary hover:bg-gray-100 transition-colors"
-              aria-label="Open navigation">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-        </svg>
-      </button>
+{{!-- Header with scroll effects --}}
+<header
+  :class="isScrolled ? 'dark:bg-slate-900/95 dark:backdrop-blur-sm dark:[@supports(backdrop-filter:blur(0))]:bg-slate-900/75' : 'dark:bg-transparent'"
+  class="sticky top-0 z-50 flex flex-none flex-wrap items-center justify-between bg-white px-4 py-2 shadow-md shadow-slate-900/5 transition duration-500 lg:px-6 dark:shadow-none">
 
-      {{!-- Logo (visible on mobile, hidden on desktop since it's in sidebar) --}}
-      <div class="md:hidden flex-shrink-0">
-        <a href="{{#if @root.options.isExport}}/index.html{{else}}/{{/if}}" class="flex items-center space-x-2 font-bold text-lg text-heading transition-colors">
-          {{#if @root.headContext.logoUrl}}
-            <img src="{{@root.headContext.logoUrl}}" alt="{{@root.manifest.title}} logo" class="h-7 w-auto">
-          {{/if}}
-          <span>{{@root.manifest.title}}</span>
-        </a>
-      </div>
-    </div>
-
-    {{!-- Right side: Header content --}}
-    {{#if (themeData 'header_content')}}
-      <div class="flex-1 ml-6">
-        {{{themeData 'header_content'}}}
-      </div>
-    {{/if}}
+  {{!-- Mobile menu button --}}
+  <div class="mr-6 flex lg:hidden">
+    <button @click="sidebarOpen = true"
+            class="inline-flex items-center justify-center p-2 rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800"
+            aria-label="Open navigation">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
   </div>
+
+  {{!-- Logo --}}
+  <div class="relative flex grow basis-0 items-center">
+    <a href="{{#if @root.options.isExport}}/index.html{{else}}/{{/if}}"
+       class="flex items-center space-x-2">
+      {{#if @root.headContext.logoUrl}}
+        <img src="{{@root.headContext.logoUrl}}" alt="{{@root.manifest.title}} logo" class="h-9 w-auto">
+      {{/if}}
+      <span class="font-display font-semibold text-lg text-slate-900 dark:text-white">{{@root.manifest.title}}</span>
+    </a>
+  </div>
+
+  {{!-- Right side: Header content --}}
+  {{#if (themeData 'header_content')}}
+    <div class="relative flex basis-0 justify-end gap-6 sm:gap-8 md:grow">
+      {{{themeData 'header_content'}}}
+    </div>
+  {{/if}}
 </header>

@@ -1,63 +1,61 @@
-{{! 
-  Template for a single blog post using SparkType Design System utilities.
-  It receives the full `pageContext` object, which includes `contentFile`.
+{{!
+  Template for a single blog post
 }}
-<article class="container max-w-4xl mx-auto px-4 py-8 lg:px-8">
-    
-
-    {{! Post Header: Title and Metadata }}
-    <header class="mb-8">
-        <h1 class="text-4xl lg:text-5xl font-bold text-heading mb-4 leading-tight">
-            {{contentFile.frontmatter.title}}
-        </h1>
-        <div class="flex flex-wrap items-center gap-2 text-sm text-muted">
-            {{#if contentFile.frontmatter.date}}
-                <time datetime="{{contentFile.frontmatter.date}}" class="font-medium">
-                    Published on {{formatDate contentFile.frontmatter.date}}
-                </time>
-            {{/if}}
-            
-            {{#if contentFile.frontmatter.author}}
+<div class="max-w-2xl min-w-0 flex-auto px-4 py-16 lg:max-w-none lg:pr-0 lg:pl-8 xl:px-16">
+    <article>
+        {{! Post Header: Title and Metadata }}
+        <header class="mb-9 space-y-1">
+            <h1 class="font-display text-3xl tracking-tight text-slate-900 dark:text-white">
+                {{contentFile.frontmatter.title}}
+            </h1>
+            <div class="flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                 {{#if contentFile.frontmatter.date}}
-                    <span class="text-border">•</span>
+                    <time datetime="{{contentFile.frontmatter.date}}" class="font-medium">
+                        {{formatDate contentFile.frontmatter.date}}
+                    </time>
                 {{/if}}
-                <span class="font-medium">By {{contentFile.frontmatter.author}}</span>
+
+                {{#if contentFile.frontmatter.author}}
+                    {{#if contentFile.frontmatter.date}}
+                        <span class="text-slate-300 dark:text-slate-600">•</span>
+                    {{/if}}
+                    <span class="font-medium">{{contentFile.frontmatter.author}}</span>
+                {{/if}}
+            </div>
+        </header>
+
+        {{! Display the featured image if one is set in the frontmatter }}
+        {{#if contentFile.frontmatter.featured_image}}
+            <div class="mb-8">
+                {{{image
+                    fieldname="featured_image"
+                    class="w-full rounded-lg"
+                    alt="Featured image"
+                }}}
+            </div>
+        {{/if}}
+
+        {{! The main content of the post, rendered from Markdown or Blocks }}
+        <div class="prose">
+            {{#if blocks}}
+                {{{render_blocks blocks}}}
+            {{else}}
+                {{{markdown contentFile.content}}}
             {{/if}}
         </div>
 
-    </header>
-
-    {{! Display the featured image if one is set in the frontmatter }}
-    {{#if contentFile.frontmatter.featured_image}}
-        <div class="mb-8">
-            {{{image 
-                fieldname="featured_image" 
-                class="w-full" 
-                alt="Featured image"
-            }}}
-        </div>
-    {{/if}}
-
-    {{! The main content of the post, rendered from Markdown or Blocks }}
-    <section class="max-w-none">
-        {{#if blocks}}
-            {{{render_blocks blocks}}}
-        {{else}}
-            {{{markdown contentFile.content}}}
+        {{! Display tags at the bottom of the post }}
+        {{#if contentFile.frontmatter.tags}}
+            <footer class="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800">
+                <p class="text-sm font-semibold text-slate-900 dark:text-white mb-3">Tagged In:</p>
+                <div class="flex flex-wrap gap-2">
+                    {{#each contentFile.frontmatter.tags}}
+                        <span class="inline-flex items-center px-3 py-1 text-xs font-medium bg-slate-100 text-slate-700 rounded-full dark:bg-slate-800 dark:text-slate-300">
+                            {{this}}
+                        </span>
+                    {{/each}}
+                </div>
+            </footer>
         {{/if}}
-    </section>
-
-    {{! Display tags at the bottom of the post }}
-    {{#if contentFile.frontmatter.tags}}
-        <footer class="mt-12 pt-8 border-t border-border">
-            <p class="text-sm font-semibold text-heading mb-3">Tagged In:</p>
-            <div class="flex flex-wrap gap-2">
-                {{#each contentFile.frontmatter.tags}}
-                    <span class="inline-flex items-center px-3 py-1 text-xs font-medium bg-muted text-text rounded-full">
-                        {{this}}
-                    </span>
-                {{/each}}
-            </div>
-        </footer>
-    {{/if}}
-</article>
+    </article>
+</div>

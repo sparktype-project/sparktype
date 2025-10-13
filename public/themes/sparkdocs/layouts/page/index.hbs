@@ -1,27 +1,37 @@
-{{! layouts/page/page.hbs }}
+{{! layouts/page/index.hbs }}
 
 {{#if contentFile.frontmatter.banner_image}}
-    <div class="mb-6 -mx-6">
+    <div class="mb-6">
         {{{image fieldname="banner_image" class="w-full h-72 object-cover rounded-lg" alt=contentFile.frontmatter.title}}}
     </div>
 {{/if}}
 
-<article class="max-w-4xl prose prose-lg">
-    <h1>{{contentFile.frontmatter.title}}</h1>
-    {{#if contentFile.frontmatter.description}}
-        <p class="text-xl text-muted">{{contentFile.frontmatter.description}}</p>
-    {{/if}}
+<div class="max-w-2xl min-w-0 flex-auto px-4 py-16 lg:max-w-none lg:pr-0 lg:pl-8 xl:px-16">
+    <article>
+        {{#if contentFile.frontmatter.title}}
+            <header class="mb-9 space-y-1">
+                <h1 class="font-display text-3xl tracking-tight text-slate-900 dark:text-white">
+                    {{contentFile.frontmatter.title}}
+                </h1>
+                {{#if contentFile.frontmatter.description}}
+                    <p class="text-xl text-slate-500 dark:text-slate-400">{{contentFile.frontmatter.description}}</p>
+                {{/if}}
+            </header>
+        {{/if}}
 
-    {{#if contentFile.frontmatter.featured_image}}
-        <div class="mb-6">
-            {{{image fieldname="featured_image" class="w-full rounded-lg" alt=contentFile.frontmatter.title}}}
+        {{#if contentFile.frontmatter.featured_image}}
+            <div class="mb-6">
+                {{{image fieldname="featured_image" class="w-full rounded-lg" alt=contentFile.frontmatter.title}}}
+            </div>
+        {{/if}}
+
+        <div class="prose">
+            {{{content}}}
         </div>
-    {{/if}}
 
-    {{{content}}}
-
-    {{#if contentFile.frontmatter.layoutConfig}}
-        <hr class="my-8"/>
-        {{{render_collection contentFile.frontmatter.layoutConfig}}}
-    {{/if}}
-</article>
+        {{#if contentFile.frontmatter.layoutConfig}}
+            <hr class="my-8"/>
+            {{{render_collection contentFile.frontmatter.layoutConfig}}}
+        {{/if}}
+    </article>
+</div>
