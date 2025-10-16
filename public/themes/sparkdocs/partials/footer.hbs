@@ -1,8 +1,11 @@
 {{!-- Footer with optional content --}}
-{{#if (themeData 'footer_content')}}
-<footer class="border-t border-border bg-gray-50">
-  <div class="max-w-7xl mx-auto px-6 py-8 text-center text-sm text-muted">
-    {{{themeData 'footer_content'}}}
-  </div>
-</footer>
-{{/if}}
+<div class="px-4 py-4  lg:pr-0 lg:pl-8 xl:pl-10">
+ {{#if (themeData 'footer_content')}}
+            <div class="mb-0 text-sm font-display text-gray-500">
+                {{{themeData 'footer_content'}}}
+            </div>
+        {{else}}
+            <p class="mb-0 text-sm font-display text-muted text-gray-500">© {{year}} {{manifest.title}}. Built with <a href="https://www.sparktype.org" class="hover:underline" target="_blank">Sparktype</a>.</p>
+        {{/if}}
+
+        </div>
