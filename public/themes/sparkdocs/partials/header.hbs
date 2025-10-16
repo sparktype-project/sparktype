@@ -18,8 +18,8 @@
   <div class="relative flex grow basis-0 items-center">
     <a href="{{#if @root.options.isExport}}/index.html{{else}}/{{/if}}"
        class="flex items-center space-x-2">
-      {{#if @root.headContext.logoUrl}}
-        <img src="{{@root.headContext.logoUrl}}" alt="{{@root.manifest.title}} logo" class="h-9 w-auto">
+      {{#if @root.headContext.logo}}
+        {{{image fieldname="logo" preset="logo" class="h-9 w-auto"}}}
       {{/if}}
       <span class="font-display font-semibold text-lg text-slate-900 dark:text-white">{{@root.manifest.title}}</span>
     </a>
