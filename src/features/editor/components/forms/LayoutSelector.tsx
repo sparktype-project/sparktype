@@ -11,7 +11,7 @@ interface LayoutSelectorProps {
   siteId: string;
   selectedLayoutId: string;
   onChange: (newLayoutId: string) => void;
-  filterByType?: 'page' | 'collection' | 'item';
+  filterByType?: 'page' | 'list' | 'item';
 }
 
 /**
@@ -47,23 +47,23 @@ export default function LayoutSelector({ siteId, selectedLayoutId, onChange, fil
     loadLayouts();
   }, [siteData]);
 
-  // Filter layouts by templateType if specified
+  // Filter layouts by layoutType if specified
   const filteredLayouts = useMemo(() => {
     if (!filterByType) return availableLayouts;
 
     return availableLayouts.filter(layout => {
-      // Use templateType if available, otherwise fall back to layoutType
-      const type = layout.templateType || (layout.layoutType === 'collection' ? 'collection' : 'page');
-      return type === filterByType;
+      return layout.layoutType === filterByType;
     });
   }, [availableLayouts, filterByType]);
 
   // Group layouts for display in the Select component.
-  // This uses a conceptual 'group' property from the layout's manifest.
   const groupedLayouts = useMemo(() => {
     const groups: Record<string, LayoutManifest[]> = {};
     filteredLayouts.forEach(layout => {
-      const groupName = (layout as any).group || (layout.layoutType === 'collection' ? 'Collection Layouts' : 'Page Layouts');
+      const groupName = (layout as any).group ||
+        (layout.layoutType === 'list' ? 'List Layouts' :
+         layout.layoutType === 'item' ? 'Item Layouts' :
+         'Page Layouts');
       if (!groups[groupName]) {
         groups[groupName] = [];
       }

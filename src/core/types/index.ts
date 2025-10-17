@@ -33,7 +33,7 @@ export interface ThemeManifest extends BaseAssetManifest {
     name: string;
     type: 'base' | 'layout';
     path: string;
-    layoutType?: 'single' | 'collection';
+    layoutType?: 'page' | 'item' | 'list';
     description?: string;
   }>;
 }
@@ -82,21 +82,17 @@ interface DynamicRoute {
 
 export interface LayoutManifest extends BaseAssetManifest {
   id: string;
-  layoutType: 'single' | 'collection';
-
-  // New template type system for clearer separation of concerns
-  templateType?: 'base' | 'page' | 'collection' | 'item';
+  layoutType: 'page' | 'item' | 'list';
 
   // Parent layout for Jekyll-style inheritance
   parentLayout?: string;
 
-  // Schema for the page using this layout
+  // Schema for the content entity using this layout
+  // - 'page': schema defines page fields
+  // - 'item': schema defines collection item fields
+  // - 'list': schema defines list page fields (not the items it displays)
   schema?: import('@rjsf/utils').RJSFSchema;
   uiSchema?: StrictUiSchema;
-
-  // Schema ONLY for items if layoutType is 'collection'
-  itemSchema?: import('@rjsf/utils').RJSFSchema;
-  itemUiSchema?: StrictUiSchema;
 
   // Available partials for collection layouts
   partials?: {

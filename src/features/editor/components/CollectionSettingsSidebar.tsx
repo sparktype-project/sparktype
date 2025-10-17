@@ -105,12 +105,9 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
     const loadItemLayouts = async () => {
       try {
         setLoadingLayouts(true);
-        const layouts = await getAvailableLayouts(siteData, 'single');
-        // Filter to only show item type layouts (or single layouts without templateType for backward compatibility)
-        const itemLayouts = layouts.filter(layout => {
-          const type = layout.templateType || (layout.layoutType === 'single' ? 'page' : 'collection');
-          return type === 'item' || (layout.layoutType === 'single' && !layout.templateType);
-        });
+        const layouts = await getAvailableLayouts(siteData);
+        // Filter to only show item type layouts
+        const itemLayouts = layouts.filter(layout => layout.layoutType === 'item');
         const layoutInfos: LayoutInfo[] = itemLayouts.map(layout => ({
           id: layout.id,
           name: layout.name || layout.id,

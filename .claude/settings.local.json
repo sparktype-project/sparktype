@@ -70,7 +70,11 @@
       "Bash(done)",
       "Bash(python3:*)",
       "Bash(npm run copy:*)",
-      "Read(//Users/mattkevan/**)"
+      "Read(//Users/mattkevan/**)",
+      "Read(//Users/matt/Sites/core-themes/**)",
+      "Read(//Users/matt/Sites/core-themes/sparksite-theme/src/**)",
+      "Read(//Users/matt/Sites/core-themes/sparkdocs-theme/src/**)",
+      "Bash(curl:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

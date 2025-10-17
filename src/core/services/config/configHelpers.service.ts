@@ -269,7 +269,7 @@ export async function getAvailableLayouts(
   const allManifests = (await Promise.all(manifestPromises))
     .filter((m): m is LayoutManifest => m !== null);
 
-  // Filter by type if specified
+  // Filter by type if specified (type is 'page' | 'item' | 'list')
   if (type) {
     return allManifests.filter(m => m.layoutType === type);
   }

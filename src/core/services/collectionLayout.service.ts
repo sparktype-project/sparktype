@@ -17,9 +17,9 @@ export async function getAvailableCollectionLayouts(siteData: LocalSiteData): Pr
   try {
     const allLayouts = await getAvailableLayouts(siteData);
     
-    // Filter for collection layouts only
+    // Filter for list layouts only
     const collectionLayouts = allLayouts.filter(
-      (layout: LayoutManifest) => layout.layoutType === 'collection'
+      (layout: LayoutManifest) => layout.layoutType === 'list'
     );
 
     return collectionLayouts.map((layout: LayoutManifest) => {

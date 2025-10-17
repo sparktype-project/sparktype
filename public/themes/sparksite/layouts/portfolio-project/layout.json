@@ -1,9 +1,8 @@
 {
-  "name": "Portfolio Project",
+  "name": "Case study",
   "version": "1.0.0",
-  "description": "The layout for a single, detailed portfolio project page.",
-  "layoutType": "single",
-  "templateType": "item",
+  "description": "A case study layout for portfolios.",
+  "layoutType": "item",
   "parentLayout": "base",
   "files": [
     { "path": "layout.json", "type": "manifest" },

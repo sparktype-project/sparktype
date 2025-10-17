@@ -94,33 +94,25 @@ export default function FrontmatterSidebar({
 
   // Display collection toggle state - determines if this page shows collection content
   const isDisplayingCollection = useMemo(() => {
-    const templateType = currentLayoutManifest?.templateType ||
-      (currentLayoutManifest?.layoutType === 'collection' ? 'collection' : 'page');
-    return templateType === 'collection';
+    return currentLayoutManifest?.layoutType === 'list';
   }, [currentLayoutManifest]);
 
-  // If this is a collection item, its schema is defined by its parent collection's default item layout.
-  const itemSchemaLayoutManifest = useMemo(() => {
+  // If this is a collection item, get its layout manifest
+  const itemLayoutManifest = useMemo(() => {
     if (!isCollectionItem || !parentCollection) return null;
     return allLayouts.find(l => l.id === parentCollection.defaultItemLayout) ?? null;
   }, [allLayouts, isCollectionItem, parentCollection]);
 
   const handleDisplayCollectionToggle = useCallback((checked: boolean) => {
     if (checked) {
-      // Switching to collection mode - select first available collection layout
-      const collectionLayout = allLayouts.find(l => {
-        const type = l.templateType || (l.layoutType === 'collection' ? 'collection' : 'page');
-        return type === 'collection';
-      });
-      if (collectionLayout) {
-        onFrontmatterChange({ layout: collectionLayout.id, layoutConfig: undefined });
+      // Switching to list mode - select first available list layout
+      const listLayout = allLayouts.find(l => l.layoutType === 'list');
+      if (listLayout) {
+        onFrontmatterChange({ layout: listLayout.id, layoutConfig: undefined });
       }
     } else {
       // Switching to page mode - select first available page layout
-      const pageLayout = allLayouts.find(l => {
-        const type = l.templateType || (l.layoutType === 'single' ? 'page' : 'collection');
-        return type === 'page';
-      });
+      const pageLayout = allLayouts.find(l => l.layoutType === 'page');
       if (pageLayout) {
         onFrontmatterChange({ layout: pageLayout.id, layoutConfig: undefined });
       }
@@ -131,10 +123,9 @@ export default function FrontmatterSidebar({
     const selectedLayout = allLayouts.find(l => l.id === newLayoutId);
     if (!selectedLayout) return;
 
-    // When layout changes, reset layoutConfig if the new layout is not a collection type.
+    // When layout changes, reset layoutConfig if the new layout is not a list type.
     const newFrontmatter: Partial<MarkdownFrontmatter> = { layout: newLayoutId };
-    const type = selectedLayout.templateType || (selectedLayout.layoutType === 'collection' ? 'collection' : 'page');
-    if (type !== 'collection') {
+    if (selectedLayout.layoutType !== 'list') {
       newFrontmatter.layoutConfig = undefined;
     }
     onFrontmatterChange(newFrontmatter);
@@ -167,7 +158,7 @@ export default function FrontmatterSidebar({
   }
 
   const defaultOpenSections = ['layout', 'metadata', 'advanced'];
-  if (currentLayoutManifest?.layoutType === 'collection') {
+  if (currentLayoutManifest?.layoutType === 'list') {
     defaultOpenSections.push('collection-config');
   }
   if (isCollectionItem && parentCollection) {
@@ -232,7 +223,7 @@ export default function FrontmatterSidebar({
             </AccordionItem>
           )}
 
-          {/* Metadata Form - The schema it uses depends on whether it's a page or an item. */}
+          {/* Metadata Form - Uses the layout's schema regardless of context */}
           <AccordionItem value="metadata">
             <AccordionTrigger>Metadata</AccordionTrigger>
             <AccordionContent className='p-2'>
@@ -240,9 +231,8 @@ export default function FrontmatterSidebar({
                 siteId={siteId}
                 frontmatter={frontmatter}
                 onFrontmatterChange={onFrontmatterChange}
-                // If it's an item, use the parent's item schema. Otherwise, use its own.
-                layoutManifest={isCollectionItem ? itemSchemaLayoutManifest : currentLayoutManifest}
-                isCollectionItem={isCollectionItem}
+                // If it's an item, use the parent's item layout. Otherwise, use its own layout.
+                layoutManifest={isCollectionItem ? itemLayoutManifest : currentLayoutManifest}
               />
             </AccordionContent>
           </AccordionItem>
@@ -272,8 +262,8 @@ export default function FrontmatterSidebar({
                 isNewFileMode={isNewFileMode}
               />
 
-              {/* Homepage Toggle */}
-              {!isNewFileMode && (
+              {/* Homepage Toggle - Only for pages, not collection items */}
+              {!isNewFileMode && !isCollectionItem && (
                 <div className="flex items-center justify-between py-2">
                   <div className="space-y-0.5">
                     <Label

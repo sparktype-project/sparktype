@@ -2,8 +2,7 @@
   "name": "Blog listing",
   "version": "1.0.0",
   "description": "Displays a paginated list of items from a 'Blog' collection.",
-  "layoutType": "collection",
-  "templateType": "collection",
+  "layoutType": "list",
   "parentLayout": "base",
   "files": [
     { "path": "layout.json", "type": "manifest" },
@@ -43,19 +42,6 @@
   "uiSchema": {
     "listing_intro": {
       "ui:widget": "textarea"
-    }
-  },
-  "itemSchema": {
-    "title": "Blog post",
-    "description": "This layout displays items that conform to the 'Blog Post' schema.",
-    "type": "object",
-    "properties": {
-      "title": { "type": "string" },
-      "date": { "type": "string", "format": "date" },
-      "author": { "type": "string" },
-      "excerpt": { "type": "string" },
-      "tags": { "type": "array", "items": { "type": "string" } },
-      "featured_image": { "type": "string" }
     }
   },
   "displayTypes": {

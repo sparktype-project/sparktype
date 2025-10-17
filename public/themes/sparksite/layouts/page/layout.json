@@ -2,8 +2,7 @@
   "name": "Standard page",
   "version": "1.0.0",
   "description": "A clean, single-column layout for standard pages like 'About Us'.",
-  "layoutType": "single",
-  "templateType": "page",
+  "layoutType": "page",
   "parentLayout": "base",
   "files": [
     { "path": "layout.json", "type": "manifest" },

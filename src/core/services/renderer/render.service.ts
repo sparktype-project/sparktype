@@ -142,9 +142,9 @@ export async function render(
     await imagePreprocessor.preprocessImages(synchronizedSiteData, options.isExport, options.forIframe);
     console.log('[Render Service] Image pre-processing complete');
 
-    // 2.6. Populate collection items for collection layout types
+    // 2.6. Populate collection items for list layout types
     let enrichedResolution = resolution;
-    if (pageLayoutManifest.layoutType === 'collection') {
+    if (pageLayoutManifest.layoutType === 'list') {
       const layoutConfig = resolution.contentFile.frontmatter.layoutConfig;
       if (layoutConfig && layoutConfig.collectionId) {
         let collectionItems = getCollectionContent(synchronizedSiteData, layoutConfig.collectionId);

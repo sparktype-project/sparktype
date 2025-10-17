@@ -25,9 +25,6 @@ interface PageMetadataFormProps {
 
   /** The parsed manifest of the currently selected Content Type (Layout). Can be null if none is selected. */
   layoutManifest: LayoutManifest | null;
-
-  /** A flag to indicate if the current page is an item within a collection (e.g., a blog post). */
-  isCollectionItem: boolean;
 }
 
 /**
@@ -40,7 +37,6 @@ export default function PageMetadataForm({
   frontmatter,
   onFrontmatterChange,
   layoutManifest,
-  isCollectionItem,
 }: PageMetadataFormProps) {
 
   // Define the custom widgets that can be used by the SchemaDrivenForm.
@@ -52,29 +48,29 @@ export default function PageMetadataForm({
   /**
    * This is the core logic of the component.
    * `useMemo` is used to efficiently compute the final, merged schema that will be
-   * rendered by the form. This calculation only re-runs if the `layoutManifest`
-   * or `isCollectionItem` flag changes, preventing unnecessary re-renders.
+   * rendered by the form. This calculation only re-runs if the `layoutManifest` changes,
+   * preventing unnecessary re-renders.
    */
   const mergedSchemaAndUi = useMemo(() => {
     // 1. Start with a deep copy of the universal BASE_SCHEMA to avoid mutation.
     const finalSchema: RJSFSchema = JSON.parse(JSON.stringify(BASE_SCHEMA.schema));
     const finalUiSchema: UiSchema = JSON.parse(JSON.stringify(BASE_SCHEMA.uiSchema));
 
-    // 2. Determine which custom schema to use from the layout manifest based on the page's role.
-    let customSchema: RJSFSchema | undefined;
-    let customUiSchema: UiSchema | undefined;
-
-    if (isCollectionItem) {
-      // For collection items (e.g., a post), use the 'itemSchema'.
-      customSchema = layoutManifest?.itemSchema;
-      customUiSchema = layoutManifest?.itemUiSchema;
-    } else {
-      // For standard pages or collection list pages, use the main 'schema'.
-      customSchema = layoutManifest?.schema;
-      customUiSchema = layoutManifest?.uiSchema;
+    // 2. Remove menuTitle field for collection items (layoutType === 'item')
+    // Collection items are not added to menus, so menuTitle is not applicable
+    if (layoutManifest?.layoutType === 'item' && finalSchema.properties) {
+      delete finalSchema.properties.menuTitle;
     }
 
-    // 3. Merge the custom schema into the final schema.
+    // 3. Get custom schema from the layout manifest.
+    // The schema always defines fields for the content entity using this layout:
+    // - layoutType 'page': schema defines page fields
+    // - layoutType 'item': schema defines collection item fields
+    // - layoutType 'list': schema defines list page fields
+    const customSchema = layoutManifest?.schema;
+    const customUiSchema = layoutManifest?.uiSchema;
+
+    // 4. Merge the custom schema into the final schema.
     if (customSchema?.properties) {
       // Combine properties, with custom fields overwriting core fields if names conflict.
       finalSchema.properties = { ...finalSchema.properties, ...customSchema.properties };
@@ -87,10 +83,8 @@ export default function PageMetadataForm({
       Object.assign(finalUiSchema, customUiSchema);
     }
 
-    // Schema is ready - no contextual adjustments needed
-
     return { schema: finalSchema, uiSchema: finalUiSchema };
-  }, [layoutManifest, isCollectionItem]);
+  }, [layoutManifest]);
 
 
   // Check if there are any fields to render after merging.
@@ -113,8 +107,8 @@ export default function PageMetadataForm({
       onFormChange={(data) => onFrontmatterChange(data as Partial<MarkdownFrontmatter>)}
       // Register custom widgets.
       widgets={customWidgets}
-      // Provide the siteId and collection item flag in the form's context so custom widgets can access it.
-      formContext={{ siteId, isCollectionItem }}
+      // Provide the siteId in the form's context so custom widgets can access it.
+      formContext={{ siteId }}
     />
   );
 }

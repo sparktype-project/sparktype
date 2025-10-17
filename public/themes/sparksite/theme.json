@@ -25,7 +25,7 @@
       "name": "Standard Page",
       "type": "layout",
       "path": "layouts/page",
-      "layoutType": "single",
+      "layoutType": "page",
       "description": "Clean single-column layout for standard pages"
     },
     {
@@ -33,7 +33,7 @@
       "name": "Hero Page",
       "type": "layout",
       "path": "layouts/hero-page",
-      "layoutType": "single",
+      "layoutType": "page",
       "description": "Landing page with bold title and call to action"
     },
     {
@@ -41,7 +41,7 @@
       "name": "Blog Post",
       "type": "layout",
       "path": "layouts/blog-post",
-      "layoutType": "single",
+      "layoutType": "item",
       "description": "Layout for individual blog post articles"
     },
     {
@@ -49,7 +49,7 @@
       "name": "Blog Listing",
       "type": "layout",
       "path": "layouts/blog-listing",
-      "layoutType": "collection",
+      "layoutType": "list",
       "description": "Displays a list of blog posts"
     },
     {
@@ -57,7 +57,7 @@
       "name": "Portfolio Project",
       "type": "layout",
       "path": "layouts/portfolio-project",
-      "layoutType": "single",
+      "layoutType": "item",
       "description": "Detailed portfolio project page"
     },
     {
@@ -65,7 +65,7 @@
       "name": "Portfolio Grid",
       "type": "layout",
       "path": "layouts/portfolio-grid",
-      "layoutType": "collection",
+      "layoutType": "list",
       "description": "Visual grid of portfolio projects"
     }
   ],

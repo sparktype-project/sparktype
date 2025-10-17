@@ -9,14 +9,15 @@
         <div class="flex h-12 items-center justify-between">
             
             {{!-- Site Logo/Title --}}
-            <div class="flex-shrink-0">
-                <a href="{{#if @root.options.isExport}}/index.html{{else}}/{{/if}}" class="flex items-center space-x-2 font-bold text-lg hover:text-primary transition-colors">
-                    {{#if @root.headContext.logoUrl}}
-                        <img src="{{@root.headContext.logoUrl}}" alt="{{@root.manifest.title}} logo" class="h-10 w-auto">
-                    {{/if}}
-                    <span>{{@root.manifest.title}}</span>
-                </a>
-            </div>
+            <div class="relative flex grow basis-0 items-center">
+    <a href="{{#if @root.options.isExport}}/index.html{{else}}/{{/if}}"
+       class="flex items-center space-x-2">
+      {{#if @root.headContext.logo}}
+        {{{image fieldname="logo" preset="logo" class="h-9 w-auto"}}}
+      {{/if}}
+      <span class="font-display font-semibold text-lg text-slate-900 dark:text-white">{{@root.manifest.title}}</span>
+    </a>
+  </div>
 
             {{!-- Desktop Navigation --}}
             <nav class="hidden md:flex items-center gap-4">
