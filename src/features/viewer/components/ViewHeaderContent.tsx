@@ -4,15 +4,17 @@ import { useParams, Link } from 'react-router-dom';
 import { useCallback, useState, useEffect } from 'react';
 import { Button } from '@/core/components/ui/button';
 import { Input } from '@/core/components/ui/input';
-import { Edit3, ExternalLink, ChevronLeft, ChevronRight, Home, RotateCcw } from 'lucide-react';
+import { Edit3, ExternalLink, ChevronLeft, ChevronRight, Home, RotateCcw, Loader2 } from 'lucide-react';
 import { useAppStore } from '@/core/state/useAppStore';
 import { type AppStore } from '@/core/state/useAppStore';
 import { useBrowserNavigation } from '@/features/viewer/hooks/useBrowserNavigation';
+import { useViewerLoading } from '@/features/viewer/contexts/ViewerLoadingContext';
 
 export default function ViewHeaderContent() {
   const { siteId = '' } = useParams<{ siteId: string }>();
   const site = useAppStore(useCallback((state: AppStore) => state.getSiteById(siteId), [siteId]));
   const navigation = useBrowserNavigation();
+  const { isLoading } = useViewerLoading();
 
   // Address bar state
   const [addressBarValue, setAddressBarValue] = useState(navigation.currentPath);
@@ -104,7 +106,7 @@ export default function ViewHeaderContent() {
       </div>
 
       {/* URL Address Bar */}
-      <div className="flex-1 md:mx-12" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="flex-1 md:mx-12 relative" onMouseDown={(e) => e.stopPropagation()}>
         <Input
           value={addressBarValue}
           onChange={handleAddressChange}
@@ -112,8 +114,13 @@ export default function ViewHeaderContent() {
           onFocus={handleAddressFocus}
           onBlur={handleAddressBlur}
           placeholder="Enter site path..."
-          className="h-8 browser-address-bar rounded-full"
+          className="h-8 browser-address-bar rounded-full pr-8"
         />
+        {isLoading && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+          </div>
+        )}
       </div>
 
       {/* Action Buttons */}

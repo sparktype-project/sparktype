@@ -1,6 +1,6 @@
 // src/core/services/images/imagePreprocessor.service.ts
 
-import type { LocalSiteData, ImageRef, ImageTransformOptions, Manifest, ImagePreset } from '@/core/types';
+import type { LocalSiteData, ImageRef, ImageTransformOptions, ImagePreset } from '@/core/types';
 import { getActiveImageService } from '@/core/services/images/images.service';
 import { BASE_IMAGE_PRESETS } from '@/config/editorConfig';
 
@@ -189,6 +189,27 @@ export class ImagePreprocessorService {
       }
     }
 
+    // Add manifest-level images (logo, favicon)
+    if (siteData.manifest.logo) {
+      console.log('[ImagePreprocessor] Found manifest logo');
+      imageRefs.push({
+        imageRef: siteData.manifest.logo,
+        fieldName: 'logo',
+        layoutPath: 'base',
+        contentPath: '_manifest'
+      });
+    }
+
+    if (siteData.manifest.favicon) {
+      console.log('[ImagePreprocessor] Found manifest favicon');
+      imageRefs.push({
+        imageRef: siteData.manifest.favicon,
+        fieldName: 'favicon',
+        layoutPath: 'base',
+        contentPath: '_manifest'
+      });
+    }
+
     return imageRefs;
   }
 
@@ -268,9 +289,11 @@ export class ImagePreprocessorService {
         continue;
       }
 
-      // Resolve the preset with 3-tier inheritance: Core > Site > Layout
+      // Resolve the preset with 3-tier inheritance: Core > Theme > Layout
+      const themeName = siteData.manifest.theme.name;
+      const themeManifest = this.getThemeManifest(siteData, themeName);
       const layoutManifest = this.getLayoutManifest(siteData, layoutPath);
-      const resolvedPreset = this.resolvePreset(presetName, siteData.manifest, layoutManifest);
+      const resolvedPreset = this.resolvePreset(presetName, themeManifest, layoutManifest);
 
       if (!resolvedPreset) {
         console.warn(`[ImagePreprocessor] Could not resolve preset '${presetName}', skipping`);
@@ -311,23 +334,38 @@ export class ImagePreprocessorService {
 
   /**
    * Gets the list of presets that should be generated for a field.
-   * For now, generates common presets. In the future, this could scan templates.
+   * Discovers all available presets from Core > Theme > Layout tiers.
    */
   private getPresetsForField(
-    _siteData: LocalSiteData,
+    siteData: LocalSiteData,
     fieldName: string,
-    _layoutPath: string
+    layoutPath: string
   ): string[] {
-    // TODO: Scan template files to find which presets are actually used
-    // For now, generate common presets that templates are likely to use
+    const presetNames = new Set<string>();
 
-    // Markdown images use page_display preset, falling back to original
-    if (fieldName.startsWith('markdown_image_')) {
-      return ['page_display', 'original'];
+    // Add core presets
+    Object.keys(BASE_IMAGE_PRESETS).forEach(name => presetNames.add(name));
+
+    // Add theme presets
+    const themeName = siteData.manifest.theme.name;
+    const themeManifest = this.getThemeManifest(siteData, themeName);
+    if (themeManifest?.image_presets) {
+      Object.keys(themeManifest.image_presets).forEach(name => presetNames.add(name));
     }
 
-    // Frontmatter image fields generate common presets for templates
-    return ['thumbnail', 'full', 'hero', 'original'];
+    // Add layout presets
+    const layoutManifest = this.getLayoutManifest(siteData, layoutPath);
+    if (layoutManifest?.image_presets) {
+      Object.keys(layoutManifest.image_presets).forEach(name => presetNames.add(name));
+    }
+
+    // For markdown images, ensure page_display and original are included
+    if (fieldName.startsWith('markdown_image_')) {
+      presetNames.add('page_display');
+      presetNames.add('original');
+    }
+
+    return Array.from(presetNames);
   }
 
   /**
@@ -337,11 +375,11 @@ export class ImagePreprocessorService {
     const layoutFile = siteData.layoutFiles?.find(
       file => file.path === `layouts/${layoutPath}/layout.json`
     );
-    
+
     if (!layoutFile) {
       return null;
     }
-    
+
     try {
       return JSON.parse(layoutFile.content);
     } catch (error) {
@@ -351,26 +389,46 @@ export class ImagePreprocessorService {
   }
 
   /**
-   * Resolves a preset with 3-tier inheritance: Core > Site > Layout
+   * Gets the theme manifest for a given theme name
+   */
+  private getThemeManifest(siteData: LocalSiteData, themeName: string): any | null {
+    const themeFile = siteData.themeFiles?.find(
+      file => file.path === `themes/${themeName}/theme.json`
+    );
+
+    if (!themeFile) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(themeFile.content);
+    } catch (error) {
+      console.warn(`[ImagePreprocessor] Failed to parse theme manifest for ${themeName}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Resolves a preset with 3-tier inheritance: Core > Theme > Layout
    * Each tier can override properties from the previous tier.
    */
   private resolvePreset(
     presetName: string,
-    manifest: Manifest,
+    themeManifest: any,
     layoutManifest: any
   ): ImagePreset | null {
     // Layer 1: Start with core preset
     const corePreset = BASE_IMAGE_PRESETS[presetName as keyof typeof BASE_IMAGE_PRESETS];
 
-    // Layer 2: Check site manifest for override
-    const sitePreset = manifest.imagePresets?.[presetName];
+    // Layer 2: Check theme manifest for override
+    const themePreset = themeManifest?.image_presets?.[presetName];
 
     // Layer 3: Check layout manifest for override
-    const layoutPreset = layoutManifest?.presets?.[presetName];
+    const layoutPreset = layoutManifest?.image_presets?.[presetName];
 
     // If preset not found anywhere, return null
-    if (!corePreset && !sitePreset && !layoutPreset) {
-      console.warn(`[ImagePreprocessor] Preset '${presetName}' not found in core, site, or layout`);
+    if (!corePreset && !themePreset && !layoutPreset) {
+      console.warn(`[ImagePreprocessor] Preset '${presetName}' not found in core, theme, or layout`);
       return null;
     }
 
@@ -388,11 +446,11 @@ export class ImagePreprocessorService {
       };
     }
 
-    // Apply site preset overrides (if exists)
-    if (sitePreset) {
+    // Apply theme preset overrides (if exists)
+    if (themePreset) {
       preset = {
         ...preset,
-        ...sitePreset
+        ...themePreset
       };
     }
 
@@ -406,7 +464,7 @@ export class ImagePreprocessorService {
 
     console.log(`[ImagePreprocessor] Resolved preset '${presetName}':`, {
       core: corePreset ? `${'width' in corePreset ? corePreset.width : 'auto'}x${'height' in corePreset ? corePreset.height : 'auto'}` : 'none',
-      site: sitePreset ? `${sitePreset.width || 'auto'}x${sitePreset.height || 'auto'}` : 'none',
+      theme: themePreset ? `${themePreset.width || 'auto'}x${themePreset.height || 'auto'}` : 'none',
       layout: layoutPreset ? `${layoutPreset.width || 'auto'}x${layoutPreset.height || 'auto'}` : 'none',
       final: `${preset.width || 'auto'}x${preset.height || 'auto'}`
     });

@@ -31,6 +31,7 @@
                     fieldname="featured_image"
                     class="w-full rounded-lg"
                     alt="Featured image"
+                     preset="page_display"
                 }}}
             </div>
         {{/if}}
@@ -45,17 +46,18 @@
         </div>
 
         {{! Display tags at the bottom of the post }}
-        {{#if contentFile.frontmatter.tags}}
-            <footer class="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800">
-                <p class="text-sm font-semibold text-slate-900 dark:text-white mb-3">Tagged In:</p>
-                <div class="flex flex-wrap gap-2">
-                    {{#each contentFile.frontmatter.tags}}
-                        <span class="inline-flex items-center px-3 py-1 text-xs font-medium bg-slate-100 text-slate-700 rounded-full dark:bg-slate-800 dark:text-slate-300">
-                            {{this}}
+    {{#if resolvedTags}}
+        <footer class="mt-12 pt-8 border-t border-gray-200">
+            <div class="flex flex-wrap gap-2">
+                {{#each resolvedTags}}
+                    {{#each this}}
+                        <span class="inline-flex items-center px-3 py-1 text-sm font-headings bg-slate-100 text-text rounded-full hover:bg-muted/80 transition-colors">
+                            {{this.name}}
                         </span>
                     {{/each}}
-                </div>
-            </footer>
-        {{/if}}
+                {{/each}}
+            </div>
+        </footer>
+    {{/if}}
     </article>
 </div>

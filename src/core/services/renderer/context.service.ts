@@ -152,33 +152,7 @@ export async function assembleBaseContext(
     // to correctly calculate relative paths from the current page
     const currentPagePath = getUrlForNode(urlNode, manifest, true, undefined, siteData, true);
 
-    // Generate logo and favicon URLs, converting to relative paths for export
-    let logoUrl: string | undefined;
-    let faviconUrl: string | undefined;
-
-    if (manifest.logo) {
-      const logoAbsolutePath = await _imageService.getDisplayUrl(manifest, manifest.logo, { height: 32 }, options.isExport);
-      if (options.isExport && logoAbsolutePath.startsWith('/')) {
-        // Convert absolute path to relative path for export
-        const cleanPath = logoAbsolutePath.substring(1); // Remove leading slash
-        logoUrl = getRelativePath(currentPagePath, cleanPath);
-      } else {
-        logoUrl = logoAbsolutePath;
-      }
-    }
-
-    if (manifest.favicon) {
-      const faviconAbsolutePath = await _imageService.getDisplayUrl(manifest, manifest.favicon, { width: 32, height: 32 }, options.isExport);
-      if (options.isExport && faviconAbsolutePath.startsWith('/')) {
-        // Convert absolute path to relative path for export
-        const cleanPath = faviconAbsolutePath.substring(1); // Remove leading slash
-        faviconUrl = getRelativePath(currentPagePath, cleanPath);
-      } else {
-        faviconUrl = faviconAbsolutePath;
-      }
-    }
-    // OpenGraph image is now handled by the image helper in templates
-
+    // Logo and favicon are now handled by the image helper system via preprocessing
     return {
         siteData,
         manifest,
@@ -189,11 +163,11 @@ export async function assembleBaseContext(
             pageTitle: resolution.pageTitle,
             manifest,
             contentFile: resolution.contentFile,
+            logo: manifest.logo,
+            favicon: manifest.favicon,
             canonicalUrl: new URL(getUrlForNode(urlNode, manifest, false, undefined, siteData), manifest.baseUrl || 'https://example.com').href,
             baseUrl: options.relativeAssetPath ?? '/',
             styleOverrides: new Handlebars.SafeString(generateStyleOverrides(manifest.theme.config)),
-            faviconUrl,
-            logoUrl,
         },
     };
 }

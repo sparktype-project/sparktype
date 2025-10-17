@@ -12,6 +12,9 @@ interface RootTemplateContext {
     path: string;
     frontmatter: any;
   };
+  headContext?: {
+    [key: string]: any;
+  };
   layoutConfig?: {
     displayType?: string;
     layout?: string;
@@ -51,7 +54,7 @@ export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => {
     
     // Find the image field value in the appropriate context
     let imageRef: ImageRef | null = null;
-    
+
     // 1. Collection item context: this.frontmatter (when rendering collection items)
     if (this?.frontmatter?.[fieldName]) {
       imageRef = this.frontmatter[fieldName] as ImageRef;
@@ -60,24 +63,32 @@ export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => {
     else if (rootContext.contentFile?.frontmatter?.[fieldName]) {
       imageRef = rootContext.contentFile.frontmatter[fieldName] as ImageRef;
     }
+    // 3. Manifest context: headContext (for logo, favicon)
+    else if (rootContext.headContext?.[fieldName]) {
+      imageRef = rootContext.headContext[fieldName] as ImageRef;
+    }
 
     if (!imageRef || !imageRef.serviceId || !imageRef.src) {
       return new Handlebars.SafeString('<!-- Invalid ImageRef -->');
     }
 
     try {
-      // Determine the correct content path - prioritize collection item context
+      // Determine the correct content path - prioritize manifest, then collection, then page
       let contentPath = '';
-      
-      // 1. Collection item context (this.path)
-      if (this?.path) {
+
+      // 1. Manifest images (logo, favicon) - check headContext first
+      if (rootContext.headContext?.[fieldName] && (fieldName === 'logo' || fieldName === 'favicon')) {
+        contentPath = '_manifest';
+      }
+      // 2. Collection item context (this.path)
+      else if (this?.path) {
         contentPath = this.path;
       }
-      // 2. Root context contentFile
+      // 3. Root context contentFile
       else if (rootContext.contentFile?.path) {
         contentPath = rootContext.contentFile.path;
       }
-      
+
       if (!contentPath) {
         console.warn(`[ImageHelper] No content path found for field '${fieldName}'`);
         return new Handlebars.SafeString('<!-- No content path -->');

@@ -1,7 +1,7 @@
 {
-  "name": "Standard page",
+  "name": "Page",
   "version": "1.0.0",
-  "description": "A clean, single-column layout for standard pages like 'About Us'.",
+  "description": "A clean layout for documentation pages with optional table of contents.",
   "layoutType": "single",
   "templateType": "page",
   "parentLayout": "base",
@@ -9,7 +9,20 @@
     { "path": "layout.json", "type": "manifest" },
     { "path": "index.hbs", "type": "template" }
   ],
-  
+
+  "schema": {
+    "title": "Page Settings",
+    "type": "object",
+    "properties": {
+      "showToc": {
+        "type": "boolean",
+        "title": "Show table of contents",
+        "description": "Display a sticky table of contents on the right side of the page",
+        "default": true
+      }
+    }
+  },
+
   "image_presets": {
     "banner_image": {
       "width": 1200,
@@ -17,7 +30,8 @@
       "crop": "scale"
     },
     "featured_image": {
-      "width": 600,
+      "width": 800,
+      "height": 600,
       "crop": "scale"
     }
   }

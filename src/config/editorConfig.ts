@@ -146,6 +146,14 @@ export const BASE_SCHEMA: { schema: ExtendedRJSFSchema; uiSchema: UiSchema } = {
  */
 export const BASE_IMAGE_PRESETS = {
   // Primary display presets
+  logo: {
+    width: 256,
+    height: 256,
+    crop: 'fill' as const,
+    gravity: 'center' as const,
+    description: 'Square logo'
+
+  },
   thumbnail: {
     width: 300,
     height: 200,

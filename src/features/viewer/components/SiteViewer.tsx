@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 
 // State and Services
 import { useAppStore } from '@/core/state/useAppStore';
+import { useViewerLoading } from '@/features/viewer/contexts/ViewerLoadingContext';
 import { resolvePageContent } from '@/core/services/pageResolver.service';
 import { render as renderWithTheme } from '@/core/services/renderer/render.service';
 
@@ -25,9 +26,10 @@ export default function SiteViewer() {
   const navigate = useNavigate(); // For updating the URL
 
   const site = useAppStore(useCallback((state: AppStore) => state.getSiteById(siteId), [siteId]));
+  const { setIsLoading } = useViewerLoading();
 
   const [htmlContent, setHtmlContent] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // The base path for the viewer, used to calculate relative paths
@@ -55,6 +57,8 @@ export default function SiteViewer() {
 
     if (!site?.contentFiles) {
       setHtmlContent('');
+      setIsLoading(false);
+      setIsInitialLoad(false);
       return;
     }
 
@@ -66,6 +70,7 @@ export default function SiteViewer() {
       setErrorMessage(resolution.errorMessage);
       setHtmlContent(''); // Clear content on error
       setIsLoading(false);
+      setIsInitialLoad(false);
       return;
     }
 
@@ -165,6 +170,7 @@ export default function SiteViewer() {
       const finalHtml = pureHtml.replace('</body>', `${communicationScript}</body>`);
       setHtmlContent(finalHtml);
       setIsLoading(false);
+      setIsInitialLoad(false);
       setErrorMessage(null);
     } catch (e) {
       const error = e as Error;
@@ -172,8 +178,9 @@ export default function SiteViewer() {
       setErrorMessage(`Theme Error: ${error.message}`);
       setHtmlContent('');
       setIsLoading(false);
+      setIsInitialLoad(false);
     }
-  }, [site, siteId, currentRelativePath]);
+  }, [site, siteId, currentRelativePath, setIsLoading]);
 
   // Re-render the iframe whenever the path or site data changes.
   useEffect(() => {
@@ -210,8 +217,8 @@ export default function SiteViewer() {
       ? 'allow-scripts allow-forms allow-same-origin'
       : 'allow-scripts allow-forms';
 
-  // Loading state
-  if (isLoading) {
+  // Initial loading state - only show loader on first load
+  if (isInitialLoad && !htmlContent) {
     return <Loader fullScreen />;
   }
 
