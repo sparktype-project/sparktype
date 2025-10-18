@@ -16,8 +16,6 @@ import { renderItemHelper } from './renderItem.helper';
 import { renderCollectionHelper } from './renderCollection.helper';
 import { themeDataHelper, rawThemeDataHelper } from './themeData.helper';
 import { tocHelper } from './toc.helper';
-// render_blocks.helper removed - BlockNote handles this natively
-// collectionViewHelper removed - using layout partials directly
 
 export const coreHelpers: SparktypeHelper[] = [
   queryHelper,
@@ -35,7 +33,5 @@ export const coreHelpers: SparktypeHelper[] = [
   renderLayoutHelper,
   themeDataHelper,
   rawThemeDataHelper,
-  tocHelper,
-  // renderBlocksHelper removed - BlockNote handles this natively
-  // collectionViewHelper removed - using layout partials directly
+  tocHelper
 ];

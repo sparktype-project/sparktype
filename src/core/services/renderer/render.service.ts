@@ -44,45 +44,41 @@ async function renderLayoutHierarchy(
 
     console.log(`[renderLayoutHierarchy] Rendering layout: ${layoutId}`);
 
-    // Special case: "base" layout is referenced directly from theme root
-    if (layoutId === 'base') {
-        const templateSource = await getThemeAssetContent(siteData, themeName, 'base.hbs');
-        if (!templateSource) {
-            throw new Error(`Base template not found: themes/${themeName}/base.hbs`);
-        }
-
-        const template = Handlebars.compile(templateSource);
-        const contextWithBody = {
-            ...context,
-            body: childHtml ? new Handlebars.SafeString(childHtml) : undefined
-        };
-
-        return template(contextWithBody);
-    }
-
-    // Get layout manifest to find its parent
-    const layoutManifest = await getLayoutManifest(siteData, layoutId);
-    if (!layoutManifest) {
-        throw new Error(`Layout manifest not found: ${layoutId}`);
-    }
-
-    // Load layout template from theme directory
-    const themeManifest = await getAssetContent(siteData, 'theme', themeName, 'theme.json');
-    if (!themeManifest) {
+    // Load theme manifest to determine if this is a content layout or base layout
+    const themeManifestContent = await getAssetContent(siteData, 'theme', themeName, 'theme.json');
+    if (!themeManifestContent) {
         throw new Error(`Theme manifest not found: ${themeName}`);
     }
+    const themeData = JSON.parse(themeManifestContent);
 
-    const themeData = JSON.parse(themeManifest);
-    const layoutRef = themeData.layouts?.find((l: any) => l.id === layoutId);
-    if (!layoutRef) {
-        throw new Error(`Layout reference not found in theme: ${layoutId}`);
-    }
+    // Check if this layout ID is in the layouts array (content layout vs base layout)
+    const isContentLayout = themeData.layouts?.includes(layoutId);
 
-    const templatePath = `${layoutRef.path}/index.hbs`;
-    const templateSource = await getThemeAssetContent(siteData, themeName, templatePath);
+    let templateSource: string;
+    let layoutManifest = null;
 
-    if (!templateSource) {
-        throw new Error(`Template not found: themes/${themeName}/${templatePath}`);
+    if (isContentLayout) {
+        // Content layout: use convention layouts/{id}/index.hbs
+        const templatePath = `layouts/${layoutId}/index.hbs`;
+        const source = await getThemeAssetContent(siteData, themeName, templatePath);
+        if (!source) {
+            throw new Error(`Layout template not found: themes/${themeName}/${templatePath}`);
+        }
+        templateSource = source;
+
+        // Get layout manifest for parentLayout reference
+        layoutManifest = await getLayoutManifest(siteData, layoutId);
+        if (!layoutManifest) {
+            throw new Error(`Layout manifest not found: ${layoutId}`);
+        }
+    } else {
+        // Base layout: at theme root as {id}.hbs
+        const templatePath = `${layoutId}.hbs`;
+        const source = await getThemeAssetContent(siteData, themeName, templatePath);
+        if (!source) {
+            throw new Error(`Base template not found: themes/${themeName}/${templatePath}`);
+        }
+        templateSource = source;
     }
 
     // Compile and render this layout level
@@ -94,7 +90,7 @@ async function renderLayoutHierarchy(
     const html = template(contextWithBody);
 
     // If this layout has a parent, recursively render the parent
-    if (layoutManifest.parentLayout) {
+    if (layoutManifest?.parentLayout) {
         console.log(`[renderLayoutHierarchy] Layout ${layoutId} has parent: ${layoutManifest.parentLayout}`);
         return renderLayoutHierarchy(
             siteData,
@@ -166,16 +162,9 @@ export async function render(
     const pageContext = await assemblePageContext(synchronizedSiteData, enrichedResolution, options, imageService, pageLayoutManifest);
     const baseContext = await assembleBaseContext(synchronizedSiteData, enrichedResolution, options, imageService, pageContext);
 
-    // 4. Load layout template from theme directory
+    // 4. Load layout template from theme directory using convention
     const themeName = synchronizedSiteData.manifest.theme.name;
-    const themeManifest = await getAssetContent(synchronizedSiteData, 'theme', themeName, 'theme.json');
-    if (!themeManifest) throw new Error(`Theme manifest not found: ${themeName}`);
-
-    const themeData = JSON.parse(themeManifest);
-    const layoutRef = themeData.layouts?.find((l: any) => l.id === enrichedResolution.layoutPath);
-    if (!layoutRef) throw new Error(`Layout not found in theme: ${enrichedResolution.layoutPath}`);
-
-    const bodyTemplatePath = `${layoutRef.path}/index.hbs`;
+    const bodyTemplatePath = `layouts/${enrichedResolution.layoutPath}/index.hbs`;
     const bodyTemplateSource = await getThemeAssetContent(synchronizedSiteData, themeName, bodyTemplatePath);
     if (!bodyTemplateSource) throw new Error(`Body template not found: themes/${themeName}/${bodyTemplatePath}`);
 
@@ -466,9 +455,16 @@ async function postProcessCollectionDirectives(
         sortBy: sortByMatch[1] || 'date',
         sortOrder: (sortOrderMatch[1] || 'desc') as 'asc' | 'desc'
       };
-      
+
       console.log('[Render Service] Processing collection directive with config:', config);
-      
+
+      // Validate required attributes
+      if (!config.layout) {
+        processedHtml = processedHtml.replace(fullMatch + '</div>',
+          '<!-- Error: collection_view directive requires a "layout" attribute. Example: ::collection_view{collection="blog" layout="list-view"} -->');
+        continue;
+      }
+
       if (config.collectionId) {
         // Get collection items
         let items = getCollectionContent(siteData, config.collectionId);
@@ -490,8 +486,8 @@ async function postProcessCollectionDirectives(
             url: `/${item.path.replace(/^content\//, '').replace(/\.md$/, '')}`,
           }));
           
-          // Use layout partials instead of block templates
-          const layoutId = config.layout || 'blog-listing'; // default to blog-listing
+          // Use layout partials from the specified layout
+          const layoutId = config.layout;
           console.log('[Render Service] Using collection layout:', layoutId);
           
           try {

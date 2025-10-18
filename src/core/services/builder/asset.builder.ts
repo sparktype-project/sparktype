@@ -181,36 +181,36 @@ export async function bundleAllAssets(bundle: SiteBundle, siteData: LocalSiteDat
         }));
 
         // 4. Bundle all theme layouts and their files
-        if (themeManifest.layouts && siteData.contentFiles) {
+        if (themeManifest.layouts && Array.isArray(themeManifest.layouts) && siteData.contentFiles) {
             const usedLayoutIds = [...new Set(siteData.contentFiles.map(f => f.frontmatter.layout))];
             console.log(`[AssetBuilder] Bundling ${usedLayoutIds.length} theme layouts: ${usedLayoutIds.join(', ')}`);
 
             for (const layoutId of usedLayoutIds) {
-                const layoutRef = themeManifest.layouts.find(l => l.id === layoutId);
-                if (!layoutRef || layoutRef.type === 'base') continue;
+                // Use convention: layouts are always at layouts/{layoutId}/
+                const layoutPath = `layouts/${layoutId}`;
 
                 // Load layout manifest
                 const layoutManifestContent = await getThemeAssetContent(
                     siteData,
                     themeName,
-                    `${layoutRef.path}/layout.json`
+                    `${layoutPath}/layout.json`
                 );
 
                 if (layoutManifestContent) {
                     const layoutManifest = JSON.parse(layoutManifestContent) as LayoutManifest;
 
                     // Bundle layout manifest
-                    bundle[`_site/themes/${themeName}/${layoutRef.path}/layout.json`] = layoutManifestContent;
+                    bundle[`_site/themes/${themeName}/${layoutPath}/layout.json`] = layoutManifestContent;
 
                     // Bundle all layout files (templates and partials)
                     await Promise.all((layoutManifest.files || []).map(async (file) => {
                         const content = await getThemeAssetContent(
                             siteData,
                             themeName,
-                            `${layoutRef.path}/${file.path}`
+                            `${layoutPath}/${file.path}`
                         );
                         if (content) {
-                            bundle[`_site/themes/${themeName}/${layoutRef.path}/${file.path}`] = content;
+                            bundle[`_site/themes/${themeName}/${layoutPath}/${file.path}`] = content;
                         }
                     }));
                 }

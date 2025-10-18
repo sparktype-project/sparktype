@@ -287,18 +287,10 @@ export function validateThemeManifest(manifestJson: string): ValidationResult & 
     } else if (manifest.layouts.length === 0) {
       errors.push('theme.json: Must declare at least one layout');
     } else {
-      manifest.layouts.forEach((layout, index) => {
-        if (!layout.id) {
-          errors.push(`theme.json: Layout at index ${index} missing "id"`);
-        }
-        if (!layout.name) {
-          errors.push(`theme.json: Layout at index ${index} missing "name"`);
-        }
-        if (!layout.path) {
-          errors.push(`theme.json: Layout at index ${index} missing "path"`);
-        }
-        if (!layout.type || !['base', 'layout'].includes(layout.type)) {
-          errors.push(`theme.json: Layout "${layout.id}" has invalid type "${layout.type}"`);
+      // Layouts should now be an array of strings (layout IDs)
+      manifest.layouts.forEach((layoutId, index) => {
+        if (typeof layoutId !== 'string' || layoutId.trim() === '') {
+          errors.push(`theme.json: Layout at index ${index} must be a non-empty string (layout ID)`);
         }
       });
     }
@@ -383,25 +375,25 @@ export function validateThemeStructure(
     });
   }
 
-  // 4. Check for layout directories
-  if (manifest.layouts) {
+  // 4. Check for layout directories using convention
+  if (manifest.layouts && Array.isArray(manifest.layouts)) {
     const layoutDirs = new Set<string>();
 
-    manifest.layouts.forEach(layout => {
-      if (layout.type === 'layout') {
-        const layoutJsonPath = `${layout.path}/layout.json`;
-        const layoutTemplatePath = `${layout.path}/index.hbs`;
+    manifest.layouts.forEach(layoutId => {
+      // Use convention: layouts are at layouts/{layoutId}/
+      const layoutPath = `layouts/${layoutId}`;
+      const layoutJsonPath = `${layoutPath}/layout.json`;
+      const layoutTemplatePath = `${layoutPath}/index.hbs`;
 
-        if (!files.has(layoutJsonPath)) {
-          errors.push(`Layout manifest not found: ${layoutJsonPath}`);
-        }
-
-        if (!files.has(layoutTemplatePath)) {
-          errors.push(`Layout template not found: ${layoutTemplatePath}`);
-        }
-
-        layoutDirs.add(layout.path);
+      if (!files.has(layoutJsonPath)) {
+        errors.push(`Layout manifest not found: ${layoutJsonPath}`);
       }
+
+      if (!files.has(layoutTemplatePath)) {
+        errors.push(`Layout template not found: ${layoutTemplatePath}`);
+      }
+
+      layoutDirs.add(layoutPath);
     });
 
     if (layoutDirs.size === 0) {

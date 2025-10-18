@@ -1,7 +1,7 @@
 {
-  "name": "Blog listing",
+  "name": "List view",
   "version": "1.0.0",
-  "description": "Displays a paginated list of items from a 'Blog' collection.",
+  "description": "Displays a paginated list of items.",
   "layoutType": "list",
   "parentLayout": "base",
   "files": [

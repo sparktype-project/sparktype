@@ -1,0 +1,24 @@
+<div class="mw9 ph3 pv4 center">
+    <header class="page-header mb4 tc">
+        <h1 class="f2 lh-title">{{contentFile.frontmatter.title}}</h1>
+    </header>
+
+    {{#if collectionItems}}
+        <div class="project-grid grid gap4">
+            {{#each collectionItems}}
+                {{> portfolio-grid/partials/project-card this}}
+            {{/each}}
+        </div>
+    {{else}}
+        <div class="tc pv5">
+            <p class="mid-gray">No portfolio projects have been added yet.</p>
+        </div>
+    {{/if}}
+</div>
+
+<style>
+.project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+</style>

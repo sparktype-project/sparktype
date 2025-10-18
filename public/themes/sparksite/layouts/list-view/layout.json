@@ -1,25 +1,25 @@
 {
-  "name": "Blog listing",
+  "name": "List view",
   "version": "1.0.0",
-  "description": "Displays a paginated list of items from a 'Blog' collection.",
+  "description": "Displays a paginated list of items.",
   "layoutType": "list",
   "parentLayout": "base",
   "files": [
     { "path": "layout.json", "type": "manifest" },
     { "path": "index.hbs", "type": "template" },
-    { "path": "partials/post-card.hbs", "type": "partial" },
-    { "path": "partials/post-full.hbs", "type": "partial" }
+    { "path": "partials/card.hbs", "type": "partial" },
+    { "path": "partials/full.hbs", "type": "partial" }
   ],
   "partials": [
     {
-      "path": "partials/post-card.hbs",
+      "path": "partials/card.hbs",
       "name": "Card View",
       "description": "Compact cards with title, excerpt, and read more links",
       "isDefault": true
     },
     {
-      "path": "partials/post-full.hbs",
-      "name": "Full Content",
+      "path": "partials/full.hbs",
+      "name": "Full content",
       "description": "Complete posts with full content displayed"
     }
   ],
@@ -47,12 +47,10 @@
   "displayTypes": {
     "post-card": {
       "partial": "post-card",
-      "imageContext": "card",
       "description": "Compact cards with title, excerpt, and read more links"
     },
     "post-full": {
-      "partial": "post-full", 
-      "imageContext": "full",
+      "partial": "post-full",
       "description": "Complete posts with full content displayed"
     }
   }

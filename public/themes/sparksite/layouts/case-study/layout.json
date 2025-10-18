@@ -1,0 +1,46 @@
+{
+  "name": "Case study",
+  "version": "1.0.0",
+  "description": "A case study layout for portfolios.",
+  "layoutType": "item",
+  "parentLayout": "base",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" }
+  ],
+  "schema": {
+    "title": "Portfolio Project Fields",
+    "type": "object",
+    "properties": {
+      "client": {
+        "type": "string",
+        "title": "Client Name"
+      },
+      "project_url": {
+        "type": "string",
+        "format": "uri",
+        "title": "Live Project URL"
+      },
+      "technologies": {
+        "type": "array",
+        "title": "Technologies Used",
+        "items": { "type": "string" }
+      },
+      "gallery": {
+        "type": "array",
+        "title": "Image Gallery",
+        "items": {
+          "type": "string",
+          "title": "Gallery Image"
+        }
+      }
+    }
+  },
+  "uiSchema": {
+    "gallery": {
+      "items": {
+        "ui:widget": "imageUploader"
+      }
+    }
+  }
+}

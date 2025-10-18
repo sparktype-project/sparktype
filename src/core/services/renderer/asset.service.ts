@@ -47,18 +47,15 @@ async function cacheAllTemplates(siteData: LocalSiteData): Promise<void> {
 
     // 3. Register layout partials from all theme layouts
     const layoutPartialPromises = allLayouts.flatMap((layout: LayoutManifest) => {
-        // Get layout path from theme manifest
-        const layoutRef = themeManifest?.layouts?.find(l => l.id === layout.id);
-        if (!layoutRef) return [];
-
         return (layout.files || [])
             .filter((file: AssetFile) => file.type === 'partial')
             .map(async (file: AssetFile) => {
-                const partialPath = `${layoutRef.path}/${file.path}`;
+                // Use convention-based path: layouts/{id}/{file.path}
+                const partialPath = `layouts/${layout.id}/${file.path}`;
                 const source = await getThemeAssetContent(siteData, themeName, partialPath);
                 if (source) {
                     // Register partials with a namespace to prevent collisions
-                    // e.g., 'blog-listing/partials/post-card'
+                    // e.g., 'list-view/partials/full'
                     const partialName = `${layout.id}/${file.path.replace('.hbs', '')}`;
                     Handlebars.registerPartial(partialName, source);
                 }

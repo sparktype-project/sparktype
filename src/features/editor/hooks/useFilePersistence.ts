@@ -57,8 +57,7 @@ export function useFilePersistence({
         path: filePath,
         frontmatter: frontmatter,
         content: markdownContent,
-        slug: frontmatter.title ? frontmatter.title.toLowerCase().replace(/\s+/g, '-') : '',
-        blocks: [] // Legacy blocks field (empty)
+        slug: frontmatter.title ? frontmatter.title.toLowerCase().replace(/\s+/g, '-') : ''
       };
       
       await updateContentFileOnly(siteId, fileToUpdate, true); // Silent mode for autosave
@@ -129,8 +128,7 @@ export function useFilePersistence({
         path: filePath,
         frontmatter: frontmatter,
         content: markdownContent,
-        slug: frontmatter.title ? frontmatter.title.toLowerCase().replace(/\s+/g, '-') : '',
-        blocks: [] // Legacy blocks field (empty)
+        slug: frontmatter.title ? frontmatter.title.toLowerCase().replace(/\s+/g, '-') : ''
       };
       await updateContentFileOnly(siteId, fileToUpdate, true); // Silent mode
     }

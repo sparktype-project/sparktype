@@ -1,0 +1,74 @@
+{{!
+  Partial for displaying a full blog post with complete content.
+  'this' refers to one item from the `collectionItems` array.
+}}
+<article class="border-b border-gray-300 pb-12 mb-6">
+   
+    
+
+    <header class="mb-8">
+        <h2 class="text-3xl md:text-4xl font-bold text-heading my-4 leading-tight">
+            <a href="{{this.url}}" class="hover:text-primary transition-colors duration-200">
+                {{this.frontmatter.title}}
+            </a>
+        </h2>
+
+        {{#if this.frontmatter.description}}
+            <p class="text-text mt-0 mb-4 text-xl flex-1 font-headings">
+                {{this.frontmatter.description}}
+            </p>
+        {{/if}}
+        
+        <div class="flex flex-wrap items-center gap-4 text-sm text-muted mb-6 font-headings text-gray-500">
+            <time datetime="{{this.frontmatter.date}}">
+                Published on {{formatDate this.frontmatter.date}}
+            </time>           
+            
+            {{#if this.frontmatter.author}}
+                {{#if this.frontmatter.date}}
+                    <span class="text-border">•</span>
+                {{/if}}
+                <span class="font-headings">By {{this.frontmatter.author}}</span>
+            {{/if}}
+        </div>
+
+        {{#if this.frontmatter.featured_image}}
+            <div class="mb-8">
+                {{{image
+                    fieldname="featured_image"
+                    preset="full"
+                    alt=this.frontmatter.title
+                    class="w-full rounded-lg"
+                }}}
+            </div>
+        {{/if}}
+    </header>
+    
+
+    {{#if this.content}}
+        <div class="prose max-w-none">
+            {{{markdown this.content}}}
+        </div>
+    {{else}}
+        <div class="text-muted italic">
+            No content available for this post.
+        </div>
+    {{/if}}
+
+    <footer>
+        
+        {{#if this.resolvedTags}}
+            <footer class="pt-2">
+                <div class="flex flex-wrap gap-2">
+                    {{#each this.resolvedTags}}
+                        {{#each this}}
+                            <span class="inline-flex items-center px-3 py-1 text-sm font-headings bg-slate-100 text-text rounded-full hover:bg-muted/80 transition-colors">
+                                {{this.name}}
+                            </span>
+                        {{/each}}
+                    {{/each}}
+                </div>
+            </footer>
+        {{/if}}
+    </footer>
+</article>

@@ -2,8 +2,7 @@
   "name": "Blog post",
   "version": "1.0.0",
   "description": "The standard layout for an individual blog post article.",
-  "layoutType": "single",
-  "templateType": "item",
+  "layoutType": "item",
   "parentLayout": "base",
   "files": [
     { "path": "layout.json", "type": "manifest" },

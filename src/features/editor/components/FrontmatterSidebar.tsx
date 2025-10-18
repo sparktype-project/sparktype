@@ -183,7 +183,7 @@ export default function FrontmatterSidebar({
                     <Label htmlFor="display-collection-toggle" className="text-sm font-medium">
                       Display collection
                     </Label>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-mut1ed-foreground">
                       {isDisplayingCollection
                         ? "This page displays a collection of items"
                         : "This page displays standalone content"
@@ -202,7 +202,7 @@ export default function FrontmatterSidebar({
                   siteId={siteId}
                   selectedLayoutId={frontmatter.layout || ''}
                   onChange={handleLayoutChange}
-                  filterByType={isDisplayingCollection ? 'collection' : 'page'}
+                  filterByType={isDisplayingCollection ? 'list' : 'page'}
                 />
               </AccordionContent>
             </AccordionItem>

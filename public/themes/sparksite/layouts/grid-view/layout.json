@@ -1,7 +1,7 @@
 {
-  "name": "Portfolio Grid",
+  "name": "Grid view",
   "version": "1.0.0",
-  "description": "Displays a visual grid of items from a 'Portfolio' collection.",
+  "description": "Displays a grid of items.",
   "layoutType": "list",
   "parentLayout": "base",
   "files": [

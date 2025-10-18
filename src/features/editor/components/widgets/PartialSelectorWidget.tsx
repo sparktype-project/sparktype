@@ -25,7 +25,7 @@ export default function PartialSelectorWidget(props: PartialSelectorWidgetProps)
   const site = formContext?.site;
 
   // Get the asset type and path from uiSchema
-  const assetType = uiSchema?.['ui:assetType'] as 'theme' | 'layout' | 'block' || 'theme';
+  const assetType = uiSchema?.['ui:assetType'] as 'theme' | 'layout' || 'theme';
   const assetPath = uiSchema?.['ui:assetPath'] as string || site?.manifest?.theme?.name;
   const subDirectory = uiSchema?.['ui:subDirectory'] as string || 'partials';
 

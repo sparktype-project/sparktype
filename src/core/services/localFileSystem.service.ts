@@ -177,7 +177,7 @@ export async function saveContentFile(siteId: string, filePath: string, rawMarkd
 
     const { frontmatter, content } = parseMarkdownString(rawMarkdownContent);
     const fileSlug = filePath.replace(/^content\//, '').replace(/\.md$/, '');
-    const savedFile: ParsedMarkdownFile = { slug: fileSlug, path: filePath, frontmatter, content, blocks: [], hasBlocks: false };
+    const savedFile: ParsedMarkdownFile = { slug: fileSlug, path: filePath, frontmatter, content };
 
     const fileIndex = contentFiles.findIndex(f => f.path === filePath);
     if (fileIndex > -1) {

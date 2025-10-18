@@ -117,7 +117,7 @@ export async function assemblePageContext(
 }
 
 /**
- * Assembles the final, top-level context for the theme's base shell (base.hbs).
+ * Assembles the final, top-level context for the theme's base shell.
  */
 export async function assembleBaseContext(
     siteData: LocalSiteData,

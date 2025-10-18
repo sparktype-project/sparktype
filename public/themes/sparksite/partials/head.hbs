@@ -41,10 +41,10 @@
 {{/if}}
 
 
-{{!-- Favicon Placeholder - Users should replace these --}}
-{{#if faviconUrl}}
-    <link rel="icon" href="{{faviconUrl}}" sizes="any">
-    <link rel="apple-touch-icon" href="{{faviconUrl}}">
+{{!-- Favicon --}}
+{{#if @root.headContext.favicon}}
+    <link rel="icon" href="{{{image fieldname="favicon" preset="logo" url_only=true}}}" sizes="any">
+    <link rel="apple-touch-icon" href="{{{image fieldname="favicon" preset="logo" url_only=true}}}">
 {{else}}
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">

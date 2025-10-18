@@ -13,47 +13,7 @@
   "stylesheets": [
     { "path": "styles.css", "type": "main" }
   ],
-  "layouts": [
-    {
-      "id": "base",
-      "name": "Base Layout",
-      "type": "base",
-      "path": "base",
-      "description": "Root layout providing HTML structure"
-    },
-    {
-      "id": "page",
-      "name": "Standard Page",
-      "type": "layout",
-      "path": "layouts/page",
-      "layoutType": "single",
-      "description": "Clean single-column layout for standard pages"
-    },
-    {
-      "id": "blog-post",
-      "name": "Blog Post",
-      "type": "layout",
-      "path": "layouts/blog-post",
-      "layoutType": "single",
-      "description": "Layout for individual blog post articles"
-    },
-    {
-      "id": "blog-listing",
-      "name": "Blog Listing",
-      "type": "layout",
-      "path": "layouts/blog-listing",
-      "layoutType": "collection",
-      "description": "Displays a list of blog posts"
-    },
-    {
-      "id": "hero-page",
-      "name": "Hero Page",
-      "type": "layout",
-      "path": "layouts/hero-page",
-      "layoutType": "single",
-      "description": "Landing page with bold title and call to action"
-    }
-  ],
+  "layouts": ["page", "blog-post", "hero-page", "list-view"],
   "appearanceSchema": {
     "description": "Customise the colors, fonts and layout of your site.",
     "type": "object",
