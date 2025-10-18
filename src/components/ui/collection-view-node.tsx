@@ -47,7 +47,7 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
   const [availableLayouts, setAvailableLayouts] = useState<CollectionLayoutOption[]>([]);
   const [localConfig, setLocalConfig] = useState<CollectionViewElementData>({
     collection: element.collection as string || '',
-    layout: element.layout as string || 'blog-listing',
+    layout: element.layout as string || 'list-view',
     maxItems: element.maxItems as number || 10,
     sortBy: element.sortBy as 'date' | 'title' | 'order' || 'date',
     sortOrder: element.sortOrder as 'asc' | 'desc' || 'desc',
@@ -108,7 +108,7 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
   const handleCancel = () => {
     setLocalConfig({
       collection: element.collection as string || '',
-      layout: element.layout as 'list' | 'grid' | 'cards' || 'list',
+      layout: element.layout as string || 'list-view',
       maxItems: element.maxItems as number || 10,
       sortBy: element.sortBy as 'date' | 'title' | 'order' || 'date',
       sortOrder: element.sortOrder as 'asc' | 'desc' || 'desc',
