@@ -6,7 +6,28 @@
   "parentLayout": "base",
   "files": [
     { "path": "layout.json", "type": "manifest" },
-    { "path": "index.hbs", "type": "template" }
+    { "path": "index.hbs", "type": "template" },
+    { "path": "partials/card.hbs", "type": "partial" },
+    { "path": "partials/full.hbs", "type": "partial" },
+    { "path": "partials/project-card.hbs", "type": "partial" }
+  ],
+  "partials": [
+    {
+      "path": "partials/card.hbs",
+      "name": "Card View",
+      "description": "Compact cards with title, excerpt, and read more links",
+      "isDefault": true
+    },
+    {
+      "path": "partials/full.hbs",
+      "name": "Full content",
+      "description": "Complete project details with full content displayed"
+    },
+    {
+      "path": "partials/project-card.hbs",
+      "name": "Project Card",
+      "description": "Grid-style project cards for portfolio displays"
+    }
   ],
   "schema": {
     "title": "Portfolio Project Fields",

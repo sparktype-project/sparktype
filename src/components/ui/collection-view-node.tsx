@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/c
 import { Badge } from '@/core/components/ui/badge';
 import { Settings, List, Grid, LayoutGrid } from 'lucide-react';
 import { getAvailableCollectionLayouts, type CollectionLayoutOption } from '@/core/services/collectionLayout.service';
+import { getLayoutManifest } from '@/core/services/config/configHelpers.service';
+import { getCollections } from '@/core/services/collections.service';
 import { useAppStore } from '@/core/state/useAppStore';
 import {
   Dialog,
@@ -27,7 +29,8 @@ import { Input } from '@/core/components/ui/input';
 import { Label } from '@/core/components/ui/label';
 interface CollectionViewElementData {
   collection?: string;
-  layout?: string; // Now uses layout IDs like 'blog-listing', 'portfolio-grid'
+  layout?: string; // List layout ID like 'list-view', 'grid-view'
+  displayType?: string; // Display partial to use (from item layout)
   maxItems?: number;
   sortBy?: 'date' | 'title' | 'order';
   sortOrder?: 'asc' | 'desc';
@@ -45,9 +48,16 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [availableLayouts, setAvailableLayouts] = useState<CollectionLayoutOption[]>([]);
+  const [availableDisplayTypes, setAvailableDisplayTypes] = useState<Array<{
+    value: string;
+    label: string;
+    description?: string;
+    isDefault?: boolean;
+  }>>([]);
   const [localConfig, setLocalConfig] = useState<CollectionViewElementData>({
     collection: element.collection as string || '',
     layout: element.layout as string || 'list-view',
+    displayType: element.displayType as string || '',
     maxItems: element.maxItems as number || 10,
     sortBy: element.sortBy as 'date' | 'title' | 'order' || 'date',
     sortOrder: element.sortOrder as 'asc' | 'desc' || 'desc',
@@ -73,6 +83,70 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
     loadLayouts();
   }, [activeSiteId, getSiteById, localConfig.layout]);
 
+  // Load available display types from the collection's item layout
+  useEffect(() => {
+    async function loadDisplayTypes() {
+      if (!activeSiteId || !localConfig.collection) {
+        setAvailableDisplayTypes([]);
+        return;
+      }
+
+      const siteData = getSiteById(activeSiteId);
+      if (!siteData) {
+        setAvailableDisplayTypes([]);
+        return;
+      }
+
+      // Get all collections to find the selected one
+      const allCollections = getCollections(siteData.manifest);
+      const selectedCollection = allCollections.find(c => c.id === localConfig.collection);
+      if (!selectedCollection) {
+        setAvailableDisplayTypes([]);
+        return;
+      }
+
+      const itemLayoutId = selectedCollection.defaultItemLayout;
+      if (!itemLayoutId) {
+        setAvailableDisplayTypes([]);
+        return;
+      }
+
+      try {
+        // Load the item layout manifest
+        const itemLayoutManifest = await getLayoutManifest(siteData, itemLayoutId);
+        if (!itemLayoutManifest?.partials) {
+          setAvailableDisplayTypes([]);
+          return;
+        }
+
+        // Map partials to display types
+        const displayTypes = itemLayoutManifest.partials.map(partial => {
+          const pathParts = partial.path.split('/');
+          const filename = pathParts[pathParts.length - 1]?.replace('.hbs', '') || '';
+          return {
+            value: filename,
+            label: partial.name,
+            description: partial.description,
+            isDefault: partial.isDefault
+          };
+        });
+
+        setAvailableDisplayTypes(displayTypes);
+
+        // Set default display type if none selected
+        const defaultType = displayTypes.find(t => t.isDefault) || displayTypes[0];
+        if (!localConfig.displayType && defaultType) {
+          setLocalConfig(prev => ({ ...prev, displayType: defaultType.value }));
+        }
+      } catch (error) {
+        console.error('[CollectionViewNode] Failed to load item layout partials:', error);
+        setAvailableDisplayTypes([]);
+      }
+    }
+
+    loadDisplayTypes();
+  }, [activeSiteId, getSiteById, localConfig.collection, localConfig.displayType]);
+
   const selectedCollection = useMemo(() => {
     return collections.find(c => c.id === localConfig.collection);
   }, [collections, localConfig.collection]);
@@ -95,6 +169,7 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
       {
         collection: localConfig.collection,
         layout: localConfig.layout,
+        displayType: localConfig.displayType,
         maxItems: localConfig.maxItems,
         sortBy: localConfig.sortBy,
         sortOrder: localConfig.sortOrder,
@@ -109,6 +184,7 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
     setLocalConfig({
       collection: element.collection as string || '',
       layout: element.layout as string || 'list-view',
+      displayType: element.displayType as string || '',
       maxItems: element.maxItems as number || 10,
       sortBy: element.sortBy as 'date' | 'title' | 'order' || 'date',
       sortOrder: element.sortOrder as 'asc' | 'desc' || 'desc',
@@ -229,6 +305,35 @@ export function CollectionViewElement(props: CollectionViewElementProps) {
                 </SelectContent>
               </Select>
             </div>
+
+            {availableDisplayTypes.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="displayType">Display Type</Label>
+                <Select
+                  value={localConfig.displayType}
+                  onValueChange={(value) =>
+                    setLocalConfig(prev => ({ ...prev, displayType: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select display type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableDisplayTypes.map((displayType) => (
+                      <SelectItem key={displayType.value} value={displayType.value}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{displayType.label}</span>
+                          {displayType.description && (
+                            <span className="text-xs text-muted-foreground">{displayType.description}</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Choose how collection items are displayed</p>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

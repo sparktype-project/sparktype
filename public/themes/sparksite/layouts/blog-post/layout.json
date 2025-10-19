@@ -6,7 +6,22 @@
   "parentLayout": "base",
   "files": [
     { "path": "layout.json", "type": "manifest" },
-    { "path": "index.hbs", "type": "template" }
+    { "path": "index.hbs", "type": "template" },
+    { "path": "partials/card.hbs", "type": "partial" },
+    { "path": "partials/full.hbs", "type": "partial" }
+  ],
+  "partials": [
+    {
+      "path": "partials/card.hbs",
+      "name": "Card View",
+      "description": "Compact cards with title, excerpt, and read more links",
+      "isDefault": true
+    },
+    {
+      "path": "partials/full.hbs",
+      "name": "Full content",
+      "description": "Complete posts with full content displayed"
+    }
   ],
   "schema": {
     "title": "Blog Post Fields",

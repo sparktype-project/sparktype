@@ -295,17 +295,25 @@ export async function render(
 
     // 2.6. Populate collection items for list layout types
     let enrichedResolution = resolution;
+    let itemLayoutId: string | undefined;
     if (pageLayoutManifest.layoutType === 'list') {
       const layoutConfig = resolution.contentFile.frontmatter.layoutConfig;
       if (layoutConfig && layoutConfig.collectionId) {
         let collectionItems = getCollectionContent(synchronizedSiteData, layoutConfig.collectionId);
-        
+
+        // Get the collection to retrieve its default item layout
+        const collection = synchronizedSiteData.manifest.collections?.find(c => c.id === layoutConfig.collectionId);
+        if (collection) {
+          itemLayoutId = collection.defaultItemLayout;
+          console.log('[Render Service] Collection uses item layout:', itemLayoutId);
+        }
+
         // Apply sorting - always sort by date if no sortBy specified
         const sortBy = layoutConfig.sortBy || 'date';
         const sortOrder = layoutConfig.sortOrder || 'desc';
-        
+
         collectionItems = sortCollectionItems(collectionItems, sortBy, sortOrder);
-        
+
         enrichedResolution = {
           ...resolution,
           collectionItems
@@ -353,11 +361,12 @@ export async function render(
                   const escapeAttr = (val: any) => Handlebars.escapeExpression(String(val || ''));
                   const collection = escapeAttr(attrs.collection);
                   const layout = escapeAttr(attrs.layout);
+                  const displayType = escapeAttr(attrs.displayType);
                   const maxItems = escapeAttr(attrs.maxItems);
                   const sortBy = escapeAttr(attrs.sortBy);
                   const sortOrder = escapeAttr(attrs.sortOrder);
 
-                  const directiveHtml = `<div data-collection-directive="true" data-collection="${collection}" data-layout="${layout}" data-max-items="${maxItems}" data-sort-by="${sortBy}" data-sort-order="${sortOrder}"></div>`;
+                  const directiveHtml = `<div data-collection-directive="true" data-collection="${collection}" data-layout="${layout}" data-display-type="${displayType}" data-max-items="${maxItems}" data-sort-by="${sortBy}" data-sort-order="${sortOrder}"></div>`;
 
                   // Replace the directive node with an HTML node
                   node.type = 'html';
@@ -424,7 +433,12 @@ export async function render(
         console.log('[Render Service] After remark processing:', processedContent.substring(0, 500));
 
         // Post-process HTML to convert collection directives (must happen before sanitization)
-        processedContent = await postProcessCollectionDirectives(processedContent, synchronizedSiteData);
+        processedContent = await postProcessCollectionDirectives(
+          processedContent,
+          synchronizedSiteData,
+          options,
+          enrichedResolution.contentFile
+        );
         console.log('[Render Service] After directive processing:', processedContent.substring(0, 500));
 
         // Sanitize HTML AFTER all HTML generation to prevent XSS attacks
@@ -461,7 +475,8 @@ export async function render(
     
     const contentContext = {
         ...pageContext,
-        content: new Handlebars.SafeString(processedContent)
+        content: new Handlebars.SafeString(processedContent),
+        ...(itemLayoutId && { itemLayoutId }) // Add itemLayoutId for list layouts
     };
 
     const bodyTemplate = Handlebars.compile(bodyTemplateSource);
@@ -596,8 +611,10 @@ async function postProcessSparkTypeImagesForExport(
  * Post-processes HTML content to convert collection view directives to rendered collection content
  */
 async function postProcessCollectionDirectives(
-  htmlContent: string, 
-  siteData: LocalSiteData
+  htmlContent: string,
+  siteData: LocalSiteData,
+  renderOptions: RenderOptions,
+  currentPageFile: any
 ): Promise<string> {
   // Find all collection directive placeholders
   const directiveRegex = /<div[^>]*data-collection-directive="true"[^>]*>/g;
@@ -614,13 +631,15 @@ async function postProcessCollectionDirectives(
       // Extract attributes from the directive div
       const collectionMatch = fullMatch.match(/data-collection="([^"]*)"/) || [];
       const layoutMatch = fullMatch.match(/data-layout="([^"]*)"/) || [];
+      const displayTypeMatch = fullMatch.match(/data-display-type="([^"]*)"/) || [];
       const maxItemsMatch = fullMatch.match(/data-max-items="([^"]*)"/) || [];
       const sortByMatch = fullMatch.match(/data-sort-by="([^"]*)"/) || [];
       const sortOrderMatch = fullMatch.match(/data-sort-order="([^"]*)"/) || [];
-      
+
       const config = {
         collectionId: collectionMatch[1] || '',
         layout: layoutMatch[1] || 'list',
+        displayType: displayTypeMatch[1] || '',
         maxItems: parseInt(maxItemsMatch[1] || '10'),
         sortBy: sortByMatch[1] || 'date',
         sortOrder: (sortOrderMatch[1] || 'desc') as 'asc' | 'desc'
@@ -636,67 +655,100 @@ async function postProcessCollectionDirectives(
       }
 
       if (config.collectionId) {
+        // Get the collection to retrieve its default item layout
+        const collection = siteData.manifest.collections?.find(c => c.id === config.collectionId);
+        if (!collection) {
+          console.warn('[Render Service] Collection not found:', config.collectionId);
+          processedHtml = processedHtml.replace(fullMatch + '</div>', `<!-- Collection not found: ${config.collectionId} -->`);
+          continue;
+        }
+
+        const itemLayoutId = collection.defaultItemLayout;
+        console.log('[Render Service] Collection uses item layout:', itemLayoutId);
+
         // Get collection items
         let items = getCollectionContent(siteData, config.collectionId);
-        
+
         if (items && items.length > 0) {
           // Apply sorting
           if (config.sortBy) {
             items = sortCollectionItems(items, config.sortBy, config.sortOrder);
           }
-          
+
           // Apply max items limit
           if (config.maxItems && config.maxItems > 0) {
             items = items.slice(0, config.maxItems);
           }
-          
+
           // Add computed properties for template use
           items = items.map(item => ({
             ...item,
             url: `/${item.path.replace(/^content\//, '').replace(/\.md$/, '')}`,
           }));
-          
-          // Use layout partials from the specified layout
-          const layoutId = config.layout;
-          console.log('[Render Service] Using collection layout:', layoutId);
-          
-          try {
-            // Import the layout discovery service to get partial path
-            const { getCollectionLayoutById } = await import('@/core/services/collectionLayout.service');
-            const layoutInfo = await getCollectionLayoutById(siteData, layoutId);
-            
-            if (layoutInfo && layoutInfo.partialPath) {
-              console.log('[Render Service] Found layout partial:', layoutInfo.partialPath);
-              
-              // Render each item using the layout partial
-              const renderedItems = items.map(item => {
-                // Use Handlebars to render the partial for each item
-                const partialTemplate = Handlebars.partials[layoutInfo.partialPath!];
-                if (partialTemplate) {
-                  const compiledPartial = typeof partialTemplate === 'string' 
-                    ? Handlebars.compile(partialTemplate) 
-                    : partialTemplate;
-                  return compiledPartial(item);
-                }
-                return `<!-- Partial not found: ${layoutInfo.partialPath} -->`;
-              });
-              
-              // Wrap the rendered items in a container
-              // Validate layoutId contains only safe characters to prevent class injection
-              const safeLayoutId = /^[a-z0-9-]+$/i.test(layoutId) ? layoutId : 'list';
-              const containerClass = safeLayoutId.includes('grid')
-                ? 'collection-grid grid gap-4'
-                : 'collection-list space-y-4';
 
-              const renderedContent = `<div class="${containerClass}">\n${renderedItems.join('\n')}\n</div>`;
-              
-              // Replace the directive placeholder with rendered content
-              processedHtml = processedHtml.replace(fullMatch + '</div>', renderedContent);
-              console.log('[Render Service] Rendered collection directive with layout partial:', layoutInfo.partialPath);
-            } else {
-              console.warn('[Render Service] Layout not found or missing partial:', layoutId);
-              processedHtml = processedHtml.replace(fullMatch + '</div>', `<!-- Collection layout not found: ${layoutId} -->`);
+          try {
+            // Get the item layout manifest to find partials
+            const itemLayoutManifest = await getLayoutManifest(siteData, itemLayoutId);
+            if (!itemLayoutManifest || !itemLayoutManifest.partials || itemLayoutManifest.partials.length === 0) {
+              console.warn('[Render Service] Item layout has no partials:', itemLayoutId);
+              processedHtml = processedHtml.replace(fullMatch + '</div>', `<!-- Item layout has no display partials: ${itemLayoutId} -->`);
+              continue;
             }
+
+            // Determine which partial to use: from displayType or default
+            let partialToUse = null;
+            if (config.displayType) {
+              // Look for the specified displayType
+              partialToUse = itemLayoutManifest.partials.find(p => {
+                const filename = p.path.split('/').pop()?.replace('.hbs', '');
+                return filename === config.displayType;
+              });
+            }
+
+            // Fall back to default or first partial if displayType not found
+            if (!partialToUse) {
+              partialToUse = itemLayoutManifest.partials.find(p => p.isDefault) || itemLayoutManifest.partials[0];
+            }
+
+            const partialPath = `${itemLayoutId}/partials/${partialToUse.path.split('/').pop()?.replace('.hbs', '')}`;
+            console.log('[Render Service] Using item layout partial:', partialPath);
+
+            // Render each item using the layout partial
+            const renderedItems = items.map(item => {
+              const partialTemplate = Handlebars.partials[partialPath];
+              if (partialTemplate) {
+                const compiledPartial = typeof partialTemplate === 'string'
+                  ? Handlebars.compile(partialTemplate)
+                  : partialTemplate;
+
+                // Pass item as context and render options through Handlebars data
+                // This ensures helpers can access renderOptions via options.data.root.options
+                // Also pass contentFile so image helper can calculate relative paths correctly
+                return compiledPartial(item, {
+                  data: {
+                    root: {
+                      ...item,
+                      options: renderOptions,
+                      contentFile: currentPageFile
+                    }
+                  }
+                });
+              }
+              return `<!-- Partial not found: ${partialPath} -->`;
+            });
+
+            // Wrap the rendered items in a container
+            // Validate layoutId contains only safe characters to prevent class injection
+            const safeLayoutId = /^[a-z0-9-]+$/i.test(config.layout) ? config.layout : 'list';
+            const containerClass = safeLayoutId.includes('grid')
+              ? 'collection-grid grid gap-4'
+              : 'collection-list space-y-4';
+
+            const renderedContent = `<div class="${containerClass}">\n${renderedItems.join('\n')}\n</div>`;
+
+            // Replace the directive placeholder with rendered content
+            processedHtml = processedHtml.replace(fullMatch + '</div>', renderedContent);
+            console.log('[Render Service] Rendered collection directive with partial:', partialPath);
           } catch (error) {
             console.error('[Render Service] Failed to render collection directive:', error);
             processedHtml = processedHtml.replace(fullMatch + '</div>', '<!-- Error rendering collection directive -->');

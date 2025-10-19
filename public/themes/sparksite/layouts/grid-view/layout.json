@@ -6,13 +6,6 @@
   "parentLayout": "base",
   "files": [
     { "path": "layout.json", "type": "manifest" },
-    { "path": "index.hbs", "type": "template" },
-    { "path": "partials/project-card.hbs", "type": "partial" }
-  ],
-  "displayTypes": {
-    "project-card": {
-      "partial": "project-card",
-      "description": "Square grid cards showcasing portfolio projects"
-    }
-  }
+    { "path": "index.hbs", "type": "template" }
+  ]
 }

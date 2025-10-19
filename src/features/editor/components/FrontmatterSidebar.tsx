@@ -217,7 +217,6 @@ export default function FrontmatterSidebar({
                   siteId={siteId}
                   layoutConfig={frontmatter.layoutConfig}
                   onLayoutConfigChange={handleLayoutConfigChange}
-                  currentLayout={currentLayoutManifest || undefined}
                 />
               </AccordionContent>
             </AccordionItem>

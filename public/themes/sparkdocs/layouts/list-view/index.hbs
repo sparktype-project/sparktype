@@ -33,13 +33,16 @@
         <div class="space-y-8">
             {{! Loop through each item provided by the page resolver }}
             {{#each collectionItems}}
-                {{! Render a partial for each item. This keeps the code clean. }}
-                {{! The partial name is namespaced to this layout: 'blog-listing/...' }}
-                {{! Use the selected displayType from layoutConfig, fallback to post-card }}
-                {{#if ../contentFile.frontmatter.layoutConfig.displayType}}
-                    {{> (concat "blog-listing/partials/" ../contentFile.frontmatter.layoutConfig.displayType) this}}
+                {{! Render a partial for the item using its layout's partials }}
+                {{! The itemLayoutId is provided by the render service based on the collection's defaultItemLayout }}
+                {{#if ../itemLayoutId}}
+                    {{#if ../contentFile.frontmatter.layoutConfig.displayType}}
+                        {{> (concat ../itemLayoutId "/partials/" ../contentFile.frontmatter.layoutConfig.displayType) this}}
+                    {{else}}
+                        {{> (concat ../itemLayoutId "/partials/card") this}}
+                    {{/if}}
                 {{else}}
-                    {{> blog-listing/partials/post-card this}}
+                    <p class="text-red-500">Error: Item layout not configured for this collection</p>
                 {{/if}}
             {{/each}}
         </div>

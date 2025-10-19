@@ -6,22 +6,7 @@
   "parentLayout": "base",
   "files": [
     { "path": "layout.json", "type": "manifest" },
-    { "path": "index.hbs", "type": "template" },
-    { "path": "partials/card.hbs", "type": "partial" },
-    { "path": "partials/full.hbs", "type": "partial" }
-  ],
-  "partials": [
-    {
-      "path": "partials/card.hbs",
-      "name": "Card View",
-      "description": "Compact cards with title, excerpt, and read more links",
-      "isDefault": true
-    },
-    {
-      "path": "partials/full.hbs",
-      "name": "Full content",
-      "description": "Complete posts with full content displayed"
-    }
+    { "path": "index.hbs", "type": "template" }
   ],
   "schema": {
     "title": "Blog listing options",
@@ -42,16 +27,6 @@
   "uiSchema": {
     "listing_intro": {
       "ui:widget": "textarea"
-    }
-  },
-  "displayTypes": {
-    "post-card": {
-      "partial": "post-card",
-      "description": "Compact cards with title, excerpt, and read more links"
-    },
-    "post-full": {
-      "partial": "post-full",
-      "description": "Complete posts with full content displayed"
     }
   }
 }

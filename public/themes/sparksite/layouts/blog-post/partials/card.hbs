@@ -1,0 +1,57 @@
+{{!
+  Partial for a single blog post card using SparkType Design System utilities.
+  'this' refers to one item from the `collectionItems` array.
+}}
+<article class="border-b border-gray-200 pb-8 mb-8">
+    {{#if this.frontmatter.featured_image}}
+        <a href="{{this.url}}" class="block mb-6">
+            {{{image
+                fieldname="featured_image"
+                preset="page_display"
+                alt=this.frontmatter.title
+                class="w-full rounded-lg"
+            }}}
+        </a>
+    {{/if}}
+
+    <div class="">
+        <h2 class="text-4xl mt-0 mb-2 leading-tight">
+            <a
+                href="{{this.url}}"
+                class="no-underline hover:underline font-bold"
+            >
+                {{this.frontmatter.title}}
+            </a>
+        </h2>
+
+        <p class="text-sm text-gray-500 mb-3 font-headings">
+            Published on {{formatDate this.frontmatter.date}}
+        </p>
+
+        {{#if this.frontmatter.description}}
+            <p class="text-text mt-0 mb-4 text-lg flex-1 font-headings">
+                {{this.frontmatter.description}}
+            </p>
+        {{/if}}
+
+        {{#if this.resolvedTags }}
+            <div class="flex flex-wrap gap-2 mb-4">
+                {{#each this.resolvedTags}}
+                    {{#each this}}
+                        <span class="inline-flex items-center px-3 py-1 text-sm font-headings bg-slate-100 text-text rounded-full hover:bg-muted/80 transition-colors">
+                            {{this.name}}
+                        </span>
+                    {{/each}}
+                {{/each}}
+            </div>
+        {{/if}}
+
+        <a
+            href="{{this.url}}"
+            class="no-underline inline-flex items-center text-primary font-medium hover:underline transition-colors duration-200 mt-auto font-headings"
+        >
+            Read More
+            <span class="ml-1">→</span>
+        </a>
+    </div>
+</article>

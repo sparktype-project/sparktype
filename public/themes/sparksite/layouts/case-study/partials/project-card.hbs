@@ -1,0 +1,17 @@
+<article class="project-card br2 ba b--black-10 overflow-hidden">
+    {{#if this.frontmatter.featured_image}}
+        <a href="{{this.url}}" class="db aspect-ratio aspect-ratio--4x3">
+            {{{image fieldname="featured_image" preset="thumbnail" alt=this.frontmatter.title class="aspect-ratio--object"}}}
+        </a>
+    {{/if}}
+    <div class="pa3">
+        <h3 class="f5 lh-title mv0">
+            <a href="{{this.url}}" class="link black hover-blue">{{this.frontmatter.title}}</a>
+        </h3>
+        {{#if this.frontmatter.client}}
+            <p class="f6 mid-gray mv1">
+                {{this.frontmatter.client}}
+            </p>
+        {{/if}}
+    </div>
+</article>

@@ -74,7 +74,9 @@
       "Read(//Users/matt/Sites/core-themes/**)",
       "Read(//Users/matt/Sites/core-themes/sparksite-theme/src/**)",
       "Read(//Users/matt/Sites/core-themes/sparkdocs-theme/src/**)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

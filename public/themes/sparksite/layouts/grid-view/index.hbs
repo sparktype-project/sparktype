@@ -6,7 +6,17 @@
     {{#if collectionItems}}
         <div class="project-grid grid gap4">
             {{#each collectionItems}}
-                {{> portfolio-grid/partials/project-card this}}
+                {{! Render a partial for the item using its layout's partials }}
+                {{! The itemLayoutId is provided by the render service based on the collection's defaultItemLayout }}
+                {{#if ../itemLayoutId}}
+                    {{#if ../contentFile.frontmatter.layoutConfig.displayType}}
+                        {{> (concat ../itemLayoutId "/partials/" ../contentFile.frontmatter.layoutConfig.displayType) this}}
+                    {{else}}
+                        {{> (concat ../itemLayoutId "/partials/project-card") this}}
+                    {{/if}}
+                {{else}}
+                    <p class="red">Error: Item layout not configured for this collection</p>
+                {{/if}}
             {{/each}}
         </div>
     {{else}}

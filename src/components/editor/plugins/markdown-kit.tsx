@@ -65,21 +65,22 @@ export function createMarkdownKit(siteId?: string) {
         collection_view: {
           serialize: (slateNode: any) => {
             console.log('PlateJS serializing collection_view node:', slateNode);
-            
+
             // Convert collection view element to directive
             const attributes: Record<string, string> = {};
-            
+
             if (slateNode.collection) attributes.collection = slateNode.collection;
             if (slateNode.layout) attributes.layout = slateNode.layout;
+            if (slateNode.displayType) attributes.displayType = slateNode.displayType;
             if (slateNode.maxItems) attributes.maxItems = slateNode.maxItems.toString();
             if (slateNode.sortBy) attributes.sortBy = slateNode.sortBy;
             if (slateNode.sortOrder) attributes.sortOrder = slateNode.sortOrder;
             if (slateNode.tagFilters && slateNode.tagFilters.length > 0) {
               attributes.tagFilters = slateNode.tagFilters.join(',');
             }
-            
+
             console.log('Serializing collection view to directive with attributes:', attributes);
-            
+
             // Return a containerDirective (block-level) instead of leafDirective
             return {
               type: 'containerDirective',
@@ -96,22 +97,23 @@ export function createMarkdownKit(siteId?: string) {
             
             if (mdastNode.name === 'collection_view') {
               console.log('MarkdownKit: Found collection_view containerDirective with attributes:', mdastNode.attributes);
-              
-              const tagFilters = mdastNode.attributes?.tagFilters 
+
+              const tagFilters = mdastNode.attributes?.tagFilters
                 ? mdastNode.attributes.tagFilters.split(',')
                 : [];
-              
+
               const plateNode = {
                 type: 'collection_view',
                 collection: mdastNode.attributes?.collection || '',
                 layout: mdastNode.attributes?.layout || 'list',
+                displayType: mdastNode.attributes?.displayType || '',
                 maxItems: parseInt(mdastNode.attributes?.maxItems || '10'),
                 sortBy: mdastNode.attributes?.sortBy || 'date',
                 sortOrder: mdastNode.attributes?.sortOrder || 'desc',
                 tagFilters: tagFilters,
                 children: [{ text: '' }]
               };
-              
+
               console.log('MarkdownKit: Converted containerDirective to Plate node:', plateNode);
               return plateNode;
             }
@@ -126,22 +128,23 @@ export function createMarkdownKit(siteId?: string) {
             
             if (mdastNode.name === 'collection_view') {
               console.log('MarkdownKit: Found collection_view directive with attributes:', mdastNode.attributes);
-              
-              const tagFilters = mdastNode.attributes?.tagFilters 
+
+              const tagFilters = mdastNode.attributes?.tagFilters
                 ? mdastNode.attributes.tagFilters.split(',')
                 : [];
-              
+
               const plateNode = {
                 type: 'collection_view',
                 collection: mdastNode.attributes?.collection || '',
                 layout: mdastNode.attributes?.layout || 'list',
+                displayType: mdastNode.attributes?.displayType || '',
                 maxItems: parseInt(mdastNode.attributes?.maxItems || '10'),
                 sortBy: mdastNode.attributes?.sortBy || 'date',
                 sortOrder: mdastNode.attributes?.sortOrder || 'desc',
                 tagFilters: tagFilters,
                 children: [{ text: '' }]
               };
-              
+
               console.log('MarkdownKit: Converted to Plate node:', plateNode);
               return plateNode;
             }
