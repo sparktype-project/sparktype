@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getCollections } from '@/core/services/collections.service';
 import { getLayoutManifest } from '@/core/services/config/configHelpers.service';
-import type { LayoutConfig, LayoutManifest } from '@/core/types';
+import type { LayoutConfig } from '@/core/types';
 
 // UI Components
 import { Label } from '@/core/components/ui/label';

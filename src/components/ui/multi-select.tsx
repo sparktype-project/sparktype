@@ -5,7 +5,6 @@ import {
 	XCircle,
 	ChevronDown,
 	XIcon,
-	WandSparkles,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -316,7 +315,6 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 			animationConfig,
 			maxCount = 3,
 			modalPopover = false,
-			asChild = false,
 			className,
 			hideSelectAll = false,
 			searchable = true,
@@ -331,14 +329,13 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 			deduplicateOptions = false,
 			resetOnDefaultValueChange = true,
 			closeOnSelect = false,
-			...props
 		},
 		ref
 	) => {
 		const [selectedValues, setSelectedValues] =
 			React.useState<string[]>(defaultValue);
 		const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
-		const [isAnimating, setIsAnimating] = React.useState(false);
+		const [isAnimating] = React.useState(false);
 		const [searchValue, setSearchValue] = React.useState("");
 
 		const [politeMessage, setPoliteMessage] = React.useState("");
@@ -635,11 +632,6 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 			if (disabled) return;
 			setSelectedValues([]);
 			onValueChange([]);
-		};
-
-		const handleTogglePopover = () => {
-			if (disabled) return;
-			setIsPopoverOpen((prev) => !prev);
 		};
 
 		const clearExtraOptions = () => {

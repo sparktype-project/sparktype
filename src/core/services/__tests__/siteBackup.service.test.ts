@@ -299,9 +299,7 @@ describe('siteBackup.service', () => {
             title: 'Test',
             layout: 'default'
           },
-          content: 'Test content',
-          blocks: [],
-          hasBlocks: false
+          content: 'Test content'
         }
       ];
 
