@@ -293,7 +293,7 @@ export default function FrontmatterSidebar({
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="outline" className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive">
-                        <Trash2 className="h-4 w-4 mr-2" /> Delete Page
+                        <Trash2 className="h-4 w-4 mr-2" /> Delete page
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>

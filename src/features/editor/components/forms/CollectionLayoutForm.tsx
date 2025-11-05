@@ -58,7 +58,7 @@ export default function CollectionLayoutForm({
     <div className="space-y-4">
       {/* Collection Data Source Selection */}
       <div className="space-y-2">
-        <Label htmlFor="collection-select">Data Source</Label>
+        <Label htmlFor="collection-select">Data source</Label>
         <Select
           value={layoutConfig?.collectionId || ''}
           onValueChange={(value) => handleConfigChange({ collectionId: value })}
@@ -79,12 +79,12 @@ export default function CollectionLayoutForm({
 
       {/* Sorting Options */}
       <div className="space-y-2">
-        <Label htmlFor="sort-by">Sort By</Label>
+        <Label htmlFor="sort-by">Sort by</Label>
         <Select
           value={layoutConfig?.sortBy || 'date'}
           onValueChange={(value) => handleConfigChange({ sortBy: value as 'date' | 'title' })}
         >
-          <SelectTrigger id="sort-by">
+          <SelectTrigger id="sort-by" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -114,7 +114,7 @@ export default function CollectionLayoutForm({
       {/* Pagination Settings */}
       <div className="space-y-3 pt-2 border-t">
         <div className="flex items-center justify-between">
-          <Label htmlFor="enable-pagination" className="cursor-pointer">Enable Pagination</Label>
+          <Label htmlFor="enable-pagination" className="cursor-pointer">Enable pagination</Label>
           <Switch
             id="enable-pagination"
             checked={layoutConfig?.pagination?.enabled || false}

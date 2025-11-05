@@ -124,12 +124,12 @@ export default function CollectionConfigForm({
     <div className="space-y-4">
       {/* Collection Data Source Selection */}
       <div className="space-y-2">
-        <Label htmlFor="collection-select">Data Source</Label>
+        <Label htmlFor="collection-select">Data source</Label>
         <Select
           value={layoutConfig?.collectionId || ''}
           onValueChange={(value) => handleConfigChange({ collectionId: value })}
         >
-          <SelectTrigger id="collection-select">
+          <SelectTrigger id="collection-select" className="w-full">
             <SelectValue placeholder="Select a collection to display..." />
           </SelectTrigger>
           <SelectContent>
@@ -146,22 +146,20 @@ export default function CollectionConfigForm({
       {/* Display Type Selection */}
       {availableDisplayTypes.length > 0 && (
         <div className="space-y-2">
-          <Label htmlFor="display-type-select">Display Type</Label>
+          <Label htmlFor="display-type-select">Display type</Label>
           <Select
             value={layoutConfig?.displayType || defaultDisplayType}
             onValueChange={(value) => handleConfigChange({ displayType: value })}
           >
-            <SelectTrigger id="display-type-select">
+            <SelectTrigger id="display-type-select" className="w-full">
               <SelectValue placeholder="Select display type..." />
             </SelectTrigger>
             <SelectContent>
               {availableDisplayTypes.map((displayType: { value: string; label: string; description?: string }) => (
                 <SelectItem key={displayType.value} value={displayType.value}>
                   <div className="flex flex-col">
-                    <span className="font-medium">{displayType.label}</span>
-                    {displayType.description && (
-                      <span className="text-xs text-muted-foreground">{displayType.description}</span>
-                    )}
+                    <span>{displayType.label}</span>
+                   
                   </div>
                 </SelectItem>
               ))}
@@ -174,12 +172,12 @@ export default function CollectionConfigForm({
 
       {/* Sorting Options */}
       <div className="space-y-2">
-        <Label htmlFor="sort-by">Sort By</Label>
+        <Label htmlFor="sort-by">Sort by</Label>
         <Select
           value={layoutConfig?.sortBy || 'date'}
           onValueChange={(value) => handleConfigChange({ sortBy: value as 'date' | 'title' })}
         >
-          <SelectTrigger id="sort-by">
+          <SelectTrigger id="sort-by" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -191,12 +189,12 @@ export default function CollectionConfigForm({
 
       {/* Sort Order */}
       <div className="space-y-2">
-        <Label htmlFor="sort-order">Sort Order</Label>
+        <Label htmlFor="sort-order">Sort order</Label>
         <Select
           value={layoutConfig?.sortOrder || 'desc'}
           onValueChange={(value) => handleConfigChange({ sortOrder: value as 'asc' | 'desc' })}
         >
-          <SelectTrigger id="sort-order">
+          <SelectTrigger id="sort-order" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -209,7 +207,7 @@ export default function CollectionConfigForm({
       {/* Pagination Settings */}
       <div className="space-y-3 pt-2 border-t">
         <div className="flex items-center justify-between">
-          <Label htmlFor="enable-pagination" className="cursor-pointer">Enable Pagination</Label>
+          <Label htmlFor="enable-pagination" className="cursor-pointer">Enable pagination</Label>
           <Switch
             id="enable-pagination"
             checked={layoutConfig?.pagination?.enabled || false}
