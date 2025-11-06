@@ -70,7 +70,7 @@ export default function CreateCollectionDialog({
       try {
         setLoadingLayouts(true);
         // Fetch only layouts suitable for being collection items.
-        const layouts = await getAvailableLayouts(siteData, 'single');
+        const layouts = await getAvailableLayouts(siteData, 'item');
         setItemLayouts(layouts);
         if (layouts.length > 0) {
           // Pre-select the first available item layout.

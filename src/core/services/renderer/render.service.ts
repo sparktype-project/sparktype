@@ -1,6 +1,7 @@
 // src/core/services/renderer/render.service.ts
 
 import Handlebars from 'handlebars';
+import DOMPurify from 'dompurify';
 import type { LocalSiteData, PageResolutionResult } from '@/core/types';
 import { PageType } from '@/core/types';
 import { getAssetContent, getLayoutManifest, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
@@ -13,6 +14,7 @@ import type { ImageService } from '@/core/types';
 import { imagePreprocessor } from '@/core/services/images/imagePreprocessor.service';
 import { getUrlForNode } from '@/core/services/urlUtils.service';
 import { getRelativePath } from '@/core/services/relativePaths.service';
+import { SECURITY_CONFIG } from '@/config/editorConfig';
 
 /**
  * Defines the options passed to the main render function.
@@ -22,6 +24,157 @@ export interface RenderOptions {
     isExport: boolean;
     relativeAssetPath?: string;
     forIframe?: boolean;
+}
+
+/**
+ * Sanitizes HTML content to prevent XSS while allowing scripts from trusted domains.
+ *
+ * Security model:
+ * - Blocks all inline scripts and event handlers
+ * - Allows external scripts only from TRUSTED_SCRIPT_DOMAINS
+ * - Preserves safe HTML for content formatting
+ * - Protects SiteViewer users from malicious site authors
+ *
+ * @param htmlContent The HTML to sanitize
+ * @returns Sanitized HTML safe for rendering
+ */
+function sanitizeHtml(htmlContent: string): string {
+    if (typeof window === 'undefined') {
+        console.warn('[Render Service] DOMPurify not available in Node environment - HTML not sanitized');
+        return htmlContent;
+    }
+
+    // Configure DOMPurify to allow scripts from trusted domains only
+    const config: DOMPurify.Config = {
+        // Allow most HTML tags for content formatting
+        ALLOWED_TAGS: [
+            // Text formatting
+            'p', 'br', 'span', 'strong', 'em', 'b', 'i', 'u', 's', 'del', 'ins', 'mark', 'small', 'sub', 'sup',
+            // Headings
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            // Lists
+            'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+            // Links and media
+            'a', 'img', 'figure', 'figcaption', 'picture', 'source',
+            // Tables
+            'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
+            // Blocks
+            'div', 'section', 'article', 'aside', 'header', 'footer', 'nav', 'main',
+            'blockquote', 'pre', 'code', 'hr',
+            // Forms (for Alpine.js interactivity)
+            'form', 'input', 'button', 'select', 'option', 'textarea', 'label', 'fieldset', 'legend',
+            // Other
+            'details', 'summary', 'iframe', 'video', 'audio', 'track',
+            // Scripts (will be filtered by domain in the hook)
+            'script'
+        ],
+        ALLOWED_ATTR: [
+            // Standard attributes
+            'id', 'class', 'style', 'title', 'alt', 'src', 'href', 'target', 'rel',
+            'width', 'height', 'data-*', 'aria-*', 'role',
+            // Table attributes
+            'colspan', 'rowspan', 'scope',
+            // Form attributes
+            'type', 'name', 'value', 'placeholder', 'required', 'disabled', 'checked', 'selected',
+            // Media attributes
+            'controls', 'autoplay', 'loop', 'muted', 'poster',
+            // Alpine.js attributes (x-data, x-bind, x-on, etc.)
+            'x-data', 'x-bind', 'x-on', 'x-text', 'x-html', 'x-model', 'x-show', 'x-if', 'x-for',
+            'x-transition', 'x-cloak', 'x-init', 'x-effect', 'x-ref', 'x-teleport',
+            // @click, @input, etc. (Alpine shorthand)
+            '@click', '@input', '@change', '@submit', '@keydown', '@keyup',
+            // :class, :href, etc. (Alpine shorthand)
+            ':class', ':href', ':src', ':style',
+        ],
+        // Allow data URIs for images
+        ALLOW_DATA_ATTR: true,
+        // Keep relative URLs
+        ALLOW_UNKNOWN_PROTOCOLS: false,
+        // Add custom hook to filter scripts
+        FORBID_TAGS: [],
+        // Block ALL inline event handlers (comprehensive list)
+        FORBID_ATTR: [
+            'onerror', 'onload', 'onclick', 'onmouseover', 'onmouseout', 'onmousedown', 'onmouseup',
+            'onmousemove', 'onmouseenter', 'onmouseleave', 'ondblclick', 'oncontextmenu',
+            'onfocus', 'onblur', 'onchange', 'oninput', 'onsubmit', 'onreset', 'onselect',
+            'onkeydown', 'onkeyup', 'onkeypress', 'onscroll', 'onresize', 'ondrag', 'ondrop',
+            'onabort', 'oncanplay', 'oncanplaythrough', 'ondurationchange', 'onemptied', 'onended',
+            'onloadeddata', 'onloadedmetadata', 'onloadstart', 'onpause', 'onplay', 'onplaying',
+            'onprogress', 'onratechange', 'onseeked', 'onseeking', 'onstalled', 'onsuspend',
+            'ontimeupdate', 'onvolumechange', 'onwaiting',
+        ],
+    };
+
+    // Create a DOMPurify instance and add hooks
+    const purify = DOMPurify(window);
+
+    // Hook to validate script sources against trusted domains
+    purify.addHook('uponSanitizeElement', (node, data) => {
+        if (data.tagName === 'script') {
+            const scriptElement = node as HTMLScriptElement;
+            const src = scriptElement.getAttribute('src');
+
+            // If no src (inline script), remove it
+            if (!src) {
+                console.warn('[Render Service] Removed inline script tag (not allowed)');
+                if (node.parentNode) node.parentNode.removeChild(node);
+                return;
+            }
+
+            // Check if src is from a trusted domain
+            const isTrusted = SECURITY_CONFIG.TRUSTED_SCRIPT_DOMAINS.some(domain => {
+                try {
+                    const url = new URL(src, window.location.origin);
+                    return url.hostname === domain || url.hostname.endsWith(`.${domain}`);
+                } catch {
+                    return false;
+                }
+            });
+
+            if (!isTrusted) {
+                console.warn(`[Render Service] Removed script from untrusted domain: ${src}`);
+                if (node.parentNode) node.parentNode.removeChild(node);
+            }
+        }
+
+        // Also validate iframes to prevent embedding malicious content
+        if (data.tagName === 'iframe') {
+            const iframeElement = node as HTMLIFrameElement;
+            const src = iframeElement.getAttribute('src');
+
+            if (!src) {
+                // Iframes without src are suspicious - remove them
+                console.warn('[Render Service] Removed iframe without src');
+                if (node.parentNode) node.parentNode.removeChild(node);
+                return;
+            }
+
+            // Enforce https:// for iframes (prevent protocol-relative and javascript: URLs)
+            try {
+                const url = new URL(src, window.location.origin);
+                if (url.protocol !== 'https:') {
+                    console.warn(`[Render Service] Removed iframe with non-HTTPS protocol: ${src}`);
+                    if (node.parentNode) node.parentNode.removeChild(node);
+                    return;
+                }
+            } catch {
+                console.warn(`[Render Service] Removed iframe with invalid URL: ${src}`);
+                if (node.parentNode) node.parentNode.removeChild(node);
+            }
+
+            // Add sandbox attribute for additional security
+            if (!iframeElement.hasAttribute('sandbox')) {
+                iframeElement.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups');
+            }
+        }
+    });
+
+    const sanitized = purify.sanitize(htmlContent, config as any);
+
+    // Clean up hooks
+    purify.removeAllHooks();
+
+    return String(sanitized);
 }
 
 /**
@@ -44,45 +197,41 @@ async function renderLayoutHierarchy(
 
     console.log(`[renderLayoutHierarchy] Rendering layout: ${layoutId}`);
 
-    // Special case: "base" layout is referenced directly from theme root
-    if (layoutId === 'base') {
-        const templateSource = await getThemeAssetContent(siteData, themeName, 'base.hbs');
-        if (!templateSource) {
-            throw new Error(`Base template not found: themes/${themeName}/base.hbs`);
-        }
-
-        const template = Handlebars.compile(templateSource);
-        const contextWithBody = {
-            ...context,
-            body: childHtml ? new Handlebars.SafeString(childHtml) : undefined
-        };
-
-        return template(contextWithBody);
-    }
-
-    // Get layout manifest to find its parent
-    const layoutManifest = await getLayoutManifest(siteData, layoutId);
-    if (!layoutManifest) {
-        throw new Error(`Layout manifest not found: ${layoutId}`);
-    }
-
-    // Load layout template from theme directory
-    const themeManifest = await getAssetContent(siteData, 'theme', themeName, 'theme.json');
-    if (!themeManifest) {
+    // Load theme manifest to determine if this is a content layout or base layout
+    const themeManifestContent = await getAssetContent(siteData, 'theme', themeName, 'theme.json');
+    if (!themeManifestContent) {
         throw new Error(`Theme manifest not found: ${themeName}`);
     }
+    const themeData = JSON.parse(themeManifestContent);
 
-    const themeData = JSON.parse(themeManifest);
-    const layoutRef = themeData.layouts?.find((l: any) => l.id === layoutId);
-    if (!layoutRef) {
-        throw new Error(`Layout reference not found in theme: ${layoutId}`);
-    }
+    // Check if this layout ID is in the layouts array (content layout vs base layout)
+    const isContentLayout = themeData.layouts?.includes(layoutId);
 
-    const templatePath = `${layoutRef.path}/index.hbs`;
-    const templateSource = await getThemeAssetContent(siteData, themeName, templatePath);
+    let templateSource: string;
+    let layoutManifest = null;
 
-    if (!templateSource) {
-        throw new Error(`Template not found: themes/${themeName}/${templatePath}`);
+    if (isContentLayout) {
+        // Content layout: use convention layouts/{id}/index.hbs
+        const templatePath = `layouts/${layoutId}/index.hbs`;
+        const source = await getThemeAssetContent(siteData, themeName, templatePath);
+        if (!source) {
+            throw new Error(`Layout template not found: themes/${themeName}/${templatePath}`);
+        }
+        templateSource = source;
+
+        // Get layout manifest for parentLayout reference
+        layoutManifest = await getLayoutManifest(siteData, layoutId);
+        if (!layoutManifest) {
+            throw new Error(`Layout manifest not found: ${layoutId}`);
+        }
+    } else {
+        // Base layout: at theme root as {id}.hbs
+        const templatePath = `${layoutId}.hbs`;
+        const source = await getThemeAssetContent(siteData, themeName, templatePath);
+        if (!source) {
+            throw new Error(`Base template not found: themes/${themeName}/${templatePath}`);
+        }
+        templateSource = source;
     }
 
     // Compile and render this layout level
@@ -94,7 +243,7 @@ async function renderLayoutHierarchy(
     const html = template(contextWithBody);
 
     // If this layout has a parent, recursively render the parent
-    if (layoutManifest.parentLayout) {
+    if (layoutManifest?.parentLayout) {
         console.log(`[renderLayoutHierarchy] Layout ${layoutId} has parent: ${layoutManifest.parentLayout}`);
         return renderLayoutHierarchy(
             siteData,
@@ -122,7 +271,9 @@ export async function render(
     console.log('[Render Service] Using unified markdown renderer');
     
     if (resolution.type === PageType.NotFound) {
-        return `<h1>404 - Not Found</h1><p>${resolution.errorMessage}</p>`;
+        // Escape error message to prevent XSS
+        const escapedMessage = Handlebars.escapeExpression(resolution.errorMessage);
+        return `<h1>404 - Not Found</h1><p>${escapedMessage}</p>`;
     }
 
     // 1. Synchronize Data and Prepare Handlebars Environment
@@ -144,17 +295,25 @@ export async function render(
 
     // 2.6. Populate collection items for list layout types
     let enrichedResolution = resolution;
+    let itemLayoutId: string | undefined;
     if (pageLayoutManifest.layoutType === 'list') {
       const layoutConfig = resolution.contentFile.frontmatter.layoutConfig;
       if (layoutConfig && layoutConfig.collectionId) {
         let collectionItems = getCollectionContent(synchronizedSiteData, layoutConfig.collectionId);
-        
+
+        // Get the collection to retrieve its default item layout
+        const collection = synchronizedSiteData.manifest.collections?.find(c => c.id === layoutConfig.collectionId);
+        if (collection) {
+          itemLayoutId = collection.defaultItemLayout;
+          console.log('[Render Service] Collection uses item layout:', itemLayoutId);
+        }
+
         // Apply sorting - always sort by date if no sortBy specified
         const sortBy = layoutConfig.sortBy || 'date';
         const sortOrder = layoutConfig.sortOrder || 'desc';
-        
+
         collectionItems = sortCollectionItems(collectionItems, sortBy, sortOrder);
-        
+
         enrichedResolution = {
           ...resolution,
           collectionItems
@@ -166,16 +325,9 @@ export async function render(
     const pageContext = await assemblePageContext(synchronizedSiteData, enrichedResolution, options, imageService, pageLayoutManifest);
     const baseContext = await assembleBaseContext(synchronizedSiteData, enrichedResolution, options, imageService, pageContext);
 
-    // 4. Load layout template from theme directory
+    // 4. Load layout template from theme directory using convention
     const themeName = synchronizedSiteData.manifest.theme.name;
-    const themeManifest = await getAssetContent(synchronizedSiteData, 'theme', themeName, 'theme.json');
-    if (!themeManifest) throw new Error(`Theme manifest not found: ${themeName}`);
-
-    const themeData = JSON.parse(themeManifest);
-    const layoutRef = themeData.layouts?.find((l: any) => l.id === enrichedResolution.layoutPath);
-    if (!layoutRef) throw new Error(`Layout not found in theme: ${enrichedResolution.layoutPath}`);
-
-    const bodyTemplatePath = `${layoutRef.path}/index.hbs`;
+    const bodyTemplatePath = `layouts/${enrichedResolution.layoutPath}/index.hbs`;
     const bodyTemplateSource = await getThemeAssetContent(synchronizedSiteData, themeName, bodyTemplatePath);
     if (!bodyTemplateSource) throw new Error(`Body template not found: themes/${themeName}/${bodyTemplatePath}`);
 
@@ -204,8 +356,18 @@ export async function render(
                 if (node.name === 'collection_view') {
                   // Convert directive to HTML placeholder for post-processing
                   const attrs = node.attributes || {};
-                  const directiveHtml = `<div data-collection-directive="true" data-collection="${attrs.collection}" data-layout="${attrs.layout}" data-max-items="${attrs.maxItems}" data-sort-by="${attrs.sortBy}" data-sort-order="${attrs.sortOrder}"></div>`;
-                  
+
+                  // Escape all attributes to prevent HTML injection
+                  const escapeAttr = (val: any) => Handlebars.escapeExpression(String(val || ''));
+                  const collection = escapeAttr(attrs.collection);
+                  const layout = escapeAttr(attrs.layout);
+                  const displayType = escapeAttr(attrs.displayType);
+                  const maxItems = escapeAttr(attrs.maxItems);
+                  const sortBy = escapeAttr(attrs.sortBy);
+                  const sortOrder = escapeAttr(attrs.sortOrder);
+
+                  const directiveHtml = `<div data-collection-directive="true" data-collection="${collection}" data-layout="${layout}" data-display-type="${displayType}" data-max-items="${maxItems}" data-sort-by="${sortBy}" data-sort-order="${sortOrder}"></div>`;
+
                   // Replace the directive node with an HTML node
                   node.type = 'html';
                   node.value = directiveHtml;
@@ -269,10 +431,21 @@ export async function render(
         const result = await processor.process(markdownContent);
         processedContent = String(result);
         console.log('[Render Service] After remark processing:', processedContent.substring(0, 500));
-        
-        // Post-process HTML to convert collection directives and Sparktype asset paths
-        processedContent = await postProcessCollectionDirectives(processedContent, synchronizedSiteData);
+
+        // Post-process HTML to convert collection directives (must happen before sanitization)
+        processedContent = await postProcessCollectionDirectives(
+          processedContent,
+          synchronizedSiteData,
+          options,
+          enrichedResolution.contentFile
+        );
         console.log('[Render Service] After directive processing:', processedContent.substring(0, 500));
+
+        // Sanitize HTML AFTER all HTML generation to prevent XSS attacks
+        // This includes both user markdown and generated collection directive HTML
+        // Uses custom sanitizeHtml() that allows scripts from trusted domains only
+        processedContent = sanitizeHtml(processedContent);
+        console.log('[Render Service] After security sanitization');
         
         // Calculate current page path for relative asset paths
         const currentPageNode = {
@@ -302,7 +475,8 @@ export async function render(
     
     const contentContext = {
         ...pageContext,
-        content: new Handlebars.SafeString(processedContent)
+        content: new Handlebars.SafeString(processedContent),
+        ...(itemLayoutId && { itemLayoutId }) // Add itemLayoutId for list layouts
     };
 
     const bodyTemplate = Handlebars.compile(bodyTemplateSource);
@@ -437,8 +611,10 @@ async function postProcessSparkTypeImagesForExport(
  * Post-processes HTML content to convert collection view directives to rendered collection content
  */
 async function postProcessCollectionDirectives(
-  htmlContent: string, 
-  siteData: LocalSiteData
+  htmlContent: string,
+  siteData: LocalSiteData,
+  renderOptions: RenderOptions,
+  currentPageFile: any
 ): Promise<string> {
   // Find all collection directive placeholders
   const directiveRegex = /<div[^>]*data-collection-directive="true"[^>]*>/g;
@@ -455,80 +631,124 @@ async function postProcessCollectionDirectives(
       // Extract attributes from the directive div
       const collectionMatch = fullMatch.match(/data-collection="([^"]*)"/) || [];
       const layoutMatch = fullMatch.match(/data-layout="([^"]*)"/) || [];
+      const displayTypeMatch = fullMatch.match(/data-display-type="([^"]*)"/) || [];
       const maxItemsMatch = fullMatch.match(/data-max-items="([^"]*)"/) || [];
       const sortByMatch = fullMatch.match(/data-sort-by="([^"]*)"/) || [];
       const sortOrderMatch = fullMatch.match(/data-sort-order="([^"]*)"/) || [];
-      
+
       const config = {
         collectionId: collectionMatch[1] || '',
         layout: layoutMatch[1] || 'list',
+        displayType: displayTypeMatch[1] || '',
         maxItems: parseInt(maxItemsMatch[1] || '10'),
         sortBy: sortByMatch[1] || 'date',
         sortOrder: (sortOrderMatch[1] || 'desc') as 'asc' | 'desc'
       };
-      
+
       console.log('[Render Service] Processing collection directive with config:', config);
-      
+
+      // Validate required attributes
+      if (!config.layout) {
+        processedHtml = processedHtml.replace(fullMatch + '</div>',
+          '<!-- Error: collection_view directive requires a "layout" attribute. Example: ::collection_view{collection="blog" layout="list-view"} -->');
+        continue;
+      }
+
       if (config.collectionId) {
+        // Get the collection to retrieve its default item layout
+        const collection = siteData.manifest.collections?.find(c => c.id === config.collectionId);
+        if (!collection) {
+          console.warn('[Render Service] Collection not found:', config.collectionId);
+          processedHtml = processedHtml.replace(fullMatch + '</div>', `<!-- Collection not found: ${config.collectionId} -->`);
+          continue;
+        }
+
+        const itemLayoutId = collection.defaultItemLayout;
+        console.log('[Render Service] Collection uses item layout:', itemLayoutId);
+
         // Get collection items
         let items = getCollectionContent(siteData, config.collectionId);
-        
+
         if (items && items.length > 0) {
           // Apply sorting
           if (config.sortBy) {
             items = sortCollectionItems(items, config.sortBy, config.sortOrder);
           }
-          
+
           // Apply max items limit
           if (config.maxItems && config.maxItems > 0) {
             items = items.slice(0, config.maxItems);
           }
-          
+
           // Add computed properties for template use
           items = items.map(item => ({
             ...item,
             url: `/${item.path.replace(/^content\//, '').replace(/\.md$/, '')}`,
           }));
-          
-          // Use layout partials instead of block templates
-          const layoutId = config.layout || 'blog-listing'; // default to blog-listing
-          console.log('[Render Service] Using collection layout:', layoutId);
-          
+
           try {
-            // Import the layout discovery service to get partial path
-            const { getCollectionLayoutById } = await import('@/core/services/collectionLayout.service');
-            const layoutInfo = await getCollectionLayoutById(siteData, layoutId);
-            
-            if (layoutInfo && layoutInfo.partialPath) {
-              console.log('[Render Service] Found layout partial:', layoutInfo.partialPath);
-              
-              // Render each item using the layout partial
-              const renderedItems = items.map(item => {
-                // Use Handlebars to render the partial for each item
-                const partialTemplate = Handlebars.partials[layoutInfo.partialPath!];
-                if (partialTemplate) {
-                  const compiledPartial = typeof partialTemplate === 'string' 
-                    ? Handlebars.compile(partialTemplate) 
-                    : partialTemplate;
-                  return compiledPartial(item);
-                }
-                return `<!-- Partial not found: ${layoutInfo.partialPath} -->`;
-              });
-              
-              // Wrap the rendered items in a container
-              const containerClass = layoutId.includes('grid') 
-                ? 'collection-grid grid gap-4' 
-                : 'collection-list space-y-4';
-              
-              const renderedContent = `<div class="${containerClass}">\n${renderedItems.join('\n')}\n</div>`;
-              
-              // Replace the directive placeholder with rendered content
-              processedHtml = processedHtml.replace(fullMatch + '</div>', renderedContent);
-              console.log('[Render Service] Rendered collection directive with layout partial:', layoutInfo.partialPath);
-            } else {
-              console.warn('[Render Service] Layout not found or missing partial:', layoutId);
-              processedHtml = processedHtml.replace(fullMatch + '</div>', `<!-- Collection layout not found: ${layoutId} -->`);
+            // Get the item layout manifest to find partials
+            const itemLayoutManifest = await getLayoutManifest(siteData, itemLayoutId);
+            if (!itemLayoutManifest || !itemLayoutManifest.partials || itemLayoutManifest.partials.length === 0) {
+              console.warn('[Render Service] Item layout has no partials:', itemLayoutId);
+              processedHtml = processedHtml.replace(fullMatch + '</div>', `<!-- Item layout has no display partials: ${itemLayoutId} -->`);
+              continue;
             }
+
+            // Determine which partial to use: from displayType or default
+            let partialToUse = null;
+            if (config.displayType) {
+              // Look for the specified displayType
+              partialToUse = itemLayoutManifest.partials.find(p => {
+                const filename = p.path.split('/').pop()?.replace('.hbs', '');
+                return filename === config.displayType;
+              });
+            }
+
+            // Fall back to default or first partial if displayType not found
+            if (!partialToUse) {
+              partialToUse = itemLayoutManifest.partials.find(p => p.isDefault) || itemLayoutManifest.partials[0];
+            }
+
+            const partialPath = `${itemLayoutId}/partials/${partialToUse.path.split('/').pop()?.replace('.hbs', '')}`;
+            console.log('[Render Service] Using item layout partial:', partialPath);
+
+            // Render each item using the layout partial
+            const renderedItems = items.map(item => {
+              const partialTemplate = Handlebars.partials[partialPath];
+              if (partialTemplate) {
+                const compiledPartial = typeof partialTemplate === 'string'
+                  ? Handlebars.compile(partialTemplate)
+                  : partialTemplate;
+
+                // Pass item as context and render options through Handlebars data
+                // This ensures helpers can access renderOptions via options.data.root.options
+                // Also pass contentFile so image helper can calculate relative paths correctly
+                return compiledPartial(item, {
+                  data: {
+                    root: {
+                      ...item,
+                      options: renderOptions,
+                      contentFile: currentPageFile
+                    }
+                  }
+                });
+              }
+              return `<!-- Partial not found: ${partialPath} -->`;
+            });
+
+            // Wrap the rendered items in a container
+            // Validate layoutId contains only safe characters to prevent class injection
+            const safeLayoutId = /^[a-z0-9-]+$/i.test(config.layout) ? config.layout : 'list';
+            const containerClass = safeLayoutId.includes('grid')
+              ? 'collection-grid grid gap-4'
+              : 'collection-list space-y-4';
+
+            const renderedContent = `<div class="${containerClass}">\n${renderedItems.join('\n')}\n</div>`;
+
+            // Replace the directive placeholder with rendered content
+            processedHtml = processedHtml.replace(fullMatch + '</div>', renderedContent);
+            console.log('[Render Service] Rendered collection directive with partial:', partialPath);
           } catch (error) {
             console.error('[Render Service] Failed to render collection directive:', error);
             processedHtml = processedHtml.replace(fullMatch + '</div>', '<!-- Error rendering collection directive -->');

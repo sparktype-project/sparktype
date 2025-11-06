@@ -43,7 +43,7 @@ export default function AdvancedSettingsForm({
         The Label is associated with the Input via the `htmlFor` attribute,
         which improves accessibility.
       */}
-      <Label htmlFor="slug-input">URL Slug</Label>
+      <Label htmlFor="slug-input">Page slug</Label>
       <Input
         id="slug-input"
         value={slug}

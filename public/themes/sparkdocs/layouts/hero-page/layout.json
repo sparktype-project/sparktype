@@ -2,7 +2,7 @@
   "name": "Hero page",
   "version": "1.0.0",
   "description": "A landing page layout with a bold title and call to action.",
-  "layoutType": "single",
+  "layoutType": "page",
   "parentLayout": "base",
   "files": [
     { "path": "layout.json", "type": "manifest" },

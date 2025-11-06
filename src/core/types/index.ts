@@ -27,15 +27,8 @@ export interface ThemeManifest extends BaseAssetManifest {
     type: 'main' | 'print' | 'addon';
   }>;
 
-  // Layouts provided by this theme
-  layouts?: Array<{
-    id: string;
-    name: string;
-    type: 'base' | 'layout';
-    path: string;
-    layoutType?: 'page' | 'item' | 'list';
-    description?: string;
-  }>;
+  // Layout IDs provided by this theme (convention: layouts/{id}/)
+  layouts?: string[];
 }
 
 export interface ImagePreset {
@@ -331,9 +324,6 @@ export interface ParsedMarkdownFile {
   path: string;
   frontmatter: MarkdownFrontmatter;
   content: string;
-  // Legacy support - will be removed
-  hasBlocks?: boolean;
-  blocks?: Block[];
 }
 
 /**

@@ -28,7 +28,7 @@
     "properties": {
       "listing_title": {
         "type": "string",
-        "title": "Custom Page Title",
+        "title": "Custom page title",
         "description": "Override the default page title for this listing."
       },
       "listing_intro": {

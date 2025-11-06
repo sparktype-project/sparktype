@@ -1,9 +1,8 @@
 {
   "name": "Page",
   "version": "1.0.0",
-  "description": "A clean layout for documentation pages with optional table of contents.",
-  "layoutType": "single",
-  "templateType": "page",
+  "description": "A clean, single-column layout for standard pages like 'About Us'.",
+  "layoutType": "page",
   "parentLayout": "base",
   "files": [
     { "path": "layout.json", "type": "manifest" },

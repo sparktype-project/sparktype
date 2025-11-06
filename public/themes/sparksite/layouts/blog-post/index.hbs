@@ -36,7 +36,7 @@
             {{{image
                 fieldname="featured_image"
                 preset="full"
-                class="w-full"
+                class="w-full rounded-lg"
                 alt="Featured image"
             }}}
         </div>
@@ -44,11 +44,8 @@
 
     {{! The main content of the post, rendered from Markdown or Blocks }}
     <section class="max-w-none prose prose-lg">
-        {{#if blocks}}
-            {{{render_blocks blocks}}}
-        {{else}}
-            {{{markdown contentFile.content}}}
-        {{/if}}
+           {{{content}}}
+
     </section>
 
     {{! Display tags at the bottom of the post }}

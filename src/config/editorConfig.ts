@@ -175,6 +175,12 @@ export const BASE_IMAGE_PRESETS = {
     gravity: 'center' as const,
     description: 'Large hero image for headers and landing pages'
   },
+    full: {
+    width: 800,
+    crop: 'fill' as const,
+    gravity: 'center' as const,
+    description: 'Large hero image for headers and landing pages'
+  },
   original: {
     crop: 'scale' as const,
     gravity: 'center' as const,

@@ -12,7 +12,7 @@ import { generateExportUrl } from '@/core/services/urlUtils.service';
  * ============================================================================
  * This service generates all static HTML pages for the site export.
  *
- * It now iterates over BOTH regular pages (from `manifest.structure`) AND
+ * It iterates over regular pages (from `manifest.structure`) AND
  * collection items (from `manifest.collectionItems`). This is the key to
  * ensuring that every piece of content becomes a physical HTML file in the
  * final static bundle, guaranteeing portability and functional links.

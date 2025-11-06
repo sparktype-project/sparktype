@@ -19,13 +19,16 @@ export function slugify(text: string): string {
 }
 
 export function generateSiteId(title: string): string {
-  // Keep the random part short to avoid overly long site IDs
-  const randomString = Math.random().toString(36).substring(2, 7); 
+  // Use cryptographically secure UUID for collision-resistant uniqueness
+  const uuid = crypto.randomUUID();
+  // Take first segment of UUID (8 chars) for shorter IDs while maintaining strong uniqueness
+  const shortId = uuid.split('-')[0];
+
   const slugBase = slugify(title);
-  // Truncate slugBase if it's too long to keep siteId reasonable
-  const maxBaseLength = 50; 
+  // Truncate slugBase to keep total ID length reasonable
+  const maxBaseLength = 30;
   const truncatedSlugBase = slugBase.substring(0, maxBaseLength);
-  return `${truncatedSlugBase}-${randomString}`;
+  return `${truncatedSlugBase}-${shortId}`;
 }
 
 export function generateContentHash(frontmatter: unknown, content: string): string {

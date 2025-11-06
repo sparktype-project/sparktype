@@ -1,9 +1,10 @@
 // src/features/editor/components/forms/CollectionConfigForm.tsx
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getCollections } from '@/core/services/collections.service';
-import type { LayoutConfig, LayoutManifest } from '@/core/types';
+import { getLayoutManifest } from '@/core/services/config/configHelpers.service';
+import type { LayoutConfig } from '@/core/types';
 
 // UI Components
 import { Label } from '@/core/components/ui/label';
@@ -21,23 +22,29 @@ interface CollectionConfigFormProps {
   siteId: string;
   layoutConfig?: LayoutConfig;
   onLayoutConfigChange: (config: LayoutConfig) => void;
-  currentLayout?: LayoutManifest;
 }
 
 /**
  * A form for configuring how a page displays a collection.
- * It renders when the user selects a Layout with `layoutType: 'collection'`.
+ * It renders when the user selects a Layout with `layoutType: 'list'`.
  * Its state is saved to the `layoutConfig` object in the page's frontmatter.
+ * Display types are loaded from the collection's item layout, not the list layout.
  */
 export default function CollectionConfigForm({
   siteId,
   layoutConfig,
-  onLayoutConfigChange,
-  currentLayout
+  onLayoutConfigChange
 }: CollectionConfigFormProps) {
 
   const getSiteById = useAppStore(state => state.getSiteById);
   const siteData = getSiteById(siteId);
+
+  const [availableDisplayTypes, setAvailableDisplayTypes] = useState<Array<{
+    value: string;
+    label: string;
+    description?: string;
+    isDefault?: boolean;
+  }>>([]);
 
   // Get all available collections for the site.
   const collections = useMemo(() => {
@@ -45,22 +52,55 @@ export default function CollectionConfigForm({
     return getCollections(siteData.manifest);
   }, [siteData]);
 
-  // Get available display types (partials) from the current layout
-  const availableDisplayTypes = useMemo(() => {
-    if (!currentLayout?.partials) return [];
-    return currentLayout.partials.map(partial => {
-      // Extract just the basename without path and extension
-      // partials/post-full.hbs -> post-full
-      const pathParts = partial.path.split('/');
-      const filename = pathParts[pathParts.length - 1]?.replace('.hbs', '') || '';
-      return {
-        value: filename,
-        label: partial.name,
-        description: partial.description,
-        isDefault: partial.isDefault
-      };
-    });
-  }, [currentLayout]);
+  // Get the selected collection
+  const selectedCollection = useMemo(() => {
+    if (!layoutConfig?.collectionId) return null;
+    return collections.find(c => c.id === layoutConfig.collectionId);
+  }, [collections, layoutConfig?.collectionId]);
+
+  // Load available display types from the collection's item layout
+  useEffect(() => {
+    async function loadDisplayTypes() {
+      if (!selectedCollection || !siteData) {
+        setAvailableDisplayTypes([]);
+        return;
+      }
+
+      const itemLayoutId = selectedCollection.defaultItemLayout;
+      if (!itemLayoutId) {
+        setAvailableDisplayTypes([]);
+        return;
+      }
+
+      try {
+        // Load the item layout manifest
+        const itemLayoutManifest = await getLayoutManifest(siteData, itemLayoutId);
+        if (!itemLayoutManifest?.partials) {
+          setAvailableDisplayTypes([]);
+          return;
+        }
+
+        // Map partials to display types
+        const displayTypes = itemLayoutManifest.partials.map(partial => {
+          const pathParts = partial.path.split('/');
+          const filename = pathParts[pathParts.length - 1]?.replace('.hbs', '') || '';
+          return {
+            value: filename,
+            label: partial.name,
+            description: partial.description,
+            isDefault: partial.isDefault
+          };
+        });
+
+        setAvailableDisplayTypes(displayTypes);
+      } catch (error) {
+        console.error('[CollectionConfigForm] Failed to load item layout partials:', error);
+        setAvailableDisplayTypes([]);
+      }
+    }
+
+    loadDisplayTypes();
+  }, [selectedCollection, siteData]);
 
   // Get the default display type
   const defaultDisplayType = useMemo(() => {
@@ -84,12 +124,12 @@ export default function CollectionConfigForm({
     <div className="space-y-4">
       {/* Collection Data Source Selection */}
       <div className="space-y-2">
-        <Label htmlFor="collection-select">Data Source</Label>
+        <Label htmlFor="collection-select">Data source</Label>
         <Select
           value={layoutConfig?.collectionId || ''}
           onValueChange={(value) => handleConfigChange({ collectionId: value })}
         >
-          <SelectTrigger id="collection-select">
+          <SelectTrigger id="collection-select" className="w-full">
             <SelectValue placeholder="Select a collection to display..." />
           </SelectTrigger>
           <SelectContent>
@@ -106,22 +146,20 @@ export default function CollectionConfigForm({
       {/* Display Type Selection */}
       {availableDisplayTypes.length > 0 && (
         <div className="space-y-2">
-          <Label htmlFor="display-type-select">Display Type</Label>
+          <Label htmlFor="display-type-select">Display type</Label>
           <Select
             value={layoutConfig?.displayType || defaultDisplayType}
             onValueChange={(value) => handleConfigChange({ displayType: value })}
           >
-            <SelectTrigger id="display-type-select">
+            <SelectTrigger id="display-type-select" className="w-full">
               <SelectValue placeholder="Select display type..." />
             </SelectTrigger>
             <SelectContent>
               {availableDisplayTypes.map((displayType: { value: string; label: string; description?: string }) => (
                 <SelectItem key={displayType.value} value={displayType.value}>
                   <div className="flex flex-col">
-                    <span className="font-medium">{displayType.label}</span>
-                    {displayType.description && (
-                      <span className="text-xs text-muted-foreground">{displayType.description}</span>
-                    )}
+                    <span>{displayType.label}</span>
+                   
                   </div>
                 </SelectItem>
               ))}
@@ -134,12 +172,12 @@ export default function CollectionConfigForm({
 
       {/* Sorting Options */}
       <div className="space-y-2">
-        <Label htmlFor="sort-by">Sort By</Label>
+        <Label htmlFor="sort-by">Sort by</Label>
         <Select
           value={layoutConfig?.sortBy || 'date'}
           onValueChange={(value) => handleConfigChange({ sortBy: value as 'date' | 'title' })}
         >
-          <SelectTrigger id="sort-by">
+          <SelectTrigger id="sort-by" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -151,12 +189,12 @@ export default function CollectionConfigForm({
 
       {/* Sort Order */}
       <div className="space-y-2">
-        <Label htmlFor="sort-order">Sort Order</Label>
+        <Label htmlFor="sort-order">Sort order</Label>
         <Select
           value={layoutConfig?.sortOrder || 'desc'}
           onValueChange={(value) => handleConfigChange({ sortOrder: value as 'asc' | 'desc' })}
         >
-          <SelectTrigger id="sort-order">
+          <SelectTrigger id="sort-order" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -169,7 +207,7 @@ export default function CollectionConfigForm({
       {/* Pagination Settings */}
       <div className="space-y-3 pt-2 border-t">
         <div className="flex items-center justify-between">
-          <Label htmlFor="enable-pagination" className="cursor-pointer">Enable Pagination</Label>
+          <Label htmlFor="enable-pagination" className="cursor-pointer">Enable pagination</Label>
           <Switch
             id="enable-pagination"
             checked={layoutConfig?.pagination?.enabled || false}

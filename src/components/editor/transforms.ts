@@ -30,7 +30,7 @@ const insertCollectionView = (editor: PlateEditor) => {
     {
       type: 'collection_view',
       collection: '',
-      layout: 'blog-listing', // Default to blog-listing layout
+      layout: 'list-view', // Default to list-view layout
       maxItems: 10,
       sortBy: 'date',
       sortOrder: 'desc',

@@ -1,15 +1,24 @@
 {{! layouts/page/page.hbs }}
 
-<div class=" text-center bg-gray-900 text-white" style="background-color: black; padding:160px 0;">
-<div class="max-w-4xl mx-auto px-4 py-8 lg:px-8">
-        <h1 class="text-6xl text-white mb-4">{{contentFile.frontmatter.title}}</h1>
-            <p class="text-xl">{{contentFile.frontmatter.description}} </p>
-            <p class="">
-                <a href="{{contentFile.frontmatter.cta_link }}" target="_blank">{{contentFile.frontmatter.cta_text }}</a>
-                </p>
+<div class="max-w-4xl mx-auto px-4 mt-18 lg:px-8 text-center">
+    <h1 class="text-6xl mb-8">{{contentFile.frontmatter.title}}</h1>
+    <p class="text-2xl mb-12">{{contentFile.frontmatter.description}} </p>
 
+    {{#if contentFile.frontmatter.cta_link}}
+        <p class="mb-8">
+            <a href="{{contentFile.frontmatter.cta_link }}" target="_blank" class="px-4 py-3 text-white rounded-lg inline-block font-bold bg-gray-800 hover:bg-gray-600">
+                {{contentFile.frontmatter.cta_text }}
+            </a>
+        </p>
+    {{/if}}
 </div>
+
+<div class="max-w-8xl mx-auto">
+    {{#if contentFile.frontmatter.featured_image}}
+        {{{image fieldname="featured_image" class="w-full" alt=contentFile.frontmatter.title}}}
+    {{/if}}
 </div>
+
 {{#if contentFile.frontmatter.banner_image}}
     <div class="">
 
@@ -18,14 +27,10 @@
     </div>
 {{/if}}
 
-<article class="max-w-4xl mx-auto px-4 py-8 lg:px-8">
+<article class="prose prose-lg max-w-4xl mx-auto px-4 py-8 lg:px-8">
     
 
-    {{#if contentFile.frontmatter.featured_image}}
-        <div class="mb-6">
-            {{{image fieldname="featured_image" class="w-full" alt=contentFile.frontmatter.title}}}
-        </div>
-    {{/if}}
+    
     
     {{{content}}}
 

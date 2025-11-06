@@ -1,0 +1,11 @@
+{
+  "name": "Grid view",
+  "version": "1.0.0",
+  "description": "Displays a grid of items.",
+  "layoutType": "list",
+  "parentLayout": "base",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" }
+  ]
+}

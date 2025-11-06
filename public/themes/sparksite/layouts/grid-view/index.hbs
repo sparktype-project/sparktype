@@ -1,0 +1,34 @@
+<div class="mw9 ph3 pv4 center">
+    <header class="page-header mb4 tc">
+        <h1 class="f2 lh-title">{{contentFile.frontmatter.title}}</h1>
+    </header>
+
+    {{#if collectionItems}}
+        <div class="project-grid grid gap4">
+            {{#each collectionItems}}
+                {{! Render a partial for the item using its layout's partials }}
+                {{! The itemLayoutId is provided by the render service based on the collection's defaultItemLayout }}
+                {{#if ../itemLayoutId}}
+                    {{#if ../contentFile.frontmatter.layoutConfig.displayType}}
+                        {{> (concat ../itemLayoutId "/partials/" ../contentFile.frontmatter.layoutConfig.displayType) this}}
+                    {{else}}
+                        {{> (concat ../itemLayoutId "/partials/project-card") this}}
+                    {{/if}}
+                {{else}}
+                    <p class="red">Error: Item layout not configured for this collection</p>
+                {{/if}}
+            {{/each}}
+        </div>
+    {{else}}
+        <div class="tc pv5">
+            <p class="mid-gray">No portfolio projects have been added yet.</p>
+        </div>
+    {{/if}}
+</div>
+
+<style>
+.project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+</style>

@@ -332,7 +332,7 @@ export default function LeftSidebar() {
           </Accordion>
         </div>
 
-        <div className=" border-t p-2 space-y-1">
+        <div className=" border-t p-2 space-y-1 mt-auto">
           {site?.manifest.auth?.requiresAuth ? (
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -345,7 +345,7 @@ export default function LeftSidebar() {
                 <AlertDialogHeader>
                   <AlertDialogTitle className="flex items-center gap-2">
                     <Shield className="h-5 w-5 text-amber-500" />
-                    Export Protected Site Backup
+                    Export protected site backup
                   </AlertDialogTitle>
                   <AlertDialogDescription className="space-y-3">
                     <p>

@@ -74,7 +74,11 @@
       "Read(//Users/matt/Sites/core-themes/**)",
       "Read(//Users/matt/Sites/core-themes/sparksite-theme/src/**)",
       "Read(//Users/matt/Sites/core-themes/sparkdocs-theme/src/**)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(open -a \"Google Chrome\" http://localhost:5173)",
+      "Bash(open:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

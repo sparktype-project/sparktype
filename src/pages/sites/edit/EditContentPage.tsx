@@ -100,7 +100,7 @@ function EditContentPageInternal() {
             if (fileData) {
               // Process content and initialize editor
               const rawContent = fileData.content || '';
-              const contentToLoad = rawContent.replace('<!-- Content managed by BlockNote editor -->', '').trim();
+              const contentToLoad = rawContent.trim();
 
               console.log('Initializing editor with content:', contentToLoad.substring(0, 200));
               console.log('Raw content length:', rawContent.length, 'Processed length:', contentToLoad.length);

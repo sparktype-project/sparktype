@@ -18,7 +18,7 @@ import { type CollectionContext } from '@/core/services/collectionContext.servic
  * 1.  Taking a definitive `filePath` (from `usePageIdentifier`).
  * 2.  Waiting for the global site data to be loaded into the Zustand store.
  * 3.  **Reading the file's content directly from the store, not re-fetching it from storage.**
- * 4.  Preparing the initial state for the editor (frontmatter, Blocknote blocks).
+ * 4.  Preparing the initial state for the editor (frontmatter and content).
  * 5.  Handling state changes as the user types or modifies frontmatter fields.
  *
  * @param siteId The ID of the current site.
@@ -40,7 +40,6 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
   const [status, setStatus] = useState<FileStatus>('initializing');
   const [frontmatter, setFrontmatter] = useState<PageFrontmatter | null>(null);
   const [slug, setSlugState] = useState('');
-  // Remove BlockNote-specific state since we're using Plate now
 
   useEffect(() => {
     const loadData = async () => {

@@ -86,7 +86,7 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
   // Load the manifest for the collection's default item layout
   useEffect(() => {
     if (collection?.defaultItemLayout && siteData) {
-      getAvailableLayouts(siteData, 'single')
+      getAvailableLayouts(siteData, 'item')
         .then(layouts => {
           const layout = layouts.find(l => l.id === collection.defaultItemLayout);
           setItemLayout(layout || null);
@@ -105,13 +105,11 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
     const loadItemLayouts = async () => {
       try {
         setLoadingLayouts(true);
-        const layouts = await getAvailableLayouts(siteData);
-        // Filter to only show item type layouts
-        const itemLayouts = layouts.filter(layout => layout.layoutType === 'item');
-        const layoutInfos: LayoutInfo[] = itemLayouts.map(layout => ({
+        const layouts = await getAvailableLayouts(siteData, 'item');
+        const layoutInfos: LayoutInfo[] = layouts.map(layout => ({
           id: layout.id,
           name: layout.name || layout.id,
-          type: layout.layoutType,
+          type: layout.layoutType === 'item' ? 'single' : 'collection',
           path: '', // LayoutManifest doesn't have path property
           description: layout.description
         }));

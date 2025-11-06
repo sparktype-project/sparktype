@@ -45,16 +45,14 @@ describe('imageCleanup.service', () => {
   });
 
   const createMockContentFile = (
-    path: string, 
-    content: string, 
+    path: string,
+    content: string,
     frontmatter: any = {}
   ): ParsedMarkdownFile => ({
     slug: path.replace(/^content\//, '').replace(/\.md$/, ''),
     path,
     frontmatter,
-    content,
-    blocks: [],
-    hasBlocks: false
+    content
   });
 
   beforeEach(() => {

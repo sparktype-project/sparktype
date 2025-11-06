@@ -7,7 +7,7 @@ import type { TagGroup } from '@/core/types';
 
 // UI Components
 import { Label } from '@/core/components/ui/label';
-import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
+import { SimpleMultiSelect, type SimpleMultiSelectOption } from './SimpleMultiSelect';
 
 interface TagSelectorProps {
   siteId: string;
@@ -25,8 +25,8 @@ export default function TagSelector({ siteId, tagGroup, selectedTagIds, onTagsCh
     return getTagsInGroup(siteData.manifest, tagGroup.id);
   }, [siteData, tagGroup.id]);
 
-  // Convert tags to MultiSelect options format
-  const options: MultiSelectOption[] = useMemo(() => {
+  // Convert tags to SimpleMultiSelect options format
+  const options: SimpleMultiSelectOption[] = useMemo(() => {
     return availableTags.map(tag => ({
       label: tag.name,
       value: tag.id,
@@ -38,15 +38,12 @@ export default function TagSelector({ siteId, tagGroup, selectedTagIds, onTagsCh
       <Label className="text-sm font-medium">{tagGroup.name}</Label>
       {availableTags.length > 0 ? (
         <>
-          <MultiSelect
+          <SimpleMultiSelect
             options={options}
-            defaultValue={selectedTagIds}
-            onValueChange={onTagsChange}
+            selected={selectedTagIds}
+            onChange={onTagsChange}
             placeholder={`Select ${tagGroup.name.toLowerCase()}...`}
-            searchable={true}
-            maxCount={2}
             className="w-full"
-            resetOnDefaultValueChange={true}
           />
           {tagGroup.description && (
             <div className="text-xs text-muted-foreground mt-1">
