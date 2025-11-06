@@ -1,4 +1,4 @@
-import { MarkdownPlugin, remarkMdx, remarkMention } from '@platejs/markdown';
+import { MarkdownPlugin, remarkMdx, remarkMention, columnRules } from '@platejs/markdown';
 import { KEYS } from 'platejs';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -12,6 +12,9 @@ export function createMarkdownKit(siteId?: string) {
       disallowedNodes: [KEYS.suggestion],
       remarkPlugins: [remarkMath, remarkGfm, remarkMdx, remarkMention, remarkDirective],
       rules: {
+        // Import default column rules from PlateJS for MDX-based column serialization
+        ...columnRules,
+
         // Custom serialization rule for images to convert blob URLs back to asset paths
         [KEYS.img]: {
           serialize: (slateNode: any) => {
@@ -94,7 +97,7 @@ export function createMarkdownKit(siteId?: string) {
         containerDirective: {
           deserialize: (mdastNode: any) => {
             console.log('MarkdownKit: Processing containerDirective:', mdastNode);
-            
+
             if (mdastNode.name === 'collection_view') {
               console.log('MarkdownKit: Found collection_view containerDirective with attributes:', mdastNode.attributes);
 
@@ -117,7 +120,7 @@ export function createMarkdownKit(siteId?: string) {
               console.log('MarkdownKit: Converted containerDirective to Plate node:', plateNode);
               return plateNode;
             }
-            
+
             console.log('MarkdownKit: Unhandled containerDirective:', mdastNode.name);
             return null;
           }
@@ -125,7 +128,7 @@ export function createMarkdownKit(siteId?: string) {
         leafDirective: {
           deserialize: (mdastNode: any) => {
             console.log('MarkdownKit: Processing leafDirective:', mdastNode);
-            
+
             if (mdastNode.name === 'collection_view') {
               console.log('MarkdownKit: Found collection_view directive with attributes:', mdastNode.attributes);
 
@@ -148,12 +151,14 @@ export function createMarkdownKit(siteId?: string) {
               console.log('MarkdownKit: Converted to Plate node:', plateNode);
               return plateNode;
             }
-            
+
             console.log('MarkdownKit: Unhandled directive:', mdastNode.name);
             // Return null for other directives to let default handling take over
             return null;
           }
         }
+        // Note: Column serialization/deserialization is handled by the built-in columnRules
+        // imported from @platejs/markdown and spread at the top of this rules object
       }
     },
   }),

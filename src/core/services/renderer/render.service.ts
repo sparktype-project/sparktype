@@ -339,16 +339,18 @@ export async function render(
     // Import the remark processing logic
     const { remark } = await import('remark');
     const { default: remarkDirective } = await import('remark-directive');
+    const { remarkMdx } = await import('@platejs/markdown');
     const { default: remarkRehype } = await import('remark-rehype');
     const { default: rehypeSlug } = await import('rehype-slug');
     const { default: rehypeStringify } = await import('rehype-stringify');
     const { visit } = await import('unist-util-visit');
-    
+
     let processedContent: string;
     if (markdownContent.trim()) {
-        // Configure remark with directive support and custom image handling
+        // Configure remark with directive support, MDX support, and custom image handling
         const processor = remark()
           .use(remarkDirective)
+          .use(remarkMdx)
           .use(() => {
             return (tree: any) => {
               // Process collection_view directives (both leaf and container types)
@@ -379,6 +381,60 @@ export async function render(
               
               visit(tree, 'leafDirective', processCollectionDirective);
               visit(tree, 'containerDirective', processCollectionDirective);
+
+              // Track unique column configurations to generate CSS
+              const columnConfigs = new Set<number>();
+
+              // Process MDX JSX elements (columns) to add classes and preserve attributes
+              // First pass: count columns in each column_group
+              const columnGroupInfo = new Map<any, number>();
+              visit(tree, 'mdxJsxFlowElement', (node: any) => {
+                console.log('[Render Service] Found mdxJsxFlowElement:', node.name);
+                if (node.name === 'column_group') {
+                  // Count direct column children
+                  const columnCount = node.children?.filter((child: any) =>
+                    child.type === 'mdxJsxFlowElement' && child.name === 'column'
+                  ).length || 0;
+                  console.log('[Render Service] column_group has', columnCount, 'columns');
+                  columnGroupInfo.set(node, columnCount);
+                  columnConfigs.add(columnCount);
+                }
+              });
+
+              // Second pass: add classes to column_group and columns
+              visit(tree, 'mdxJsxFlowElement', (node: any, _index: number | undefined, parent: any) => {
+                if (node.name === 'column_group') {
+                  console.log('[Render Service] Adding class to column_group');
+                  // Add class for styling
+                  node.attributes = node.attributes || [];
+                  node.attributes.push({
+                    type: 'mdxJsxAttribute',
+                    name: 'class',
+                    value: 'column-group'
+                  });
+                } else if (node.name === 'column' && parent) {
+                  // Find the parent column_group to get total column count
+                  const parentGroup = parent.type === 'mdxJsxFlowElement' && parent.name === 'column_group' ? parent : null;
+                  const totalColumns = parentGroup ? columnGroupInfo.get(parentGroup) || 1 : 1;
+
+                  console.log('[Render Service] Adding class to column, totalColumns:', totalColumns);
+
+                  // Add class with column count for CSS targeting
+                  node.attributes = node.attributes || [];
+                  node.attributes.push({
+                    type: 'mdxJsxAttribute',
+                    name: 'class',
+                    value: `column column-${totalColumns}`
+                  });
+
+                  // Store total columns as data attribute for potential JS use
+                  node.attributes.push({
+                    type: 'mdxJsxAttribute',
+                    name: 'data-columns',
+                    value: String(totalColumns)
+                  });
+                }
+              });
 
               // Process images to use preprocessed URLs
               visit(tree, 'image', (node: any) => {
@@ -425,6 +481,53 @@ export async function render(
           })
           .use(remarkRehype, { allowDangerousHtml: true })
           .use(rehypeSlug) // Add unique IDs to all headings for TOC anchor navigation
+          .use(() => {
+            // Rehype plugin to add classes to column elements after HTML conversion
+            return (tree: any) => {
+              // Track column groups and their column counts
+              const columnGroupCounts = new Map<any, number>();
+
+              // First pass: count columns in each group
+              visit(tree, 'element', (node: any) => {
+                if (node.tagName === 'div' && node.properties?.dataColumn === 'group') {
+                  const columnCount = node.children?.filter((child: any) =>
+                    child.type === 'element' && child.tagName === 'div' && child.properties?.dataColumn === 'item'
+                  ).length || 0;
+                  columnGroupCounts.set(node, columnCount);
+                }
+              });
+
+              // Second pass: add classes
+              visit(tree, 'element', (node: any, _index: any, parent: any) => {
+                // Check if this came from an MDX element by looking at raw data
+                const isColumnGroup = node.tagName === 'div' &&
+                  node.children?.some((child: any) => child.tagName === 'div');
+
+                if (isColumnGroup && parent?.type === 'root') {
+                  // This is likely a column_group
+                  const columnCount = node.children?.filter((child: any) =>
+                    child.type === 'element' && child.tagName === 'div'
+                  ).length || 0;
+
+                  if (columnCount > 1) {
+                    node.properties = node.properties || {};
+                    node.properties.className = ['column-group'];
+                    console.log('[Render Service] Rehype: Added column-group class');
+
+                    // Add classes to child columns
+                    node.children?.forEach((child: any) => {
+                      if (child.type === 'element' && child.tagName === 'div') {
+                        child.properties = child.properties || {};
+                        child.properties.className = ['column', `column-${columnCount}`];
+                        child.properties.dataColumns = String(columnCount);
+                        console.log('[Render Service] Rehype: Added column classes');
+                      }
+                    });
+                  }
+                }
+              });
+            };
+          })
           .use(rehypeStringify, { allowDangerousHtml: true });
         
         // Process markdown to HTML
