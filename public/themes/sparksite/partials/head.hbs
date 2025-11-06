@@ -34,12 +34,13 @@
 {{/if}}
 
 {{#if contentFile.frontmatter.featured_image}}
-    <meta property="og:image" content="{{{image fieldname="featured_image" url_only=true}}}">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta name="twitter:image" content="{{{image fieldname="featured_image" url_only=true}}}">
+    {{#if @root.options.isExport}}
+        <meta property="og:image" content="{{{image fieldname="featured_image" url_only=true}}}">
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+        <meta name="twitter:image" content="{{{image fieldname="featured_image" url_only=true}}}">
+    {{/if}}
 {{/if}}
-
 
 {{!-- Favicon --}}
 {{#if @root.headContext.favicon}}
@@ -65,10 +66,8 @@
 
 {{#if @root.options.isExport}}
     <link rel="stylesheet" href="{{@root.options.relativeAssetPath}}_site/themes/{{manifest.theme.name}}/styles.css">
-    <link rel="stylesheet" href="{{@root.options.relativeAssetPath}}_site/themes/{{manifest.theme.name}}/variables.css">
 {{else}}
     <link rel="stylesheet" href="/themes/{{manifest.theme.name}}/styles.css">
-    <link rel="stylesheet" href="/themes/{{manifest.theme.name}}/variables.css">
 {{/if}}
 
 {{!-- This is where the user's custom choices are injected as CSS variables --}}

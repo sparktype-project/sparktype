@@ -35,8 +35,7 @@
      DEFAULT FONT ASSIGNMENTS
      These defaults will be overridden by theme config via styleOverrides
      ========================================================================== */
-  --font-headings: "Inter", sans-serif;
-  --font-text: "Gentium Book Plus", serif;
+
 
   /* ==========================================================================
      MAPPED FONTS (Used by Design System)
