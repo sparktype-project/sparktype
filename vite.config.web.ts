@@ -24,7 +24,7 @@ export default defineConfig({
       },
     },
   },
-  base: '/', // Change this if deploying to a subdirectory
+  base: process.env.VITE_BASE_PATH || '/', // Use VITE_BASE_PATH for GitHub Pages deployment
   define: {
     // Remove Tauri-specific code in web build
     '__TAURI__': false,
