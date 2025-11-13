@@ -231,13 +231,27 @@ export async function importSiteFromGitHub(repoUrl: string, branch?: string): Pr
     let zipData: ArrayBuffer;
     try {
       zipData = await downloadData(archiveUrl);
-    } catch {
-      // If main branch doesn't exist, try master
-      if (targetBranch === 'main') {
-        const masterUrl = `https://github.com/${repoInfo.owner}/${repoInfo.repo}/archive/refs/heads/master.zip`;
-        zipData = await downloadData(masterUrl);
+    } catch (error) {
+      const errorMessage = (error as Error).message;
+
+      // Only fall back to 'master' if we got a 404 on 'main' branch
+      if (targetBranch === 'main' && errorMessage.includes('404')) {
+        console.log(`Branch 'main' not found, trying 'master' branch...`);
+        try {
+          const masterUrl = `https://github.com/${repoInfo.owner}/${repoInfo.repo}/archive/refs/heads/master.zip`;
+          zipData = await downloadData(masterUrl);
+        } catch (masterError) {
+          // If master also fails, throw an error with both attempts mentioned
+          throw new Error(
+            `Failed to download repository. Neither 'main' nor 'master' branch could be accessed. ` +
+            `Original error: ${errorMessage}`
+          );
+        }
       } else {
-        throw new Error(`Branch '${targetBranch}' not found`);
+        // For other branches or non-404 errors, preserve the original error
+        throw new Error(
+          `Failed to download branch '${targetBranch}': ${errorMessage}`
+        );
       }
     }
 
