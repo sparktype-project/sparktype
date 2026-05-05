@@ -277,7 +277,12 @@ export async function render(
     }
 
     // 1. Synchronize Data and Prepare Handlebars Environment
-    const { initialConfig: finalMergedConfig } = await getMergedThemeDataForForm(siteData.manifest.theme.name, siteData.manifest.theme.config);
+    const { initialConfig: finalMergedConfig } = await getMergedThemeDataForForm(
+        siteData.manifest.theme.name,
+        siteData.manifest.theme.config,
+        undefined,
+        siteData.siteId
+    );
     const synchronizedSiteData = { ...siteData, manifest: { ...siteData.manifest, theme: { ...siteData.manifest.theme, config: finalMergedConfig }}};
     await prepareRenderEnvironment(synchronizedSiteData);
 
@@ -769,4 +774,3 @@ async function postProcessCollectionDirectives(
   
   return processedHtml;
 }
-

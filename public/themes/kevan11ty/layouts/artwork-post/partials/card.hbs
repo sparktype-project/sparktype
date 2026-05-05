@@ -1,0 +1,18 @@
+<a href="{{url}}">
+  <div class="pt-80 bg-cover bg-center border border-[#000]" style="background-image: url('{{{image fieldname="banner_image" preset="hero" url_only=true}}}');"></div>
+  <div class="mx-6 bg-white -mt-28 md:w-2/3 border border-[#000] shadow-line">
+    <div class="p-4">
+      <h3 class="mb-2 text-xl font-bold md:text-2xl hover:underline">{{frontmatter.title}}</h3>
+      <p class="text-[#000] text-sm">{{frontmatter.description}}</p>
+    </div>
+    <div class="p-4 border-t border-[#000]">
+      {{#if resolvedTags}}
+        {{#each resolvedTags}}
+          {{#each this}}
+            <span class="inline-flex items-center px-2 pt-1 pb-[4px] pixel-corners-8 text-xs font-medium border-[#000]">{{this.name}}</span>
+          {{/each}}
+        {{/each}}
+      {{/if}}
+    </div>
+  </div>
+</a>

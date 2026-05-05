@@ -1,0 +1,37 @@
+<div class="border-t border-[#000] bg-white">
+  {{#if contentFile.frontmatter.banner_image}}
+    <div class="flex flex-col bg-center h-[calc(100vh-60px)]">
+      <div class="flex-grow bg-center bg-cover" style="background-image: url('{{{image fieldname="banner_image" preset="hero" url_only=true}}}');"></div>
+  {{else}}
+    <div>
+      <div x-data class="bg-left-top h-[32px]" :style="'background-image: url(\'{{#if @root.options.isExport}}{{@root.options.relativeAssetPath}}_site/themes/{{manifest.theme.name}}/assets/patterns/{{else}}/_site/themes/{{manifest.theme.name}}/assets/patterns/{{/if}}' + $store.background.imageNumber + '.svg\')'"></div>
+  {{/if}}
+      <div class="border-y border-[#000] bg-white">
+        <div class="max-w-6xl px-6 mx-auto">
+          <div class="border-x border-[#000]">
+            <div class="p-6">
+              <h1 itemprop="name headline" class="text-2xl font-bold lg:text-4xl">{{contentFile.frontmatter.title}}</h1>
+              {{#if contentFile.frontmatter.description}}
+                <p class="text-[#000] mt-2 lg:mt-4">{{contentFile.frontmatter.description}}</p>
+              {{/if}}
+            </div>
+            {{#if contentFile.frontmatter.date}}
+              <div class="flex border-t border-[#000]">
+                <div class="border-r border-[#000] pt-[21px] px-6 py-4"><p class="text-xs">{{formatDate contentFile.frontmatter.date}}</p></div>
+                <div class="p-4">
+                  {{#if resolvedTags}}
+                    {{#each resolvedTags}}
+                      {{#each this}}
+                        <span class="inline-flex items-center px-2 pt-1 pb-[4px] pixel-corners-8 text-xs font-medium border-[#000]">{{this.name}}</span>
+                      {{/each}}
+                    {{/each}}
+                  {{/if}}
+                </div>
+              </div>
+            {{/if}}
+          </div>
+        </div>
+      </div>
+    </div>
+  <div x-data class="h-[33px] bg-left-top border-b border-[#000]" :style="'background-image: url(\'{{#if @root.options.isExport}}{{@root.options.relativeAssetPath}}_site/themes/{{manifest.theme.name}}/assets/patterns/{{else}}/_site/themes/{{manifest.theme.name}}/assets/patterns/{{/if}}' + $store.background.imageNumber + '.svg\')'"></div>
+</div>

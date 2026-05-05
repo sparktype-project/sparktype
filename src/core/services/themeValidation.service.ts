@@ -78,9 +78,64 @@ export function validateHandlebarsTemplate(content: string, templatePath: string
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // 1. Block <script> tags entirely
-  if (/<script[\s>]/i.test(content)) {
-    errors.push(`${templatePath}: Script tags are not allowed in theme templates`);
+  // 1. Validate script tags (src-only, trusted external domains or local paths)
+  const scriptTagRegex = /<script\b([^>]*)>/gi;
+  const srcAttrRegex = /\bsrc\s*=\s*["']([^"']+)["']/i;
+  let scriptMatch: RegExpExecArray | null;
+  while ((scriptMatch = scriptTagRegex.exec(content)) !== null) {
+    const attrs = scriptMatch[1] || '';
+    const srcMatch = attrs.match(srcAttrRegex);
+    const src = srcMatch?.[1];
+
+    // Inline scripts are not allowed
+    if (!src) {
+      errors.push(`${templatePath}: Inline script tags are not allowed. Use src-based scripts only.`);
+      continue;
+    }
+
+    // Allow Handlebars-templated script paths used by themes for export/runtime switching.
+    const isHandlebarsTemplateSrc = src.includes('{{') || src.includes('}}');
+    if (isHandlebarsTemplateSrc) {
+      // Basic safety guard: still block clearly unsafe protocols in templated strings.
+      if (/javascript:|data:text\/javascript/i.test(src)) {
+        errors.push(`${templatePath}: Unsafe script URL is not allowed: ${src}`);
+      }
+      continue;
+    }
+
+    // Block javascript: and data:text/javascript URLs
+    if (/^(javascript:|data:text\/javascript)/i.test(src.trim())) {
+      errors.push(`${templatePath}: Unsafe script URL is not allowed: ${src}`);
+      continue;
+    }
+
+    // Local scripts are allowed (theme-relative or absolute paths)
+    const isLocalPath =
+      src.startsWith('/') ||
+      src.startsWith('./') ||
+      src.startsWith('../');
+
+    if (isLocalPath) {
+      continue;
+    }
+
+    // External scripts must use HTTPS and trusted domains
+    try {
+      const url = new URL(src);
+      if (url.protocol !== 'https:') {
+        errors.push(`${templatePath}: External script must use HTTPS: ${src}`);
+        continue;
+      }
+
+      const isTrusted = SECURITY_CONFIG.TRUSTED_SCRIPT_DOMAINS.some(
+        domain => domain === url.hostname
+      );
+      if (!isTrusted) {
+        errors.push(`${templatePath}: Script domain is not trusted: ${url.hostname}`);
+      }
+    } catch {
+      errors.push(`${templatePath}: Invalid script src URL: ${src}`);
+    }
   }
 
   // 2. Block inline event handlers (onclick, onerror, etc.)

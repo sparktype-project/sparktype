@@ -62,7 +62,7 @@ export const CORE_THEMES: ThemeInfo[] = [
     id: 'sparkdocs',
     name: 'Sparkdocs',
     path: 'sparkdocs'
-  },
+  }
 ];
 
 /**
@@ -394,7 +394,7 @@ export const SECURITY_CONFIG = {
    */
   THEME_ALLOWED_EXTENSIONS: [
     // Templates & Configuration
-    '.hbs', '.json', '.css',
+    '.hbs', '.json', '.css', '.js', '.mjs',
 
     // Fonts (including legacy .eot for older browser support)
     '.woff', '.woff2', '.ttf', '.otf', '.eot',
@@ -411,8 +411,8 @@ export const SECURITY_CONFIG = {
    * These file types are never allowed in theme packages.
    */
   THEME_BLOCKED_EXTENSIONS: [
-    // JavaScript (themes must not ship executable code)
-    '.js', '.mjs', '.ts', '.jsx', '.tsx',
+    // Source code formats that should not ship in built theme packages
+    '.ts', '.jsx', '.tsx',
 
     // Executables
     '.exe', '.sh', '.bat', '.cmd', '.app',

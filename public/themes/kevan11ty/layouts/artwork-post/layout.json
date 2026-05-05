@@ -1,0 +1,15 @@
+{
+  "name": "Artwork Post",
+  "version": "1.0.0",
+  "description": "Artwork item layout",
+  "layoutType": "item",
+  "parentLayout": "base",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" },
+    { "path": "partials/card.hbs", "type": "partial" }
+  ],
+  "partials": [
+    { "path": "partials/card.hbs", "name": "Card View", "isDefault": true }
+  ]
+}

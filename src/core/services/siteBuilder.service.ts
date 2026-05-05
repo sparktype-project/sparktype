@@ -23,7 +23,9 @@ export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBund
     // 1. Prepare a synchronized version of the site data for a consistent build.
     const { initialConfig: finalMergedConfig } = await getMergedThemeDataForForm(
         siteData.manifest.theme.name,
-        siteData.manifest.theme.config
+        siteData.manifest.theme.config,
+        undefined,
+        siteData.siteId
     );
     const synchronizedSiteData = {
         ...siteData,

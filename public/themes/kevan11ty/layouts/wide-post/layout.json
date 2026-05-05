@@ -1,0 +1,11 @@
+{
+  "name": "Wide Post",
+  "version": "1.0.0",
+  "description": "Wide post layout for artwork style pages",
+  "layoutType": "item",
+  "parentLayout": "base",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" }
+  ]
+}

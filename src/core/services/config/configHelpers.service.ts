@@ -60,22 +60,11 @@ export function mergeUiSchemas(...schemas: (UiSchema | null | undefined)[]): UiS
  * @returns Promise resolving to file content or null
  */
 export async function getThemeAssetContent(
-  _context: { siteId: string },
+  context: { siteId: string },
   themeName: string,
   assetPath: string
 ): Promise<string | null> {
-    const fullPath = `/themes/${themeName}/${assetPath}`;
-
-    if (fileContentCache.has(fullPath)) {
-        return fileContentCache.get(fullPath)!;
-    }
-
-    const promise = fetch(fullPath)
-        .then(res => (res.ok ? res.text() : null))
-        .catch(() => null);
-
-    fileContentCache.set(fullPath, promise);
-    return promise;
+    return getAssetContent(context, 'theme', themeName, assetPath);
 }
 
 /**

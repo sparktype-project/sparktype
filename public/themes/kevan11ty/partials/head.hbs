@@ -1,0 +1,56 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{pageTitle}} | {{manifest.title}}</title>
+<link rel="canonical" href="{{canonicalUrl}}">
+
+{{#if contentFile.frontmatter.description}}
+  <meta name="description" content="{{contentFile.frontmatter.description}}">
+{{else}}
+  <meta name="description" content="{{manifest.description}}">
+{{/if}}
+
+<meta property="og:title" content="{{pageTitle}}">
+<meta property="og:url" content="{{canonicalUrl}}">
+<meta property="og:site_name" content="{{manifest.title}}">
+<meta property="og:type" content="article">
+{{#if contentFile.frontmatter.description}}
+  <meta property="og:description" content="{{contentFile.frontmatter.description}}">
+{{else}}
+  <meta property="og:description" content="{{manifest.description}}">
+{{/if}}
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{pageTitle}}">
+{{#if contentFile.frontmatter.description}}
+  <meta name="twitter:description" content="{{contentFile.frontmatter.description}}">
+{{else}}
+  <meta name="twitter:description" content="{{manifest.description}}">
+{{/if}}
+
+{{#if contentFile.frontmatter.featured_image}}
+  <meta property="og:image" content="{{{image fieldname="featured_image" preset="hero" url_only=true}}}">
+  <meta name="twitter:image" content="{{{image fieldname="featured_image" preset="hero" url_only=true}}}">
+{{/if}}
+
+{{#if @root.headContext.favicon}}
+  <link rel="icon" href="{{{image fieldname="favicon" preset="logo" url_only=true}}}" sizes="any">
+{{else}}
+  {{#if @root.options.isExport}}
+    <link rel="icon" href="{{@root.options.relativeAssetPath}}_site/themes/{{manifest.theme.name}}/assets/site/kevan.png" sizes="any">
+  {{else}}
+    <link rel="icon" href="/_site/themes/{{manifest.theme.name}}/assets/site/kevan.png" sizes="any">
+  {{/if}}
+{{/if}}
+
+{{#if @root.options.isExport}}
+  <link rel="alternate" type="application/rss+xml" title="{{manifest.title}}" href="{{@root.options.relativeAssetPath}}rss.xml">
+{{else}}
+  <link rel="alternate" type="application/rss+xml" title="{{manifest.title}}" href="/rss.xml">
+{{/if}}
+
+{{#if @root.options.isExport}}
+  <link rel="stylesheet" href="{{@root.options.relativeAssetPath}}_site/themes/{{manifest.theme.name}}/styles.css">
+{{else}}
+  <link rel="stylesheet" href="/_site/themes/{{manifest.theme.name}}/styles.css">
+{{/if}}
+{{{styleOverrides}}}

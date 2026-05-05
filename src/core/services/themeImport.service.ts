@@ -18,6 +18,45 @@ export interface ThemeImportResult {
 }
 
 /**
+ * Normalizes ZIP paths so theme packages can be uploaded either:
+ * - with files at archive root (theme.json, base.hbs, ...)
+ * - or inside a single top-level directory (my-theme/theme.json, ...)
+ */
+function normalizeThemePackagePaths(files: Map<string, string>): Map<string, string> {
+  const cleaned = new Map<string, string>();
+
+  // Remove common metadata files/folders from archives.
+  for (const [path, content] of files.entries()) {
+    if (path.startsWith('__MACOSX/')) continue;
+    if (path.endsWith('.DS_Store')) continue;
+    cleaned.set(path.replace(/^\.\//, ''), content);
+  }
+
+  // Already rooted correctly.
+  if (cleaned.has('theme.json')) return cleaned;
+
+  // Detect a single folder prefix containing theme.json.
+  const candidateRoots = Array.from(cleaned.keys())
+    .filter(path => path.endsWith('/theme.json'))
+    .map(path => path.slice(0, -'theme.json'.length));
+
+  const uniqueRoots = Array.from(new Set(candidateRoots));
+  if (uniqueRoots.length !== 1) return cleaned;
+
+  const rootPrefix = uniqueRoots[0];
+  const normalized = new Map<string, string>();
+
+  for (const [path, content] of cleaned.entries()) {
+    if (!path.startsWith(rootPrefix)) continue;
+    const relativePath = path.slice(rootPrefix.length);
+    if (!relativePath) continue;
+    normalized.set(relativePath, content);
+  }
+
+  return normalized;
+}
+
+/**
  * Converts a file size in bytes to a human-readable string.
  */
 function formatFileSize(bytes: number): string {
@@ -124,9 +163,13 @@ export async function importThemeFromZip(
 
     console.log(`[Theme Import] Extracted ${files.size} files, total size: ${formatFileSize(totalSize)}`);
 
+    // 4.5 Normalize paths to support single-folder zip packages
+    const normalizedFiles = normalizeThemePackagePaths(files);
+    console.log(`[Theme Import] Normalized package paths: ${normalizedFiles.size} files`);
+
     // 5. Validate theme package
     console.log('[Theme Import] Validating theme package...');
-    const validation = await validateThemePackage(files);
+    const validation = await validateThemePackage(normalizedFiles);
 
     if (!validation.valid) {
       console.error('[Theme Import] Validation failed:', validation.errors);
@@ -148,12 +191,12 @@ export async function importThemeFromZip(
 
     // 6. Sanitize CSS files
     console.log('[Theme Import] Sanitizing CSS files...');
-    for (const [path, content] of files.entries()) {
+    for (const [path, content] of normalizedFiles.entries()) {
       if (path.endsWith('.css')) {
         const sanitized = sanitizeCSS(content);
         if (sanitized !== content) {
           console.log(`[Theme Import] Sanitized CSS: ${path}`);
-          files.set(path, sanitized);
+          normalizedFiles.set(path, sanitized);
         }
       }
     }
@@ -176,7 +219,7 @@ export async function importThemeFromZip(
     // 8. Save to storage
     console.log('[Theme Import] Saving to storage...');
     const fileMap: Record<string, string> = {};
-    files.forEach((content, path) => {
+    normalizedFiles.forEach((content, path) => {
       fileMap[path] = content;
     });
 

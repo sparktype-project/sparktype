@@ -1,0 +1,24 @@
+{
+  "name": "List view",
+  "version": "1.0.0",
+  "description": "Generic listing for articles, work and other collections",
+  "layoutType": "list",
+  "parentLayout": "base",
+  "files": [
+    { "path": "layout.json", "type": "manifest" },
+    { "path": "index.hbs", "type": "template" }
+  ],
+  "schema": {
+    "title": "Listing options",
+    "type": "object",
+    "properties": {
+      "listing_intro": {
+        "type": "string",
+        "title": "Introductory text"
+      }
+    }
+  },
+  "uiSchema": {
+    "listing_intro": { "ui:widget": "textarea" }
+  }
+}

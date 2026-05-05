@@ -1,0 +1,22 @@
+<div class="border border-[#000] flex shadow-line bg-white">
+  <div class="p-4 lg:p-6 border-r border-[#000] flex-none ease-in-out duration-200">
+    <a href="{{url}}">
+      {{{image fieldname="logo" preset="card" class="w-20 lg:w-24 ease-in-out duration-200 border border-[#000]" alt=frontmatter.title}}}
+    </a>
+  </div>
+  <div class="w-full">
+    <div class="p-4 lg:p-6 border-b border-[#000] w-full">
+      <h3 class="text-xl lg:text-2xl mb-2 hover:underline font-bold"><a href="{{url}}" class="hover:underline">{{frontmatter.title}}</a></h3>
+      <p class="text-[#000] text-sm">{{frontmatter.description}}</p>
+    </div>
+    <div class="p-4">
+      {{#if resolvedTags}}
+        {{#each resolvedTags}}
+          {{#each this}}
+            <span class="inline-flex items-center px-2 pt-1 pb-[4px] pixel-corners-8 text-xs font-medium border-[#000]">{{this.name}}</span>
+          {{/each}}
+        {{/each}}
+      {{/if}}
+    </div>
+  </div>
+</div>

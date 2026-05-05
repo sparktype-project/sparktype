@@ -45,7 +45,9 @@ export default function SiteSettingsPage() {
     try {
       const { schema, initialData } = await getMergedThemeDataFieldsForForm(
         site.manifest.theme.name,
-        site.manifest.theme.themeData || {}
+        site.manifest.theme.themeData || {},
+        undefined,
+        siteId
       );
       setThemeDataSchema(schema);
       setThemeData(initialData);

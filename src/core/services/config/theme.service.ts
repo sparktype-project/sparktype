@@ -2,6 +2,7 @@
 
 import type { RJSFSchema } from '@rjsf/utils';
 import type { ThemeConfig } from '@/core/types';
+import { getJsonAsset } from './configHelpers.service';
 
 // Extract default values from JSON schema
 const extractDefaultsFromSchema = (schema: RJSFSchema): Record<string, unknown> => {
@@ -83,11 +84,12 @@ const getMergedThemeData = (
 export const getMergedThemeDataForForm = async (
   themeName: string,
   savedConfig: ThemeConfig['config'] = {},
-  currentThemeName?: string
+  currentThemeName?: string,
+  siteId?: string
 ): Promise<{ schema: RJSFSchema | null; initialConfig: ThemeConfig['config'] }> => {
   try {
     // Load the theme data (this function should already exist)
-    const themeData = await getThemeData(themeName);
+    const themeData = await getThemeData(themeName, siteId);
     const schema = themeData?.appearanceSchema;
     
     if (!schema || !schema.properties) {
@@ -115,11 +117,12 @@ export const getMergedThemeDataForForm = async (
 export const getMergedThemeDataFieldsForForm = async (
   themeName: string,
   savedThemeData: Record<string, unknown> = {},
-  currentThemeName?: string
+  currentThemeName?: string,
+  siteId?: string
 ): Promise<{ schema: RJSFSchema | null; initialData: Record<string, unknown> }> => {
   try {
     // Load the theme data
-    const themeData = await getThemeData(themeName);
+    const themeData = await getThemeData(themeName, siteId);
     const schema = themeData?.themeDataSchema;
     
     if (!schema || !schema.properties) {
@@ -156,9 +159,22 @@ const normalizeThemeName = (themeName: string): string => {
 };
 
 // Helper function to get theme data using existing infrastructure
-const getThemeData = async (themeName: string) => {
+const getThemeData = async (themeName: string, siteId?: string) => {
   // Normalize theme name for backward compatibility
   const normalizedName = normalizeThemeName(themeName);
+
+  if (siteId) {
+    const customThemeData = await getJsonAsset<Record<string, unknown>>(
+      { siteId },
+      'theme',
+      normalizedName,
+      'theme.json'
+    );
+
+    if (customThemeData) {
+      return customThemeData;
+    }
+  }
 
   // Use the existing infrastructure to load theme.json
   const response = await fetch(`/themes/${normalizedName}/theme.json`);

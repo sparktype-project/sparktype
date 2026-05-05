@@ -1,0 +1,63 @@
+<section class="w-full text-gray-700 bg-white fixed bottom-0 border-t border-[#000] flex-row z-50">
+  <div class="flex">
+    <div
+      x-data="{
+        open: false,
+        toggle() {
+          if (this.open) {
+            return this.close(this.$refs.button);
+          }
+          this.$refs.button.focus();
+          this.open = true;
+        },
+        close(focusAfter) {
+          if (!this.open) return;
+          this.open = false;
+          focusAfter && focusAfter.focus();
+        }
+      }"
+      x-on:keydown.escape.prevent.stop="close($refs.button)"
+      x-on:focusin.window="! $refs.panel.contains($event.target) && close()"
+      x-id="['dropdown-button']"
+      class="relative"
+    >
+      <button
+        x-ref="button"
+        x-on:click="toggle()"
+        :aria-expanded="open"
+        :aria-controls="$id('dropdown-button')"
+        type="button"
+        class="flex items-center gap-2 p-5 bg-white text-[#000]"
+      >
+        <svg x-show="!open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-[#000]"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+        <svg x-show="open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-[#000]"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+      </button>
+      <div
+        x-ref="panel"
+        x-show="open"
+        x-transition.origin.bottom.left
+        x-on:click.outside="close($refs.button)"
+        :id="$id('dropdown-button')"
+        style="display: none;"
+        class="absolute left-0 bottom-full w-40 bg-white border-[#000] border-t border-r border-b py-2"
+      >
+        <a href="/articles/" class="font-medium text-[#000] hover:underline px-4 py-2 block">Articles</a>
+        <a href="/projects/" class="font-medium text-[#000] hover:underline px-4 py-2 block">Projects</a>
+        <a href="/work/" class="font-medium text-[#000] hover:underline px-4 py-2 block">Work</a>
+        <a href="/artwork/" class="font-medium text-[#000] hover:underline px-4 py-2 block">Artwork</a>
+        <a href="/about/" class="font-medium text-[#000] hover:underline px-4 py-2 block">About</a>
+      </div>
+    </div>
+    <div class="px-4 pt-3 pb-2 border-l border-[#000] leading-none" x-data="{ section: (window.location.pathname.split('/')[1] || '') }">
+      <p class="mb-0 text-sm"><a href="/" class="text-[#000] font-bold hover:underline">Matt Kevan</a></p>
+      <template x-if="section === 'articles'"><p class="text-sm text-[#000]"><a href="/" class="hover:underline">Home</a> » <a href="/articles" class="hover:underline">Articles</a></p></template>
+      <template x-if="section === 'artwork'"><p class="text-sm text-[#000]"><a href="/" class="hover:underline">Home</a> » <a href="/artwork" class="hover:underline">Artwork</a></p></template>
+      <template x-if="section === 'work'"><p class="text-sm text-[#000]"><a href="/" class="hover:underline">Home</a> » <a href="/work" class="hover:underline">Work</a></p></template>
+      <template x-if="section === 'projects'"><p class="text-sm text-[#000]"><a href="/" class="hover:underline">Home</a> » <a href="/projects" class="hover:underline">Projects</a></p></template>
+      <template x-if="!['articles','artwork','work','projects'].includes(section)"><p class="text-sm text-[#000]">{{{themeData "site_tagline" "Art, design & code"}}}</p></template>
+    </div>
+  </div>
+  <div class="scroller border-t border-[#000] h-[10px] md:h-[28px] bg-[#000] w-full bg-repeat" style="background-image: url('{{#if @root.options.isExport}}{{@root.options.relativeAssetPath}}_site/themes/{{manifest.theme.name}}/assets/gradient.svg{{else}}/_site/themes/{{manifest.theme.name}}/assets/gradient.svg{{/if}}');">
+    <div class="loader h-[10px] md:h-[28px] w-full bg-repeat ease-in-out duration-75"></div>
+  </div>
+</section>

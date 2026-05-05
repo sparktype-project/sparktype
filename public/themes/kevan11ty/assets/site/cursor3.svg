@@ -1,0 +1,24 @@
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M1.5 11.5V1.5L8.5 8.5H5.5V10.5H4.5L3.5 9.5L1.5 11.5Z" fill="white"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M2 1H1V12H2V11H3V10H4V11H5V13H6V15H7H8V13H7V11H6V9H9V8H8V7H7V6H6V5H5V4H4V3H3V2H2V1ZM2 10H3V9H4V10H5V8H6H7V7H6V6H5V5H4V4H3V3H2V10Z" fill="white"/>
+<rect y="1" width="1" height="11" fill="black"/>
+<rect x="1" width="1" height="1" fill="black"/>
+<rect x="2" y="1" width="1" height="1" fill="black"/>
+<rect x="3" y="2" width="1" height="1" fill="black"/>
+<rect x="4" y="3" width="1" height="1" fill="black"/>
+<rect x="5" y="4" width="1" height="1" fill="black"/>
+<rect x="6" y="5" width="1" height="1" fill="black"/>
+<rect x="7" y="6" width="1" height="1" fill="black"/>
+<rect x="8" y="7" width="1" height="1" fill="black"/>
+<rect x="9" y="8" width="1" height="1" fill="black"/>
+<rect x="3" y="10" width="1" height="1" fill="black"/>
+<rect x="2" y="11" width="1" height="1" fill="black"/>
+<rect x="1" y="12" width="1" height="1" fill="black"/>
+<rect x="6" y="10" width="1" height="1" fill="black"/>
+<rect x="7" y="11" width="1" height="2" fill="black"/>
+<rect x="8" y="13" width="1" height="2" fill="black"/>
+<rect x="5" y="13" width="1" height="2" fill="black"/>
+<rect x="4" y="11" width="1" height="2" fill="black"/>
+<rect x="6" y="15" width="2" height="1" fill="black"/>
+<rect x="6" y="9" width="3" height="1" fill="black"/>
+</svg>
