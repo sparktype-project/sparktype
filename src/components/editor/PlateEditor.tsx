@@ -80,7 +80,6 @@ export const PlateEditor = forwardRef<PlateEditorRef, PlateEditorProps>(({
     if (editor?.api?.markdown) {
       try {
         const serialized = editor.api.markdown.serialize();
-        console.log('PlateJS getMarkdown serialized:', serialized);
         return serialized;
       } catch (error) {
         console.warn('PlateJS getMarkdown error:', error);
