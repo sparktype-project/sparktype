@@ -1,15 +1,38 @@
-// src/core/services/images/images.service.ts
-
 import type { ImageService, Manifest } from '@/core/types';
-import { localImageService } from './localImage.service';
 import { cloudinaryImageService } from './cloudinaryImage.service';
+import { localImageService } from './localImage.service';
 
-const services: Record<string, ImageService> = {
-  local: localImageService,
-  cloudinary: cloudinaryImageService,
-};
+const services = new Map<string, ImageService>([
+  ['local', localImageService],
+  ['cloudinary', cloudinaryImageService],
+]);
+
+export function getRegisteredImageServices(): ImageService[] {
+  return Array.from(services.values());
+}
+
+export function getImageServiceById(serviceId: string): ImageService | undefined {
+  return services.get(serviceId);
+}
+
+export function getConfiguredImageServiceId(manifest: Manifest): string {
+  return manifest.settings?.imageProvider?.id || manifest.settings?.imageService || 'local';
+}
+
+export function getImageProviderPublicConfig(manifest: Manifest, serviceId: string): Record<string, unknown> {
+  const providerConfig = manifest.settings?.imageProviders?.[serviceId];
+  if (providerConfig) {
+    return providerConfig;
+  }
+
+  if (serviceId === 'cloudinary') {
+    return manifest.settings?.cloudinary || {};
+  }
+
+  return {};
+}
 
 export function getActiveImageService(manifest: Manifest): ImageService {
-  const serviceId = manifest.settings?.imageService || 'local';
-  return services[serviceId] || localImageService;
+  const serviceId = getConfiguredImageServiceId(manifest);
+  return getImageServiceById(serviceId) || localImageService;
 }

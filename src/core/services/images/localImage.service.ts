@@ -1,6 +1,6 @@
 // src/core/services/images/localImage.service.ts
 
-import type { ImageService, ImageRef, ImageTransformOptions, Manifest } from '@/core/types';
+import type { ImageService, ImageRef, ImageTransformOptions, Manifest, ImageServiceContext } from '@/core/types';
 import * as localSiteFs from '@/core/services/localFileSystem.service';
 import { slugify } from '@/core/libraries/utils';
 import { getCachedDerivative, setCachedDerivative, getAllCacheKeys } from './derivativeCache.service';
@@ -48,6 +48,18 @@ interface CompressionOptions {
 class LocalImageService implements ImageService {
   id = 'local';
   name = 'Store in Site Bundle';
+  kind = 'local' as const;
+  capabilities = {
+    upload: true,
+    transforms: true,
+    exportMode: 'bundle' as const,
+    importMode: 'full' as const,
+    migrationTargets: ['cloudinary'],
+  };
+  configFields = {
+    public: [],
+    secret: [],
+  };
 
   /**
    * Validates and uploads a user-provided image file.
@@ -58,7 +70,7 @@ class LocalImageService implements ImageService {
    * @returns {Promise<ImageRef>} A promise that resolves to an ImageRef object representing the saved file.
    * @throws {Error} If the file type is unsupported or the file size exceeds the configured limits.
    */
-  public async upload(file: File, siteId: string): Promise<ImageRef> {
+  public async upload(file: File, siteId: string, _context?: ImageServiceContext): Promise<ImageRef> {
     console.log(`[LocalImageService] Upload started - file: ${file.name}, size: ${file.size}, type: ${file.type}, siteId: ${siteId}`);
 
     // --- Validation Block ---

@@ -1,13 +1,5 @@
 // src/core/services/siteSecrets.service.ts
-import localforage from 'localforage';
-
-const DB_NAME = 'SparktypeDB';
-
-// This store is NEVER included in the site export.
-const siteSecretsStore = localforage.createInstance({
-  name: DB_NAME,
-  storeName: 'siteSecrets',
-});
+import { readMetadata, removeMetadata, withSiteOperation, writeMetadata } from '@/core/services/storage/siteStorage.service';
 
 
 /**
@@ -18,6 +10,7 @@ export interface SiteSecrets {
   cloudinary?: {
     uploadPreset?: string;
   };
+  imageProviders?: Record<string, Record<string, string | undefined>>;
   publishing?: {
     netlify?: {
       apiToken?: string;
@@ -38,7 +31,7 @@ export interface SiteSecrets {
  * @returns A promise that resolves to the SiteSecrets object, or an empty object.
  */
 export async function loadSiteSecretsFromDb(siteId: string): Promise<SiteSecrets> {
-  return (await siteSecretsStore.getItem<SiteSecrets>(siteId)) || {};
+  return (await readMetadata<SiteSecrets>('siteSecrets', siteId)) || {};
 }
 
 /**
@@ -47,7 +40,9 @@ export async function loadSiteSecretsFromDb(siteId: string): Promise<SiteSecrets
  * @param secrets The SiteSecrets object to save.
  */
 export async function saveSiteSecretsToDb(siteId: string, secrets: SiteSecrets): Promise<void> {
-  await siteSecretsStore.setItem(siteId, secrets);
+  await withSiteOperation(siteId, 'secrets-save', async () => {
+    await writeMetadata('siteSecrets', siteId, secrets);
+  });
 }
 
 /**
@@ -56,5 +51,5 @@ export async function saveSiteSecretsToDb(siteId: string, secrets: SiteSecrets):
  * @param siteId The ID of the site whose secrets should be deleted.
  */
 export async function deleteSiteSecretsFromDb(siteId: string): Promise<void> {
-  await siteSecretsStore.removeItem(siteId);
+  await removeMetadata('siteSecrets', siteId);
 }

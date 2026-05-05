@@ -1,13 +1,5 @@
 // src/core/services/assetStorage.service.ts
-
-import localforage from 'localforage';
-
-// --- Store Definitions ---
-// Each custom asset type gets its own dedicated store for clarity and performance.
-
-const customThemeStore = localforage.createInstance({ name: 'SparktypeDB', storeName: 'customThemeFiles' });
-const customLayoutStore = localforage.createInstance({ name: 'SparktypeDB', storeName: 'customLayoutFiles' });
-const customBlockStore = localforage.createInstance({ name: 'SparktypeDB', storeName: 'customBlockFiles' });
+import { readMetadata, removeMetadata, writeMetadata } from '@/core/services/storage/siteStorage.service';
 
 /**
  * Represents the storage structure for a single asset bundle.
@@ -28,9 +20,9 @@ type AssetBundle = Record<string, string | Blob>;
  * @param files A record mapping file paths within the bundle to their content.
  */
 export async function saveCustomBlockBundle(siteId: string, blockPath: string, files: AssetBundle): Promise<void> {
-  const siteStorage = await customBlockStore.getItem<Record<string, AssetBundle>>(siteId) || {};
+  const siteStorage = await readMetadata<Record<string, AssetBundle>>('customBlockFiles', siteId) || {};
   siteStorage[blockPath] = files;
-  await customBlockStore.setItem(siteId, siteStorage);
+  await writeMetadata('customBlockFiles', siteId, siteStorage);
 }
 
 /**
@@ -42,7 +34,7 @@ export async function saveCustomBlockBundle(siteId: string, blockPath: string, f
  * @returns A promise that resolves to the file's string content, or null if not found.
  */
 export async function getCustomBlockFileContent(siteId: string, blockPath: string, filePath: string): Promise<string | null> {
-  const siteStorage = await customBlockStore.getItem<Record<string, AssetBundle>>(siteId);
+  const siteStorage = await readMetadata<Record<string, AssetBundle>>('customBlockFiles', siteId);
   const fileContent = siteStorage?.[blockPath]?.[filePath];
 
   if (typeof fileContent === 'string') return fileContent;
@@ -57,7 +49,7 @@ export async function getCustomBlockFileContent(siteId: string, blockPath: strin
  * @returns A promise that resolves to a record of all custom blocks and their files.
  */
 export async function getAllCustomBlockFiles(siteId: string): Promise<Record<string, AssetBundle>> {
-  return (await customBlockStore.getItem<Record<string, AssetBundle>>(siteId)) || {};
+  return (await readMetadata<Record<string, AssetBundle>>('customBlockFiles', siteId)) || {};
 }
 
 // ============================================================================
@@ -72,9 +64,9 @@ export async function getAllCustomBlockFiles(siteId: string): Promise<Record<str
  * @param files A record mapping file paths within the bundle to their content.
  */
 export async function saveCustomThemeBundle(siteId: string, themeName: string, files: AssetBundle): Promise<void> {
-  const siteStorage = await customThemeStore.getItem<Record<string, AssetBundle>>(siteId) || {};
+  const siteStorage = await readMetadata<Record<string, AssetBundle>>('customThemeFiles', siteId) || {};
   siteStorage[themeName] = files;
-  await customThemeStore.setItem(siteId, siteStorage);
+  await writeMetadata('customThemeFiles', siteId, siteStorage);
 }
 
 /**
@@ -86,7 +78,7 @@ export async function saveCustomThemeBundle(siteId: string, themeName: string, f
  * @returns A promise that resolves to the file's string content, or null if not found.
  */
 export async function getCustomThemeFileContent(siteId: string, themeName: string, filePath: string): Promise<string | null> {
-  const siteStorage = await customThemeStore.getItem<Record<string, AssetBundle>>(siteId);
+  const siteStorage = await readMetadata<Record<string, AssetBundle>>('customThemeFiles', siteId);
   const fileContent = siteStorage?.[themeName]?.[filePath];
 
   if (typeof fileContent === 'string') return fileContent;
@@ -101,7 +93,7 @@ export async function getCustomThemeFileContent(siteId: string, themeName: strin
  * @returns A promise that resolves to an array of theme names.
  */
 export async function getAllCustomThemes(siteId: string): Promise<string[]> {
-  const siteStorage = await customThemeStore.getItem<Record<string, AssetBundle>>(siteId);
+  const siteStorage = await readMetadata<Record<string, AssetBundle>>('customThemeFiles', siteId);
   return Object.keys(siteStorage || {});
 }
 
@@ -112,10 +104,10 @@ export async function getAllCustomThemes(siteId: string): Promise<string[]> {
  * @param themeName The name of the theme to delete.
  */
 export async function deleteCustomTheme(siteId: string, themeName: string): Promise<void> {
-  const siteStorage = await customThemeStore.getItem<Record<string, AssetBundle>>(siteId);
+  const siteStorage = await readMetadata<Record<string, AssetBundle>>('customThemeFiles', siteId);
   if (siteStorage) {
     delete siteStorage[themeName];
-    await customThemeStore.setItem(siteId, siteStorage);
+    await writeMetadata('customThemeFiles', siteId, siteStorage);
   }
 }
 
@@ -127,7 +119,7 @@ export async function deleteCustomTheme(siteId: string, themeName: string): Prom
  * @returns A promise that resolves to a record of all theme files.
  */
 export async function getAllCustomThemeFiles(siteId: string, themeName: string): Promise<AssetBundle> {
-  const siteStorage = await customThemeStore.getItem<Record<string, AssetBundle>>(siteId);
+  const siteStorage = await readMetadata<Record<string, AssetBundle>>('customThemeFiles', siteId);
   return siteStorage?.[themeName] || {};
 }
 
@@ -137,8 +129,8 @@ export async function getAllCustomThemeFiles(siteId: string, themeName: string):
 
 export async function deleteCustomAssetsForSite(siteId: string): Promise<void> {
   await Promise.all([
-    customThemeStore.removeItem(siteId),
-    customLayoutStore.removeItem(siteId),
-    customBlockStore.removeItem(siteId),
+    removeMetadata('customThemeFiles', siteId),
+    removeMetadata('customLayoutFiles', siteId),
+    removeMetadata('customBlockFiles', siteId),
   ]);
 }

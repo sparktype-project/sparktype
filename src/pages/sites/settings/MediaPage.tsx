@@ -1,105 +1,201 @@
-// src/pages/sites/settings/ImageSettingsPage.tsx
-
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-
-// State Management
-import { useAppStore } from '@/core/state/useAppStore';
-import { type AppStore } from '@/core/state/useAppStore';
-
-// Types
-import { type Manifest } from '@/core/types';
-import { type SiteSecrets } from '@/core/services/siteSecrets.service';
-
-// UI Components
 import { Button } from '@/core/components/ui/button';
-import { Label } from '@/core/components/ui/label';
 import { Input } from '@/core/components/ui/input';
+import { Label } from '@/core/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/core/components/ui/select';
+import { useAppStore, type AppStore } from '@/core/state/useAppStore';
+import type { Manifest, SiteSecrets } from '@/core/types';
+import { getConfiguredImageServiceId, getImageServiceById, getRegisteredImageServices } from '@/core/services/images/images.service';
 import { toast } from 'sonner';
 
-type ImageServiceId = 'local' | 'cloudinary';
+function getInitialPublicConfig(site: NonNullable<ReturnType<AppStore['getSiteById']>>, providerId: string): Record<string, string> {
+  const config = site.manifest.settings?.imageProviders?.[providerId];
+  if (config) {
+    return Object.fromEntries(
+      Object.entries(config).map(([key, value]) => [key, typeof value === 'string' ? value : ''])
+    );
+  }
+
+  if (providerId === 'cloudinary') {
+    return {
+      cloudName: site.manifest.settings?.cloudinary?.cloudName || '',
+    };
+  }
+
+  return {};
+}
+
+function getInitialSecretConfig(site: NonNullable<ReturnType<AppStore['getSiteById']>>, providerId: string): Record<string, string> {
+  const genericConfig = site.secrets?.imageProviders?.[providerId];
+  if (genericConfig) {
+    return Object.fromEntries(
+      Object.entries(genericConfig).map(([key, value]) => [key, typeof value === 'string' ? value : ''])
+    );
+  }
+
+  if (providerId === 'cloudinary') {
+    return {
+      uploadPreset: site.secrets?.cloudinary?.uploadPreset || '',
+    };
+  }
+
+  return {};
+}
 
 export default function ImageSettingsPage() {
   const { siteId = '' } = useParams<{ siteId: string }>();
-
-  // Selectors for Zustand store
   const site = useAppStore(useCallback((state: AppStore) => state.getSiteById(siteId), [siteId]));
   const updateManifestAction = useAppStore((state: AppStore) => state.updateManifest);
   const updateSiteSecretsAction = useAppStore((state: AppStore) => state.updateSiteSecrets);
 
-  // Local state for the form
-  const [selectedService, setSelectedService] = useState<ImageServiceId>('local');
-  const [cloudinaryCloudName, setCloudinaryCloudName] = useState('');
-  const [cloudinaryUploadPreset, setCloudinaryUploadPreset] = useState('');
+  const services = useMemo(() => getRegisteredImageServices(), []);
+  const [selectedServiceId, setSelectedServiceId] = useState('local');
+  const [publicConfig, setPublicConfig] = useState<Record<string, string>>({});
+  const [secretConfig, setSecretConfig] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [validationMessage, setValidationMessage] = useState<{ valid: boolean; text: string }>({
+    valid: true,
+    text: 'Provider configuration looks valid.',
+  });
 
-  // Effect to populate the form's local state from the global store on mount.
+  const selectedService = getImageServiceById(selectedServiceId) || services[0];
+
   useEffect(() => {
-    if (site?.manifest) {
-      setIsLoading(true);
-      const { imageService, cloudinary } = site.manifest.settings || {};
-      setSelectedService(imageService || 'local');
-      setCloudinaryCloudName(cloudinary?.cloudName || '');
-      setCloudinaryUploadPreset(site.secrets?.cloudinary?.uploadPreset || '');
-      setHasChanges(false);
-      setIsLoading(false);
+    if (!site?.manifest) {
+      return;
     }
-  }, [site]); // Re-run if the site object in the store changes.
+
+    setIsLoading(true);
+    const configuredServiceId = getConfiguredImageServiceId(site.manifest);
+    setSelectedServiceId(configuredServiceId);
+    setPublicConfig(getInitialPublicConfig(site, configuredServiceId));
+    setSecretConfig(getInitialSecretConfig(site, configuredServiceId));
+    setHasChanges(false);
+    setIsLoading(false);
+  }, [site]);
+
+  useEffect(() => {
+    if (!site?.manifest || !selectedService?.validateConfig) {
+      setValidationMessage({ valid: true, text: 'Provider configuration looks valid.' });
+      return;
+    }
+
+    const validationCandidate = selectedService.validateConfig({
+      manifest: {
+        ...site.manifest,
+        settings: {
+          ...site.manifest.settings,
+          imageService: selectedServiceId,
+          imageProvider: { id: selectedServiceId },
+          imageProviders: {
+            ...(site.manifest.settings?.imageProviders || {}),
+            [selectedServiceId]: publicConfig,
+          },
+        },
+      } as Manifest,
+      secrets: {
+        ...site.secrets,
+        imageProviders: {
+          ...(site.secrets?.imageProviders || {}),
+          [selectedServiceId]: secretConfig,
+        },
+      } as SiteSecrets,
+      site,
+    });
+
+    Promise.resolve(validationCandidate).then((result) => {
+      if (!result.valid) {
+        setValidationMessage({ valid: false, text: result.errors.join(' ') });
+        return;
+      }
+
+      const warningText = result.warnings?.join(' ');
+      setValidationMessage({
+        valid: true,
+        text: warningText || 'Provider configuration looks valid.',
+      });
+    });
+  }, [publicConfig, secretConfig, selectedService, selectedServiceId, site]);
 
   const handleServiceChange = (value: string) => {
-    setSelectedService(value as ImageServiceId);
+    if (!site) {
+      return;
+    }
+
+    setSelectedServiceId(value);
+    setPublicConfig(getInitialPublicConfig(site, value));
+    setSecretConfig(getInitialSecretConfig(site, value));
     setHasChanges(true);
   };
 
-  const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
-    setter(value);
+  const handleConfigChange = (
+    setter: React.Dispatch<React.SetStateAction<Record<string, string>>>,
+    key: string,
+    value: string
+  ) => {
+    setter((current) => ({ ...current, [key]: value }));
     setHasChanges(true);
   };
 
   const handleSave = async () => {
-    if (!site?.manifest) {
-      toast.error("Site data not available. Cannot save settings.");
+    if (!site?.manifest || !selectedService) {
+      toast.error('Site data not available. Cannot save settings.');
       return;
     }
-    setIsLoading(true);
+
+    setIsSaving(true);
 
     const newManifest: Manifest = {
       ...site.manifest,
       settings: {
         ...site.manifest.settings,
-        imageService: selectedService,
-        cloudinary: {
-          cloudName: cloudinaryCloudName.trim(),
+        imageService: selectedServiceId,
+        imageProvider: {
+          id: selectedServiceId,
         },
+        imageProviders: {
+          ...(site.manifest.settings?.imageProviders || {}),
+          [selectedServiceId]: publicConfig,
+        },
+        cloudinary: selectedServiceId === 'cloudinary'
+          ? {
+              cloudName: publicConfig.cloudName?.trim() || '',
+            }
+          : site.manifest.settings?.cloudinary,
       },
     };
 
     const newSecrets: SiteSecrets = {
-      ...site.secrets, // Preserve other potential secrets
-      cloudinary: {
-        uploadPreset: cloudinaryUploadPreset.trim(),
-      }
+      ...site.secrets,
+      imageProviders: {
+        ...(site.secrets?.imageProviders || {}),
+        [selectedServiceId]: secretConfig,
+      },
+      cloudinary: selectedServiceId === 'cloudinary'
+        ? {
+            uploadPreset: secretConfig.uploadPreset?.trim() || '',
+          }
+        : site.secrets?.cloudinary,
     };
 
     try {
-      // These actions persist data and update the global state.
-      // Toasts for success are now handled inside the actions for consistency.
       await updateManifestAction(siteId, newManifest);
       await updateSiteSecretsAction(siteId, newSecrets);
       setHasChanges(false);
+      toast.success('Image provider settings saved.');
     } catch (error) {
-      console.error("An error occurred during save:", error);
-      // Let the action's own toast handle the error message.
+      console.error('An error occurred during save:', error);
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
   const pageTitle = `Image Settings - ${site?.manifest?.title || 'Loading...'}`;
 
-  if (isLoading || !site) {
+  if (isLoading || !site || !selectedService) {
     return (
       <>
         <title>{pageTitle}</title>
@@ -114,55 +210,78 @@ export default function ImageSettingsPage() {
       <div className="space-y-6 max-w-2xl p-6">
         <div>
           <h1 className="text-2xl font-bold">Media</h1>
-          <p className="text-muted-foreground">Configure how images are stored and processed for your site.</p>
+          <p className="text-muted-foreground">Configure how images are stored, transformed, and restored for this site.</p>
         </div>
 
         <div className="border-t pt-6 space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="service-select">Image storage</Label>
-            <Select value={selectedService} onValueChange={handleServiceChange}>
+            <Label htmlFor="service-select">Image provider</Label>
+            <Select value={selectedServiceId} onValueChange={handleServiceChange}>
               <SelectTrigger id="service-select" className="mt-1">
-                <SelectValue placeholder="Select a service..." />
+                <SelectValue placeholder="Select a provider..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="local">Store in site (default)</SelectItem>
-                <SelectItem value="cloudinary">Upload to Cloudinary</SelectItem>
+                {services.map((service) => (
+                  <SelectItem key={service.id} value={service.id}>
+                    {service.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">"Store in site" is best for portability. "Cloudinary" is best for performance.</p>
+            <p className="text-xs text-muted-foreground">
+              Local storage maximizes portability. Remote providers reduce browser storage pressure and can handle transforms externally.
+            </p>
           </div>
 
-          {selectedService === 'cloudinary' && (
-            <div className="p-4 border rounded-lg bg-card space-y-4">
-              <h3 className="font-semibold text-card-foreground">Cloudinary Settings</h3>
-              <div className="space-y-2">
-                <Label htmlFor="cloud-name">Cloudinary Cloud Name (Public)</Label>
-                <Input
-                  id="cloud-name"
-                  value={cloudinaryCloudName}
-                  onChange={(e) => handleInputChange(setCloudinaryCloudName, e.target.value)}
-                  placeholder="e.g., your-cloud-name"
-                />
-                <p className="text-xs text-muted-foreground">This is public and stored in your site's manifest.</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="upload-preset">Cloudinary upload preset (secret)</Label>
-                <Input
-                  id="upload-preset"
-                  type="password"
-                  value={cloudinaryUploadPreset}
-                  onChange={(e) => handleInputChange(setCloudinaryUploadPreset, e.target.value)}
-                  placeholder="e.g., ml_default"
-                />
-                <p className="text-xs text-muted-foreground">This is a secret and is stored securely in your browser, not in your public site files.</p>
-              </div>
+          <div className="rounded-lg border bg-card p-4 space-y-4">
+            <div className="space-y-1">
+              <h3 className="font-semibold text-card-foreground">{selectedService.name}</h3>
+              <p className="text-xs text-muted-foreground">
+                Export mode: {selectedService.capabilities?.exportMode || 'bundle'}. Import mode: {selectedService.capabilities?.importMode || 'full'}.
+              </p>
             </div>
-          )}
+
+            {selectedService.configFields?.public.map((field) => (
+              <div key={field.key} className="space-y-2">
+                <Label htmlFor={`public-${field.key}`}>{field.label}</Label>
+                <Input
+                  id={`public-${field.key}`}
+                  value={publicConfig[field.key] || ''}
+                  onChange={(event) => handleConfigChange(setPublicConfig, field.key, event.target.value)}
+                  placeholder={field.placeholder}
+                  type={field.type || 'text'}
+                />
+                {field.description ? <p className="text-xs text-muted-foreground">{field.description}</p> : null}
+              </div>
+            ))}
+
+            {selectedService.configFields?.secret.map((field) => (
+              <div key={field.key} className="space-y-2">
+                <Label htmlFor={`secret-${field.key}`}>{field.label}</Label>
+                <Input
+                  id={`secret-${field.key}`}
+                  value={secretConfig[field.key] || ''}
+                  onChange={(event) => handleConfigChange(setSecretConfig, field.key, event.target.value)}
+                  placeholder={field.placeholder}
+                  type={field.type || 'password'}
+                />
+                {field.description ? <p className="text-xs text-muted-foreground">{field.description}</p> : null}
+              </div>
+            ))}
+
+            <div className="rounded-md border bg-muted/40 p-3 text-sm">
+              {validationMessage.valid === false ? (
+                <p className="text-destructive">{validationMessage.text}</p>
+              ) : (
+                <p className="text-muted-foreground">{validationMessage.text}</p>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className=" pt-4">
-          <Button onClick={handleSave} disabled={isLoading || !hasChanges} size="lg">
-            {isLoading ? 'Saving...' : 'Save settings'}
+        <div className="pt-4">
+          <Button onClick={handleSave} disabled={isSaving || !hasChanges} size="lg">
+            {isSaving ? 'Saving...' : 'Save settings'}
           </Button>
         </div>
       </div>

@@ -7,7 +7,9 @@
 
 declare global {
   interface Window {
-    __TAURI__?: any;
+    __TAURI__?: unknown;
+    __TAURI_IPC__?: unknown;
+    tauri?: unknown;
   }
 }
 
@@ -17,36 +19,21 @@ declare global {
  */
 export function isTauriApp(): boolean {
   if (typeof window === 'undefined') return false;
-  
-  // Primary detection methods
-  const isTauriEnvironment = (
-    // Check for Tauri globals
+
+  const tauriEnv = import.meta.env;
+
+  return Boolean(
     window.__TAURI__ !== undefined ||
-    (window as any).__TAURI_IPC__ !== undefined ||
-    (window as any).tauri !== undefined ||
-    // Check user agent
+    window.__TAURI_IPC__ !== undefined ||
+    window.tauri !== undefined ||
     navigator.userAgent.includes('Tauri') ||
     navigator.userAgent.includes('tauri') ||
-    // Check for Tauri-specific port (development)
-    window.location.port === '5174' ||
-    // Check if we're running in the Tauri protocol
     window.location.protocol === 'tauri:' ||
-    // Check for Tauri app context
     document.documentElement.classList.contains('tauri') ||
-    // Check Tauri environment variables
-    (import.meta.env && (
-      import.meta.env.TAURI_ENV_PLATFORM !== undefined ||
-      import.meta.env.TAURI_ENV_ARCH !== undefined ||
-      import.meta.env.TAURI_ENV_FAMILY !== undefined
-    ))
+    tauriEnv.TAURI_ENV_PLATFORM !== undefined ||
+    tauriEnv.TAURI_ENV_ARCH !== undefined ||
+    tauriEnv.TAURI_ENV_FAMILY !== undefined
   );
-  
-  // Debug logging (remove in production)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Platform detection - isTauriApp:', isTauriEnvironment);
-  }
-  
-  return isTauriEnvironment;
 }
 
 /**

@@ -77,7 +77,11 @@ export default function SiteAssetUploader({ siteId, label, value, onChange, onRe
     setIsUploading(true);
     try {
       const service = getActiveImageService(site.manifest);
-      const newRef = await service.upload(file, siteId);
+      const newRef = await service.upload(file, siteId, {
+        manifest: site.manifest,
+        secrets: site.secrets,
+        site,
+      });
 
       // Track this image as referenced by the manifest field
       try {

@@ -55,7 +55,11 @@ export function useSparkTypeUpload({
       }, 100);
 
       // Upload the image using the Sparktype image service
-      const imageRef = await imageService.upload(file, siteId);
+      const imageRef = await imageService.upload(file, siteId, {
+        manifest: site.manifest,
+        secrets: site.secrets,
+        site,
+      });
       
       clearInterval(progressInterval);
       setProgress(100);

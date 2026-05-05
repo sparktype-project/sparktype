@@ -369,7 +369,11 @@ export interface Manifest {
   favicon?: ImageRef;
   imagePresets?: Record<string, ImagePreset>;
   settings?: {
-    imageService?: 'local' | 'cloudinary';
+    imageService?: string;
+    imageProvider?: {
+      id: string;
+    };
+    imageProviders?: Record<string, Record<string, unknown>>;
     cloudinary?: {
       cloudName?: string;
     },
@@ -507,11 +511,12 @@ export type PageResolutionResult =
 
 /** The storable reference to an uploaded image. This goes in frontmatter. */
 export interface ImageRef {
-  serviceId: 'local' | 'cloudinary';
+  serviceId: string;
   src: string;
   alt?: string;
   width?: number;
   height?: number;
+  providerData?: Record<string, unknown>;
 }
 
 // Removed separate image tracking - images are discovered from content files
@@ -525,13 +530,52 @@ export interface ImageTransformOptions {
   format?: 'webp' | 'avif' | 'jpeg';
 }
 
+export interface ImageProviderConfigField {
+  key: string;
+  label: string;
+  description?: string;
+  placeholder?: string;
+  type?: 'text' | 'password' | 'url';
+  secret?: boolean;
+  required?: boolean;
+}
+
+export interface ImageProviderCapabilities {
+  upload: boolean;
+  transforms: boolean;
+  exportMode: 'bundle' | 'metadata-only';
+  importMode: 'full' | 'metadata-only';
+  migrationTargets?: string[];
+}
+
+export interface ImageProviderValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings?: string[];
+}
+
+export interface ImageServiceContext {
+  manifest: Manifest;
+  secrets?: SiteSecrets;
+  site?: LocalSiteData;
+}
+
 /** The interface/contract that all image services must implement. */
 export interface ImageService {
   id: string;
   name: string;
-  upload(file: File, siteId: string): Promise<ImageRef>;
+  kind?: 'local' | 'remote';
+  capabilities?: ImageProviderCapabilities;
+  configFields?: {
+    public: ImageProviderConfigField[];
+    secret: ImageProviderConfigField[];
+  };
+  upload(file: File, siteId: string, context?: ImageServiceContext): Promise<ImageRef>;
   getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions, isExport: boolean, forIframe?: boolean, skipDerivatives?: boolean): Promise<string>;
   getExportableAssets(siteId: string, allImageRefs: ImageRef[]): Promise<{ path: string; data: Blob; }[]>;
+  validateConfig?(context: ImageServiceContext): Promise<ImageProviderValidationResult> | ImageProviderValidationResult;
+  createMediaEntry?(ref: ImageRef): Record<string, unknown> | undefined;
+  migrateAssetPath?(originalPath: string, fromProviderId: string): string;
 }
 
 
@@ -597,6 +641,10 @@ export interface MediaImageEntry {
   referencedIn: string[];
   /** Essential image metadata for export/import */
   metadata: MediaImageMetadata;
+  /** Provider responsible for resolving the image */
+  providerId?: string;
+  /** Provider-specific metadata needed for restore/migration */
+  providerData?: Record<string, unknown>;
 }
 
 /**
@@ -606,8 +654,12 @@ export interface MediaImageEntry {
 export interface MediaManifest {
   /** Format version for future compatibility */
   version: number;
-  /** Image service that was used (local, cloudinary, etc.) */
-  imageService: string;
+  /** Legacy field preserved for backward compatibility */
+  imageService?: string;
+  /** Active provider for this site export */
+  providerId?: string;
+  /** Provider public configuration needed for restore/migration */
+  providers?: Record<string, Record<string, unknown>>;
   /** Map of image paths to their entries (only referenced images) */
   images: Record<string, MediaImageEntry>;
 }
@@ -626,4 +678,15 @@ export interface DataFile {
   version: number;
   /** Optional description of the data file contents */
   description?: string;
+}
+
+export type BackupTargetType = 'local-file' | 'local-folder' | 'webdav' | 's3-compatible';
+
+export interface BackupTargetConfig {
+  id: string;
+  type: BackupTargetType;
+  name: string;
+  enabled: boolean;
+  encrypted?: boolean;
+  options?: Record<string, unknown>;
 }

@@ -24,6 +24,7 @@ import type {
 } from '@/core/types';
 import { getImageRegistry, saveImageRegistry, createEmptyRegistry } from './imageRegistry.service';
 import { ensureImageRegistry } from './registryMigration.service';
+import { getActiveImageService, getConfiguredImageServiceId, getImageProviderPublicConfig } from './images.service';
 
 /**
  * Validation result for media manifest format and data integrity.
@@ -59,7 +60,7 @@ export interface GenerateMediaManifestOptions {
  */
 export interface ImportMediaManifestOptions {
   /** Whether to migrate to a different image service during import */
-  migrateToService?: 'local' | 'cloudinary';
+  migrateToService?: string;
   /** Whether to validate all image references exist (default: true) */
   validateReferences?: boolean;
   /** Whether to preserve existing registry data (default: false) */
@@ -128,7 +129,8 @@ export async function generateMediaManifest(
     const registry = await getImageRegistry(siteData.siteId);
 
     // Extract image service configuration
-    const imageService = siteData.manifest.settings?.imageService || 'local';
+    const providerId = getConfiguredImageServiceId(siteData.manifest);
+    const imageService = getActiveImageService(siteData.manifest);
 
     // Build the manifest images object
     const manifestImages: Record<string, MediaImageEntry> = {};
@@ -157,6 +159,14 @@ export async function generateMediaManifest(
       manifestImages[imagePath] = {
         referencedIn: [...metadata.referencedIn], // Create copy to avoid mutations
         metadata: exportMetadata,
+        providerId,
+        providerData: imageService.createMediaEntry?.({
+          serviceId: providerId,
+          src: imagePath,
+          alt: metadata.alt,
+          width: metadata.width,
+          height: metadata.height,
+        }),
       };
 
       includedCount++;
@@ -168,7 +178,11 @@ export async function generateMediaManifest(
 
     const manifest: MediaManifest = {
       version: 1,
-      imageService,
+      imageService: providerId,
+      providerId,
+      providers: {
+        [providerId]: getImageProviderPublicConfig(siteData.manifest, providerId),
+      },
       images: manifestImages,
     };
 
@@ -234,13 +248,15 @@ export function validateMediaManifest(mediaJson: any): MediaManifestValidation {
       warnings.push(`Unknown manifest version ${mediaJson.version}, expected 1`);
     }
 
-    if (typeof mediaJson.imageService !== 'string') {
-      errors.push('Media manifest must have a string imageService field');
+    const detectedProviderId =
+      typeof mediaJson.providerId === 'string' ? mediaJson.providerId
+      : typeof mediaJson.imageService === 'string' ? mediaJson.imageService
+      : undefined;
+
+    if (!detectedProviderId) {
+      errors.push('Media manifest must have a string providerId field');
     } else {
-      serviceType = mediaJson.imageService;
-      if (!['local', 'cloudinary'].includes(serviceType)) {
-        warnings.push(`Unknown image service '${serviceType}'`);
-      }
+      serviceType = detectedProviderId;
     }
 
     if (typeof mediaJson.images !== 'object' || mediaJson.images === null) {
@@ -375,7 +391,7 @@ export async function importMediaManifest(
     referencesProcessed: 0,
     errors: [],
     warnings: [],
-    finalImageService: mediaManifest.imageService,
+    finalImageService: mediaManifest.providerId || mediaManifest.imageService || 'local',
   };
 
   try {
@@ -390,12 +406,13 @@ export async function importMediaManifest(
     result.warnings.push(...validation.warnings);
 
     // Handle service migration
-    const targetService = migrateToService || mediaManifest.imageService;
+    const sourceProviderId = mediaManifest.providerId || mediaManifest.imageService || 'local';
+    const targetService = migrateToService || sourceProviderId;
     result.finalImageService = targetService;
 
-    if (migrateToService && migrateToService !== mediaManifest.imageService) {
+    if (migrateToService && migrateToService !== sourceProviderId) {
       result.warnings.push(
-        `Migrating from ${mediaManifest.imageService} to ${migrateToService} service`
+        `Migrating from ${sourceProviderId} to ${migrateToService} service`
       );
     }
 
@@ -408,7 +425,8 @@ export async function importMediaManifest(
     for (const [imagePath, imageEntry] of Object.entries(mediaManifest.images)) {
       try {
         // Handle service migration for image paths
-        const finalImagePath = migrateImagePath(imagePath, mediaManifest.imageService, targetService);
+        const entryProviderId = imageEntry.providerId || sourceProviderId;
+        const finalImagePath = migrateImagePath(imagePath, entryProviderId, targetService);
 
         // Create registry entry
         const registryMetadata: ImageMetadata = {

@@ -1,6 +1,5 @@
 // src/core/services/gitSync.service.ts
-
-import localforage from 'localforage';
+import { listMetadataValues, readMetadata, removeMetadata, writeMetadata } from '@/core/services/storage/siteStorage.service';
 
 export interface GitSyncState {
   siteId: string;
@@ -27,11 +26,6 @@ export interface ConflictChoice {
   resolution: ConflictResolution;
 }
 
-const syncStateStore = localforage.createInstance({
-  name: 'sparktype-git-sync',
-  storeName: 'syncState'
-});
-
 /**
  * Service for managing Git sync state and operations
  */
@@ -41,7 +35,7 @@ export class GitSyncService {
    * Get the current sync state for a site
    */
   async getSyncState(siteId: string): Promise<GitSyncState | null> {
-    return await syncStateStore.getItem<GitSyncState>(siteId);
+    return await readMetadata<GitSyncState>('gitSyncState', siteId);
   }
 
   /**
@@ -57,7 +51,7 @@ export class GitSyncService {
     };
 
     const updated = { ...existing, ...updates, lastSyncTimestamp: Date.now() };
-    await syncStateStore.setItem(siteId, updated);
+    await writeMetadata('gitSyncState', siteId, updated);
     console.log(`[GitSyncService] Updated sync state for ${siteId}:`, updated);
   }
 
@@ -77,7 +71,8 @@ export class GitSyncService {
   /**
    * Check if local site has unsaved changes
    */
-  async hasLocalChanges(_siteId: string): Promise<boolean> {
+  async hasLocalChanges(siteId: string): Promise<boolean> {
+    void siteId;
     // For now, we'll assume if the user is in the editor, there might be changes
     // In a more sophisticated implementation, we'd track dirty state
     return false; // Simplified for now
@@ -87,7 +82,7 @@ export class GitSyncService {
    * Clear sync state (useful for cleanup)
    */
   async clearSyncState(siteId: string): Promise<void> {
-    await syncStateStore.removeItem(siteId);
+    await removeMetadata('gitSyncState', siteId);
     console.log(`[GitSyncService] Cleared sync state for ${siteId}`);
   }
 
@@ -95,13 +90,7 @@ export class GitSyncService {
    * Get all sites with sync state (useful for background sync)
    */
   async getAllSyncStates(): Promise<GitSyncState[]> {
-    const states: GitSyncState[] = [];
-    await syncStateStore.iterate<GitSyncState, void>((value, _key) => {
-      if (value) {
-        states.push(value);
-      }
-    });
-    return states;
+    return listMetadataValues<GitSyncState>('gitSyncState');
   }
 }
 

@@ -5,6 +5,8 @@ import { produce } from 'immer';
 import {  type LocalSiteData,  type Manifest } from '@/core/types';
 import * as localSiteFs from '@/core/services/localFileSystem.service';
 import { loadSiteSecretsFromDb } from '@/core/services/siteSecrets.service';
+import { getStorageHealth } from '@/core/services/storage/siteStorage.service';
+import type { AuthSlice } from './authSlice';
 import { toast } from 'sonner';
 
 export interface SiteSlice {
@@ -38,6 +40,13 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
       if (initialSites.length === 0) {
         console.log('[initializeSites] No sites found - storage may have been cleared');
       }
+
+      const storageHealth = await getStorageHealth();
+      if (storageHealth.status !== 'healthy') {
+        toast.warning('Storage needs attention', {
+          description: storageHealth.reason || 'Sparktype detected degraded local storage and kept your data in a safe recovery state.',
+        });
+      }
     } catch (error) {
       console.error("Failed to initialize sites from storage:", error);
       toast.error("Could not load your sites. Storage might be corrupted.");
@@ -67,7 +76,7 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
 
       // Check if authentication is required for this site
       if (manifest.auth?.requiresAuth) {
-        const appStore = get() as any; // Cast to access auth slice methods
+        const appStore = get() as SiteSlice & AuthSlice;
         const authStatus = appStore.getSiteAuthStatus(siteId, manifest);
         
         if (!authStatus.isAuthenticated) {
@@ -120,6 +129,7 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
       } else {
         toast.error(`Could not load site data for ID: ${siteId}`);
       }
+      throw error;
     } finally {
       set(produce(draft => { draft.loadingSites.delete(siteId); }));
     }

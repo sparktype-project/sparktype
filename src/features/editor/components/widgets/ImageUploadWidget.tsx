@@ -78,7 +78,11 @@ export default function ImageUploadWidget(props: WidgetProps) {
       const service = getActiveImageService(site.manifest);
       console.log(`[ImageUploadWidget] Using upload service:`, service.constructor.name);
       const uploadStartTime = Date.now();
-      const newRef = await service.upload(file, siteId);
+      const newRef = await service.upload(file, siteId, {
+        manifest: site.manifest,
+        secrets: site.secrets,
+        site,
+      });
       const uploadEndTime = Date.now();
       console.log(`[ImageUploadWidget] Upload completed in ${uploadEndTime - uploadStartTime}ms`);
       onChange(newRef);
