@@ -10,6 +10,7 @@ import { Toaster } from "./core/components/ui/sonner";
 import AuthGuard from './core/components/AuthGuard';
 import { PlatformProvider } from './core/providers/PlatformProvider';
 import Loader from './core/components/ui/Loader';
+import { Button } from './core/components/ui/button';
 // --- Code-Splitting Page Imports using React.lazy ---
 // This is a best practice to keep the initial bundle size small.
 // Each page component is only loaded when its route is visited.
@@ -36,6 +37,9 @@ export default function App() {
   useInitialiseUIStore();
   const initialize = useAppStore(state => state.initialize);
   const isInitialized = useAppStore(state => state.isInitialized);
+  const initError = useAppStore(state => state.initError);
+  const retryInitialize = useAppStore(state => state.retryInitialize);
+  const clearInitError = useAppStore(state => state.clearInitError);
   const [clientMounted, setClientMounted] = useState(false);
 
   useEffect(() => {
@@ -49,6 +53,36 @@ export default function App() {
 
   if (showLoading) {
     return <Loader fullScreen />;
+  }
+
+  if (initError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+        <div className="max-w-xl w-full rounded-xl border bg-card p-6 space-y-4 shadow-sm">
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold">Local storage needs attention</h1>
+            <p className="text-sm text-muted-foreground">{initError}</p>
+          </div>
+
+          <div className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground space-y-2">
+            <p>Recommended recovery steps:</p>
+            <p>1. Close every open `app.sparktype.org` tab in this browser.</p>
+            <p>2. Reopen a single tab and try again.</p>
+            <p>3. If it still works in incognito but not here, this profile&apos;s IndexedDB is likely blocked or corrupted.</p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={retryInitialize}>Retry loading sites</Button>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Reload page
+            </Button>
+            <Button variant="ghost" onClick={clearInitError}>
+              Continue with app shell
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
    return (

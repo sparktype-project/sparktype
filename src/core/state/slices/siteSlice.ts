@@ -41,7 +41,19 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
         console.log('[initializeSites] No sites found - storage may have been cleared');
       }
 
-      const storageHealth = await getStorageHealth();
+      const storageHealth = await Promise.race([
+        getStorageHealth(),
+        new Promise<Awaited<ReturnType<typeof getStorageHealth>>>((resolve) => {
+          setTimeout(() => {
+            resolve({
+              status: 'degraded',
+              updatedAt: Date.now(),
+              reason: 'Storage health check timed out.',
+              scope: 'metadata',
+            });
+          }, 1500);
+        })
+      ]);
       if (storageHealth.status !== 'healthy') {
         toast.warning('Storage needs attention', {
           description: storageHealth.reason || 'Sparktype detected degraded local storage and kept your data in a safe recovery state.',

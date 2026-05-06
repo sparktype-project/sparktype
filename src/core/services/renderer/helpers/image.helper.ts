@@ -95,7 +95,7 @@ export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => {
       }
 
       // Get preprocessed URL for this field + preset combination
-      let processedUrl = imagePreprocessor.getProcessedImageUrl(contentPath, fieldName, presetName);
+      let processedUrl = imagePreprocessor.getProcessedImageUrl(siteData.siteId, contentPath, fieldName, presetName);
 
       console.log(`[ImageHelper] Field '${fieldName}' in '${contentPath}' with preset '${presetName}':`, processedUrl);
 

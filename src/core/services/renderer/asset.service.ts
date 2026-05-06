@@ -6,16 +6,15 @@ import { getJsonAsset, getAvailableLayouts, getThemeAssetContent } from '@/core/
 // Block service removed - using layout partials instead
 import { coreHelpers } from './helpers';
 
-let areHelpersRegistered = false;
-
 /** Registers all core Handlebars helpers. Idempotent. */
 function registerCoreHelpers(siteData: LocalSiteData): void {
-    if (areHelpersRegistered) return;
     coreHelpers.forEach(helperFactory => {
         const helperMap = helperFactory(siteData);
-        Object.entries(helperMap).forEach(([name, func]) => Handlebars.registerHelper(name, func));
+        Object.entries(helperMap).forEach(([name, func]) => {
+            Handlebars.unregisterHelper(name);
+            Handlebars.registerHelper(name, func);
+        });
     });
-    areHelpersRegistered = true;
 }
 
 /**

@@ -21,6 +21,10 @@ const LEGACY_IMAGE_ASSET_STORE = localforage.createInstance({
   name: DB_NAME,
   storeName: 'siteImageAssets',
 });
+const LEGACY_MANIFEST_STORE = localforage.createInstance({
+  name: DB_NAME,
+  storeName: 'siteManifests',
+});
 
 const STORE_NAMES = {
   manifests: 'siteManifests',
@@ -37,6 +41,22 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
       setTimeout(() => reject(new Error(`Storage operation timed out after ${timeoutMs}ms`)), timeoutMs);
     }),
   ]);
+}
+
+function extractStoredValue<T>(value: unknown): T | null {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === 'object' && value !== null && 'value' in value) {
+    return (value as { value: T }).value;
+  }
+
+  return value as T;
+}
+
+function isManifest(value: unknown): value is Manifest {
+  return typeof value === 'object' && value !== null && 'siteId' in value && 'title' in value;
 }
 
 function getImageMimeTypeFromPath(imagePath: string): string {
@@ -82,8 +102,28 @@ async function migrateLegacyImageAssetsForSite(siteId: string): Promise<Record<s
 }
 
 export async function loadAllSiteManifests(): Promise<Manifest[]> {
+  const manifestsFromLegacyStore: Manifest[] = [];
+
   try {
-    return await withTimeout(listMetadataValues<Manifest>(STORE_NAMES.manifests), 10000);
+    await withTimeout(
+      LEGACY_MANIFEST_STORE.iterate((value: unknown) => {
+        const extracted = extractStoredValue<Manifest>(value);
+        if (isManifest(extracted)) {
+          manifestsFromLegacyStore.push(extracted);
+        }
+      }),
+      4000
+    );
+
+    if (manifestsFromLegacyStore.length > 0) {
+      return manifestsFromLegacyStore;
+    }
+  } catch (error) {
+    console.warn('Legacy manifest scan failed, trying metadata path:', error);
+  }
+
+  try {
+    return await withTimeout(listMetadataValues<Manifest>(STORE_NAMES.manifests), 4000);
   } catch (error) {
     await markStorageHealth(
       'degraded',
@@ -92,7 +132,7 @@ export async function loadAllSiteManifests(): Promise<Manifest[]> {
       'metadata'
     );
     console.error('Failed to load site manifests from storage:', error);
-    return [];
+    return manifestsFromLegacyStore;
   }
 }
 

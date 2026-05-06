@@ -448,7 +448,12 @@ export async function render(
 
                   // Get preprocessed URL (page_display preset for markdown images)
                   const contentPath = enrichedResolution.contentFile.path;
-                  let processedUrl = imagePreprocessor.getProcessedMarkdownImageUrl(contentPath, node.url, 'page_display');
+                  let processedUrl = imagePreprocessor.getProcessedMarkdownImageUrl(
+                    synchronizedSiteData.siteId,
+                    contentPath,
+                    node.url,
+                    'page_display'
+                  );
 
                   if (processedUrl) {
                     console.log('[Render Service] Using preprocessed URL:', processedUrl);

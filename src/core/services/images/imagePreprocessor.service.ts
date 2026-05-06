@@ -21,6 +21,10 @@ interface ProcessedImageData {
   [fieldName: string]: FieldPresets;
 }
 
+function buildProcessedImageKey(siteId: string, contentPath: string): string {
+  return `${siteId}:${contentPath}`;
+}
+
 /**
  * Determines the rendering context based on flags
  */
@@ -58,24 +62,25 @@ export class ImagePreprocessorService {
     console.log(`[ImagePreprocessor] Found ${allImageRefs.length} image references`);
 
     // Get current content paths to identify removed content
-    const currentContentPaths = new Set(siteData.contentFiles?.map(file => file.path) || []);
+    const currentContentPaths = new Set(siteData.contentFiles?.map(file => buildProcessedImageKey(siteData.siteId, file.path)) || []);
+    currentContentPaths.add(buildProcessedImageKey(siteData.siteId, '_manifest'));
 
     // Remove processed images for content that no longer exists
     // OR if the context has changed (export vs preview)
-    for (const contentPath of this.processedImages.keys()) {
-      if (!currentContentPaths.has(contentPath)) {
-        console.log(`[ImagePreprocessor] Removing processed images for deleted content: ${contentPath}`);
-        this.processedImages.delete(contentPath);
+    for (const contentKey of this.processedImages.keys()) {
+      if (!currentContentPaths.has(contentKey)) {
+        console.log(`[ImagePreprocessor] Removing processed images for deleted content: ${contentKey}`);
+        this.processedImages.delete(contentKey);
       } else {
         // Check if context changed for existing content
-        const contentData = this.processedImages.get(contentPath);
+        const contentData = this.processedImages.get(contentKey);
         const firstField = Object.keys(contentData || {})[0];
         const existingContext = firstField ? contentData![firstField]._context : undefined;
 
         // If context is undefined (old cache) or different from current, clear cache
         if (firstField && (existingContext === undefined || existingContext !== context)) {
-          console.log(`[ImagePreprocessor] Context changed for ${contentPath} (${existingContext || 'undefined'} -> ${context}), clearing cache`);
-          this.processedImages.delete(contentPath);
+          console.log(`[ImagePreprocessor] Context changed for ${contentKey} (${existingContext || 'undefined'} -> ${context}), clearing cache`);
+          this.processedImages.delete(contentKey);
         }
       }
     }
@@ -102,24 +107,50 @@ export class ImagePreprocessorService {
    * Gets the processed URL for a specific image field and preset.
    * This is used by the synchronous image helper.
    */
-  getProcessedImageUrl(contentPath: string, fieldName: string, presetName: string): string | null {
-    const contentData = this.processedImages.get(contentPath);
-    return contentData?.[fieldName]?.[presetName] || null;
+  getProcessedImageUrl(siteId: string, contentPath: string, fieldName: string, presetName: string): string | null;
+  getProcessedImageUrl(contentPath: string, fieldName: string, presetName: string): string | null;
+  getProcessedImageUrl(
+    siteIdOrContentPath: string,
+    contentPathOrFieldName: string,
+    fieldNameOrPresetName: string,
+    presetName?: string
+  ): string | null {
+    const key = presetName
+      ? buildProcessedImageKey(siteIdOrContentPath, contentPathOrFieldName)
+      : Array.from(this.processedImages.keys()).find((candidate) => candidate.endsWith(`:${siteIdOrContentPath}`));
+    const contentData = key ? this.processedImages.get(key) : undefined;
+    const fieldName = presetName ? fieldNameOrPresetName : contentPathOrFieldName;
+    const resolvedPresetName = presetName ?? fieldNameOrPresetName;
+
+    return contentData?.[fieldName]?.[resolvedPresetName] || null;
   }
 
   /**
    * Gets the processed URL for a markdown image by its source path.
    * Used by the markdown renderer to replace image URLs with preprocessed derivatives.
    */
-  getProcessedMarkdownImageUrl(contentPath: string, imageSrc: string, presetName: string = 'page_display'): string | null {
-    const contentData = this.processedImages.get(contentPath);
+  getProcessedMarkdownImageUrl(siteId: string, contentPath: string, imageSrc: string, presetName?: string): string | null;
+  getProcessedMarkdownImageUrl(contentPath: string, imageSrc: string, presetName?: string): string | null;
+  getProcessedMarkdownImageUrl(
+    siteIdOrContentPath: string,
+    contentPathOrImageSrc: string,
+    imageSrcOrPresetName?: string,
+    explicitPresetName?: string
+  ): string | null {
+    const hasExplicitSiteId = explicitPresetName !== undefined;
+    const key = hasExplicitSiteId
+      ? buildProcessedImageKey(siteIdOrContentPath, contentPathOrImageSrc)
+      : Array.from(this.processedImages.keys()).find((candidate) => candidate.endsWith(`:${siteIdOrContentPath}`));
+    const contentData = key ? this.processedImages.get(key) : undefined;
+    const imageSrc = hasExplicitSiteId ? (imageSrcOrPresetName || '') : contentPathOrImageSrc;
+    const resolvedPresetName = hasExplicitSiteId ? (explicitPresetName || 'page_display') : (imageSrcOrPresetName || 'page_display');
     if (!contentData) return null;
 
     // Find the markdown image field that matches this source
     for (const [fieldName, presets] of Object.entries(contentData)) {
       if (fieldName.startsWith('markdown_image_') && presets._originalSrc === imageSrc) {
         // Try the requested preset first, fallback to original
-        return presets[presetName] || presets['original'] || null;
+        return presets[resolvedPresetName] || presets['original'] || null;
       }
     }
 
@@ -264,11 +295,12 @@ export class ImagePreprocessorService {
     }
 
     // Initialize storage for this content if needed
-    if (!this.processedImages.has(contentPath)) {
-      this.processedImages.set(contentPath, {});
+    const contentKey = buildProcessedImageKey(siteData.siteId, contentPath);
+    if (!this.processedImages.has(contentKey)) {
+      this.processedImages.set(contentKey, {});
     }
 
-    const contentData = this.processedImages.get(contentPath)!;
+    const contentData = this.processedImages.get(contentKey)!;
     if (!contentData[fieldName]) {
       contentData[fieldName] = {};
     }

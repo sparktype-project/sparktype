@@ -15,7 +15,10 @@ enableMapSet();
  */
 export type AppStore = SiteSlice & ContentSlice & SecretsSlice & AuthSlice & {
   isInitialized: boolean;
+  initError: string | null;
   initialize: () => void;
+  retryInitialize: () => void;
+  clearInitError: () => void;
   activeSiteId: string | null;
   setActiveSiteId: (siteId: string | null) => void;
 
@@ -33,6 +36,7 @@ export type AppStore = SiteSlice & ContentSlice & SecretsSlice & AuthSlice & {
 export const useAppStore = create<AppStore>()((set, get, api) => ({
   // --- Root State Properties ---
   isInitialized: false,
+  initError: null,
   activeSiteId: null,
 
   // Slug change tracking
@@ -50,20 +54,53 @@ export const useAppStore = create<AppStore>()((set, get, api) => ({
     }
 
     console.log('[AppStore] Initializing application state...');
+    set({ initError: null });
     
     // Load persisted authentication sessions
     get().loadPersistedAuthSessions();
-    
-    // Call the hydration action to load sites from storage.
-    get().initializeSites().then(() => {
-        set({ isInitialized: true });
-        console.log('[AppStore] State initialized.');
-    }).catch((error) => {
-        console.error('[AppStore] Failed to initialize application state:', error);
-        // Initialize anyway to prevent hanging
-        set({ isInitialized: true });
-        console.log('[AppStore] State initialized with errors.');
+
+    const initializationPromise = get().initializeSites()
+      .then(() => ({ status: 'ready' as const }))
+      .catch((error) => ({ status: 'failed' as const, error }));
+
+    const timeoutMs = 8000;
+    const timeoutPromise = new Promise<{ status: 'timeout' }>((resolve) => {
+      setTimeout(() => resolve({ status: 'timeout' }), timeoutMs);
     });
+
+    Promise.race([initializationPromise, timeoutPromise]).then((result) => {
+      if (result.status === 'ready') {
+        set({ isInitialized: true, initError: null });
+        console.log('[AppStore] State initialized.');
+        return;
+      }
+
+      if (result.status === 'failed') {
+        const errorMessage = result.error instanceof Error ? result.error.message : 'Could not load local site data.';
+        console.error('[AppStore] Failed to initialize application state:', result.error);
+        set({
+          isInitialized: true,
+          initError: `Sparktype could not open local site storage in this browser profile. ${errorMessage}`,
+        });
+        console.log('[AppStore] State initialized with errors.');
+        return;
+      }
+
+      console.error('[AppStore] Initialization timed out.');
+      set({
+        isInitialized: true,
+        initError: 'Sparktype could not open local site storage in this browser profile. Try retrying, closing other Sparktype tabs, or opening the app in another browser profile.',
+      });
+    });
+  },
+
+  retryInitialize: () => {
+    set({ isInitialized: false, initError: null });
+    get().initialize();
+  },
+
+  clearInitError: () => {
+    set({ initError: null });
   },
 
   /**
