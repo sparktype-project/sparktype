@@ -56,6 +56,7 @@ describe('cloudinaryImageService', () => {
         public_id: 'images/hero',
         version: 7,
         format: 'png',
+        secure_url: 'https://res.cloudinary.com/demo-cloud/image/upload/v7/images/hero.png',
         width: 1200,
         height: 630,
         original_filename: 'hero',
@@ -107,6 +108,7 @@ describe('cloudinaryImageService', () => {
         version: 7,
         format: 'png',
         originalFilename: 'hero',
+        secureUrl: 'https://res.cloudinary.com/demo-cloud/image/upload/v7/images/hero.png',
       },
     });
 
@@ -139,5 +141,74 @@ describe('cloudinaryImageService', () => {
         createContext()
       )
     ).rejects.toThrow('Failed to load Cloudinary upload widget.');
+  });
+
+  test('uploads videos through the Cloudinary widget and returns a VideoRef', async () => {
+    const close = vi.fn();
+    const createUploadWidget = vi.fn((_options, callback) => {
+      const widget = {
+        open: () => {
+          callback(null, {
+            event: 'success' as const,
+            info: {
+              public_id: 'videos/demo-reel',
+              version: 3,
+              format: 'mp4',
+              width: 1920,
+              height: 1080,
+              duration: 24.6,
+              resource_type: 'video',
+              secure_url: 'https://res.cloudinary.com/demo-cloud/video/upload/v3/videos/demo-reel.mp4',
+              thumbnail_url: 'https://res.cloudinary.com/demo-cloud/video/upload/so_0/videos/demo-reel.jpg',
+              original_filename: 'demo-reel',
+            },
+          });
+        },
+        close,
+      };
+
+      return widget;
+    });
+
+    vi.spyOn(document.head, 'appendChild').mockImplementation((node) => {
+      if (node instanceof HTMLScriptElement) {
+        queueMicrotask(() => {
+          window.cloudinary = {
+            createUploadWidget,
+          };
+          node.onload?.(new Event('load'));
+        });
+      }
+
+      return node;
+    });
+
+    const { cloudinaryImageService } = await import('../cloudinaryImage.service');
+
+    await expect(
+      cloudinaryImageService.uploadVideo?.(
+        new File(['file'], 'demo-reel.mp4', { type: 'video/mp4' }),
+        'test-site',
+        createContext()
+      )
+    ).resolves.toEqual({
+      serviceId: 'cloudinary',
+      src: 'videos/demo-reel',
+      width: 1920,
+      height: 1080,
+      duration: 24.6,
+      providerData: {
+        publicId: 'videos/demo-reel',
+        version: 3,
+        format: 'mp4',
+        originalFilename: 'demo-reel',
+        resourceType: 'video',
+        secureUrl: 'https://res.cloudinary.com/demo-cloud/video/upload/v3/videos/demo-reel.mp4',
+        poster: 'https://res.cloudinary.com/demo-cloud/video/upload/so_0/videos/demo-reel.jpg',
+      },
+    });
+
+    expect(createUploadWidget).toHaveBeenCalled();
+    expect(close).toHaveBeenCalledTimes(1);
   });
 });

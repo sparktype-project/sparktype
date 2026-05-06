@@ -183,7 +183,8 @@ describe('Storage Architecture Contracts', () => {
             referencedIn: [],
             metadata: { sizeBytes: 1024 }
           }
-        }
+        },
+        videos: {}
       };
 
       mockGetAllImageAssetsForSite.mockResolvedValue(storedImages);
@@ -219,7 +220,8 @@ describe('Storage Architecture Contracts', () => {
             metadata: { sizeBytes: 1024 }
           }
           // orphaned.jpg is NOT in media.json
-        }
+        },
+        videos: {}
       };
 
       mockGetAllImageAssetsForSite.mockResolvedValue(storedImages);
@@ -266,7 +268,8 @@ describe('Storage Architecture Contracts', () => {
             referencedIn: [],
             metadata: { sizeBytes: 1024 }
           }
-        }
+        },
+        videos: {}
       };
 
       mockGetAllImageAssetsForSite.mockResolvedValue(storedImages);
@@ -362,7 +365,8 @@ describe('Storage Architecture Contracts', () => {
             referencedIn: [],
             metadata: { sizeBytes: 1024 }
           }
-        }
+        },
+        videos: {}
       };
 
       mockGetAllImageAssetsForSite.mockResolvedValue(storedImages);

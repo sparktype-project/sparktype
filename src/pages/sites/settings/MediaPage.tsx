@@ -37,6 +37,7 @@ function getInitialSecretConfig(site: NonNullable<ReturnType<AppStore['getSiteBy
   if (providerId === 'cloudinary') {
     return {
       uploadPreset: site.secrets?.cloudinary?.uploadPreset || '',
+      videoUploadPreset: site.secrets?.cloudinary?.videoUploadPreset || '',
     };
   }
 
@@ -177,6 +178,7 @@ export default function ImageSettingsPage() {
       cloudinary: selectedServiceId === 'cloudinary'
         ? {
             uploadPreset: secretConfig.uploadPreset?.trim() || '',
+            videoUploadPreset: secretConfig.videoUploadPreset?.trim() || '',
           }
         : site.secrets?.cloudinary,
     };

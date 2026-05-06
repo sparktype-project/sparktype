@@ -3,7 +3,7 @@ import { createSiteFixture } from '@/test/support/siteFixtures';
 
 const { renderMock } = vi.hoisted(() => ({
   renderMock: vi.fn(async (_siteData: unknown, resolution: PageResolutionResult) => {
-    if (resolution.type === 'not-found') {
+    if (!('contentFile' in resolution)) {
       return '<h1>404</h1>';
     }
 

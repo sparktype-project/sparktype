@@ -1,12 +1,14 @@
 import { useState, useCallback } from 'react';
 import { getActiveImageService } from '@/core/services/images/images.service';
 import { useAppStore } from '@/core/state/useAppStore';
-import type { ImageRef } from '@/core/types';
+import type { ImageRef, VideoRef } from '@/core/types';
 import { toast } from 'sonner';
+import { KEYS } from 'platejs';
 
 interface UseSparkTypeUploadProps {
   siteId: string;
-  onUploadComplete?: (imageRef: ImageRef) => void;
+  mediaType?: string;
+  onUploadComplete?: (mediaRef: ImageRef | VideoRef) => void;
   onUploadError?: (error: unknown) => void;
 }
 
@@ -15,11 +17,12 @@ export interface SparkTypeUploadedFile {
   name: string;
   size: number;
   type: string;
-  imageRef: ImageRef;
+  mediaRef: ImageRef | VideoRef;
 }
 
 export function useSparkTypeUpload({
   siteId,
+  mediaType = KEYS.img,
   onUploadComplete,
   onUploadError,
 }: UseSparkTypeUploadProps) {
@@ -30,9 +33,9 @@ export function useSparkTypeUpload({
 
   const uploadFile = useCallback(async (file: File): Promise<SparkTypeUploadedFile | undefined> => {
     if (!siteId) {
-      const error = new Error('Site ID is required for image upload');
+      const error = new Error('Site ID is required for media upload');
       onUploadError?.(error);
-      toast.error('Site ID is required for image upload');
+      toast.error('Site ID is required for media upload');
       return;
     }
 
@@ -54,41 +57,58 @@ export function useSparkTypeUpload({
         setProgress(prev => Math.min(prev + 10, 90));
       }, 100);
 
-      // Upload the image using the Sparktype image service
-      const imageRef = await imageService.upload(file, siteId, {
+      const uploadContext = {
         manifest: site.manifest,
         secrets: site.secrets,
         site,
-      });
+      };
+
+      const mediaRef =
+        mediaType === KEYS.video
+          ? await (() => {
+              if (!imageService.capabilities?.videoUpload || !imageService.uploadVideo) {
+                throw new Error('The active media provider does not support video uploads.');
+              }
+
+              return imageService.uploadVideo(file, siteId, uploadContext);
+            })()
+          : await imageService.upload(file, siteId, uploadContext);
       
       clearInterval(progressInterval);
       setProgress(100);
 
-      // Generate the display URL for the uploaded image (blob URL for editor preview)
-      const displayUrl = await imageService.getDisplayUrl(
-        site.manifest,
-        imageRef,
-        { width: imageRef.width, height: imageRef.height },
-        false // isExport = false for editor preview (generates blob URLs)
-      );
+      const displayUrl = mediaType === KEYS.video
+        ? await (() => {
+            if (!imageService.getVideoDisplayUrl) {
+              throw new Error('The active media provider cannot resolve uploaded videos.');
+            }
+
+            return imageService.getVideoDisplayUrl(site.manifest, mediaRef as VideoRef, false);
+          })()
+        : await imageService.getDisplayUrl(
+            site.manifest,
+            mediaRef as ImageRef,
+            { width: mediaRef.width, height: mediaRef.height },
+            false
+          );
 
       const uploadedFile: SparkTypeUploadedFile = {
-        url: displayUrl, // Use blob URL for editor display
+        url: displayUrl,
         name: file.name,
         size: file.size,
         type: file.type,
-        imageRef,
+        mediaRef,
       };
 
       setUploadedFile(uploadedFile);
-      onUploadComplete?.(imageRef);
+      onUploadComplete?.(mediaRef);
 
       return uploadedFile;
     } catch (error) {
-      console.error('SparkType image upload failed:', error);
+      console.error('SparkType media upload failed:', error);
       onUploadError?.(error);
       
-      const message = error instanceof Error ? error.message : 'Image upload failed';
+      const message = error instanceof Error ? error.message : 'Media upload failed';
       toast.error(message);
       
       return undefined;
@@ -97,7 +117,7 @@ export function useSparkTypeUpload({
       setIsUploading(false);
       setUploadingFile(undefined);
     }
-  }, [siteId, onUploadComplete, onUploadError]);
+  }, [mediaType, siteId, onUploadComplete, onUploadError]);
 
   return {
     isUploading,

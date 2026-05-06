@@ -519,6 +519,17 @@ export interface ImageRef {
   providerData?: Record<string, unknown>;
 }
 
+/** The storable reference to an uploaded or external video. */
+export interface VideoRef {
+  serviceId: string;
+  src: string;
+  poster?: string;
+  width?: number;
+  height?: number;
+  duration?: number;
+  providerData?: Record<string, unknown>;
+}
+
 // Removed separate image tracking - images are discovered from content files
 
 /** Transformation options requested by the theme engine. */
@@ -545,6 +556,9 @@ export interface ImageProviderCapabilities {
   transforms: boolean;
   exportMode: 'bundle' | 'metadata-only';
   importMode: 'full' | 'metadata-only';
+  videoUpload: boolean;
+  videoTransforms?: boolean;
+  videoExportMode?: 'bundle' | 'metadata-only';
   migrationTargets?: string[];
 }
 
@@ -571,10 +585,14 @@ export interface ImageService {
     secret: ImageProviderConfigField[];
   };
   upload(file: File, siteId: string, context?: ImageServiceContext): Promise<ImageRef>;
+  uploadVideo?(file: File, siteId: string, context?: ImageServiceContext): Promise<VideoRef>;
   getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions, isExport: boolean, forIframe?: boolean, skipDerivatives?: boolean): Promise<string>;
+  getVideoDisplayUrl?(manifest: Manifest, ref: VideoRef, isExport: boolean): Promise<string>;
   getExportableAssets(siteId: string, allImageRefs: ImageRef[]): Promise<{ path: string; data: Blob; }[]>;
+  getExportableVideoAssets?(siteId: string, allVideoRefs: VideoRef[]): Promise<{ path: string; data: Blob; }[]>;
   validateConfig?(context: ImageServiceContext): Promise<ImageProviderValidationResult> | ImageProviderValidationResult;
   createMediaEntry?(ref: ImageRef): Record<string, unknown> | undefined;
+  createVideoMediaEntry?(ref: VideoRef): Record<string, unknown> | undefined;
   migrateAssetPath?(originalPath: string, fromProviderId: string): string;
 }
 
@@ -647,6 +665,20 @@ export interface MediaImageEntry {
   providerData?: Record<string, unknown>;
 }
 
+export interface MediaVideoMetadata {
+  width?: number;
+  height?: number;
+  duration?: number;
+  poster?: string;
+}
+
+export interface MediaVideoEntry {
+  referencedIn: string[];
+  metadata: MediaVideoMetadata;
+  providerId?: string;
+  providerData?: Record<string, unknown>;
+}
+
 /**
  * Complete media manifest structure for export/import.
  * This file enables smart image import/export with proper registry reconstruction.
@@ -662,6 +694,8 @@ export interface MediaManifest {
   providers?: Record<string, Record<string, unknown>>;
   /** Map of image paths to their entries (only referenced images) */
   images: Record<string, MediaImageEntry>;
+  /** Map of video identifiers or URLs to their entries */
+  videos?: Record<string, MediaVideoEntry>;
 }
 
 /**

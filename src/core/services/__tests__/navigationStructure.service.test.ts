@@ -47,6 +47,7 @@ function createSiteData(structure: StructureNode[], contentFiles: ParsedMarkdown
     manifest: {
       siteId: 'site-123',
       title: 'Test Site',
+      description: 'Test description',
       generatorVersion: '1.0.0',
       theme: { name: 'default', config: {} },
       structure,

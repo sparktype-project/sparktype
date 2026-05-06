@@ -42,6 +42,15 @@ npm run lint
 
 # Build TypeScript
 npm run build
+
+# Run unit and integration tests
+npm test
+
+# Run Playwright smoke tests
+npm run test:e2e
+
+# Run the full test stack
+npm run test:all
 ```
 
 ## Architecture Overview
@@ -90,9 +99,20 @@ The application uses Zustand with a slice-based pattern:
 ## Important Notes
 
 ### Testing
-- Uses Jest with React Testing Library
-- Test files in `__tests__` directories alongside source files
-- Run tests with standard Jest commands (check package.json for scripts)
+- Uses Vitest for unit and integration tests
+- Uses Playwright for browser smoke coverage
+- Unit and integration tests live in `src/**/__tests__` plus `*.test.*` / `*.spec.*`
+- Browser smoke tests live in `tests/e2e/`
+- CI enforces `npm run lint`, `npm run build:web`, `npm test`, and `npm run test:e2e`
+
+### Codex Testing Procedure
+- Every production change must be test-backed. If behavior changes, add or update tests in the same task unless the user explicitly says not to.
+- Prefer the narrowest useful layer:
+  - Vitest for pure logic, services, state slices, and rendering/storage integrations
+  - Playwright when the change affects a real user flow, routing, browser behavior, or cross-component wiring
+- Bug fixes should first reproduce the bug in a failing test, then fix the implementation, then leave the regression test in place.
+- Before closing work, run the relevant tests for the touched area. If the change affects shared flows like site creation, editing, previewing, publishing, or persistence, run the Playwright smoke suite too.
+- Do not ship untested feature work by default. “Test later” is not the normal path in this repo.
 
 ### Image Handling
 - Multi-service architecture supporting local and Cloudinary

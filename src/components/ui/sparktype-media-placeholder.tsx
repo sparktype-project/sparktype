@@ -6,6 +6,7 @@ import React from 'react';
 
 import type { TPlaceholderElement } from 'platejs';
 import type { PlateElementProps } from 'platejs/react';
+import type { ImageRef, VideoRef } from '@/core/types';
 
 import {
   PlaceholderPlugin,
@@ -64,8 +65,9 @@ export const SparkTypePlaceholderElement = withHOC(
     const { isUploading, progress, uploadedFile, uploadFile, uploadingFile } =
       useSparkTypeUpload({
         siteId,
-        onUploadComplete: (imageRef) => {
-          console.log('SparkType upload completed:', imageRef);
+        mediaType: element.mediaType,
+        onUploadComplete: (mediaRef) => {
+          console.log('SparkType upload completed:', mediaRef);
         },
       });
 
@@ -108,6 +110,8 @@ export const SparkTypePlaceholderElement = withHOC(
       editor.tf.withoutSaving(() => {
         editor.tf.removeNodes({ at: path });
 
+        const mediaRef = uploadedFile.mediaRef;
+        const isVideo = element.mediaType === KEYS.video;
         const node = {
           children: [{ text: '' }],
           initialHeight: imageRef.current?.height,
@@ -117,9 +121,10 @@ export const SparkTypePlaceholderElement = withHOC(
           placeholderId: element.id as string,
           type: element.mediaType!,
           url: uploadedFile.url,
-          alt: uploadedFile.imageRef.alt || uploadedFile.name,
-          // Store the ImageRef and siteId for future reference
-          imageRef: uploadedFile.imageRef,
+          alt: !isVideo ? (mediaRef as ImageRef).alt || uploadedFile.name : undefined,
+          imageRef: !isVideo ? mediaRef as ImageRef : undefined,
+          videoRef: isVideo ? mediaRef as VideoRef : undefined,
+          poster: isVideo ? (mediaRef as VideoRef).poster : undefined,
           siteId: siteId,
         };
 

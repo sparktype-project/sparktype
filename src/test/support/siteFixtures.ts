@@ -120,12 +120,9 @@ function createCollection(collectionId = 'posts'): Collection {
     id: collectionId,
     name: 'Posts',
     contentPath: `content/${collectionId}`,
-    layout: 'listing',
     defaultItemLayout: 'post',
-    schema: {
-      title: 'Post',
-      type: 'object',
-      properties: {},
+    settings: {
+      layout: 'listing',
     },
   };
 }

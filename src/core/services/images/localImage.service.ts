@@ -54,6 +54,8 @@ class LocalImageService implements ImageService {
     transforms: true,
     exportMode: 'bundle' as const,
     importMode: 'full' as const,
+    videoUpload: false,
+    videoExportMode: 'bundle' as const,
     migrationTargets: ['cloudinary'],
   };
   configFields = {
@@ -71,6 +73,7 @@ class LocalImageService implements ImageService {
    * @throws {Error} If the file type is unsupported or the file size exceeds the configured limits.
    */
   public async upload(file: File, siteId: string, _context?: ImageServiceContext): Promise<ImageRef> {
+    void _context;
     console.log(`[LocalImageService] Upload started - file: ${file.name}, size: ${file.size}, type: ${file.type}, siteId: ${siteId}`);
 
     // --- Validation Block ---

@@ -9,6 +9,7 @@ import type {
   ImageServiceContext,
   ImageTransformOptions,
   Manifest,
+  VideoRef,
 } from '@/core/types';
 import { getImageProviderPublicConfig } from './images.service';
 
@@ -16,8 +17,12 @@ interface UploadWidgetResultInfo {
   public_id: string;
   version: number;
   format: string;
-  width: number;
-  height: number;
+  width?: number;
+  height?: number;
+  duration?: number;
+  resource_type?: 'image' | 'video' | string;
+  secure_url?: string;
+  thumbnail_url?: string;
   original_filename?: string;
 }
 
@@ -148,6 +153,7 @@ function getCloudinaryConfig(manifest: Manifest, context?: ImageServiceContext):
 function createUploadWidget(
   cloudName: string,
   uploadPreset: string,
+  resourceType: 'image' | 'video',
   onResult: (error: UploadWidgetError | null, result: UploadWidgetResult | null, widget: CloudinaryWidget) => void
 ): CloudinaryWidget {
   const cloudinary = getCloudinaryWidgetApi();
@@ -156,11 +162,38 @@ function createUploadWidget(
   }
 
   const widget = cloudinary.createUploadWidget(
-    { cloudName, uploadPreset, sources: ['local', 'url', 'camera'], multiple: false },
+    {
+      cloudName,
+      uploadPreset,
+      multiple: false,
+      resourceType,
+      clientAllowedFormats: resourceType === 'video'
+        ? ['mp4', 'mov', 'm4v', 'webm', 'ogv']
+        : undefined,
+      sources: ['local', 'url', 'camera'],
+    },
     (error, result) => onResult(error, result, widget)
   );
 
   return widget;
+}
+
+function buildCloudinaryVideoUrl(cloudName: string, ref: VideoRef): string {
+  const secureUrl = typeof ref.providerData?.secureUrl === 'string'
+    ? ref.providerData.secureUrl
+    : undefined;
+  if (secureUrl) {
+    return secureUrl;
+  }
+
+  const version = typeof ref.providerData?.version === 'number'
+    ? `v${ref.providerData.version}/`
+    : '';
+  const format = typeof ref.providerData?.format === 'string'
+    ? `.${ref.providerData.format}`
+    : '';
+
+  return `https://res.cloudinary.com/${cloudName}/video/upload/${version}${ref.src}${format}`;
 }
 
 class CloudinaryImageService implements ImageService {
@@ -172,6 +205,9 @@ class CloudinaryImageService implements ImageService {
     transforms: true,
     exportMode: 'metadata-only' as const,
     importMode: 'metadata-only' as const,
+    videoUpload: true,
+    videoTransforms: true,
+    videoExportMode: 'metadata-only' as const,
     migrationTargets: ['local'],
   };
   configFields = {
@@ -194,6 +230,14 @@ class CloudinaryImageService implements ImageService {
         type: 'password' as const,
         secret: true,
         required: true,
+      },
+      {
+        key: 'videoUploadPreset',
+        label: 'Cloudinary Video Upload Preset',
+        description: 'Unsigned upload preset used by the Cloudinary widget for video uploads. Falls back to the image preset when omitted.',
+        placeholder: 'video_unsigned',
+        type: 'password' as const,
+        secret: true,
       },
     ],
   };
@@ -231,7 +275,7 @@ class CloudinaryImageService implements ImageService {
       let widget: CloudinaryWidget;
 
       try {
-        widget = createUploadWidget(cloudName, uploadPreset, (error, result, uploadWidget) => {
+        widget = createUploadWidget(cloudName, uploadPreset, 'image', (error, result, uploadWidget) => {
           if (error) {
             uploadWidget.close();
             reject(new Error(error.message || 'Image upload failed. Please try again.'));
@@ -251,10 +295,75 @@ class CloudinaryImageService implements ImageService {
                 version: result.info.version,
                 format: result.info.format,
                 originalFilename: result.info.original_filename,
+                secureUrl: result.info.secure_url,
               },
             });
           }
         });
+      } catch (error) {
+        reject(error);
+        return;
+      }
+
+      widget.open();
+    });
+  }
+
+  async uploadVideo(_file: File, siteId: string, context?: ImageServiceContext): Promise<VideoRef> {
+    if (!context?.manifest) {
+      throw new Error(`Cloudinary video upload for ${siteId} requires manifest context.`);
+    }
+
+    const { cloudName, uploadPreset } = getCloudinaryConfig(context.manifest, context);
+    const videoUploadPreset =
+      (typeof context.secrets?.imageProviders?.cloudinary?.videoUploadPreset === 'string' &&
+        context.secrets.imageProviders.cloudinary.videoUploadPreset) ||
+      context.secrets?.cloudinary?.videoUploadPreset ||
+      uploadPreset;
+
+    if (!cloudName || !videoUploadPreset) {
+      throw new Error('Cloudinary Cloud Name and video Upload Preset must be configured.');
+    }
+
+    await ensureUploadWidgetLoaded();
+
+    return new Promise((resolve, reject) => {
+      let widget: CloudinaryWidget;
+
+      try {
+        widget = createUploadWidget(
+          cloudName,
+          videoUploadPreset,
+          'video',
+          (error, result, uploadWidget) => {
+            if (error) {
+              uploadWidget.close();
+              reject(new Error(error.message || 'Video upload failed. Please try again.'));
+              return;
+            }
+
+            if (result?.event === 'success') {
+              uploadWidget.close();
+
+              resolve({
+                serviceId: this.id,
+                src: result.info.public_id,
+                width: result.info.width,
+                height: result.info.height,
+                duration: result.info.duration,
+                providerData: {
+                  publicId: result.info.public_id,
+                  version: result.info.version,
+                  format: result.info.format,
+                  originalFilename: result.info.original_filename,
+                  resourceType: result.info.resource_type || 'video',
+                  secureUrl: result.info.secure_url,
+                  poster: result.info.thumbnail_url,
+                },
+              });
+            }
+          }
+        );
       } catch (error) {
         reject(error);
         return;
@@ -313,7 +422,20 @@ class CloudinaryImageService implements ImageService {
     return [];
   }
 
+  async getVideoDisplayUrl(manifest: Manifest, ref: VideoRef): Promise<string> {
+    const { cloudName } = getCloudinaryConfig(manifest);
+    if (!cloudName) {
+      return '';
+    }
+
+    return buildCloudinaryVideoUrl(cloudName, ref);
+  }
+
   createMediaEntry(ref: ImageRef): Record<string, unknown> | undefined {
+    return ref.providerData ? { ...ref.providerData } : undefined;
+  }
+
+  createVideoMediaEntry(ref: VideoRef): Record<string, unknown> | undefined {
     return ref.providerData ? { ...ref.providerData } : undefined;
   }
 

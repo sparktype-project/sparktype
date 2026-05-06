@@ -1,4 +1,4 @@
-import type { CollectionItemRef, Manifest, StructureNode } from '@/core/types';
+import type { CollectionItemRef, StructureNode } from '@/core/types';
 import { createSiteFixture } from '@/test/support/siteFixtures';
 import { addPagination, generateExportUrl, generatePreviewUrl, getUrlForNode } from '../urlUtils.service';
 

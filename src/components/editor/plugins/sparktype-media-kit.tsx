@@ -7,12 +7,15 @@ import {
 } from '@platejs/media/react';
 import { KEYS } from 'platejs';
 import { createPlatePlugin } from 'platejs/react';
+import { toast } from 'sonner';
 
 import { MediaEmbedElement } from '@/components/ui/media-embed-node';
 import { SparkTypeImageElement } from '@/components/ui/sparktype-image-element';
 import { SparkTypePlaceholderElement } from '@/components/ui/sparktype-media-placeholder';
 import { MediaPreviewDialog } from '@/components/ui/media-preview-dialog';
 import { MediaUploadToast } from '@/components/ui/media-upload-toast';
+import { getActiveImageService } from '@/core/services/images/images.service';
+import { useAppStore } from '@/core/state/useAppStore';
 import { createMarkdownKit } from './markdown-kit';
 
 const TEXT_HTML_MIME = 'text/html';
@@ -42,13 +45,31 @@ function stripImagesFromHtml(html: string): string {
   }
 }
 
-const SparkTypeClipboardImagePlugin = createPlatePlugin({
+function supportsVideoUpload(siteId: string): boolean {
+  const site = useAppStore.getState().getSiteById(siteId);
+  if (!site) return false;
+
+  return Boolean(getActiveImageService(site.manifest).capabilities?.videoUpload);
+}
+
+const createSparkTypeClipboardMediaPlugin = (siteId: string) => createPlatePlugin({
   key: 'sparktype-clipboard-image-upload',
   handlers: {
     onPaste: ({ editor, event }) => {
       const clipboardData = event.clipboardData;
 
       if (!clipboardData) return false;
+
+      const videoFiles = Array.from(clipboardData.files).filter((file) =>
+        file.type.startsWith('video/')
+      );
+
+      if (videoFiles.length > 0 && !supportsVideoUpload(siteId)) {
+        event.preventDefault();
+        event.stopPropagation();
+        toast.error('Video file uploads require a remote media provider such as Cloudinary.');
+        return true;
+      }
 
       const imageFiles = Array.from(clipboardData.files).filter((file) =>
         file.type.startsWith('image/')
@@ -86,6 +107,20 @@ const SparkTypeClipboardImagePlugin = createPlatePlugin({
 
       return true;
     },
+    onDrop: ({ event }) => {
+      const files = Array.from(event.dataTransfer?.files || []).filter((file) =>
+        file.type.startsWith('video/')
+      );
+
+      if (files.length === 0 || supportsVideoUpload(siteId)) {
+        return false;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      toast.error('Video file uploads require a remote media provider such as Cloudinary.');
+      return true;
+    },
   },
 });
 
@@ -93,7 +128,7 @@ export function createSparkTypeMediaKit(siteId: string) {
   return [
     // Include siteId-aware MarkdownKit for proper ImageRef handling
     ...createMarkdownKit(siteId),
-    SparkTypeClipboardImagePlugin,
+    createSparkTypeClipboardMediaPlugin(siteId),
     ImagePlugin.configure({
       options: { disableUploadInsert: true },
       render: { afterEditable: MediaPreviewDialog, node: SparkTypeImageElement },

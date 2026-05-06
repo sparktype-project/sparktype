@@ -14,8 +14,11 @@ import {
 } from 'lucide-react';
 import { isUrl, KEYS } from 'platejs';
 import { useEditorRef } from 'platejs/react';
+import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useFilePicker } from 'use-file-picker';
+import { useAppStore } from '@/core/state/useAppStore';
+import { getActiveImageService } from '@/core/services/images/images.service';
 
 import {
   AlertDialog,
@@ -77,6 +80,18 @@ const MEDIA_CONFIG: Record<
   },
 };
 
+const DIRECT_VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mov', '.m4v', '.ogv', '.ogg'];
+
+function isDirectVideoUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const pathname = parsed.pathname.toLowerCase();
+    return DIRECT_VIDEO_EXTENSIONS.some((extension) => pathname.endsWith(extension));
+  } catch {
+    return false;
+  }
+}
+
 export function MediaToolbarButton({
   nodeType,
   ...props
@@ -84,8 +99,14 @@ export function MediaToolbarButton({
   const currentConfig = MEDIA_CONFIG[nodeType];
 
   const editor = useEditorRef();
+  const { siteId = '' } = useParams<{ siteId: string }>();
+  const site = useAppStore((state) => state.getSiteById(siteId));
   const [open, setOpen] = React.useState(false);
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  const provider = site?.manifest ? getActiveImageService(site.manifest) : undefined;
+  const supportsVideoUpload =
+    nodeType !== KEYS.video || Boolean(provider?.capabilities?.videoUpload);
+  const canUpload = nodeType !== KEYS.video || supportsVideoUpload;
 
   const { openFilePicker } = useFilePicker({
     accept: currentConfig.accept,
@@ -95,12 +116,24 @@ export function MediaToolbarButton({
     },
   });
 
+  const openUrlDialog = React.useCallback(() => {
+    setDialogOpen(true);
+    setOpen(false);
+  }, []);
+
+  const handlePrimaryClick = React.useCallback(() => {
+    if (nodeType === KEYS.video && !canUpload) {
+      openUrlDialog();
+      return;
+    }
+
+    openFilePicker();
+  }, [canUpload, nodeType, openFilePicker, openUrlDialog]);
+
   return (
     <>
       <ToolbarSplitButton
-        onClick={() => {
-          openFilePicker();
-        }}
+        onClick={handlePrimaryClick}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown') {
             e.preventDefault();
@@ -129,11 +162,22 @@ export function MediaToolbarButton({
             alignOffset={-32}
           >
             <DropdownMenuGroup>
-              <DropdownMenuItem onSelect={() => openFilePicker()}>
+              <DropdownMenuItem
+                disabled={!canUpload}
+                onSelect={(event) => {
+                  if (!canUpload) {
+                    event.preventDefault();
+                    toast.error('Video file uploads require a remote media provider such as Cloudinary.');
+                    return;
+                  }
+
+                  openFilePicker();
+                }}
+              >
                 {currentConfig.icon}
                 Upload from computer
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setDialogOpen(true)}>
+              <DropdownMenuItem onSelect={openUrlDialog}>
                 <LinkIcon />
                 Insert via URL
               </DropdownMenuItem>
@@ -176,6 +220,26 @@ function MediaUrlDialogContent({
     if (!isUrl(url)) return toast.error('Invalid URL');
 
     setOpen(false);
+
+    if (nodeType === KEYS.video) {
+      if (isDirectVideoUrl(url)) {
+        editor.tf.insertNodes({
+          children: [{ text: '' }],
+          isUpload: true,
+          type: KEYS.video,
+          url,
+        });
+        return;
+      }
+
+      editor.tf.insertNodes({
+        children: [{ text: '' }],
+        type: KEYS.mediaEmbed,
+        url,
+      });
+      return;
+    }
+
     editor.tf.insertNodes({
       children: [{ text: '' }],
       name: nodeType === KEYS.file ? url.split('/').pop() : undefined,

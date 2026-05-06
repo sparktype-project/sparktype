@@ -19,12 +19,99 @@ import type {
   LocalSiteData,
   MediaManifest,
   MediaImageEntry,
+  MediaVideoEntry,
   ImageMetadata,
   MediaImageMetadata
 } from '@/core/types';
 import { getImageRegistry, saveImageRegistry, createEmptyRegistry } from './imageRegistry.service';
 import { ensureImageRegistry } from './registryMigration.service';
 import { getActiveImageService, getConfiguredImageServiceId, getImageProviderPublicConfig } from './images.service';
+
+function parseHtmlAttributes(attributeString: string): Record<string, string> {
+  const attributes: Record<string, string> = {};
+  const attributeRegex = /([\w:-]+)="([^"]*)"/g;
+
+  for (const match of attributeString.matchAll(attributeRegex)) {
+    const [, key, value] = match;
+    if (key) {
+      attributes[key] = value || '';
+    }
+  }
+
+  return attributes;
+}
+
+function extractSparktypeVideos(siteData: LocalSiteData): Record<string, MediaVideoEntry> {
+  const videos: Record<string, MediaVideoEntry> = {};
+  const providerId = getConfiguredImageServiceId(siteData.manifest);
+  const imageService = getActiveImageService(siteData.manifest);
+
+  siteData.contentFiles?.forEach((contentFile) => {
+    const videoMatches = contentFile.content.matchAll(/<video\b([^>]*)>/g);
+
+    for (const match of videoMatches) {
+      const attributeString = match[1];
+      if (!attributeString) continue;
+
+      const attributes = parseHtmlAttributes(attributeString);
+      if (attributes['data-sparktype-upload'] !== 'true') {
+        continue;
+      }
+      if (!attributes['data-sparktype-service-id']) {
+        continue;
+      }
+
+      const key =
+        attributes['data-sparktype-video-src'] ||
+        attributes.src;
+      if (!key) continue;
+
+      const providerDataEntries = Object.entries(attributes)
+        .filter(([name]) => name.startsWith('data-sparktype-provider-'))
+        .map(([name, value]) => [name.replace('data-sparktype-provider-', ''), value]);
+
+      const width = attributes['data-sparktype-width'];
+      const height = attributes['data-sparktype-height'];
+      const duration = attributes['data-sparktype-duration'];
+      const poster = attributes['data-sparktype-poster'] || attributes.poster;
+
+      const videoEntry: MediaVideoEntry = videos[key] || {
+        referencedIn: [],
+        metadata: {},
+        providerId: attributes['data-sparktype-service-id'] || providerId,
+        providerData: undefined,
+      };
+
+      if (!videoEntry.referencedIn.includes(contentFile.path)) {
+        videoEntry.referencedIn.push(contentFile.path);
+      }
+      if (width) videoEntry.metadata.width = Number(width);
+      if (height) videoEntry.metadata.height = Number(height);
+      if (duration) videoEntry.metadata.duration = Number(duration);
+      if (poster) videoEntry.metadata.poster = poster;
+
+      if (providerDataEntries.length > 0) {
+        videoEntry.providerData = {
+          ...(videoEntry.providerData || {}),
+          ...Object.fromEntries(providerDataEntries),
+        };
+      } else if (!videoEntry.providerData && imageService.createVideoMediaEntry) {
+        videoEntry.providerData = imageService.createVideoMediaEntry({
+          serviceId: videoEntry.providerId || providerId,
+          src: key,
+          poster,
+          width: videoEntry.metadata.width,
+          height: videoEntry.metadata.height,
+          duration: videoEntry.metadata.duration,
+        });
+      }
+
+      videos[key] = videoEntry;
+    }
+  });
+
+  return videos;
+}
 
 /**
  * Validation result for media manifest format and data integrity.
@@ -176,6 +263,8 @@ export async function generateMediaManifest(
       console.log(`[MediaManifest] Included ${includedCount} images, skipped ${skippedCount} orphaned images`);
     }
 
+    const videos = extractSparktypeVideos(siteData);
+
     const manifest: MediaManifest = {
       version: 1,
       imageService: providerId,
@@ -184,6 +273,7 @@ export async function generateMediaManifest(
         [providerId]: getImageProviderPublicConfig(siteData.manifest, providerId),
       },
       images: manifestImages,
+      videos,
     };
 
     return manifest;
@@ -266,6 +356,10 @@ export function validateMediaManifest(mediaJson: any): MediaManifestValidation {
       });
     }
 
+    if (mediaJson.videos !== undefined && (typeof mediaJson.videos !== 'object' || mediaJson.videos === null)) {
+      errors.push('Media manifest videos field must be an object when present');
+    }
+
     // Validate individual image entries
     for (const [imagePath, imageEntry] of Object.entries(mediaJson.images)) {
       if (!validateImagePath(imagePath)) {
@@ -322,6 +416,29 @@ export function validateMediaManifest(mediaJson: any): MediaManifestValidation {
       }
 
       totalImages++;
+    }
+
+    if (mediaJson.videos && typeof mediaJson.videos === 'object') {
+      for (const [videoKey, videoEntry] of Object.entries(mediaJson.videos)) {
+        if (typeof videoKey !== 'string' || videoKey.length === 0) {
+          errors.push('Invalid video entry key');
+          continue;
+        }
+
+        if (typeof videoEntry !== 'object' || videoEntry === null) {
+          errors.push(`Invalid video entry for ${videoKey}: must be object`);
+          continue;
+        }
+
+        const entry = videoEntry as any;
+        if (!Array.isArray(entry.referencedIn)) {
+          errors.push(`Invalid referencedIn for video ${videoKey}: must be array`);
+        }
+
+        if (entry.metadata !== undefined && (typeof entry.metadata !== 'object' || entry.metadata === null)) {
+          errors.push(`Invalid metadata for video ${videoKey}: must be object`);
+        }
+      }
     }
 
     const isValid = errors.length === 0;

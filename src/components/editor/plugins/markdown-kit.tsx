@@ -4,6 +4,11 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import remarkDirective from 'remark-directive';
 
+function getMdxAttributeValue(mdastNode: any, attributeName: string): string | undefined {
+  const attribute = mdastNode.attributes?.find((item: any) => item?.name === attributeName);
+  return typeof attribute?.value === 'string' ? attribute.value : undefined;
+}
+
 // Create a factory function to inject siteId into deserialization
 export function createMarkdownKit(siteId?: string) {
   return [
@@ -63,6 +68,104 @@ export function createMarkdownKit(siteId?: string) {
               children: [{ text: '' }]
             };
           }
+        },
+        [KEYS.video]: {
+          serialize: (slateNode: any) => {
+            const attributes = [
+              { name: 'src', value: slateNode.url },
+            ];
+
+            if (slateNode.isUpload) {
+              attributes.push({ name: 'data-sparktype-upload', value: 'true' });
+            }
+            if (slateNode.poster) {
+              attributes.push({ name: 'poster', value: slateNode.poster });
+            }
+            if (slateNode.videoRef?.serviceId) {
+              attributes.push({ name: 'data-sparktype-service-id', value: slateNode.videoRef.serviceId });
+            }
+            if (slateNode.videoRef?.src) {
+              attributes.push({ name: 'data-sparktype-video-src', value: slateNode.videoRef.src });
+            }
+            if (slateNode.videoRef?.poster) {
+              attributes.push({ name: 'data-sparktype-poster', value: slateNode.videoRef.poster });
+            }
+            if (slateNode.videoRef?.width) {
+              attributes.push({ name: 'data-sparktype-width', value: String(slateNode.videoRef.width) });
+            }
+            if (slateNode.videoRef?.height) {
+              attributes.push({ name: 'data-sparktype-height', value: String(slateNode.videoRef.height) });
+            }
+            if (slateNode.videoRef?.duration) {
+              attributes.push({ name: 'data-sparktype-duration', value: String(slateNode.videoRef.duration) });
+            }
+
+            const providerData = slateNode.videoRef?.providerData;
+            if (providerData && typeof providerData === 'object') {
+              Object.entries(providerData).forEach(([key, value]) => {
+                if (value === undefined || value === null) return;
+                attributes.push({
+                  name: `data-sparktype-provider-${key}`,
+                  value: String(value),
+                });
+              });
+            }
+
+            return {
+              type: 'mdxJsxFlowElement',
+              name: 'video',
+              attributes,
+              children: [],
+            };
+          },
+          deserialize: (mdastNode: any) => {
+            const url = getMdxAttributeValue(mdastNode, 'src') || '';
+            const isUpload = getMdxAttributeValue(mdastNode, 'data-sparktype-upload') === 'true';
+
+            const providerDataEntries = (mdastNode.attributes || [])
+              .filter((attribute: any) =>
+                typeof attribute?.name === 'string' &&
+                attribute.name.startsWith('data-sparktype-provider-') &&
+                typeof attribute.value === 'string'
+              )
+              .map((attribute: any) => [
+                attribute.name.replace('data-sparktype-provider-', ''),
+                attribute.value,
+              ]);
+
+            const providerData = providerDataEntries.length > 0
+              ? Object.fromEntries(providerDataEntries)
+              : undefined;
+
+            const serviceId = getMdxAttributeValue(mdastNode, 'data-sparktype-service-id');
+            const videoSrc = getMdxAttributeValue(mdastNode, 'data-sparktype-video-src');
+            const width = getMdxAttributeValue(mdastNode, 'data-sparktype-width');
+            const height = getMdxAttributeValue(mdastNode, 'data-sparktype-height');
+            const duration = getMdxAttributeValue(mdastNode, 'data-sparktype-duration');
+            const poster =
+              getMdxAttributeValue(mdastNode, 'data-sparktype-poster') ||
+              getMdxAttributeValue(mdastNode, 'poster');
+
+            return {
+              type: KEYS.video,
+              url,
+              isUpload,
+              siteId,
+              poster,
+              videoRef: serviceId && videoSrc
+                ? {
+                    serviceId,
+                    src: videoSrc,
+                    poster,
+                    width: width ? Number(width) : undefined,
+                    height: height ? Number(height) : undefined,
+                    duration: duration ? Number(duration) : undefined,
+                    providerData,
+                  }
+                : undefined,
+              children: [{ text: '' }],
+            };
+          },
         },
         // Custom serialization rule for collection view blocks
         collection_view: {

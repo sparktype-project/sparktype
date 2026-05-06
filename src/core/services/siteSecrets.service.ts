@@ -9,6 +9,7 @@ import { readMetadata, removeMetadata, withSiteOperation, writeMetadata } from '
 export interface SiteSecrets {
   cloudinary?: {
     uploadPreset?: string;
+    videoUploadPreset?: string;
   };
   imageProviders?: Record<string, Record<string, string | undefined>>;
   publishing?: {
