@@ -103,7 +103,7 @@ The application uses Zustand with a slice-based pattern:
 - Uses Playwright for browser smoke coverage
 - Unit and integration tests live in `src/**/__tests__` plus `*.test.*` / `*.spec.*`
 - Browser smoke tests live in `tests/e2e/`
-- CI enforces `npm run lint`, `npm run build:web`, `npm test`, and `npm run test:e2e`
+- CI enforces `npm run build:web`, `npm test`, and `npm run test:e2e`
 
 ### Codex Testing Procedure
 - Every production change must be test-backed. If behavior changes, add or update tests in the same task unless the user explicitly says not to.

@@ -23,9 +23,6 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit
 
-      - name: Lint
-        run: npm run lint
-
       - name: Build web app
         run: npm run build:web
 

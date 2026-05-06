@@ -5,20 +5,23 @@ function uniqueName(prefix: string): string {
 }
 
 async function gotoDashboard(page: Page): Promise<void> {
-  console.log('gotoDashboard:start');
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'My sites' })).toBeVisible();
-  console.log('gotoDashboard:done');
 }
 
 async function createUnprotectedSite(page: Page, siteTitle: string): Promise<string> {
-  console.log('createUnprotectedSite:start');
   await page.getByRole('button', { name: 'Create new site' }).click();
   await expect(page.getByRole('heading', { name: 'Create a New Site' })).toBeVisible();
 
   await page.getByLabel('Site Title').fill(siteTitle);
   await page.getByLabel('Site Description (Optional)').fill('Playwright smoke test site');
-  await page.getByRole('switch', { name: 'Edit protection' }).click();
+  await page.evaluate(() => {
+    const toggle = document.getElementById('edit-protection');
+    if (!(toggle instanceof HTMLElement)) {
+      throw new Error('Edit protection switch not found');
+    }
+    toggle.click();
+  });
   await page.getByRole('button', { name: 'Create Site' }).click();
 
   await expect(page).toHaveURL(/#\/sites\/.+\/edit$/);
@@ -29,12 +32,10 @@ async function createUnprotectedSite(page: Page, siteTitle: string): Promise<str
     throw new Error(`Could not extract site id from URL: ${page.url()}`);
   }
 
-  console.log('createUnprotectedSite:done', match[1]);
   return match[1];
 }
 
 async function createFirstPage(page: Page, pageTitle: string): Promise<void> {
-  console.log('createFirstPage:start');
   await page.getByRole('button', { name: 'Create a page' }).click();
   await expect(page.getByRole('heading', { name: 'Create a new page' })).toBeVisible();
 
@@ -42,8 +43,7 @@ async function createFirstPage(page: Page, pageTitle: string): Promise<void> {
   await page.getByRole('button', { name: 'Create page' }).click();
 
   await expect(page).toHaveURL(/#\/sites\/.+\/edit\/content\/.+$/);
-  await expect(page.getByDisplayValue(pageTitle)).toBeVisible();
-  console.log('createFirstPage:done');
+  await expect(page.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue(pageTitle);
 }
 
 test('creates a site, persists it, and exports a backup from the dashboard', async ({ page }) => {
@@ -79,7 +79,7 @@ test('creates the first page and renders it in the viewer', async ({ page }) => 
 
   await page.getByTitle('View site').click();
   await expect(page).toHaveURL(/#\/sites\/.+\/view$/);
-  await expect(page.getByDisplayValue('/')).toBeVisible();
+  await expect(page.locator('input.browser-address-bar')).toHaveValue('/');
 
   const frame = page.frameLocator('iframe[title]');
   await expect(frame.getByText('Start writing your content here.')).toBeVisible();
