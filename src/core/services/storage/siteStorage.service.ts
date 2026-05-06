@@ -529,3 +529,9 @@ export async function writeLegacyFallbackBlob(namespace: BlobNamespace, siteId: 
   const legacyStore = createLegacyBlobFallbackStore();
   await legacyStore.setItem(buildBlobFallbackKey(namespace, siteId, relativePath), blob);
 }
+
+export function resetSiteStorageStateForTests(): void {
+  metadataStores.clear();
+  blobBackendPromise = null;
+  initPromise = null;
+}

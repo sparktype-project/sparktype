@@ -5,23 +5,23 @@ import { cloudinaryImageService } from '../cloudinaryImage.service';
 import type { Manifest } from '@/core/types';
 
 // Mock the image services
-jest.mock('../localImage.service', () => ({
+vi.mock('../localImage.service', () => ({
   localImageService: {
     id: 'local',
     name: 'Store in Site Bundle',
-    upload: jest.fn(),
-    getDisplayUrl: jest.fn(),
-    getExportableAssets: jest.fn()
+    upload: vi.fn(),
+    getDisplayUrl: vi.fn(),
+    getExportableAssets: vi.fn()
   }
 }));
 
-jest.mock('../cloudinaryImage.service', () => ({
+vi.mock('../cloudinaryImage.service', () => ({
   cloudinaryImageService: {
     id: 'cloudinary',
     name: 'Cloudinary CDN',
-    upload: jest.fn(),
-    getDisplayUrl: jest.fn(),
-    getExportableAssets: jest.fn()
+    upload: vi.fn(),
+    getDisplayUrl: vi.fn(),
+    getExportableAssets: vi.fn()
   }
 }));
 

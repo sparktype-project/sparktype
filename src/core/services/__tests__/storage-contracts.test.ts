@@ -15,20 +15,20 @@ import { getAllCacheKeys } from '../images/derivativeCache.service';
 import { generateMediaManifest } from '../images/mediaManifest.service';
 
 // Mock dependencies
-jest.mock('../localFileSystem.service');
-jest.mock('../images/derivativeCache.service');
-jest.mock('../images/mediaManifest.service');
+vi.mock('../localFileSystem.service');
+vi.mock('../images/derivativeCache.service');
+vi.mock('../images/mediaManifest.service');
 
-const mockGetAllImageAssetsForSite = getAllImageAssetsForSite as jest.MockedFunction<typeof getAllImageAssetsForSite>;
-const mockGetAllCacheKeys = getAllCacheKeys as jest.MockedFunction<typeof getAllCacheKeys>;
-const mockGenerateMediaManifest = generateMediaManifest as jest.MockedFunction<typeof generateMediaManifest>;
+const mockGetAllImageAssetsForSite = getAllImageAssetsForSite as MockedFunction<typeof getAllImageAssetsForSite>;
+const mockGetAllCacheKeys = getAllCacheKeys as MockedFunction<typeof getAllCacheKeys>;
+const mockGenerateMediaManifest = generateMediaManifest as MockedFunction<typeof generateMediaManifest>;
 
 describe('Storage Architecture Contracts', () => {
   const TEST_SITE_ID = 'test-site-123';
   const DERIVATIVE_PATTERN = /_w(auto|\d+)_h(auto|\d+)_c-[^_]+_g-[^_]+/;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Contract 1: siteImageAssetsStore contains ONLY originals', () => {

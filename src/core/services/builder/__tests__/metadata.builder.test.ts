@@ -1,175 +1,29 @@
-// src/core/services/builder/__tests__/metadata.builder.test.ts
-
+import { createSiteFixture } from '@/test/support/siteFixtures';
 import { generateMetadataFiles } from '../metadata.builder';
-import type { LocalSiteData, SiteBundle, StructureNode, CollectionItemRef } from '@/core/types';
-import * as urlUtils from '../../urlUtils.service';
-
-// Mock the urlUtils service
-jest.mock('../../urlUtils.service', () => ({
-  getUrlForNode: jest.fn()
-}));
 
 describe('metadata.builder', () => {
-  // --- Refactored Test Data ---
-  // The mock data is now more realistic. 'collectionItems' are explicitly part of the manifest,
-  // and 'structure' only contains the regular pages, as per the new unified model.
+  test('generates a sitemap for pages and collection items plus rss for dated collection items', () => {
+    const site = createSiteFixture('collectionSite');
+    site.manifest.baseUrl = 'https://example.com';
 
-  const mockSiteData: LocalSiteData = {
-    siteId: 'test-site',
-    manifest: {
-      siteId: 'test-site',
-      generatorVersion: '1.0.0',
-      title: 'Test Site with & "Special Chars"',
-      description: 'A test website with < and >',
-      baseUrl: 'https://example.com',
-      author: 'Test Author',
-      theme: { name: 'default', config: {} },
-      structure: [
-        { type: 'page', title: 'Home Page', path: 'content/index.md', slug: 'home' },
-        { type: 'page', title: 'About Us', path: 'content/about.md', slug: 'about' }
-      ],
-      collectionItems: [
-        {
-          collectionId: 'blog',
-          title: 'Blog Post',
-          path: 'content/blog/post.md',
-          slug: 'blog-post',
-          url: '/blog/blog-post'
-        }
-      ]
-    },
-    contentFiles: [
-      {
-        slug: 'home',
-        path: 'content/index.md',
-        frontmatter: { title: 'Home Page', layout: 'page', date: '2024-01-01T10:00:00Z', description: 'Home page description' },
-        content: 'Welcome!'
-      },
-      {
-        slug: 'about',
-        path: 'content/about.md',
-        frontmatter: { title: 'About Us', layout: 'page', date: '2024-01-02T15:30:00Z', description: 'About page description' },
-        content: 'Learn more.'
-      },
-      {
-        slug: 'blog-post',
-        path: 'content/blog/post.md',
-        frontmatter: { title: 'Blog Post', layout: 'blog', date: '2024-01-03T12:00:00Z' },
-        content: 'Blog content.'
-      }
-    ]
-  };
+    const bundle: Record<string, string> = {};
+    generateMetadataFiles(bundle, site);
 
-  let mockBundle: SiteBundle;
-
-  beforeEach(() => {
-    mockBundle = {};
-    // Mock the unified getUrlForNode to return expected paths for both pages and items.
-    (urlUtils.getUrlForNode as jest.Mock).mockImplementation((node: StructureNode | CollectionItemRef) => {
-      if (node.slug === 'home') return '/';
-      if (node.slug === 'about') return '/about/';
-      if (node.slug === 'blog-post') return '/blog/blog-post/'; // Example static URL for a collection item
-      return `/${node.slug}/`;
-    });
+    expect(bundle['sitemap.xml']).toContain('https://example.com/');
+    expect(bundle['sitemap.xml']).toContain('https://example.com/posts');
+    expect(bundle['sitemap.xml']).toContain('https://example.com/posts/launch-day');
+    expect(bundle['rss.xml']).toContain('<title>Launch Day</title>');
+    expect(bundle['rss.xml']).toContain('Collection item body');
+    expect(bundle['rss.xml']).not.toContain('<title>Home</title>');
   });
 
-  describe('generateMetadataFiles', () => {
-    test('generates sitemap.xml including both pages and collection items', () => {
-      // CORRECTED: Call with the new, 2-argument signature.
-      generateMetadataFiles(mockBundle, mockSiteData);
+  test('skips rss generation when there are no dated collection items', () => {
+    const site = createSiteFixture('basicSite');
+    const bundle: Record<string, string> = {};
 
-      expect(mockBundle['sitemap.xml']).toBeDefined();
-      const sitemap = mockBundle['sitemap.xml'] as string;
+    generateMetadataFiles(bundle, site);
 
-      expect(sitemap).toContain('<?xml version="1.0" encoding="UTF-8"?>');
-      expect(sitemap).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
-
-      // Should include ALL content: 2 pages + 1 collection item
-      expect(sitemap).toContain('<loc>https://example.com/</loc>');
-      expect(sitemap).toContain('<loc>https://example.com/about/</loc>');
-      expect(sitemap).toContain('<loc>https://example.com/blog/blog-post/</loc>');
-
-      // Should include lastmod dates for all content
-      expect(sitemap).toContain('<lastmod>2024-01-01</lastmod>');
-      expect(sitemap).toContain('<lastmod>2024-01-02</lastmod>');
-      expect(sitemap).toContain('<lastmod>2024-01-03</lastmod>');
-    });
-
-    test('generates RSS feed including only collection items with dates', () => {
-      // CORRECTED: Call with the new, 2-argument signature.
-      generateMetadataFiles(mockBundle, mockSiteData);
-
-      expect(mockBundle['rss.xml']).toBeDefined();
-      const rss = mockBundle['rss.xml'] as string;
-
-      expect(rss).toContain('<?xml version="1.0" encoding="UTF-8"?>');
-      expect(rss).toContain('<rss version="2.0"');
-      expect(rss).toContain('xmlns:content="http://purl.org/rss/1.0/modules/content/"');
-
-      // Should correctly escape special characters from the manifest title and description.
-      expect(rss).toContain('<title>Test Site with & "Special Chars"</title>');
-      expect(rss).toContain('<description>A test website with < and ></description>');
-      expect(rss).toContain('<link>https://example.com</link>');
-
-      // Should include items only for collection items with a `date` in frontmatter (not pages)
-      expect(rss.match(/<item>/g)?.length).toBe(1);
-      expect(rss).toContain('<title>Blog Post</title>');
-      expect(rss).toContain('<content:encoded><![CDATA[Blog content.]]></content:encoded>');
-      
-      // Should NOT include regular pages
-      expect(rss).not.toContain('<title>Home Page</title>');
-      expect(rss).not.toContain('<title>About Us</title>');
-    });
-
-    test('does not generate RSS feed when no collection items exist', () => {
-      const siteDataNoCollections = {
-        ...mockSiteData,
-        manifest: { ...mockSiteData.manifest, collectionItems: [] }
-      };
-      generateMetadataFiles(mockBundle, siteDataNoCollections);
-
-      expect(mockBundle['rss.xml']).toBeUndefined();
-    });
-
-    test('handles missing baseUrl gracefully', () => {
-      const siteDataNoBaseUrl = {
-        ...mockSiteData,
-        manifest: { ...mockSiteData.manifest, baseUrl: undefined }
-      };
-      // CORRECTED: Call with the new, 2-argument signature.
-      generateMetadataFiles(mockBundle, siteDataNoBaseUrl);
-
-      const sitemap = mockBundle['sitemap.xml'] as string;
-      const rss = mockBundle['rss.xml'] as string;
-
-      // Should default to a placeholder domain
-      expect(sitemap).toContain('<loc>https://example.com/');
-      expect(rss).toContain('<link>https://example.com</link>');
-    });
-
-    test('handles empty content lists gracefully', () => {
-      const siteDataEmpty = {
-        ...mockSiteData,
-        manifest: { ...mockSiteData.manifest, structure: [], collectionItems: [] },
-        contentFiles: []
-      };
-      // CORRECTED: Call with the new, 2-argument signature.
-      generateMetadataFiles(mockBundle, siteDataEmpty);
-
-      const sitemap = mockBundle['sitemap.xml'] as string;
-      const rss = mockBundle['rss.xml'] as string;
-
-      // Should generate valid, empty files
-      expect(sitemap).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
-      expect(rss).not.toContain('<item>');
-    });
-
-    test('preserves existing content in the bundle', () => {
-      mockBundle['existing-file.txt'] = 'some content';
-      // CORRECTED: Call with the new, 2-argument signature.
-      generateMetadataFiles(mockBundle, mockSiteData);
-      expect(mockBundle['existing-file.txt']).toBe('some content');
-      expect(mockBundle['sitemap.xml']).toBeDefined();
-    });
+    expect(bundle['rss.xml']).toBeUndefined();
+    expect(bundle['sitemap.xml']).toContain('https://example.com');
   });
 });

@@ -4,9 +4,9 @@ import type { LocalSiteData } from '@/core/types';
 import { HtmlSanitizerService } from '../../../htmlSanitizer.service';
 
 // Mock the HTML sanitizer service
-jest.mock('../../../htmlSanitizer.service', () => ({
+vi.mock('../../../htmlSanitizer.service', () => ({
   HtmlSanitizerService: {
-    sanitize: jest.fn((html: string) => `sanitized:${html}`)
+    sanitize: vi.fn((html: string) => `sanitized:${html}`)
   }
 }));
 
@@ -54,7 +54,7 @@ describe('themeData helpers', () => {
     let helper: any;
 
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
       const helperMap = themeDataHelper(mockSiteData);
       helper = helperMap.themeData;
     });
@@ -130,7 +130,7 @@ describe('themeData helpers', () => {
     let helper: any;
 
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
       const helperMap = rawThemeDataHelper(mockSiteData);
       helper = helperMap.rawThemeData;
     });

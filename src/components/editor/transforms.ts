@@ -25,6 +25,14 @@ import {
 
 const ACTION_THREE_COLUMNS = 'action_three_columns';
 
+const createPlaceholderId = () => {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `placeholder-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
 const insertCollectionView = (editor: PlateEditor) => {
   editor.tf.insertNodes(
     {
@@ -66,10 +74,15 @@ const insertBlockMap: Record<
   [KEYS.codeBlock]: (editor) => insertCodeBlock(editor, { select: true }),
   [KEYS.file]: (editor) => insertFilePlaceholder(editor, { select: true }),
   [KEYS.img]: (editor) =>
-    insertMedia(editor, {
-      select: true,
-      type: KEYS.img,
-    }),
+    editor.tf.insertNodes(
+      {
+        id: createPlaceholderId(),
+        children: [{ text: '' }],
+        mediaType: KEYS.img,
+        type: editor.getType(KEYS.placeholder),
+      },
+      { select: true }
+    ),
   [KEYS.mediaEmbed]: (editor) =>
     insertMedia(editor, {
       select: true,

@@ -165,7 +165,7 @@ describe('siteBackup.service', () => {
     });
 
     test('should warn about images in media.json but missing from ZIP', async () => {
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation();
 
       const zip = new JSZip();
       const siteFolder = zip.folder('_site');
@@ -222,7 +222,7 @@ describe('siteBackup.service', () => {
     });
 
     test('should handle corrupt media.json gracefully', async () => {
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
 
       const zip = new JSZip();
       const siteFolder = zip.folder('_site');

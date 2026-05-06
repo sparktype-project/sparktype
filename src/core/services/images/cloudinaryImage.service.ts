@@ -35,6 +35,11 @@ interface CloudinaryWidget {
   close: () => void;
 }
 
+const CLOUDINARY_UPLOAD_WIDGET_SCRIPT_ID = 'cloudinary-upload-widget';
+const CLOUDINARY_UPLOAD_WIDGET_SCRIPT_SRC = 'https://widget.cloudinary.com/v2.0/global/all.js';
+
+let cloudinaryUploadWidgetLoader: Promise<void> | null = null;
+
 declare global {
   interface Window {
     cloudinary?: {
@@ -44,6 +49,81 @@ declare global {
       ) => CloudinaryWidget;
     };
   }
+}
+
+function getCloudinaryWidgetApi() {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  return window.cloudinary;
+}
+
+async function ensureUploadWidgetLoaded(): Promise<void> {
+  const cloudinary = getCloudinaryWidgetApi();
+  if (cloudinary?.createUploadWidget) {
+    return;
+  }
+
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    throw new Error('Cloudinary upload widget is not available in this environment.');
+  }
+
+  if (cloudinaryUploadWidgetLoader) {
+    return cloudinaryUploadWidgetLoader;
+  }
+
+  cloudinaryUploadWidgetLoader = new Promise<void>((resolve, reject) => {
+    const finalizeLoad = () => {
+      const widgetApi = getCloudinaryWidgetApi();
+      if (widgetApi?.createUploadWidget) {
+        resolve();
+        return;
+      }
+
+      cloudinaryUploadWidgetLoader = null;
+      reject(new Error('Cloudinary upload widget failed to initialize.'));
+    };
+
+    const handleError = () => {
+      document.getElementById(CLOUDINARY_UPLOAD_WIDGET_SCRIPT_ID)?.remove();
+      cloudinaryUploadWidgetLoader = null;
+      reject(new Error('Failed to load Cloudinary upload widget.'));
+    };
+
+    const existingScript = document.getElementById(CLOUDINARY_UPLOAD_WIDGET_SCRIPT_ID) as HTMLScriptElement | null;
+    if (existingScript) {
+      if (existingScript.dataset.status === 'loaded') {
+        finalizeLoad();
+        return;
+      }
+
+      if (existingScript.dataset.status !== 'error') {
+        existingScript.addEventListener('load', finalizeLoad, { once: true });
+        existingScript.addEventListener('error', handleError, { once: true });
+        return;
+      }
+
+      existingScript.remove();
+    }
+
+    const script = document.createElement('script');
+    script.id = CLOUDINARY_UPLOAD_WIDGET_SCRIPT_ID;
+    script.src = CLOUDINARY_UPLOAD_WIDGET_SCRIPT_SRC;
+    script.async = true;
+    script.dataset.status = 'loading';
+    script.onload = () => {
+      script.dataset.status = 'loaded';
+      finalizeLoad();
+    };
+    script.onerror = () => {
+      script.dataset.status = 'error';
+      handleError();
+    };
+    document.head.appendChild(script);
+  });
+
+  return cloudinaryUploadWidgetLoader;
 }
 
 function getCloudinaryConfig(manifest: Manifest, context?: ImageServiceContext): {
@@ -70,7 +150,7 @@ function createUploadWidget(
   uploadPreset: string,
   onResult: (error: UploadWidgetError | null, result: UploadWidgetResult | null, widget: CloudinaryWidget) => void
 ): CloudinaryWidget {
-  const cloudinary = window.cloudinary;
+  const cloudinary = getCloudinaryWidgetApi();
   if (!cloudinary?.createUploadWidget) {
     throw new Error('Cloudinary upload widget is not available in this environment.');
   }
@@ -144,6 +224,8 @@ class CloudinaryImageService implements ImageService {
     if (!cloudName || !uploadPreset) {
       throw new Error('Cloudinary Cloud Name and Upload Preset must be configured.');
     }
+
+    await ensureUploadWidgetLoaded();
 
     return new Promise((resolve, reject) => {
       let widget: CloudinaryWidget;
