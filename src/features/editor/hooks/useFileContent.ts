@@ -7,7 +7,7 @@ import { useAppStore } from '@/core/state/useAppStore';
 import { useEditor } from '@/features/editor/contexts/useEditor';
 import { slugify } from '@/core/libraries/utils';
 import { toast } from 'sonner';
-import { type MarkdownFrontmatter } from '@/core/types';
+import { type MarkdownFrontmatter, type ParsedMarkdownFile } from '@/core/types';
 import { DEFAULT_PAGE_LAYOUT_PATH } from '@/config/editorConfig';
 import { type CollectionContext } from '@/core/services/collectionContext.service';
 
@@ -55,7 +55,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         return;
       }
       // let _markdownContent = ''; // Not currently used
-      let fileData: any = null;
+      let fileData: ParsedMarkdownFile | null = null;
       
       if (isNewFileMode) {
         // Use collection context to determine proper initialization
@@ -82,7 +82,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
        } else {
         console.log('useFileContent - looking for existing file at path:', filePath);
         console.log('useFileContent - available contentFiles:', contentFiles?.map(f => f.path));
-        fileData = contentFiles.find(f => f.path === filePath);
+        fileData = contentFiles.find(f => f.path === filePath) ?? null;
         if (!fileData) {
           console.log('useFileContent - file not found!');
 

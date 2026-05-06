@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { type ImageRef } from '@/core/types';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getActiveImageService } from '@/core/services/images/images.service';
+import { UPLOAD_CANCELLED_MESSAGE } from '@/core/services/images/cloudinaryImage.service';
 import { updateImageReferences } from '@/core/services/images/imageRegistry.service';
 import { Button } from '@/core/components/ui/button';
 import { UploadCloud, XCircle } from 'lucide-react';
@@ -25,13 +26,14 @@ export default function SiteAssetUploader({ siteId, label, value, onChange, onRe
   const site = useAppStore(state => state.getSiteById(siteId));
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const service = site?.manifest ? getActiveImageService(site.manifest) : undefined;
+  const usesProviderWidget = service?.capabilities?.uploadInteraction === 'provider-widget' && typeof service.startUpload === 'function';
 
   useEffect(() => {
     let objectUrl: string | null = null;
     const generatePreview = async () => {
-      if (value && site?.manifest) {
+      if (value && site?.manifest && service) {
         try {
-          const service = getActiveImageService(site.manifest);
           const url = await service.getDisplayUrl(site.manifest, value, { width: 128, height: 128, crop: 'fit' }, false);
           setPreviewUrl(url);
           if (url.startsWith('blob:')) {
@@ -52,11 +54,54 @@ export default function SiteAssetUploader({ siteId, label, value, onChange, onRe
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [value, site, label]);
+  }, [label, service, site, value]);
+
+  const uploadContext = site?.manifest
+    ? {
+        manifest: site.manifest,
+        secrets: site.secrets,
+        site,
+      }
+    : undefined;
+
+  const completeUpload = async (newRef: ImageRef) => {
+    // Track this image as referenced by the manifest field
+    try {
+      await updateImageReferences(
+        siteId,
+        `manifest.${manifestField}`,
+        [newRef.src]
+      );
+      console.log(`[SiteAssetUploader] Registered ${manifestField} image reference:`, newRef.src);
+    } catch (registryError) {
+      console.warn(`[SiteAssetUploader] Failed to update image registry for ${manifestField}:`, registryError);
+      // Don't fail the upload if registry update fails
+    }
+
+    onChange(newRef);
+    toast.success(`${label} uploaded successfully.`);
+  };
+
+  const handleProviderUpload = async () => {
+    if (!service?.startUpload || !uploadContext) {
+      return;
+    }
+
+    try {
+      const newRef = await service.startUpload(siteId, uploadContext);
+      await completeUpload(newRef);
+    } catch (error) {
+      if (error instanceof Error && error.message === UPLOAD_CANCELLED_MESSAGE) {
+        return;
+      }
+
+      console.error(`Upload failed for ${label}:`, error);
+    }
+  };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !site?.manifest) return;
+    if (!file || !site?.manifest || !service || !uploadContext) return;
 
     const isSvg = file.type === 'image/svg+xml';
     if (!MEMORY_CONFIG.SUPPORTED_IMAGE_TYPES.includes(file.type as typeof MEMORY_CONFIG.SUPPORTED_IMAGE_TYPES[number])) {
@@ -76,28 +121,8 @@ export default function SiteAssetUploader({ siteId, label, value, onChange, onRe
 
     setIsUploading(true);
     try {
-      const service = getActiveImageService(site.manifest);
-      const newRef = await service.upload(file, siteId, {
-        manifest: site.manifest,
-        secrets: site.secrets,
-        site,
-      });
-
-      // Track this image as referenced by the manifest field
-      try {
-        await updateImageReferences(
-          siteId,
-          `manifest.${manifestField}`,
-          [newRef.src]
-        );
-        console.log(`[SiteAssetUploader] Registered ${manifestField} image reference:`, newRef.src);
-      } catch (registryError) {
-        console.warn(`[SiteAssetUploader] Failed to update image registry for ${manifestField}:`, registryError);
-        // Don't fail the upload if registry update fails
-      }
-
-      onChange(newRef);
-      toast.success(`${label} uploaded successfully.`);
+      const newRef = await service.upload(file, siteId, uploadContext);
+      await completeUpload(newRef);
     } catch (error) {
       console.error(`Upload failed for ${label}:`, error);
     } finally {
@@ -140,18 +165,26 @@ export default function SiteAssetUploader({ siteId, label, value, onChange, onRe
       <div className="flex-grow">
         <label htmlFor={inputId} className="font-medium text-sm">{label}</label>
         <div className="flex items-center gap-2 mt-1">
-          <Button asChild size="sm" variant="outline" disabled={isUploading}>
-            <label htmlFor={inputId} className="cursor-pointer">
-              {isUploading ? 'Uploading...' : (value ? 'Change...' : 'Upload...')}
-            </label>
-          </Button>
-          <input
-            type="file"
-            id={inputId}
-            className="hidden"
-            onChange={handleFileSelect}
-            accept={MEMORY_CONFIG.SUPPORTED_EXTENSIONS.join(',')}
-          />
+          {usesProviderWidget ? (
+            <Button type="button" size="sm" variant="outline" onClick={handleProviderUpload}>
+              {value ? `Change via ${service.name}` : `Upload via ${service.name}`}
+            </Button>
+          ) : (
+            <>
+              <Button asChild size="sm" variant="outline" disabled={isUploading}>
+                <label htmlFor={inputId} className="cursor-pointer">
+                  {isUploading ? 'Uploading...' : (value ? 'Change...' : 'Upload...')}
+                </label>
+              </Button>
+              <input
+                type="file"
+                id={inputId}
+                className="hidden"
+                onChange={handleFileSelect}
+                accept={MEMORY_CONFIG.SUPPORTED_EXTENSIONS.join(',')}
+              />
+            </>
+          )}
           {value && (
             <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={handleRemove}>
               <XCircle className="w-4 h-4 mr-1" />

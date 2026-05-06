@@ -6,6 +6,15 @@ import { validateThemePackage, sanitizeCSS } from './themeValidation.service';
 import { saveCustomThemeBundle } from './assetStorage.service';
 import type { ThemeInfo } from '@/core/types';
 
+interface ZipEntryInternalData {
+  compressedSize?: number;
+  uncompressedSize?: number;
+}
+
+type ZipEntryWithInternalData = JSZip.JSZipObject & {
+  _data?: ZipEntryInternalData;
+};
+
 /**
  * Result of a theme import operation.
  */
@@ -113,8 +122,9 @@ export async function importThemeFromZip(
       if (zipEntry.dir) continue;
 
       // Get compression info from internal data (if available)
-      const compressedSize = (zipEntry as any)._data?.compressedSize || 0;
-      const uncompressedSize = (zipEntry as any)._data?.uncompressedSize || 0;
+      const zipEntryWithData = zipEntry as ZipEntryWithInternalData;
+      const compressedSize = zipEntryWithData._data?.compressedSize || 0;
+      const uncompressedSize = zipEntryWithData._data?.uncompressedSize || 0;
 
       // Check decompression ratio (zip bomb protection)
       if (compressedSize > 0 && uncompressedSize > 0) {

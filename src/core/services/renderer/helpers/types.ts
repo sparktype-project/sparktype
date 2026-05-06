@@ -20,7 +20,7 @@ export type SparktypeHelperFunction = (
    * 'unknown[]' safely represents this contract.
    */
   ...args: unknown[]
-) => string | Handlebars.SafeString | boolean | Promise<Handlebars.SafeString>;
+) => string | Handlebars.SafeString | boolean | unknown[] | Record<string, unknown> | Promise<Handlebars.SafeString>;
 
 /**
  * Defines a "Helper Factory". It's a function that receives the full site data

@@ -51,6 +51,7 @@ class LocalImageService implements ImageService {
   kind = 'local' as const;
   capabilities = {
     upload: true,
+    uploadInteraction: 'file-input' as const,
     transforms: true,
     exportMode: 'bundle' as const,
     importMode: 'full' as const,

@@ -7,6 +7,8 @@ import { useAppStore } from '@/core/state/useAppStore';
 import { getAvailableLayouts } from '@/core/services/config/configHelpers.service';
 import type { LayoutManifest } from '@/core/types';
 
+type GroupedLayout = LayoutManifest & { group?: string };
+
 interface LayoutSelectorProps {
   siteId: string;
   selectedLayoutId: string;
@@ -60,7 +62,7 @@ export default function LayoutSelector({ siteId, selectedLayoutId, onChange, fil
   const groupedLayouts = useMemo(() => {
     const groups: Record<string, LayoutManifest[]> = {};
     filteredLayouts.forEach(layout => {
-      const groupName = (layout as any).group ||
+      const groupName = (layout as GroupedLayout).group ||
         (layout.layoutType === 'list' ? 'List Layouts' :
          layout.layoutType === 'item' ? 'Item Layouts' :
          'Page Layouts');

@@ -2,7 +2,7 @@
 
 import Handlebars from 'handlebars';
 import type { SparktypeHelper } from './types';
-import type { ImageRef, LocalSiteData, StructureNode } from '@/core/types';
+import type { ImageRef, LocalSiteData, MarkdownFrontmatter, StructureNode } from '@/core/types';
 import { imagePreprocessor } from '@/core/services/images/imagePreprocessor.service';
 import { getUrlForNode } from '@/core/services/urlUtils.service';
 import { getRelativePath } from '@/core/services/relativePaths.service';
@@ -10,10 +10,10 @@ import { getRelativePath } from '@/core/services/relativePaths.service';
 interface RootTemplateContext {
   contentFile?: {
     path: string;
-    frontmatter: any;
+    frontmatter: MarkdownFrontmatter;
   };
   headContext?: {
-    [key: string]: any;
+    [key: string]: unknown;
   };
   layoutConfig?: {
     displayType?: string;
@@ -22,6 +22,12 @@ interface RootTemplateContext {
   options: {
     isExport: boolean;
   };
+}
+
+interface ImageHelperContext {
+  tagName?: string;
+  path?: string;
+  frontmatter?: Record<string, unknown>;
 }
 
 export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => {
@@ -36,12 +42,13 @@ export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => {
      * {{{image fieldname="featured_image" preset="full" class="hero-image" alt="Hero"}}} → <img> with custom attributes
      * {{{image fieldname="featured_image"}}} → Uses 'original' preset by default
      */
-    image: function(this: any, ...args: unknown[]): Handlebars.SafeString {
+    image: function(this: unknown, ...args: unknown[]): Handlebars.SafeString {
     const options = args[args.length - 1] as Handlebars.HelperOptions;
     const rootContext = options.data.root as RootTemplateContext;
+    const helperContext = this as ImageHelperContext | undefined;
 
     // Context-aware: detect if we're inside a meta tag
-    const isInMetaTag = this?.tagName?.toLowerCase() === 'meta' || options.hash.url_only;
+    const isInMetaTag = helperContext?.tagName?.toLowerCase() === 'meta' || options.hash.url_only;
 
     // Get field name - required
     const fieldName = options.hash.fieldname;
@@ -56,15 +63,15 @@ export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => {
     let imageRef: ImageRef | null = null;
 
     // 1. Collection item context: this.frontmatter (when rendering collection items)
-    if (this?.frontmatter?.[fieldName]) {
-      imageRef = this.frontmatter[fieldName] as ImageRef;
+    if (typeof fieldName === 'string' && helperContext?.frontmatter?.[fieldName]) {
+      imageRef = helperContext.frontmatter[fieldName] as ImageRef;
     }
     // 2. Page context: rootContext.contentFile.frontmatter (when rendering individual pages)
-    else if (rootContext.contentFile?.frontmatter?.[fieldName]) {
+    else if (typeof fieldName === 'string' && rootContext.contentFile?.frontmatter?.[fieldName]) {
       imageRef = rootContext.contentFile.frontmatter[fieldName] as ImageRef;
     }
     // 3. Manifest context: headContext (for logo, favicon)
-    else if (rootContext.headContext?.[fieldName]) {
+    else if (typeof fieldName === 'string' && rootContext.headContext?.[fieldName]) {
       imageRef = rootContext.headContext[fieldName] as ImageRef;
     }
 
@@ -81,8 +88,8 @@ export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => {
         contentPath = '_manifest';
       }
       // 2. Collection item context (this.path)
-      else if (this?.path) {
-        contentPath = this.path;
+      else if (helperContext?.path) {
+        contentPath = helperContext.path;
       }
       // 3. Root context contentFile
       else if (rootContext.contentFile?.path) {

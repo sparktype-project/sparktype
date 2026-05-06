@@ -75,7 +75,7 @@ function sanitizeMarkdownHtml(htmlContent: string): string {
     }
   });
 
-  const config: DOMPurify.Config = {
+  const config = {
     FORBID_ATTR: [
       'onerror', 'onload', 'onclick', 'onmouseover', 'onmouseout', 'onmousedown', 'onmouseup',
       'onmousemove', 'onmouseenter', 'onmouseleave', 'ondblclick', 'oncontextmenu',
@@ -85,7 +85,7 @@ function sanitizeMarkdownHtml(htmlContent: string): string {
     ALLOW_DATA_ATTR: true,
   };
 
-  const sanitized = purify.sanitize(htmlContent, config as any);
+  const sanitized = purify.sanitize(htmlContent, config);
   purify.removeAllHooks();
 
   return String(sanitized);

@@ -69,7 +69,15 @@ async function cacheAllTemplates(siteData: LocalSiteData): Promise<void> {
 export function generateStyleOverrides(themeConfig: Record<string, string | number | boolean>): string {
     if (!themeConfig || Object.keys(themeConfig).length === 0) return '';
     const variables = Object.entries(themeConfig)
-        .map(([key, value]) => value ? `  --${key.replace(/_/g, '-')}: ${value};` : null)
+        .map(([key, value]) => {
+            if (!value) return null;
+
+            const normalizedKey = key.startsWith('--')
+                ? key.replace(/_/g, '-')
+                : `--${key.replace(/_/g, '-')}`;
+
+            return `  ${normalizedKey}: ${value};`;
+        })
         .filter(Boolean)
         .join('\n');
     if (!variables) return '';

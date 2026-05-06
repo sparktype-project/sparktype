@@ -12,6 +12,17 @@ export interface GitHubConfig {
   netlifyIntegration?: boolean; // whether to trigger Netlify build
 }
 
+interface GitTreeCreateRequest {
+  tree: unknown[];
+  base_tree?: string;
+}
+
+interface GitCommitCreateRequest {
+  message: string;
+  tree: string;
+  parents?: string[];
+}
+
 // Removed unused GitHubFile interface
 
 export class GitHubProvider extends BaseProvider {
@@ -430,7 +441,7 @@ Files: ${files.size}
       }
     }
 
-    const treeData: any = { tree };
+    const treeData: GitTreeCreateRequest = { tree };
     // Only include base_tree if we have a valid base SHA and the repository isn't empty
     if (baseSHA && baseSHA.length > 0) {
       treeData.base_tree = baseSHA;
@@ -505,7 +516,7 @@ Files: ${files.size}
    * Create a commit with the given tree
    */
   private async createCommit(config: GitHubConfig, treeSHA: string, parentSHA: string | null, message: string) {
-    const commitData: any = {
+    const commitData: GitCommitCreateRequest = {
       message,
       tree: treeSHA
     };

@@ -13,6 +13,10 @@ interface CollapsibleTriggerProps {
   children: React.ReactNode;
 }
 
+type TriggerElementProps = {
+  onClick?: React.MouseEventHandler<HTMLElement>;
+};
+
 interface CollapsibleContentProps {
   children: React.ReactNode;
 }
@@ -60,9 +64,8 @@ const CollapsibleTrigger = React.forwardRef<HTMLButtonElement, CollapsibleTrigge
     };
 
     if (asChild && React.isValidElement(children)) {
-      return React.cloneElement(children as React.ReactElement<any>, {
+      return React.cloneElement(children as React.ReactElement<TriggerElementProps>, {
         ...props,
-        ref,
         onClick: handleClick,
       });
     }

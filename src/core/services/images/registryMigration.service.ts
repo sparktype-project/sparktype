@@ -14,6 +14,10 @@ import type { LocalSiteData } from '@/core/types';
 import { getAllImageAssetsForSite } from '@/core/services/localFileSystem.service';
 import { createEmptyRegistry, saveImageRegistry, getImageRegistry, type ImageRegistry } from './imageRegistry.service';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 /**
  * Simple image reference finder that doesn't use complex recursive traversal
  * This is safer and more predictable than the old findAllReferencedImages
@@ -64,9 +68,9 @@ function findReferencedImagesSimple(siteData: LocalSiteData): Map<string, string
  * Recursively scans an object for ImageRef patterns, but with safety limits
  * This is much simpler than the old recursive approach
  */
-function scanObjectForImageRefs(obj: any, found: string[], depth = 0): void {
+function scanObjectForImageRefs(obj: unknown, found: string[], depth = 0): void {
   // Safety: limit recursion depth
-  if (depth > 10 || !obj || typeof obj !== 'object') {
+  if (depth > 10 || !isRecord(obj)) {
     return;
   }
 

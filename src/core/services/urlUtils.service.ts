@@ -1,6 +1,7 @@
 // src/core/services/urlUtils.service.ts
-import type { Manifest, StructureNode, CollectionItemRef } from '@/core/types';
+import type { CollectionItemRef, LocalSiteData, Manifest, StructureNode } from '@/core/types';
 import { getCollection } from './collections.service';
+import { getRelativePath } from './relativePaths.service';
 
 /**
  * ============================================================================
@@ -17,8 +18,8 @@ import { getCollection } from './collections.service';
 /**
  * A type guard to check if the provided object is a CollectionItemRef.
  */
-function isCollectionItemRef(node: any): node is CollectionItemRef {
-  return node && typeof node === 'object' && 'collectionId' in node;
+function isCollectionItemRef(node: unknown): node is CollectionItemRef {
+  return typeof node === 'object' && node !== null && 'collectionId' in node;
 }
 
 /**
@@ -28,7 +29,7 @@ function isCollectionItemRef(node: any): node is CollectionItemRef {
 function isHomepage(
   node: StructureNode | CollectionItemRef,
   manifest: Manifest,
-  siteData?: { contentFiles?: Array<{ path: string; frontmatter: { homepage?: boolean } }> }
+  siteData?: Pick<LocalSiteData, 'contentFiles'>
 ): boolean {
   // Collection items can never be homepage
   if (isCollectionItemRef(node)) {
@@ -51,7 +52,7 @@ function isHomepage(
 function getBasePath(
   node: StructureNode | CollectionItemRef,
   manifest: Manifest,
-  siteData?: { contentFiles?: Array<{ path: string; frontmatter: { homepage?: boolean } }> }
+  siteData?: Pick<LocalSiteData, 'contentFiles'>
 ): string {
   // Case 1: Collection Item
   if (isCollectionItemRef(node)) {
@@ -80,7 +81,7 @@ function getBasePath(
 
   if (siteData?.contentFiles) {
     const nodeFile = siteData.contentFiles.find(f => f.path === node.path);
-    const collectionConfig = (nodeFile?.frontmatter as any)?.collection;
+    const collectionConfig = nodeFile?.frontmatter.collection;
 
     if (collectionConfig) {
       // Find the collection this page manages
@@ -134,7 +135,7 @@ export function generatePreviewUrl(
   manifest: Manifest,
   siteId: string,
   pageNumber?: number,
-  siteData?: { contentFiles?: Array<{ path: string; frontmatter: { homepage?: boolean } }> }
+  siteData?: Pick<LocalSiteData, 'contentFiles'>
 ): string {
   const basePath = getBasePath(node, manifest, siteData);
   const pathWithPagination = addPagination(basePath, pageNumber, false);
@@ -153,7 +154,7 @@ export function generateExportUrl(
   node: StructureNode | CollectionItemRef,
   manifest: Manifest,
   pageNumber?: number,
-  siteData?: { contentFiles?: Array<{ path: string; frontmatter: { homepage?: boolean } }> },
+  siteData?: Pick<LocalSiteData, 'contentFiles'>,
   currentPagePath?: string,
   forFilePath = false,
   forIframe = false
@@ -186,7 +187,6 @@ export function generateExportUrl(
       return depth > 0 ? '../'.repeat(depth) : './';
     } else {
       // Calculate relative path using existing service
-      const { getRelativePath } = require('./relativePaths.service');
       return getRelativePath(currentPagePath, exportPath);
     }
   }
@@ -209,7 +209,7 @@ export function getUrlForNode(
   manifest: Manifest,
   isExport: boolean,
   pageNumber?: number,
-  siteData?: { contentFiles?: Array<{ path: string; frontmatter: { homepage?: boolean } }> },
+  siteData?: Pick<LocalSiteData, 'contentFiles'>,
   forFilePath: boolean = false
 ): string {
   if (isExport) {

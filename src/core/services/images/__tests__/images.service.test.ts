@@ -73,7 +73,7 @@ describe('images.service', () => {
         theme: { name: 'default', config: {} },
         structure: [],
         settings: {
-          imageService: 'invalid-service' as any
+          imageService: 'invalid-service' as unknown as string
         }
       };
       
@@ -259,7 +259,7 @@ describe('images.service', () => {
         theme: { name: 'default', config: {} },
         structure: [],
         settings: {
-          imageService: null as any
+          imageService: null as unknown as string
         }
       };
       

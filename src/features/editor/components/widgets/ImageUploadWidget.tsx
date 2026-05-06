@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { WidgetProps } from '@rjsf/utils';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getActiveImageService } from '@/core/services/images/images.service';
+import { UPLOAD_CANCELLED_MESSAGE } from '@/core/services/images/cloudinaryImage.service';
 import { Button } from '@/core/components/ui/button';
 import { UploadCloud, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -16,13 +17,14 @@ export default function ImageUploadWidget(props: WidgetProps) {
   const site = useAppStore(state => state.getSiteById(siteId));
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const service = site?.manifest ? getActiveImageService(site.manifest) : undefined;
+  const usesProviderWidget = service?.capabilities?.uploadInteraction === 'provider-widget' && typeof service.startUpload === 'function';
 
   useEffect(() => {
     const generatePreview = async () => {
-      if (imageRef && site?.manifest) {
+      if (imageRef && site?.manifest && service) {
         try {
           console.log(`[ImageUploadWidget] Generating preview for ${label}`);
-          const service = getActiveImageService(site.manifest);
           console.log(`[ImageUploadWidget] Using image service:`, service.constructor.name);
           const startTime = Date.now();
 
@@ -42,7 +44,7 @@ export default function ImageUploadWidget(props: WidgetProps) {
       }
     };
     generatePreview();
-  }, [imageRef, site, label]);
+  }, [imageRef, label, service, site]);
 
   // Cleanup blob URLs only on actual component unmount (not recreation)
   useEffect(() => {
@@ -53,9 +55,43 @@ export default function ImageUploadWidget(props: WidgetProps) {
     };
   }, []); // Empty dependency array - only run on unmount
 
+  const uploadContext = site?.manifest
+    ? {
+        manifest: site.manifest,
+        secrets: site.secrets,
+        site,
+      }
+    : undefined;
+
+  const handleProviderUpload = async () => {
+    if (!site?.manifest || !service?.startUpload || !uploadContext) {
+      return;
+    }
+
+    console.log(`[ImageUploadWidget] Starting provider upload for ${label}`);
+
+    try {
+      const uploadStartTime = Date.now();
+      const newRef = await service.startUpload(siteId, uploadContext);
+      const uploadEndTime = Date.now();
+      console.log(`[ImageUploadWidget] Provider upload completed in ${uploadEndTime - uploadStartTime}ms`);
+      onChange(newRef);
+      toast.success(`${label} uploaded successfully.`);
+    } catch (error) {
+      if (error instanceof Error && error.message === UPLOAD_CANCELLED_MESSAGE) {
+        console.log(`[ImageUploadWidget] Provider upload cancelled for ${label}`);
+        return;
+      }
+
+      console.error(`[ImageUploadWidget] Provider upload failed for ${label}:`, error);
+      const errorMsg = error instanceof Error ? error.message : 'Upload failed. Please try again.';
+      toast.error(errorMsg);
+    }
+  };
+
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !site?.manifest) return;
+    if (!file || !site?.manifest || !service || !uploadContext) return;
 
     console.log(`[ImageUploadWidget] File selected: ${file.name}, size: ${file.size}, type: ${file.type}`);
 
@@ -75,14 +111,9 @@ export default function ImageUploadWidget(props: WidgetProps) {
     setIsUploading(true);
     console.log(`[ImageUploadWidget] Starting upload for ${file.name}`);
     try {
-      const service = getActiveImageService(site.manifest);
       console.log(`[ImageUploadWidget] Using upload service:`, service.constructor.name);
       const uploadStartTime = Date.now();
-      const newRef = await service.upload(file, siteId, {
-        manifest: site.manifest,
-        secrets: site.secrets,
-        site,
-      });
+      const newRef = await service.upload(file, siteId, uploadContext);
       const uploadEndTime = Date.now();
       console.log(`[ImageUploadWidget] Upload completed in ${uploadEndTime - uploadStartTime}ms`);
       onChange(newRef);
@@ -120,6 +151,21 @@ export default function ImageUploadWidget(props: WidgetProps) {
             <XCircle className="h-4 w-4" />
           </Button>
         </div>
+      ) : usesProviderWidget ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="flex h-auto w-full flex-row items-center justify-center gap-3 rounded-lg bg-muted p-3 text-left hover:bg-muted/80"
+          onClick={handleProviderUpload}
+        >
+          <UploadCloud className="h-8 w-8 text-muted-foreground" />
+          <div>
+            <p className="mb-1 text-xs text-muted-foreground">
+              <span className="font-semibold">{`Upload via ${service.name}`}</span>
+            </p>
+            <p className="text-xs text-muted-foreground">Use your configured provider picker.</p>
+          </div>
+        </Button>
       ) : (
         <label
           htmlFor={id}

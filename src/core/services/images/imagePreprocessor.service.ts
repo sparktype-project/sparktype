@@ -1,6 +1,6 @@
 // src/core/services/images/imagePreprocessor.service.ts
 
-import type { LocalSiteData, ImageRef, ImageTransformOptions, ImagePreset } from '@/core/types';
+import type { LocalSiteData, ImageRef, ImageTransformOptions, ImagePreset, ImageService } from '@/core/types';
 import { getActiveImageService } from '@/core/services/images/images.service';
 import { BASE_IMAGE_PRESETS } from '@/config/editorConfig';
 
@@ -21,6 +21,10 @@ interface ProcessedImageData {
   [fieldName: string]: FieldPresets;
 }
 
+interface PresetManifest {
+  image_presets?: Record<string, Partial<ImagePreset>>;
+}
+
 function buildProcessedImageKey(siteId: string, contentPath: string): string {
   return `${siteId}:${contentPath}`;
 }
@@ -32,6 +36,56 @@ function getRenderContext(isExport: boolean, forIframe?: boolean): 'export' | 'p
   if (isExport) return 'export';
   if (forIframe) return 'iframe';
   return 'preview';
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function parsePresetDefinition(value: unknown): Partial<ImagePreset> | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const preset: Partial<ImagePreset> = {};
+
+  if (typeof value.width === 'number') preset.width = value.width;
+  if (typeof value.height === 'number') preset.height = value.height;
+  if (value.crop === 'fill' || value.crop === 'fit' || value.crop === 'scale') preset.crop = value.crop;
+  if (
+    value.gravity === 'center' ||
+    value.gravity === 'north' ||
+    value.gravity === 'south' ||
+    value.gravity === 'east' ||
+    value.gravity === 'west'
+  ) {
+    preset.gravity = value.gravity;
+  }
+  if (typeof value.description === 'string') preset.description = value.description;
+
+  return Object.keys(preset).length > 0 ? preset : null;
+}
+
+function parsePresetManifest(content: string): PresetManifest | null {
+  const parsed: unknown = JSON.parse(content);
+  if (!isRecord(parsed)) {
+    return null;
+  }
+
+  const imagePresets = parsed.image_presets;
+  if (!isRecord(imagePresets)) {
+    return {};
+  }
+
+  const normalizedPresets: Record<string, Partial<ImagePreset>> = {};
+  for (const [name, value] of Object.entries(imagePresets)) {
+    const preset = parsePresetDefinition(value);
+    if (preset) {
+      normalizedPresets[name] = preset;
+    }
+  }
+
+  return { image_presets: normalizedPresets };
 }
 
 /**
@@ -281,7 +335,7 @@ export class ImagePreprocessorService {
     fieldName: string,
     layoutPath: string,
     contentPath: string,
-    imageService: any,
+    imageService: ImageService,
     isExport: boolean,
     forIframe?: boolean,
     context?: 'export' | 'preview' | 'iframe'
@@ -403,7 +457,7 @@ export class ImagePreprocessorService {
   /**
    * Gets the layout manifest for a given layout path
    */
-  private getLayoutManifest(siteData: LocalSiteData, layoutPath: string): any | null {
+  private getLayoutManifest(siteData: LocalSiteData, layoutPath: string): PresetManifest | null {
     const layoutFile = siteData.layoutFiles?.find(
       file => file.path === `layouts/${layoutPath}/layout.json`
     );
@@ -413,7 +467,7 @@ export class ImagePreprocessorService {
     }
 
     try {
-      return JSON.parse(layoutFile.content);
+      return parsePresetManifest(layoutFile.content);
     } catch (error) {
       console.warn(`[ImagePreprocessor] Failed to parse layout manifest for ${layoutPath}:`, error);
       return null;
@@ -423,7 +477,7 @@ export class ImagePreprocessorService {
   /**
    * Gets the theme manifest for a given theme name
    */
-  private getThemeManifest(siteData: LocalSiteData, themeName: string): any | null {
+  private getThemeManifest(siteData: LocalSiteData, themeName: string): PresetManifest | null {
     const themeFile = siteData.themeFiles?.find(
       file => file.path === `themes/${themeName}/theme.json`
     );
@@ -433,7 +487,7 @@ export class ImagePreprocessorService {
     }
 
     try {
-      return JSON.parse(themeFile.content);
+      return parsePresetManifest(themeFile.content);
     } catch (error) {
       console.warn(`[ImagePreprocessor] Failed to parse theme manifest for ${themeName}:`, error);
       return null;
@@ -446,8 +500,8 @@ export class ImagePreprocessorService {
    */
   private resolvePreset(
     presetName: string,
-    themeManifest: any,
-    layoutManifest: any
+    themeManifest: PresetManifest | null,
+    layoutManifest: PresetManifest | null
   ): ImagePreset | null {
     // Layer 1: Start with core preset
     const corePreset = BASE_IMAGE_PRESETS[presetName as keyof typeof BASE_IMAGE_PRESETS];
@@ -508,8 +562,8 @@ export class ImagePreprocessorService {
   /**
    * Type guard to check if a value is an ImageRef
    */
-  private isImageRef(value: any): boolean {
-    const isValid = (
+  private isImageRef(value: unknown): value is ImageRef {
+    const isValid = !!(
       value &&
       typeof value === 'object' &&
       'serviceId' in value &&

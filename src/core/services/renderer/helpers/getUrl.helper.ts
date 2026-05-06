@@ -2,8 +2,12 @@
 
 import type { SparktypeHelper } from './types';
 import { getUrlForNode as getUrlUtil } from '@/core/services/urlUtils.service';
-import type { StructureNode } from '@/core/types';
+import type { CollectionItemRef, ParsedMarkdownFile, StructureNode } from '@/core/types';
 import type { HelperOptions } from 'handlebars';
+
+type CollectionItemInput =
+  | CollectionItemRef
+  | (ParsedMarkdownFile & { frontmatter: ParsedMarkdownFile['frontmatter'] });
 
 /**
  * A Handlebars helper factory that exposes URL generation utilities to templates.
@@ -73,7 +77,7 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
    */
   getCollectionItemUrl: function(this: unknown, ...args: unknown[]): string {
     const options = args.pop() as HelperOptions;
-    const item = args[0] as Record<string, any>; // Type as generic object to allow property checks
+    const item = args[0] as CollectionItemInput | null | undefined;
     const isExport = options.data.root.options?.isExport === true;
     const siteRootPath = options.data.root.options?.siteRootPath;
 
@@ -87,7 +91,7 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
 
     // If it's a CollectionItemRef (has collectionId and slug)
     if ('collectionId' in item && 'slug' in item) {
-      baseUrl = getUrlUtil(item as StructureNode, siteData.manifest, isExport, undefined, siteData, isExport);
+      baseUrl = getUrlUtil(item, siteData.manifest, isExport, undefined, siteData, isExport);
     }
     // If it's a ParsedMarkdownFile (has path and slug), convert to CollectionItemRef format
     else if ('path' in item && 'slug' in item && typeof item.path === 'string') {
@@ -95,10 +99,9 @@ export const getUrlHelper: SparktypeHelper = (siteData) => ({
       const pathParts = item.path.split('/');
       if (pathParts.length >= 3 && pathParts[0] === 'content') {
         const collectionId = pathParts[1];
-        const collectionItemRef: StructureNode = {
-          type: 'page' as const,
+        const collectionItemRef: CollectionItemRef = {
           collectionId,
-          slug: item.slug as string,
+          slug: item.slug,
           path: item.path,
           title: item.frontmatter?.title || item.slug,
           url: '' // Let URL service handle this properly

@@ -3,6 +3,11 @@
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 import { BASE_SCHEMA } from '@/config/editorConfig';
 
+interface SchemaFieldMetadata {
+  title?: string;
+  description?: string;
+}
+
 /**
  * Identifies image fields from a schema by looking for fields with imageUploader widget
  */
@@ -31,10 +36,11 @@ export function getImageFieldsFromSchema(
       fieldUiSchema['ui:widget'] === 'imageUploader';
       
     if (hasImageUploader) {
+      const schemaField = fieldSchema as SchemaFieldMetadata;
       imageFields.push({
         fieldName,
-        title: (fieldSchema as any).title || fieldName,
-        description: (fieldSchema as any).description
+        title: schemaField.title || fieldName,
+        description: schemaField.description
       });
     }
   }

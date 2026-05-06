@@ -143,6 +143,47 @@ describe('cloudinaryImageService', () => {
     ).rejects.toThrow('Failed to load Cloudinary upload widget.');
   });
 
+  test('rejects cleanly when the user closes the widget without uploading', async () => {
+    const close = vi.fn();
+    const createUploadWidget = vi.fn((_options, callback) => {
+      const widget = {
+        open: () => {
+          callback(null, {
+            event: 'close' as const,
+          });
+        },
+        close,
+      };
+
+      return widget;
+    });
+
+    vi.spyOn(document.head, 'appendChild').mockImplementation((node) => {
+      if (node instanceof HTMLScriptElement) {
+        queueMicrotask(() => {
+          window.cloudinary = {
+            createUploadWidget,
+          };
+          node.onload?.(new Event('load'));
+        });
+      }
+
+      return node;
+    });
+
+    const { cloudinaryImageService } = await import('../cloudinaryImage.service');
+
+    await expect(
+      cloudinaryImageService.startUpload?.(
+        'test-site',
+        createContext()
+      )
+    ).rejects.toThrow('Upload cancelled.');
+
+    expect(createUploadWidget).toHaveBeenCalled();
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
   test('uploads videos through the Cloudinary widget and returns a VideoRef', async () => {
     const close = vi.fn();
     const createUploadWidget = vi.fn((_options, callback) => {

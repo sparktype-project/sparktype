@@ -26,7 +26,7 @@ const createImageFromBlob = (blob: Blob): Promise<HTMLImageElement> => {
       resolve(img);
     };
 
-    const onError = (error: any) => {
+    const onError = (error: unknown) => {
       clearTimeout(timeout);
       console.error('[ImageManipulation] Image load error:', error);
       reject(new Error(`Failed to load image: ${error instanceof Event ? 'Load error' : error}`));

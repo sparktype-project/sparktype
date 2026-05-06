@@ -4,6 +4,16 @@ import Handlebars from 'handlebars';
 import { SECURITY_CONFIG } from '@/config/editorConfig';
 import type { ThemeManifest } from '@/core/types';
 
+interface ExternalScriptDefinition {
+  src?: string;
+  integrity?: string;
+  crossorigin?: string;
+}
+
+type ThemeManifestWithExternalScripts = ThemeManifest & {
+  externalScripts?: ExternalScriptDefinition[];
+};
+
 /**
  * Validation result structure with detailed error and warning messages.
  */
@@ -352,11 +362,12 @@ export function validateThemeManifest(manifestJson: string): ValidationResult & 
   }
 
   // 5. Validate external scripts (if present)
-  if ((manifest as any).externalScripts) {
-    if (!Array.isArray((manifest as any).externalScripts)) {
+  const manifestWithExternalScripts = manifest as ThemeManifestWithExternalScripts;
+  if (manifestWithExternalScripts.externalScripts) {
+    if (!Array.isArray(manifestWithExternalScripts.externalScripts)) {
       errors.push('theme.json: "externalScripts" must be an array');
     } else {
-      (manifest as any).externalScripts.forEach((script: any, index: number) => {
+      manifestWithExternalScripts.externalScripts.forEach((script, index: number) => {
         if (!script.src || typeof script.src !== 'string') {
           errors.push(`theme.json: External script at index ${index} missing or invalid "src"`);
         } else {

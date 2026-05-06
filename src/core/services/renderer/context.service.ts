@@ -9,6 +9,7 @@ import type {
     LayoutManifest,
     CollectionItemRef,
     StructureNode,
+    Tag,
 } from '@/core/types';
 import { PageType } from '@/core/types';
 import { generateNavLinks } from '@/core/services/navigationStructure.service';
@@ -19,19 +20,22 @@ import { getRelativePath } from '@/core/services/relativePaths.service';
 import { getTagsByIds } from '@/core/services/tags.service';
 
 // The context object passed into the main body template.
+type ResolvedTags = Record<string, Tag[]>;
+type EnrichedCollectionItem = ParsedMarkdownFile & { url: string; resolvedTags?: ResolvedTags };
+
 type EnrichedPageContext = (PageResolutionResult & {
     siteData?: LocalSiteData;
-    collectionItems?: (ParsedMarkdownFile & { url: string; resolvedTags?: Record<string, any[]> })[];
+    collectionItems?: EnrichedCollectionItem[];
     layoutManifest?: LayoutManifest | null;
     options?: RenderOptions;
-    resolvedTags?: Record<string, any[]>;
+    resolvedTags?: ResolvedTags;
 });
 
 /**
  * Resolves tag IDs to full tag objects with names for all tag groups in content.
  */
-function resolveContentTags(contentFile: ParsedMarkdownFile, siteData: LocalSiteData): Record<string, any[]> {
-    const result: Record<string, any[]> = {};
+function resolveContentTags(contentFile: ParsedMarkdownFile, siteData: LocalSiteData): ResolvedTags {
+    const result: ResolvedTags = {};
 
     if (!contentFile.frontmatter.tags) return result;
 
@@ -137,8 +141,14 @@ export async function assembleBaseContext(
     const isItem = manifest.collectionItems?.some(item => item.path === resolution.contentFile.path);
     let urlNode: StructureNode | CollectionItemRef;
     if (isItem) {
-      const itemRef = manifest.collectionItems?.find(item => item.path === resolution.contentFile.path)!;
-      urlNode = itemRef;
+      const itemRef = manifest.collectionItems?.find(item => item.path === resolution.contentFile.path);
+      urlNode = itemRef ?? {
+        collectionId: '',
+        path: resolution.contentFile.path,
+        slug: resolution.contentFile.slug,
+        title: resolution.contentFile.frontmatter.title,
+        url: '',
+      };
     } else {
       urlNode = {
         type: 'page',

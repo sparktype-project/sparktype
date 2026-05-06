@@ -1,7 +1,7 @@
 // src/core/services/githubContentFetcher.service.ts
 
 import type { GitHubConfig } from './publishing/git.service';
-import type { LocalSiteData, ParsedMarkdownFile } from '@/core/types';
+import type { LocalSiteData, Manifest, ParsedMarkdownFile } from '@/core/types';
 import { parseMarkdownString } from '@/core/libraries/markdownParser';
 
 export interface GitCommit {
@@ -19,6 +19,32 @@ export interface RemoteFile {
   content: string;
   sha: string;
   lastModified: number;
+}
+
+interface GitHubRefResponse {
+  object: { sha: string };
+}
+
+interface GitHubCommitApiItem {
+  sha: string;
+  commit: {
+    message: string;
+    author: {
+      name: string;
+      date: string;
+    };
+  };
+  html_url: string;
+}
+
+interface GitHubTreeItem {
+  path?: string;
+  name?: string;
+  type?: string;
+}
+
+interface GitHubContentsFileResponse {
+  content?: string;
 }
 
 /**
@@ -40,7 +66,7 @@ export class GitHubContentFetcher {
       });
 
       if (response.ok) {
-        const ref = await response.json();
+        const ref = await response.json() as GitHubRefResponse;
         return ref.object.sha;
       } else if (response.status === 404) {
         console.warn(`[GitHubContentFetcher] Branch ${branch} not found`);
@@ -72,8 +98,8 @@ export class GitHubContentFetcher {
         throw new Error(`Failed to get commit history: ${response.statusText}`);
       }
 
-      const commits = await response.json();
-      return commits.map((commit: any) => ({
+      const commits = await response.json() as GitHubCommitApiItem[];
+      return commits.map((commit) => ({
         sha: commit.sha,
         message: commit.commit.message,
         author: {
@@ -115,18 +141,18 @@ export class GitHubContentFetcher {
         throw new Error(`Failed to fetch site content: ${response.statusText}`);
       }
 
-      const result = await response.json();
+      const result = await response.json() as { tree?: GitHubTreeItem[] } | GitHubTreeItem[];
       const files = new Map<string, string>();
 
       // Handle both tree API and contents API responses
-      const items = result.tree || result;
+      const items = Array.isArray(result) ? result : result.tree;
       if (!Array.isArray(items)) {
         console.log(`[GitHubContentFetcher] No files found in _site directory`);
         return files;
       }
 
       // Filter for _site files and fetch their content
-      const siteFiles = items.filter((item: any) => 
+      const siteFiles = items.filter((item: GitHubTreeItem) => 
         item.path?.startsWith('_site/') || item.name?.startsWith('_site/') && item.type !== 'tree'
       );
 
@@ -177,7 +203,7 @@ export class GitHubContentFetcher {
         throw new Error(`Failed to fetch ${filePath}: ${response.statusText}`);
       }
 
-      const file = await response.json();
+      const file = await response.json() as GitHubContentsFileResponse;
       if (file.content) {
         // Decode base64 content
         return atob(file.content.replace(/\s/g, ''));
@@ -195,12 +221,12 @@ export class GitHubContentFetcher {
    */
   async convertToLocalSiteData(siteContent: Map<string, string>, siteId: string): Promise<Partial<LocalSiteData>> {
     const contentFiles: ParsedMarkdownFile[] = [];
-    let manifest: any = null;
+    let manifest: Manifest | null = null;
 
     for (const [filePath, content] of siteContent) {
       if (filePath === '_site/manifest.json') {
         try {
-          manifest = JSON.parse(content);
+          manifest = JSON.parse(content) as Manifest;
         } catch (error) {
           console.error(`[GitHubContentFetcher] Error parsing manifest:`, error);
         }
@@ -224,7 +250,14 @@ export class GitHubContentFetcher {
 
     return {
       siteId,
-      manifest: manifest || { siteId, title: 'Imported Site' },
+      manifest: manifest || {
+        siteId,
+        generatorVersion: 'imported',
+        title: 'Imported Site',
+        description: '',
+        theme: { name: 'default', config: {} },
+        structure: [],
+      },
       contentFiles
     };
   }

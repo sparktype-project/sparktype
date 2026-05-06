@@ -28,7 +28,6 @@ function findAllImageRefs(siteData: LocalSiteData): ImageRef[] {
 /**
  * Bundles all files associated with a single theme or layout.
  */
-// @ts-expect-error - Function will be used in future implementation
 async function bundleAssetFiles(
     bundle: SiteBundle,
     siteData: LocalSiteData,
@@ -48,6 +47,8 @@ async function bundleAssetFiles(
         }
     }));
 }
+
+void bundleAssetFiles;
 
 /**
  * Generates media.json data file for the site bundle.

@@ -72,3 +72,45 @@
 
 {{!-- This is where the user's custom choices are injected as CSS variables --}}
 {{{styleOverrides}}}
+
+<style>
+    :root {
+        --font-headings: Inter, system-ui, -apple-system, sans-serif;
+        --font-body: "Gentium Book Plus", Georgia, serif;
+    }
+
+    body {
+        background-color: var(--color-background);
+        color: var(--color-text);
+        font-family: var(--font-body, "Gentium Book Plus", Georgia, serif);
+    }
+
+    h1, h2, h3, h4, h5, h6,
+    .font-headings {
+        font-family: var(--font-headings, Inter, system-ui, -apple-system, sans-serif);
+        color: var(--color-headings);
+    }
+
+    a,
+    a:link,
+    a:visited,
+    .text-primary {
+        color: var(--color-primary);
+    }
+
+    .prose,
+    .prose-lg {
+        --tw-prose-body: var(--color-text);
+        --tw-prose-headings: var(--color-headings);
+        --tw-prose-lead: var(--color-text);
+        --tw-prose-links: var(--color-primary);
+        --tw-prose-bold: var(--color-headings);
+        --tw-prose-counters: var(--color-primary);
+        --tw-prose-bullets: var(--color-primary);
+        --tw-prose-quotes: var(--color-headings);
+        --tw-prose-quote-borders: var(--color-primary);
+        --tw-prose-captions: var(--color-text);
+        --tw-prose-code: var(--color-headings);
+        --tw-prose-kbd: var(--color-headings);
+    }
+</style>

@@ -27,6 +27,10 @@ import { getImageRegistry, saveImageRegistry, createEmptyRegistry } from './imag
 import { ensureImageRegistry } from './registryMigration.service';
 import { getActiveImageService, getConfiguredImageServiceId, getImageProviderPublicConfig } from './images.service';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 function parseHtmlAttributes(attributeString: string): Record<string, string> {
   const attributes: Record<string, string> = {};
   const attributeRegex = /([\w:-]+)="([^"]*)"/g;
@@ -314,7 +318,7 @@ export async function generateMediaManifest(
  * console.log(`Valid manifest with ${validation.stats.totalImages} images`);
  * ```
  */
-export function validateMediaManifest(mediaJson: any): MediaManifestValidation {
+export function validateMediaManifest(mediaJson: unknown): MediaManifestValidation {
   const errors: string[] = [];
   const warnings: string[] = [];
   let totalImages = 0;
@@ -324,7 +328,7 @@ export function validateMediaManifest(mediaJson: any): MediaManifestValidation {
 
   try {
     // Validate root structure
-    if (typeof mediaJson !== 'object' || mediaJson === null) {
+    if (!isRecord(mediaJson)) {
       errors.push('Media manifest must be a valid JSON object');
       return createValidationResult(false, errors, warnings, {
         totalImages: 0, totalReferences: 0, estimatedSize: 0, serviceType: 'unknown'
@@ -349,14 +353,14 @@ export function validateMediaManifest(mediaJson: any): MediaManifestValidation {
       serviceType = detectedProviderId;
     }
 
-    if (typeof mediaJson.images !== 'object' || mediaJson.images === null) {
+    if (!isRecord(mediaJson.images)) {
       errors.push('Media manifest must have an images object');
       return createValidationResult(false, errors, warnings, {
         totalImages: 0, totalReferences: 0, estimatedSize: 0, serviceType
       });
     }
 
-    if (mediaJson.videos !== undefined && (typeof mediaJson.videos !== 'object' || mediaJson.videos === null)) {
+    if (mediaJson.videos !== undefined && !isRecord(mediaJson.videos)) {
       errors.push('Media manifest videos field must be an object when present');
     }
 
@@ -367,21 +371,19 @@ export function validateMediaManifest(mediaJson: any): MediaManifestValidation {
         continue;
       }
 
-      if (typeof imageEntry !== 'object' || imageEntry === null) {
+      if (!isRecord(imageEntry)) {
         errors.push(`Invalid image entry for ${imagePath}: must be object`);
         continue;
       }
 
-      const entry = imageEntry as any;
-
       // Validate referencedIn array
-      if (!Array.isArray(entry.referencedIn)) {
+      if (!Array.isArray(imageEntry.referencedIn)) {
         errors.push(`Invalid referencedIn for ${imagePath}: must be array`);
       } else {
-        totalReferences += entry.referencedIn.length;
+        totalReferences += imageEntry.referencedIn.length;
 
         // Validate reference paths
-        entry.referencedIn.forEach((ref: any) => {
+        imageEntry.referencedIn.forEach((ref: unknown) => {
           if (typeof ref !== 'string') {
             warnings.push(`Invalid reference path for ${imagePath}: ${ref}`);
           }
@@ -389,10 +391,10 @@ export function validateMediaManifest(mediaJson: any): MediaManifestValidation {
       }
 
       // Validate metadata object
-      if (typeof entry.metadata !== 'object' || entry.metadata === null) {
+      if (!isRecord(imageEntry.metadata)) {
         errors.push(`Invalid metadata for ${imagePath}: must be object`);
       } else {
-        const metadata = entry.metadata;
+        const metadata = imageEntry.metadata;
 
         // sizeBytes is required
         if (typeof metadata.sizeBytes !== 'number' || metadata.sizeBytes <= 0) {
@@ -425,17 +427,16 @@ export function validateMediaManifest(mediaJson: any): MediaManifestValidation {
           continue;
         }
 
-        if (typeof videoEntry !== 'object' || videoEntry === null) {
+        if (!isRecord(videoEntry)) {
           errors.push(`Invalid video entry for ${videoKey}: must be object`);
           continue;
         }
 
-        const entry = videoEntry as any;
-        if (!Array.isArray(entry.referencedIn)) {
+        if (!Array.isArray(videoEntry.referencedIn)) {
           errors.push(`Invalid referencedIn for video ${videoKey}: must be array`);
         }
 
-        if (entry.metadata !== undefined && (typeof entry.metadata !== 'object' || entry.metadata === null)) {
+        if (videoEntry.metadata !== undefined && !isRecord(videoEntry.metadata)) {
           errors.push(`Invalid metadata for video ${videoKey}: must be object`);
         }
       }

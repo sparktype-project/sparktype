@@ -10,6 +10,10 @@
 
 import type { ParsedMarkdownFile, MarkdownFrontmatter } from '@/core/types';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 /**
  * Finds all local image references in a content file
  */
@@ -58,9 +62,9 @@ export function findImagesInRawContent(frontmatter: MarkdownFrontmatter, content
  * Recursively scans an object for ImageRef patterns with safety limits
  * This is simpler and safer than the complex recursive approach used elsewhere
  */
-export function scanObjectForImageRefs(obj: any, found: string[], depth = 0): void {
+export function scanObjectForImageRefs(obj: unknown, found: string[], depth = 0): void {
   // Safety: limit recursion depth to prevent infinite loops
-  if (depth > 10 || !obj || typeof obj !== 'object') {
+  if (depth > 10 || !isRecord(obj)) {
     return;
   }
 
@@ -83,7 +87,7 @@ export function scanObjectForImageRefs(obj: any, found: string[], depth = 0): vo
 /**
  * Finds all images referenced in any object (manifest, frontmatter, etc.)
  */
-export function findImagesInObject(obj: any): string[] {
+export function findImagesInObject(obj: unknown): string[] {
   const imageReferences: string[] = [];
   scanObjectForImageRefs(obj, imageReferences);
   return Array.from(new Set(imageReferences));

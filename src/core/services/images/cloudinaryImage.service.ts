@@ -27,8 +27,8 @@ interface UploadWidgetResultInfo {
 }
 
 interface UploadWidgetResult {
-  event: 'success';
-  info: UploadWidgetResultInfo;
+  event: 'abort' | 'batch-cancelled' | 'close' | 'queues-end' | 'queues-start' | 'success' | 'upload-added';
+  info?: UploadWidgetResultInfo | string | Record<string, unknown>;
 }
 
 interface UploadWidgetError {
@@ -39,6 +39,8 @@ interface CloudinaryWidget {
   open: () => void;
   close: () => void;
 }
+
+const UPLOAD_CANCELLED_MESSAGE = 'Upload cancelled.';
 
 const CLOUDINARY_UPLOAD_WIDGET_SCRIPT_ID = 'cloudinary-upload-widget';
 const CLOUDINARY_UPLOAD_WIDGET_SCRIPT_SRC = 'https://widget.cloudinary.com/v2.0/global/all.js';
@@ -196,12 +198,17 @@ function buildCloudinaryVideoUrl(cloudName: string, ref: VideoRef): string {
   return `https://res.cloudinary.com/${cloudName}/video/upload/${version}${ref.src}${format}`;
 }
 
+function isSuccessResult(result: UploadWidgetResult | null): result is UploadWidgetResult & { event: 'success'; info: UploadWidgetResultInfo } {
+  return result?.event === 'success' && typeof result.info === 'object' && result.info !== null && 'public_id' in result.info;
+}
+
 class CloudinaryImageService implements ImageService {
   id = 'cloudinary';
   name = 'Upload to Cloudinary';
   kind = 'remote' as const;
   capabilities = {
     upload: true,
+    uploadInteraction: 'provider-widget' as const,
     transforms: true,
     exportMode: 'metadata-only' as const,
     importMode: 'metadata-only' as const,
@@ -260,6 +267,10 @@ class CloudinaryImageService implements ImageService {
   }
 
   async upload(_file: File, siteId: string, context?: ImageServiceContext): Promise<ImageRef> {
+    return this.startUpload(siteId, context);
+  }
+
+  async startUpload(siteId: string, context?: ImageServiceContext): Promise<ImageRef> {
     if (!context?.manifest) {
       throw new Error(`Cloudinary upload for ${siteId} requires manifest context.`);
     }
@@ -276,13 +287,19 @@ class CloudinaryImageService implements ImageService {
 
       try {
         widget = createUploadWidget(cloudName, uploadPreset, 'image', (error, result, uploadWidget) => {
+          if (result?.event === 'close' || result?.event === 'abort' || result?.event === 'batch-cancelled') {
+            uploadWidget.close();
+            reject(new Error(UPLOAD_CANCELLED_MESSAGE));
+            return;
+          }
+
           if (error) {
             uploadWidget.close();
             reject(new Error(error.message || 'Image upload failed. Please try again.'));
             return;
           }
 
-          if (result?.event === 'success') {
+          if (isSuccessResult(result)) {
             uploadWidget.close();
             resolve({
               serviceId: this.id,
@@ -336,13 +353,19 @@ class CloudinaryImageService implements ImageService {
           videoUploadPreset,
           'video',
           (error, result, uploadWidget) => {
+            if (result?.event === 'close' || result?.event === 'abort' || result?.event === 'batch-cancelled') {
+              uploadWidget.close();
+              reject(new Error(UPLOAD_CANCELLED_MESSAGE));
+              return;
+            }
+
             if (error) {
               uploadWidget.close();
               reject(new Error(error.message || 'Video upload failed. Please try again.'));
               return;
             }
 
-            if (result?.event === 'success') {
+            if (isSuccessResult(result)) {
               uploadWidget.close();
 
               resolve({
@@ -448,3 +471,4 @@ class CloudinaryImageService implements ImageService {
 }
 
 export const cloudinaryImageService = new CloudinaryImageService();
+export { UPLOAD_CANCELLED_MESSAGE };

@@ -1,6 +1,7 @@
 // src/core/services/renderer/helpers/toc.helper.ts
 import type { SparktypeHelper } from './types';
 import Handlebars from 'handlebars';
+import type { HelperOptions } from 'handlebars';
 import { parse } from 'node-html-parser';
 
 interface TocItem {
@@ -16,8 +17,8 @@ function extractTocItems(content: unknown, minLevel: number, maxLevel: number): 
   let htmlContent = content;
 
   // Handle Handlebars SafeString objects
-  if (htmlContent && typeof htmlContent === 'object' && 'string' in htmlContent) {
-    htmlContent = (htmlContent as any).string;
+  if (htmlContent instanceof Handlebars.SafeString) {
+    htmlContent = htmlContent.toString();
   }
 
   if (typeof htmlContent !== 'string') {
@@ -55,14 +56,14 @@ export const tocHelper: SparktypeHelper = () => ({
    * @returns TOC data structure or empty array
    * @example {{#each (toc content minLevel=2 maxLevel=4)}}...{{/each}}
    */
-  toc: function(...args: unknown[]) {
+  toc: function(...args: unknown[]): TocItem[] {
     const content = args[0];
-    const options = args[args.length - 1] as any;
+    const options = args[args.length - 1] as HelperOptions;
 
-    const minLevel = options?.hash?.minLevel || 2;
-    const maxLevel = options?.hash?.maxLevel || 6;
+    const minLevel = typeof options.hash.minLevel === 'number' ? options.hash.minLevel : 2;
+    const maxLevel = typeof options.hash.maxLevel === 'number' ? options.hash.maxLevel : 6;
 
-    return extractTocItems(content, minLevel, maxLevel) as any;
+    return extractTocItems(content, minLevel, maxLevel);
   },
 
   /**
@@ -74,10 +75,10 @@ export const tocHelper: SparktypeHelper = () => ({
    */
   toc_html: function(...args: unknown[]): Handlebars.SafeString {
     const content = args[0];
-    const options = args[args.length - 1] as any;
+    const options = args[args.length - 1] as HelperOptions;
 
-    const minLevel = options?.hash?.minLevel || 2;
-    const maxLevel = options?.hash?.maxLevel || 6;
+    const minLevel = typeof options.hash.minLevel === 'number' ? options.hash.minLevel : 2;
+    const maxLevel = typeof options.hash.maxLevel === 'number' ? options.hash.maxLevel : 6;
 
     // Get TOC items using shared extraction function
     const items = extractTocItems(content, minLevel, maxLevel);

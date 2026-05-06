@@ -1,6 +1,7 @@
 import { themeDataHelper, rawThemeDataHelper } from '../themeData.helper';
 import type { LocalSiteData } from '@/core/types';
 import { HtmlSanitizerService } from '../../../htmlSanitizer.service';
+import type { SparktypeHelperFunction } from '../types';
 
 // Mock the HTML sanitizer service
 vi.mock('../../../htmlSanitizer.service', () => ({
@@ -50,7 +51,7 @@ describe('themeData helpers', () => {
   };
 
   describe('themeData helper', () => {
-    let helper: any;
+    let helper: SparktypeHelperFunction;
 
     beforeEach(() => {
       vi.clearAllMocks();
@@ -112,7 +113,7 @@ describe('themeData helpers', () => {
           ...mockSiteData.manifest,
           theme: {
             ...mockSiteData.manifest.theme,
-            themeData: 'invalid-data' as any
+            themeData: 'invalid-data' as unknown as Record<string, unknown>
           }
         }
       };
@@ -126,7 +127,7 @@ describe('themeData helpers', () => {
   });
 
   describe('rawThemeData helper', () => {
-    let helper: any;
+    let helper: SparktypeHelperFunction;
 
     beforeEach(() => {
       vi.clearAllMocks();

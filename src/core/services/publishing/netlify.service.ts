@@ -12,6 +12,14 @@ export interface NetlifyConfig {
   proxyUrl?: string; // URL to the Netlify proxy function
 }
 
+interface NetlifyProxySiteResponse {
+  success: boolean;
+  message?: string;
+  siteId?: string;
+  siteName?: string;
+  url?: string;
+}
+
 export class NetlifyProvider extends BaseProvider {
   readonly name = 'netlify';
   readonly displayName = 'Netlify';
@@ -118,7 +126,10 @@ export class NetlifyProvider extends BaseProvider {
         }
 
         if (!createResponse.success) {
-          return createResponse;
+          return {
+            success: false,
+            message: createResponse.message || 'Failed to create Netlify site',
+          };
         }
         siteId = createResponse.siteId;
         console.log(`[NetlifyProvider] Created site with ID: ${siteId}`);
@@ -290,7 +301,7 @@ export class NetlifyProvider extends BaseProvider {
   /**
    * Create a new site via proxy function
    */
-  private async createSiteViaProxy(proxyUrl: string, apiToken: string, siteName?: string): Promise<any> {
+  private async createSiteViaProxy(proxyUrl: string, apiToken: string, siteName?: string): Promise<NetlifyProxySiteResponse> {
     try {
       const response = await fetch(proxyUrl, {
         method: 'POST',
@@ -304,7 +315,7 @@ export class NetlifyProvider extends BaseProvider {
         })
       });
 
-      const result = await response.json();
+      const result = await response.json() as NetlifyProxySiteResponse;
       return result;
     } catch (error) {
       return {

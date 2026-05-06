@@ -553,6 +553,7 @@ export interface ImageProviderConfigField {
 
 export interface ImageProviderCapabilities {
   upload: boolean;
+  uploadInteraction?: 'file-input' | 'provider-widget';
   transforms: boolean;
   exportMode: 'bundle' | 'metadata-only';
   importMode: 'full' | 'metadata-only';
@@ -585,6 +586,7 @@ export interface ImageService {
     secret: ImageProviderConfigField[];
   };
   upload(file: File, siteId: string, context?: ImageServiceContext): Promise<ImageRef>;
+  startUpload?(siteId: string, context?: ImageServiceContext): Promise<ImageRef>;
   uploadVideo?(file: File, siteId: string, context?: ImageServiceContext): Promise<VideoRef>;
   getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions, isExport: boolean, forIframe?: boolean, skipDerivatives?: boolean): Promise<string>;
   getVideoDisplayUrl?(manifest: Manifest, ref: VideoRef, isExport: boolean): Promise<string>;

@@ -2,17 +2,30 @@
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { isTauriApp } from '@/core/utils/platform';
 
-interface NetlifyApiResponse<T = any> {
+interface NetlifyApiResponse<T = unknown> {
   success: boolean;
   message: string;
   url?: string;
-  details?: any;
+  details?: Record<string, unknown>;
   data?: T;
   error?: string;
   siteId?: string;
   siteName?: string;
   siteUrl?: string;
   deployId?: string;
+}
+
+interface NetlifySitePayload {
+  id: string;
+  name: string;
+  url: string;
+}
+
+interface NetlifyDeployPayload {
+  id: string;
+  state?: string;
+  deploy_ssl_url?: string;
+  deploy_url?: string;
 }
 
 /**
@@ -76,7 +89,7 @@ export class NetlifyTauriService {
     try {
       console.log('[NetlifyTauri] Creating new site...', siteName ? `with name: ${siteName}` : 'with auto-generated name');
 
-      const body: any = {};
+      const body: { name?: string } = {};
       if (siteName) {
         body.name = siteName;
       }
@@ -96,7 +109,7 @@ export class NetlifyTauriService {
         return { success: false, message: `Failed to create site (${response.status}): ${errorText}` };
       }
 
-      const site = await response.json();
+      const site = await response.json() as NetlifySitePayload;
       console.log(`[NetlifyTauri] Site created successfully:`, { id: site.id, name: site.name, url: site.url });
 
       return {
@@ -148,7 +161,7 @@ export class NetlifyTauriService {
         return { success: false, message: `Deployment failed (${response.status}): ${errorText}` };
       }
 
-      const deploy = await response.json();
+      const deploy = await response.json() as NetlifyDeployPayload;
       console.log(`[NetlifyTauri] Deployment successful:`, {
         deployId: deploy.id,
         state: deploy.state,

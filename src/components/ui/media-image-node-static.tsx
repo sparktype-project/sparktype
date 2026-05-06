@@ -13,6 +13,7 @@ export function ImageElementStatic(
   props: SlateElementProps<TImageElement & TCaptionProps & TResizableProps>
 ) {
   const { align = 'center', caption, url, width } = props.element;
+  const attributes = props.attributes as { alt?: string };
 
   return (
     <SlateElement {...props} className="py-2.5">
@@ -26,7 +27,7 @@ export function ImageElementStatic(
               'w-full max-w-full cursor-default object-cover px-0',
               'rounded-sm'
             )}
-            alt={(props.attributes as any).alt}
+            alt={attributes.alt}
             src={url}
           />
           {caption && (

@@ -5,7 +5,7 @@ import { produce } from 'immer';
 import { toast } from 'sonner';
 
 // Core Types and Services
-import { type ParsedMarkdownFile, type StructureNode, type LocalSiteData, type CollectionItemRef, type MarkdownFrontmatter } from '@/core/types';
+import { type ParsedMarkdownFile, type StructureNode, type LocalSiteData, type CollectionItemRef, type MarkdownFrontmatter, type Manifest } from '@/core/types';
 import * as localSiteFs from '@/core/services/localFileSystem.service';
 import { saveContentFile } from '@/core/services/localFileSystem.service';
 import { findAndRemoveNode, updatePathsRecursively, findNodeByPath, getDescendantIds } from '@/core/services/fileTree.service';
@@ -17,6 +17,7 @@ import { createTag, updateTag, deleteTag, getTags, getTagsInGroup } from '@/core
 import type { TagGroup, Tag } from '@/core/types';
 import { updateImageReferences } from '@/core/services/images/imageRegistry.service';
 import { findImagesInContentFile } from '@/core/services/images/imageReferenceFinder.service';
+import type { AppStore } from '@/core/state/useAppStore';
 
 // Helper: Generates an up-to-date list of collection item references.
 function buildCollectionItemRefs(siteData: LocalSiteData): CollectionItemRef[] {
@@ -170,7 +171,7 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
     const siteData = get().getSiteById(siteId);
     if (!siteData) return;
 
-    const newManifest = produce(siteData.manifest, (draft: any) => {
+    const newManifest = produce(siteData.manifest, (draft: Manifest) => {
         draft.collectionItems = buildCollectionItemRefs(siteData as LocalSiteData);
 
         // Sync frontmatter changes to structure nodes
@@ -417,7 +418,7 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
       }
 
       // Update frontmatter for both files
-      const updates: Array<{ path: string; frontmatter: any }> = [];
+      const updates: Array<{ path: string; frontmatter: MarkdownFrontmatter }> = [];
 
       // Clear current homepage
       if (currentHomepage) {
@@ -680,7 +681,7 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
   changePageSlugWithContent: async (siteId: string, currentFilePath: string, newSlug: string, frontmatter: MarkdownFrontmatter, content: string) => {
     try {
       // Mark slug change as in progress
-      const appStore = get() as any; // Cast to access other slice methods
+      const appStore = get() as AppStore;
       if (appStore.markSlugChangeInProgress) {
         appStore.markSlugChangeInProgress(siteId);
       }
@@ -802,7 +803,7 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
       toast.error(errorMessage);
 
       // Mark slug change as complete even on error
-      const appStore = get() as any;
+      const appStore = get() as AppStore;
       if (appStore.markSlugChangeComplete) {
         appStore.markSlugChangeComplete(siteId);
       }
