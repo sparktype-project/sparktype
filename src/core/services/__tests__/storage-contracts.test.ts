@@ -323,7 +323,7 @@ describe('Storage Architecture Contracts', () => {
       expect(paths.originals).not.toMatch(/derivatives/);
 
       // Derivatives path convention
-      expect(paths.derivatives).toMatch(/^[^\/]+\/assets\/derivatives\//);
+      expect(paths.derivatives).toMatch(/^[^/]+\/assets\/derivatives\//);
       expect(paths.derivatives).toMatch(DERIVATIVE_PATTERN);
     });
   });

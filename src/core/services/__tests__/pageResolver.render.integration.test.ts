@@ -1,4 +1,4 @@
-import type { PageResolutionResult } from '@/core/types';
+import type { LocalSiteData, PageResolutionResult } from '@/core/types';
 import { PageType } from '@/core/types';
 import { compactHtml } from '@/test/support/html';
 import { createSiteFixture } from '@/test/support/siteFixtures';
@@ -9,6 +9,7 @@ const {
   getLayoutManifestMock,
   getThemeAssetContentMock,
   getAssetContentMock,
+  clearAssetContentCacheMock,
   assemblePageContextMock,
   assembleBaseContextMock,
   getActiveImageServiceMock,
@@ -22,6 +23,7 @@ const {
   getLayoutManifestMock: vi.fn(),
   getThemeAssetContentMock: vi.fn(),
   getAssetContentMock: vi.fn(),
+  clearAssetContentCacheMock: vi.fn(),
   assemblePageContextMock: vi.fn(),
   assembleBaseContextMock: vi.fn(),
   getActiveImageServiceMock: vi.fn(),
@@ -49,6 +51,7 @@ vi.mock('@/core/services/config/configHelpers.service', () => ({
   getLayoutManifest: getLayoutManifestMock,
   getThemeAssetContent: getThemeAssetContentMock,
   getAssetContent: getAssetContentMock,
+  clearAssetContentCache: clearAssetContentCacheMock,
 }));
 
 vi.mock('@/core/services/renderer/asset.service', () => ({
@@ -99,13 +102,13 @@ describe('page resolver and render integration', () => {
       }
       return null;
     });
-    assemblePageContextMock.mockImplementation(async (siteData: any, resolution: PageResolutionResult, options: any) => ({
+    assemblePageContextMock.mockImplementation(async (siteData: LocalSiteData, resolution: PageResolutionResult, options: unknown) => ({
       pageTitle: resolution.type === PageType.SinglePage ? resolution.contentFile.frontmatter.title : 'Not Found',
       theme: siteData.manifest.theme,
       options,
       contentFile: resolution.type === PageType.SinglePage ? resolution.contentFile : undefined,
     }));
-    assembleBaseContextMock.mockImplementation(async (siteData: any, resolution: PageResolutionResult, options: any) => ({
+    assembleBaseContextMock.mockImplementation(async (siteData: LocalSiteData, resolution: PageResolutionResult, options: unknown) => ({
       theme: siteData.manifest.theme,
       options,
       contentFile: resolution.type === PageType.SinglePage ? resolution.contentFile : undefined,
@@ -154,6 +157,7 @@ describe('page resolver and render integration', () => {
     });
 
     const normalized = compactHtml(html);
+    expect(clearAssetContentCacheMock).toHaveBeenCalledTimes(1);
     expect(normalized).toContain('data-accent="#0f766e"');
     expect(normalized).toContain('<footer>Custom brand</footer>');
     expect(normalized).toContain('<main data-layout="page">');

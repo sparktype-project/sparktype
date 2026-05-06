@@ -57,7 +57,7 @@ export default function EditTagGroupDialog({ siteId, tagGroup, open, onOpenChang
 
       await updateTagGroup(siteId, tagGroup.id, updates);
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       // Error handling is done in the store
     } finally {
       setIsSubmitting(false);

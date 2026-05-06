@@ -44,7 +44,7 @@ export default function CreateTagDialog({ siteId, tagGroup, open, onOpenChange }
       setNewTagName('');
       setNewTagDescription('');
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       // Error handling is done in the store
     } finally {
       setIsCreating(false);

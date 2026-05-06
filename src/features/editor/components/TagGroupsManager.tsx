@@ -63,7 +63,7 @@ export default function TagGroupsManager({ siteId }: TagGroupsManagerProps) {
 
     try {
       await deleteTagGroup(siteId, tagGroupToDelete.id);
-    } catch (error) {
+    } catch {
       // Error handling is done in the store
     } finally {
       setDeleteDialogOpen(false);

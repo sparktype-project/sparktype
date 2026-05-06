@@ -4,7 +4,7 @@ import Handlebars from 'handlebars';
 import DOMPurify from 'dompurify';
 import type { LocalSiteData, PageResolutionResult } from '@/core/types';
 import { PageType } from '@/core/types';
-import { getAssetContent, getLayoutManifest, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
+import { clearAssetContentCache, getAssetContent, getLayoutManifest, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
 import { getActiveImageService } from '@/core/services/images/images.service';
 import { getMergedThemeDataForForm } from '@/core/services/config/theme.service';
 import { prepareRenderEnvironment } from './asset.service';
@@ -269,6 +269,7 @@ export async function render(
     options: RenderOptions
 ): Promise<string> {
     console.log('[Render Service] Using unified markdown renderer');
+    clearAssetContentCache();
     
     if (resolution.type === PageType.NotFound) {
         // Escape error message to prevent XSS

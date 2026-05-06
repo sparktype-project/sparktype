@@ -309,7 +309,8 @@ export function removeTagFromContent(contentFile: ParsedMarkdownFile, tagGroupId
   
   if (currentTags.length === 0) {
     // Remove the entire group if no tags left
-    const { [tagGroupId]: removed, ...remainingTags } = updatedFile.frontmatter.tags;
+    const remainingTags = { ...updatedFile.frontmatter.tags };
+    delete remainingTags[tagGroupId];
     updatedFile.frontmatter.tags = remainingTags;
     
     // If no tag groups left, remove the entire tags property
@@ -336,7 +337,8 @@ export function setContentTagsForGroup(contentFile: ParsedMarkdownFile, tagGroup
   if (tagIds.length === 0) {
     // Remove the entire group
     if (updatedFile.frontmatter.tags) {
-      const { [tagGroupId]: removed, ...remainingTags } = updatedFile.frontmatter.tags;
+      const remainingTags = { ...updatedFile.frontmatter.tags };
+      delete remainingTags[tagGroupId];
       updatedFile.frontmatter.tags = remainingTags;
       
       // If no tag groups left, remove the entire tags property

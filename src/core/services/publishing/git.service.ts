@@ -558,7 +558,7 @@ Files: ${files.size}
 
       // If update failed, try to create the branch
       console.log(`[GitHubProvider] Update failed, creating new branch: ${branch}`);
-    } catch (error) {
+    } catch {
       console.log(`[GitHubProvider] Update failed, creating new branch: ${branch}`);
     }
 

@@ -2,6 +2,7 @@
 
 import type { LocalSiteData, SiteBundle } from '@/core/types';
 import { getMergedThemeDataForForm } from '@/core/services/config/theme.service';
+import { clearAssetContentCache } from '@/core/services/config/configHelpers.service';
 import { bundleAllAssets } from './builder/asset.builder';
 import { bundleSourceFiles } from './builder/source.builder';
 import { generateMetadataFiles } from './builder/metadata.builder';
@@ -12,7 +13,8 @@ import { generateHtmlPages } from './builder/page.builder';
  * This service generates a complete, in-memory representation of a static site bundle.
  */
 export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBundle> {
-    
+    clearAssetContentCache();
+
     const bundle: SiteBundle = {};
     if (!siteData.contentFiles) {
         throw new Error("Cannot build site: content files are not loaded.");

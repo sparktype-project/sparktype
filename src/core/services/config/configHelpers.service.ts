@@ -27,6 +27,14 @@ export type SiteDataForAssets = {
 /** An in-memory cache to prevent re-fetching public asset files during a session. */
 const fileContentCache = new Map<string, Promise<string | null>>();
 
+/**
+ * Clears the in-memory public asset cache.
+ * Theme development updates happen outside the SPA, so we reset between render/build cycles.
+ */
+export function clearAssetContentCache(): void {
+    fileContentCache.clear();
+}
+
 /** Checks if a given theme path corresponds to a core (built-in) theme. */
 export const isCoreTheme = (path: string) => CORE_THEMES.some((t: ThemeInfo) => t.path === path);
 

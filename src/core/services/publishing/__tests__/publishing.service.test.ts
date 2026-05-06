@@ -1,3 +1,4 @@
+import type { SiteSecrets } from '@/core/types';
 import { createSiteFixture } from '@/test/support/siteFixtures';
 
 const {
@@ -95,8 +96,8 @@ describe('publishing orchestration', () => {
 
   test('rejects github publishing when repository settings are incomplete', async () => {
     const site = createSiteFixture('basicSite');
-    site.manifest.publishingConfig = { provider: 'github', github: { owner: '', repo: '' } as any };
-    site.secrets = { publishing: { github: { accessToken: 'token' } } } as any;
+    site.manifest.publishingConfig = { provider: 'github', github: { owner: '', repo: '' } };
+    site.secrets = { publishing: { github: { accessToken: 'token' } } } satisfies SiteSecrets;
 
     const result = await publishSite(site);
 
@@ -109,7 +110,7 @@ describe('publishing orchestration', () => {
   test('hands provider config to Netlify and GitHub providers and surfaces provider failures', async () => {
     const netlifySite = createSiteFixture('basicSite');
     netlifySite.manifest.publishingConfig = { provider: 'netlify', netlify: { siteId: 'site-1', siteName: 'Netlify Site' } };
-    netlifySite.secrets = { publishing: { netlify: { apiToken: 'netlify-token' } } } as any;
+    netlifySite.secrets = { publishing: { netlify: { apiToken: 'netlify-token' } } } satisfies SiteSecrets;
     netlifyDeployMock.mockResolvedValueOnce({
       success: true,
       message: 'Netlify deployed',
@@ -136,7 +137,7 @@ describe('publishing orchestration', () => {
       provider: 'github',
       github: { owner: 'openai', repo: 'sparktype', branch: 'gh-pages' },
     };
-    githubSite.secrets = { publishing: { github: { accessToken: 'github-token' } } } as any;
+    githubSite.secrets = { publishing: { github: { accessToken: 'github-token' } } } satisfies SiteSecrets;
     githubDeployMock.mockRejectedValueOnce(new Error('Boom'));
 
     await expect(publishSite(githubSite)).resolves.toEqual({

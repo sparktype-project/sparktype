@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-require-imports */
 import { themeDataHelper, rawThemeDataHelper } from '../themeData.helper';
 import type { LocalSiteData } from '@/core/types';
 import { HtmlSanitizerService } from '../../../htmlSanitizer.service';

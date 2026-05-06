@@ -1,3 +1,4 @@
+import type { Manifest } from '@/core/types';
 import { localImageService } from '../localImage.service';
 
 const {
@@ -107,11 +108,14 @@ describe('localImage.service', () => {
   });
 
   test('returns export paths for originals and derivatives', async () => {
-    const manifest = {
+    const manifest: Manifest = {
       siteId: 'site-1',
+      generatorVersion: '1.0.0',
+      title: 'Fixture Site',
+      description: 'Fixture description',
       structure: [],
       theme: { name: 'starter', config: {} },
-    } as any;
+    };
 
     await expect(
       localImageService.getDisplayUrl(manifest, { serviceId: 'local', src: 'assets/originals/icon.svg' }, {}, true)
@@ -128,11 +132,14 @@ describe('localImage.service', () => {
   });
 
   test('returns preview blob urls for original and cached derivative images', async () => {
-    const manifest = {
+    const manifest: Manifest = {
       siteId: 'site-1',
+      generatorVersion: '1.0.0',
+      title: 'Fixture Site',
+      description: 'Fixture description',
       structure: [],
       theme: { name: 'starter', config: {} },
-    } as any;
+    };
     getCachedDerivativeMock.mockResolvedValueOnce(new Blob(['cached'], { type: 'image/jpeg' }));
 
     await expect(

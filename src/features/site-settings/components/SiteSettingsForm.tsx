@@ -1,4 +1,4 @@
-3// src/features/site-settings/components/SiteSettingsForm.tsx
+// src/features/site-settings/components/SiteSettingsForm.tsx
 
 
 import { Label } from '@/core/components/ui/label';

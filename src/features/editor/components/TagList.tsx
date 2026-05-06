@@ -70,7 +70,7 @@ export default function TagList({ siteId, tagGroupId }: TagListProps) {
       // Reset form but keep it open
       setNewTagName('');
       setNewTagDescription('');
-    } catch (error) {
+    } catch {
       // Error handling is done in the store
     }
   }, [newTagName, newTagDescription, tagGroupId, siteId, createTag]);
@@ -79,7 +79,7 @@ export default function TagList({ siteId, tagGroupId }: TagListProps) {
     try {
       await updateTag(siteId, tag.id, updates);
       setEditingTag(null);
-    } catch (error) {
+    } catch {
       // Error handling is done in the store
     }
   }, [siteId, updateTag]);
@@ -94,7 +94,7 @@ export default function TagList({ siteId, tagGroupId }: TagListProps) {
 
     try {
       await deleteTag(siteId, tagToDelete.id);
-    } catch (error) {
+    } catch {
       // Error handling is done in the store
     } finally {
       setDeleteDialogOpen(false);

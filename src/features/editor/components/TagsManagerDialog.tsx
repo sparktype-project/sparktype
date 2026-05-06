@@ -69,7 +69,7 @@ export default function TagsManagerDialog({ siteId, tagGroup, open, onOpenChange
       setNewTagName('');
       setNewTagDescription('');
       setIsCreating(false);
-    } catch (error) {
+    } catch {
       // Error handling is done in the store
     }
   };
@@ -78,7 +78,7 @@ export default function TagsManagerDialog({ siteId, tagGroup, open, onOpenChange
     try {
       await updateTag(siteId, tag.id, updates);
       setEditingTag(null);
-    } catch (error) {
+    } catch {
       // Error handling is done in the store
     }
   };
@@ -93,7 +93,7 @@ export default function TagsManagerDialog({ siteId, tagGroup, open, onOpenChange
 
     try {
       await deleteTag(siteId, tagToDelete.id);
-    } catch (error) {
+    } catch {
       // Error handling is done in the store
     } finally {
       setDeleteDialogOpen(false);
@@ -248,7 +248,7 @@ interface TagItemProps {
   onDelete: () => void;
 }
 
-function TagItem({ tag, tagGroup: _tagGroup, isEditing, onEdit, onCancelEdit, onUpdate, onDelete }: TagItemProps) {
+function TagItem({ tag, isEditing, onEdit, onCancelEdit, onUpdate, onDelete }: TagItemProps) {
   const [editName, setEditName] = useState(tag.name);
   const [editDescription, setEditDescription] = useState(tag.description || '');
 

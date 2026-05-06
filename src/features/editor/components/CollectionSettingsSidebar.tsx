@@ -59,7 +59,7 @@ export default function CollectionSettingsSidebar({ siteId, collectionId }: Coll
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [_itemLayout, setItemLayout] = useState<LayoutManifest | null>(null);
+  const [, setItemLayout] = useState<LayoutManifest | null>(null);
   const [itemLayouts, setItemLayouts] = useState<LayoutInfo[]>([]);
   const [loadingLayouts, setLoadingLayouts] = useState(false);
 

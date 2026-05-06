@@ -27,11 +27,12 @@ export const strUtilHelper: SparktypeHelper = () => ({
     const op = options.hash.op;
   
     switch (op) {
-      case 'truncate':
+      case 'truncate': {
         // Safely get the length, with a default value.
         const len = typeof options.hash.len === 'number' ? options.hash.len : 140;
         if (input.length <= len) return input;
         return input.substring(0, len) + '…';
+      }
       
       case 'uppercase':
         return input.toUpperCase();

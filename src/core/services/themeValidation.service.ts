@@ -195,7 +195,7 @@ export function validateCSS(content: string, cssPath: string): ValidationResult 
           `Only trusted font services are allowed.`
         );
       }
-    } catch (e) {
+    } catch {
       // Relative URLs are OK (self-hosted resources)
       if (!url.startsWith('/') && !url.startsWith('./') && !url.startsWith('../')) {
         errors.push(`${cssPath}: Invalid @import URL: ${url}`);
@@ -230,7 +230,7 @@ export function validateCSS(content: string, cssPath: string): ValidationResult 
           `Consider using a trusted CDN or self-hosting.`
         );
       }
-    } catch (e) {
+    } catch {
       // Invalid URL - let browser handle it
     }
   }
@@ -269,7 +269,7 @@ export function sanitizeCSS(content: string): string {
         if (isTrustedFont) {
           return match;
         }
-      } catch (e) {
+      } catch {
         // Keep relative URLs
         if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) {
           return match;
@@ -374,7 +374,7 @@ export function validateThemeManifest(manifestJson: string): ValidationResult & 
                 `theme.json: External script domain "${url.hostname}" is not in the trusted allowlist`
               );
             }
-          } catch (e) {
+          } catch {
             errors.push(`theme.json: Invalid script URL: ${script.src}`);
           }
 

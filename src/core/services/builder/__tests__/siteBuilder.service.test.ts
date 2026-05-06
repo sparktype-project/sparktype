@@ -2,12 +2,14 @@ import { createSiteFixture } from '@/test/support/siteFixtures';
 
 const {
   getMergedThemeDataForFormMock,
+  clearAssetContentCacheMock,
   generateHtmlPagesMock,
   bundleSourceFilesMock,
   bundleAllAssetsMock,
   generateMetadataFilesMock,
 } = vi.hoisted(() => ({
   getMergedThemeDataForFormMock: vi.fn(),
+  clearAssetContentCacheMock: vi.fn(),
   generateHtmlPagesMock: vi.fn(),
   bundleSourceFilesMock: vi.fn(),
   bundleAllAssetsMock: vi.fn(),
@@ -16,6 +18,10 @@ const {
 
 vi.mock('@/core/services/config/theme.service', () => ({
   getMergedThemeDataForForm: getMergedThemeDataForFormMock,
+}));
+
+vi.mock('@/core/services/config/configHelpers.service', () => ({
+  clearAssetContentCache: clearAssetContentCacheMock,
 }));
 
 vi.mock('../page.builder', () => ({
@@ -62,6 +68,7 @@ describe('siteBuilder.service', () => {
 
     const bundle = await buildSiteBundle(site);
 
+    expect(clearAssetContentCacheMock).toHaveBeenCalledTimes(1);
     expect(getMergedThemeDataForFormMock).toHaveBeenCalledWith(
       'starter',
       { accent: 'teal' },

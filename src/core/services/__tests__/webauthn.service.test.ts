@@ -38,7 +38,7 @@ describe('webauthn.service', () => {
       value: { credentials: {} },
       configurable: true,
     });
-    (WebAuthnService as any).instance = undefined;
+    Reflect.set(WebAuthnService as object, 'instance', undefined);
   });
 
   test('detects browser support and registers credentials in web mode', async () => {

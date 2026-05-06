@@ -53,7 +53,7 @@ export default function CreateTagGroupDialog({ siteId, open, onOpenChange }: Cre
       setDescription('');
       setSelectedCollections([]);
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       // Error handling is done in the store
     } finally {
       setIsSubmitting(false);

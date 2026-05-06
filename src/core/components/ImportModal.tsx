@@ -27,7 +27,7 @@ export default function ImportModal({ open, onOpenChange, onImport }: ImportModa
       setValue('');
       setBranch('');
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       // Error is handled by parent component
     } finally {
       setIsImporting(false);

@@ -76,7 +76,7 @@ export const SparkTypeImageElement = withHOC(
           if (!siteId) {
             // Try to get siteId from the current page context
             const currentPath = window.location.pathname;
-            const siteIdMatch = currentPath.match(/\/sites\/([^\/]+)/);
+            const siteIdMatch = currentPath.match(/\/sites\/([^/]+)/);
             siteId = siteIdMatch?.[1];
           }
 

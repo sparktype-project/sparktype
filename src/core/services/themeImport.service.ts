@@ -263,6 +263,9 @@ export async function importThemeFromGitHub(
   _themePath: string,
   _siteId: string
 ): Promise<ThemeImportResult> {
+  void _repoInfo;
+  void _themePath;
+  void _siteId;
   // TODO: Phase 2 implementation
   return {
     success: false,
@@ -281,6 +284,8 @@ export async function importThemeFromUrl(
   _url: string,
   _siteId: string
 ): Promise<ThemeImportResult> {
+  void _url;
+  void _siteId;
   // TODO: Phase 2 implementation
   return {
     success: false,

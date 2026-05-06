@@ -43,7 +43,7 @@ const DataSourceSelectWidget = ({ id, label, options, value, onChange, required,
 
       try {
         switch (dataSource) {
-          case 'collections':
+          case 'collections': {
             // 1. Find all content files that ARE collection pages.
             const collectionFilePaths = new Set(
               site.contentFiles
@@ -55,13 +55,15 @@ const DataSourceSelectWidget = ({ id, label, options, value, onChange, required,
               .filter((n: StructureNode) => collectionFilePaths.has(n.path))
               .map((c: StructureNode) => ({ label: c.title, value: c.slug }));
             break;
+          }
 
-          case 'layouts':
+          case 'layouts': {
             const allLayouts: LayoutManifest[] = await getAvailableLayouts(site);
             fetchedItems = allLayouts
               .filter(l => !layoutTypeFilter || l.layoutType === layoutTypeFilter)
               .map(l => ({ label: l.name, value: l.id })); // Use id for value
             break;
+          }
 
           default:
             fetchedItems = [];

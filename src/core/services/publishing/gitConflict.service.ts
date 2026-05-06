@@ -53,6 +53,7 @@ export class ConflictDetectionService {
     config: GitHubConfig,
     _branch: string
   ): Promise<SimpleConflict[]> {
+    void _branch;
     try {
       console.log(`[ConflictDetection] Detecting conflicts for site ${localSite.siteId}`);
 

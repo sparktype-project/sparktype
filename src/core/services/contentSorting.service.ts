@@ -64,15 +64,19 @@ function getSortableValue(item: ParsedMarkdownFile, sortBy: SortField): unknown 
       return (item.frontmatter.title || '').toString().toLowerCase();
       
     case 'order':
-      // Handle numeric order field with high default for unordered items
-      const orderValue = (item.frontmatter as any).order;
-      return typeof orderValue === 'number' ? orderValue : 999999;
+      {
+        // Handle numeric order field with high default for unordered items
+        const orderValue = (item.frontmatter as Record<string, unknown>).order;
+        return typeof orderValue === 'number' ? orderValue : 999999;
+      }
       
     default:
-      // Generic field handling
-      const value = (item.frontmatter as any)[sortBy];
-      if (value === undefined || value === null) return '';
-      return value.toString().toLowerCase();
+      {
+        // Generic field handling
+        const value = (item.frontmatter as Record<string, unknown>)[sortBy];
+        if (value === undefined || value === null) return '';
+        return value.toString().toLowerCase();
+      }
   }
 }
 

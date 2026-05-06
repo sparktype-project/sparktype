@@ -8,7 +8,8 @@ export function usePlatform(): Platform {
 
   useEffect(() => {
     const detectPlatform = async () => {
-      if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+      const tauriWindow = window as Window & typeof globalThis & { __TAURI__?: unknown }
+      if (typeof window !== 'undefined' && tauriWindow.__TAURI__) {
         try {
           const { platform } = await import('@tauri-apps/plugin-os')
           const platformName = await platform()
@@ -28,7 +29,7 @@ export function usePlatform(): Platform {
             default:
               setPlatform('web')
           }
-        } catch (error) {
+        } catch {
           // Fallback to desktop if Tauri but can't detect platform
           setPlatform('desktop')
         }
@@ -48,12 +49,13 @@ export function useOSPlatform(): OSPlatform {
 
   useEffect(() => {
     const detectOSPlatform = async () => {
-      if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+      const tauriWindow = window as Window & typeof globalThis & { __TAURI__?: unknown }
+      if (typeof window !== 'undefined' && tauriWindow.__TAURI__) {
         try {
           const { platform } = await import('@tauri-apps/plugin-os')
           const platformName = await platform()
           setOSPlatform(platformName as OSPlatform)
-        } catch (error) {
+        } catch {
           // Fallback based on user agent for desktop detection
           const userAgent = navigator.userAgent.toLowerCase()
           if (userAgent.includes('mac')) {
