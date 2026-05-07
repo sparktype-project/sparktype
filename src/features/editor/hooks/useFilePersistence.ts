@@ -68,6 +68,7 @@ export function useFilePersistence({
       
       // Update hash tracking - content is now saved
       const newHash = generateContentHash(frontmatter, markdownContent);
+      setContentHash(newHash);
       setLastSavedHash(newHash);
       setSaveState('saved');
       setHasUnsavedChanges(false);
@@ -77,7 +78,7 @@ export function useFilePersistence({
       setSaveState('error');
       setTimeout(() => setSaveState('pending'), 3000); // Return to pending after error
     }
-  }, [siteId, filePath, isNewFileMode, frontmatter, getEditorContent, updateContentFileOnly, setSaveState, setLastSavedHash, setHasUnsavedChanges, hasUnsavedChanges]);
+  }, [siteId, filePath, isNewFileMode, frontmatter, getEditorContent, updateContentFileOnly, setContentHash, setSaveState, setLastSavedHash, setHasUnsavedChanges, hasUnsavedChanges]);
 
   const handleSave = useCallback(async () => {
     if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
@@ -208,7 +209,7 @@ export function useFilePersistence({
         setHasUnsavedChanges(false);
       }
     }
-  }, [frontmatter, filePath, getEditorContent, initialSavedContent, isNewFileMode, contentHash, lastSavedHash, saveState, setContentHash, setLastSavedHash, setSaveState, setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave]);
+  }, [frontmatter, filePath, getEditorContent, initialSavedContent, isNewFileMode, hasUnsavedChanges, contentHash, lastSavedHash, saveState, setContentHash, setLastSavedHash, setSaveState, setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave]);
 
   // This effect handles the autosave logic - triggers only in 'pending' state
   useEffect(() => {

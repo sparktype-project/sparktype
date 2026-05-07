@@ -5,7 +5,7 @@ import ViewHeaderContent from '@/features/viewer/components/ViewHeaderContent';
 import { useAppStore } from '@/core/state/useAppStore';
 import { useCallback, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { useHeaderContext } from '@/core/contexts/HeaderContext';
+import { useHeaderContext } from '@/core/contexts/HeaderContext.shared';
 
 export default function ViewSitePage() {
   const { siteId = '' } = useParams<{ siteId: string }>();

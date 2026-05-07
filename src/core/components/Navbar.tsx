@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Button } from '@/core/components/ui/button';
 import { Input } from '@/core/components/ui/input';
 import { cn } from '@/core/libraries/utils';
-import { usePlatformContext } from '@/core/providers/PlatformProvider';
+import { usePlatformContext } from '@/core/providers/PlatformContext.shared';
 
 /**
  * A specialized NavLink component for the main navigation.

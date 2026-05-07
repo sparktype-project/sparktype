@@ -6,7 +6,7 @@ import { Button } from '@/core/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useAppStore } from '@/core/state/useAppStore';
 import { type AppStore } from '@/core/state/useAppStore';
-import { usePlatformContext } from '@/core/providers/PlatformProvider';
+import { usePlatformContext } from '@/core/providers/PlatformContext.shared';
 
 export default function DefaultHeaderContent() {
   const { siteId = '' } = useParams<{ siteId: string }>();

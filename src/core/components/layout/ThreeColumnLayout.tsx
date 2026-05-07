@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { useUIStore } from '@/core/state/uiStore';
 import { cn } from '@/core/libraries/utils';
 import EditorHeaderContent from '@/core/components/header-content/EditorHeaderContent';
-import { useHeaderContext } from '@/core/contexts/HeaderContext';
+import { useHeaderContext } from '@/core/contexts/HeaderContext.shared';
 
 interface ThreeColumnLayoutProps {
   leftSidebar: ReactNode;

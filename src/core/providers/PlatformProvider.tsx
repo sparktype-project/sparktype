@@ -1,31 +1,8 @@
-import { createContext, useContext, useEffect } from 'react'
+import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { usePlatform, useOSPlatform } from '../hooks/usePlatform'
-import type { Platform, OSPlatform } from '../hooks/usePlatform'
-
-interface PlatformContextType {
-  platform: Platform
-  osPlatform: OSPlatform
-  isWeb: boolean
-  isDesktop: boolean
-  isIOS: boolean
-  isAndroid: boolean
-  isMobile: boolean
-  isTauri: boolean
-  isMacOS: boolean
-  isWindows: boolean
-  isLinux: boolean
-}
-
-const PlatformContext = createContext<PlatformContextType | undefined>(undefined)
-
-export function usePlatformContext(): PlatformContextType {
-  const context = useContext(PlatformContext)
-  if (!context) {
-    throw new Error('usePlatformContext must be used within PlatformProvider')
-  }
-  return context
-}
+import type { PlatformContextType } from './PlatformContext.shared'
+import { PlatformContext } from './PlatformContext.shared'
 
 interface PlatformProviderProps {
   children: ReactNode

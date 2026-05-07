@@ -15,10 +15,10 @@ import { cn } from '@/lib/utils';
 import { Caption, CaptionTextarea } from './caption';
 import { MediaToolbar } from './media-toolbar';
 import {
-  mediaResizeHandleVariants,
   Resizable,
   ResizeHandle,
 } from './resize-handle';
+import { mediaResizeHandleVariants } from './resize-handle.variants';
 
 export const MediaEmbedElement = withHOC(
   ResizableProvider,

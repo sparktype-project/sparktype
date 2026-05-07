@@ -20,4 +20,13 @@ export default tseslint.config([
       globals: globals.browser,
     },
   },
+  {
+    files: [
+      'src/components/editor/plugins/collection-view-kit.tsx',
+      'src/components/editor/plugins/markdown-kit.tsx',
+    ],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

@@ -3,6 +3,8 @@
 import { createPlatePlugin } from 'platejs/react';
 import { CollectionViewElement } from '@/components/ui/collection-view-node';
 
+/* eslint-disable react-refresh/only-export-components */
+
 export function createCollectionViewKit(collections: Array<{ id: string; name: string }> = []) {
   const CollectionViewPlugin = createPlatePlugin({
     key: 'collection_view',

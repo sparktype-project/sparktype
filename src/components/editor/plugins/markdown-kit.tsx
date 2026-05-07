@@ -3,9 +3,46 @@ import { KEYS } from 'platejs';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import remarkDirective from 'remark-directive';
+/* eslint-disable react-refresh/only-export-components */
+import type { ContainerDirective, LeafDirective } from 'mdast-util-directive';
+import type { MdxJsxAttribute, MdxJsxFlowElement } from 'mdast-util-mdx-jsx';
+import type { ImageRef, VideoRef } from '@/core/types';
 
-function getMdxAttributeValue(mdastNode: any, attributeName: string): string | undefined {
-  const attribute = mdastNode.attributes?.find((item: any) => item?.name === attributeName);
+interface MarkdownImageNode {
+  url: string;
+  alt?: string | null;
+  title?: string | null;
+}
+
+interface SlateImageNode {
+  url: string;
+  alt?: string | null;
+  title?: string | null;
+  imageRef?: ImageRef | null;
+}
+
+interface SlateVideoNode {
+  url: string;
+  isUpload?: boolean;
+  poster?: string;
+  videoRef?: VideoRef;
+}
+
+interface CollectionViewSlateNode {
+  collection?: string;
+  layout?: string;
+  displayType?: string;
+  maxItems?: number;
+  sortBy?: string;
+  sortOrder?: string;
+  tagFilters?: string[];
+}
+
+function getMdxAttributeValue(
+  mdastNode: Pick<MdxJsxFlowElement, 'attributes'>,
+  attributeName: string
+): string | undefined {
+  const attribute = mdastNode.attributes?.find((item): item is MdxJsxAttribute => item.type === 'mdxJsxAttribute' && item.name === attributeName);
   return typeof attribute?.value === 'string' ? attribute.value : undefined;
 }
 
@@ -22,7 +59,7 @@ export function createMarkdownKit(siteId?: string) {
 
         // Custom serialization rule for images to convert blob URLs back to asset paths
         [KEYS.img]: {
-          serialize: (slateNode: any) => {
+          serialize: (slateNode: SlateImageNode) => {
             let url = slateNode.url;
             
             // Transform blob URLs back to asset paths during serialization
@@ -40,7 +77,7 @@ export function createMarkdownKit(siteId?: string) {
               title: slateNode.title || null
             };
           },
-          deserialize: (mdastNode: any) => {
+          deserialize: (mdastNode: MarkdownImageNode) => {
             // When loading from markdown, create proper PlateJS image element
             console.log('Deserializing image from markdown:', mdastNode.url);
             
@@ -70,7 +107,7 @@ export function createMarkdownKit(siteId?: string) {
           }
         },
         [KEYS.video]: {
-          serialize: (slateNode: any) => {
+          serialize: (slateNode: SlateVideoNode) => {
             const attributes = [
               { name: 'src', value: slateNode.url },
             ];
@@ -118,17 +155,18 @@ export function createMarkdownKit(siteId?: string) {
               children: [],
             };
           },
-          deserialize: (mdastNode: any) => {
+          deserialize: (mdastNode: MdxJsxFlowElement) => {
             const url = getMdxAttributeValue(mdastNode, 'src') || '';
             const isUpload = getMdxAttributeValue(mdastNode, 'data-sparktype-upload') === 'true';
 
             const providerDataEntries = (mdastNode.attributes || [])
-              .filter((attribute: any) =>
+              .filter((attribute): attribute is MdxJsxAttribute =>
+                attribute.type === 'mdxJsxAttribute' &&
                 typeof attribute?.name === 'string' &&
                 attribute.name.startsWith('data-sparktype-provider-') &&
                 typeof attribute.value === 'string'
               )
-              .map((attribute: any) => [
+              .map((attribute) => [
                 attribute.name.replace('data-sparktype-provider-', ''),
                 attribute.value,
               ]);
@@ -169,7 +207,7 @@ export function createMarkdownKit(siteId?: string) {
         },
         // Custom serialization rule for collection view blocks
         collection_view: {
-          serialize: (slateNode: any) => {
+          serialize: (slateNode: CollectionViewSlateNode) => {
             console.log('PlateJS serializing collection_view node:', slateNode);
 
             // Convert collection view element to directive
@@ -198,7 +236,7 @@ export function createMarkdownKit(siteId?: string) {
         },
         // Deserialization rule for directives (key must match mdast node type)
         containerDirective: {
-          deserialize: (mdastNode: any) => {
+          deserialize: (mdastNode: ContainerDirective) => {
             console.log('MarkdownKit: Processing containerDirective:', mdastNode);
 
             if (mdastNode.name === 'collection_view') {
@@ -229,7 +267,7 @@ export function createMarkdownKit(siteId?: string) {
           }
         },
         leafDirective: {
-          deserialize: (mdastNode: any) => {
+          deserialize: (mdastNode: LeafDirective) => {
             console.log('MarkdownKit: Processing leafDirective:', mdastNode);
 
             if (mdastNode.name === 'collection_view') {

@@ -28,7 +28,11 @@ import { useFileContent } from '@/features/editor/hooks/useFileContent';
 import { useFilePersistence } from '@/features/editor/hooks/useFilePersistence';
 import CollectionItemList from '@/features/editor/components/CollectionItemList';
 import Loader from '@/core/components/ui/Loader';
-import { normalizeEditorContentForLoad } from '@/features/editor/utils/editorContent';
+import {
+  getEditorSessionKey,
+  normalizeEditorContentForLoad,
+  shouldReinitializeEditorSession,
+} from '@/features/editor/utils/editorContent';
 import { useEditor } from '@/features/editor/contexts/useEditor';
 
 /**
@@ -109,33 +113,27 @@ function EditContentPageInternal() {
       const timer = setTimeout(() => {
         if (editorRef.current) {
           if (isNewFileMode) {
-            const nextSignature = '__new__';
-            if (initializedEditorSignatureRef.current === nextSignature) {
+            if (!shouldReinitializeEditorSession(initializedEditorSignatureRef.current, filePath, true)) {
               return;
             }
 
             // Initialize with empty content for new files
             console.log('Initializing new file mode with empty content');
             editorRef.current.initializeWithContent('');
-            initializedEditorSignatureRef.current = nextSignature;
+            initializedEditorSignatureRef.current = getEditorSessionKey(filePath, true);
           } else {
-            const fileData = site.contentFiles?.find(f => f.path === filePath);
-
-            if (fileData) {
+            if (initialSavedContent !== undefined) {
               // Process content and initialize editor
-              const rawContent = fileData.content || '';
-              const contentToLoad = normalizeEditorContentForLoad(rawContent);
-              const nextSignature = `${filePath}:${contentToLoad}`;
-
-              if (initializedEditorSignatureRef.current === nextSignature) {
+              if (!shouldReinitializeEditorSession(initializedEditorSignatureRef.current, filePath, false)) {
                 return;
               }
 
+              const contentToLoad = initialSavedContent;
               console.log('Initializing editor with content:', contentToLoad.substring(0, 200));
-              console.log('Raw content length:', rawContent.length, 'Processed length:', contentToLoad.length);
+              console.log('Initial persisted content length:', contentToLoad.length);
 
               editorRef.current.initializeWithContent(contentToLoad || '');
-              initializedEditorSignatureRef.current = nextSignature;
+              initializedEditorSignatureRef.current = getEditorSessionKey(filePath, false);
             } else {
               console.log('No file data found for path:', filePath);
             }
@@ -147,7 +145,7 @@ function EditContentPageInternal() {
 
       return () => clearTimeout(timer);
     }
-  }, [status, filePath, isNewFileMode, site?.contentFiles, frontmatter?.layoutConfig?.collectionId]);
+  }, [status, filePath, isNewFileMode, initialSavedContent, frontmatter?.layoutConfig?.collectionId]);
 
   // --- 2. Manage Sidebars via UI Store ---
   const { leftSidebarContent, rightSidebarContent, setLeftAvailable, setRightAvailable, setLeftSidebarContent, setRightSidebarContent } = useUIStore(state => state.sidebar);

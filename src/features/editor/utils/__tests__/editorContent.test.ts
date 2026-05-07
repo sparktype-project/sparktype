@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'vitest';
-import { normalizeEditorContentForLoad } from '../editorContent';
+import {
+  getEditorSessionKey,
+  normalizeEditorContentForLoad,
+  shouldReinitializeEditorSession,
+} from '../editorContent';
 
 describe('normalizeEditorContentForLoad', () => {
   test('adds the trailing newline Plate serializes for non-empty markdown', () => {
@@ -16,5 +20,15 @@ describe('normalizeEditorContentForLoad', () => {
 
   test('keeps empty content empty', () => {
     expect(normalizeEditorContentForLoad('')).toBe('');
+  });
+
+  test('uses file identity rather than content snapshots for existing editor sessions', () => {
+    expect(getEditorSessionKey('content/home.md', false)).toBe('file:content/home.md');
+    expect(shouldReinitializeEditorSession('file:content/home.md', 'content/home.md', false)).toBe(false);
+  });
+
+  test('reinitializes when switching to a different file or new-file mode', () => {
+    expect(shouldReinitializeEditorSession('file:content/home.md', 'content/about.md', false)).toBe(true);
+    expect(shouldReinitializeEditorSession('file:content/home.md', 'content/_new.md', true)).toBe(true);
   });
 });

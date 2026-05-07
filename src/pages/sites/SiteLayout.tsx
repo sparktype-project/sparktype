@@ -16,7 +16,7 @@ import { Edit3, Settings } from 'lucide-react';
 
 // Header Components
 import UnifiedHeader from '@/core/components/UnifiedHeader';
-import { HeaderContext } from '@/core/contexts/HeaderContext';
+import { HeaderContext } from '@/core/contexts/HeaderContext.shared';
 import DefaultHeaderContent from '@/core/components/header-content/DefaultHeaderContent';
 import SparkotypeLogo from '@/core/components/ui/SparkotypeLogo';
 import Loader from '@/core/components/ui/Loader';
@@ -165,4 +165,3 @@ export default function SiteLayout() {
     </HeaderContext.Provider>
   );
 }
-

@@ -142,18 +142,17 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
 
     // Serialize to markdown (blocks are empty in our current implementation)
     const markdownContent = stringifyToMarkdown(savedFile.frontmatter, savedFile.content);
-
-    await localSiteFs.saveContentFile(siteId, savedFile.path, markdownContent);
+    const persistedFile = await localSiteFs.saveContentFile(siteId, savedFile.path, markdownContent);
 
     // Update image references in registry
     try {
-      const referencedImages = findImagesInContentFile(savedFile);
-      await updateImageReferences(siteId, savedFile.path, referencedImages);
+      const referencedImages = findImagesInContentFile(persistedFile);
+      await updateImageReferences(siteId, persistedFile.path, referencedImages);
       if (referencedImages.length > 0) {
-        console.log(`[ContentSlice] Updated image references for ${savedFile.path}: ${referencedImages.length} images`);
+        console.log(`[ContentSlice] Updated image references for ${persistedFile.path}: ${referencedImages.length} images`);
       }
     } catch (error) {
-      console.warn(`[ContentSlice] Failed to update image references for ${savedFile.path}:`, error);
+      console.warn(`[ContentSlice] Failed to update image references for ${persistedFile.path}:`, error);
       // Don't fail content saving if registry update fails
     }
 
@@ -163,9 +162,9 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
       const siteToUpdate = draft.sites.find(s => s.siteId === siteId);
       if (!siteToUpdate?.contentFiles) return;
 
-      const fileIndex = siteToUpdate.contentFiles.findIndex(f => f.path === savedFile.path);
-      if (fileIndex !== -1) siteToUpdate.contentFiles[fileIndex] = savedFile;
-      else siteToUpdate.contentFiles.push(savedFile);
+      const fileIndex = siteToUpdate.contentFiles.findIndex(f => f.path === persistedFile.path);
+      if (fileIndex !== -1) siteToUpdate.contentFiles[fileIndex] = persistedFile;
+      else siteToUpdate.contentFiles.push(persistedFile);
     }));
 
     const siteData = get().getSiteById(siteId);
@@ -177,9 +176,9 @@ export const createContentSlice: StateCreator<SiteSlice & ContentSlice, [], [], 
         // Sync frontmatter changes to structure nodes
         const findAndUpdateStructureNode = (nodes: StructureNode[]): void => {
           for (const node of nodes) {
-            if (node.path === savedFile.path) {
-              node.title = savedFile.frontmatter.title;
-              node.menuTitle = typeof savedFile.frontmatter.menuTitle === 'string' ? savedFile.frontmatter.menuTitle : undefined;
+            if (node.path === persistedFile.path) {
+              node.title = persistedFile.frontmatter.title;
+              node.menuTitle = typeof persistedFile.frontmatter.menuTitle === 'string' ? persistedFile.frontmatter.menuTitle : undefined;
               return;
             }
             if (node.children) findAndUpdateStructureNode(node.children);

@@ -3,7 +3,7 @@
 import { type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/core/libraries/utils';
-import { usePlatformContext } from '@/core/providers/PlatformProvider';
+import { usePlatformContext } from '@/core/providers/PlatformContext.shared';
 
 interface UnifiedHeaderProps {
   children: ReactNode;

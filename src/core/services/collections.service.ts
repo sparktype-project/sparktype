@@ -49,6 +49,10 @@ function createSiteDataHash(siteData: { manifest: Manifest; contentFiles?: Parse
   return `${fileCount}-${manifestStr.slice(0, 100)}`;
 }
 
+function normalizeCollectionContentPath(contentPath: string): string {
+  return contentPath.endsWith('/') ? contentPath : `${contentPath}/`;
+}
+
 /**
  * Gets all content files that belong to a specific collection.
  * Uses caching to improve performance for repeated calls.
@@ -80,8 +84,9 @@ export function getCollectionContent(siteData: { manifest: Manifest; contentFile
   }
 
   // Filter and cache the result
+  const collectionItemPathPrefix = normalizeCollectionContentPath(collection.contentPath);
   const result = siteData.contentFiles.filter(file =>
-    file.path.startsWith(collection.contentPath)
+    file.path.startsWith(collectionItemPathPrefix)
   );
 
   collectionContentCache.set(cacheKey, {

@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { generateContentHash } from '@/core/libraries/utils';
@@ -113,6 +113,79 @@ function PersistenceHarness({
   return null;
 }
 
+function DirtyStateHarness({
+  frontmatter,
+  filePath,
+  initialSavedContent,
+}: {
+  frontmatter: {
+    title: string;
+    layout: string;
+    date: string;
+  };
+  filePath: string;
+  initialSavedContent: string;
+}) {
+  const [editorContent, setEditorContent] = useState(initialSavedContent);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [hasUnsavedChangesSinceManualSave, setHasUnsavedChangesSinceManualSave] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>('saved');
+  const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
+  const [contentHash, setContentHash] = useState('');
+  const [lastSavedHash, setLastSavedHash] = useState('');
+
+  const value = useMemo<EditorContextType>(() => ({
+    saveState,
+    setSaveState,
+    hasUnsavedChanges,
+    setHasUnsavedChanges,
+    hasUnsavedChangesSinceManualSave,
+    setHasUnsavedChangesSinceManualSave,
+    triggerSave: vi.fn(async () => {}),
+    registerSaveAction: vi.fn(),
+    lastSaveTime,
+    setLastSaveTime,
+    contentHash,
+    setContentHash,
+    lastSavedHash,
+    setLastSavedHash,
+    activeProviderUploadCount: 0,
+    beginProviderUpload: vi.fn(),
+    endProviderUpload: vi.fn(),
+  }), [
+    contentHash,
+    hasUnsavedChanges,
+    hasUnsavedChangesSinceManualSave,
+    lastSaveTime,
+    lastSavedHash,
+    saveState,
+  ]);
+
+  return (
+    <EditorContext.Provider value={value}>
+      <PersistenceHarness
+        frontmatter={frontmatter}
+        filePath={filePath}
+        initialSavedContent={initialSavedContent}
+        getEditorContent={() => editorContent}
+      />
+      <button
+        type="button"
+        onClick={() => {
+          setEditorContent('Updated body\n');
+          setHasUnsavedChanges(true);
+          setHasUnsavedChangesSinceManualSave(true);
+        }}
+      >
+        Change body
+      </button>
+      <output data-testid="dirty-save-state">{saveState}</output>
+      <output data-testid="dirty-content-hash">{contentHash}</output>
+      <output data-testid="dirty-saved-hash">{lastSavedHash}</output>
+    </EditorContext.Provider>
+  );
+}
+
 describe('useFilePersistence', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -160,5 +233,37 @@ describe('useFilePersistence', () => {
     });
 
     expect(updateContentFileOnly).not.toHaveBeenCalled();
+  });
+
+  test('marks body content as pending when editor text changes', async () => {
+    const initialSavedContent = 'Welcome home\n';
+    const frontmatter = {
+      title: 'Home',
+      layout: 'page',
+      date: '2026-05-07',
+    };
+    const expectedHash = generateContentHash(frontmatter, 'Updated body\n');
+
+    render(
+      <DirtyStateHarness
+        frontmatter={frontmatter}
+        filePath="content/home.md"
+        initialSavedContent={initialSavedContent}
+      />
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change body' }));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId('dirty-save-state')).toHaveTextContent('pending');
+    expect(screen.getByTestId('dirty-content-hash')).toHaveTextContent(expectedHash);
+    expect(screen.getByTestId('dirty-saved-hash')).not.toHaveTextContent(expectedHash);
   });
 });

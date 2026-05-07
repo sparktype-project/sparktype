@@ -20,10 +20,10 @@ import { useAppStore } from '@/core/state/useAppStore';
 import { Caption, CaptionTextarea } from './caption';
 import { MediaToolbar } from './media-toolbar';
 import {
-  mediaResizeHandleVariants,
   Resizable,
   ResizeHandle,
 } from './resize-handle';
+import { mediaResizeHandleVariants } from './resize-handle.variants';
 
 interface SparkTypeImageElement extends TImageElement {
   imageRef?: ImageRef;

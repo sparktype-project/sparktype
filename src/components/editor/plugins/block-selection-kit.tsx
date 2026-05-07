@@ -1,9 +1,13 @@
 
 
+import type { ComponentProps } from 'react';
+
 import { BlockSelectionPlugin } from '@platejs/selection/react';
 import { getPluginTypes, KEYS } from 'platejs';
 
 import { BlockSelection } from '@/components/ui/block-selection';
+
+type BlockSelectionProps = ComponentProps<typeof BlockSelection>;
 
 export const BlockSelectionKit = [
   BlockSelectionPlugin.configure(({ editor }) => ({
@@ -22,7 +26,7 @@ export const BlockSelectionKit = [
         if (!props.attributes.className?.includes('slate-selectable'))
           return null;
 
-        return <BlockSelection {...(props as any)} />;
+        return <BlockSelection {...(props as unknown as BlockSelectionProps)} />;
       },
     },
   })),

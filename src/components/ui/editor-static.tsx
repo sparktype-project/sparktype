@@ -7,7 +7,7 @@ import { type PlateStaticProps, PlateStatic } from 'platejs';
 
 import { cn } from '@/lib/utils';
 
-export const editorVariants = cva(
+const editorVariants = cva(
   cn(
     'group/editor',
     'relative w-full cursor-text overflow-x-hidden break-words whitespace-pre-wrap select-text',
