@@ -21,6 +21,7 @@ export function EditorProvider({ children }: EditorProviderProps) {
   const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
   const [contentHash, setContentHash] = useState<string>('');
   const [lastSavedHash, setLastSavedHash] = useState<string>('');
+  const [activeProviderUploadCount, setActiveProviderUploadCount] = useState(0);
   
   // A ref to hold the current save function, registered by the active page.
   const saveActionRef = useRef<(() => Promise<void>) | null>(null);
@@ -30,6 +31,14 @@ export function EditorProvider({ children }: EditorProviderProps) {
    */
   const registerSaveAction = useCallback((saveFn: () => Promise<void>) => {
     saveActionRef.current = saveFn;
+  }, []);
+
+  const beginProviderUpload = useCallback(() => {
+    setActiveProviderUploadCount((count) => count + 1);
+  }, []);
+
+  const endProviderUpload = useCallback(() => {
+    setActiveProviderUploadCount((count) => Math.max(0, count - 1));
   }, []);
 
   /**
@@ -47,7 +56,6 @@ export function EditorProvider({ children }: EditorProviderProps) {
           setHasUnsavedChanges(false);
           setHasUnsavedChangesSinceManualSave(false);
           setLastSaveTime(new Date());
-          setLastSavedHash(contentHash); // Mark current content as saved
         });
       } catch (error) {
         console.error("Save failed:", error);
@@ -77,9 +85,13 @@ export function EditorProvider({ children }: EditorProviderProps) {
     setContentHash,
     lastSavedHash,
     setLastSavedHash,
+    activeProviderUploadCount,
+    beginProviderUpload,
+    endProviderUpload,
   }), [
     saveState, hasUnsavedChanges, hasUnsavedChangesSinceManualSave, 
-    triggerSave, registerSaveAction, lastSaveTime, contentHash, lastSavedHash
+    triggerSave, registerSaveAction, lastSaveTime, contentHash, lastSavedHash,
+    activeProviderUploadCount, beginProviderUpload, endProviderUpload
   ]);
 
   return (

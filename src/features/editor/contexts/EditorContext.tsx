@@ -21,6 +21,9 @@ export interface EditorContextType {
   setContentHash: (hash: string) => void;
   lastSavedHash: string;
   setLastSavedHash: (hash: string) => void;
+  activeProviderUploadCount: number;
+  beginProviderUpload: () => void;
+  endProviderUpload: () => void;
 }
 
 // Create and export the context object itself

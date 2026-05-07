@@ -127,8 +127,8 @@
       "description": "Social media sharing image (Open Graph)"
     },
     "thumbnail": {
-      "width": 300,
-      "height": 200,
+      "width": 600,
+      "height": 400,
       "crop": "fill",
       "gravity": "center",
       "description": "Small thumbnail for cards and previews"

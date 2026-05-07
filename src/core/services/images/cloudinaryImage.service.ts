@@ -168,6 +168,7 @@ function createUploadWidget(
       cloudName,
       uploadPreset,
       multiple: false,
+      singleUploadAutoClose: false,
       resourceType,
       clientAllowedFormats: resourceType === 'video'
         ? ['mp4', 'mov', 'm4v', 'webm', 'ogv']
@@ -284,24 +285,54 @@ class CloudinaryImageService implements ImageService {
 
     return new Promise((resolve, reject) => {
       let widget: CloudinaryWidget;
+      let settled = false;
+      let completedRef: ImageRef | null = null;
+
+      const rejectOnce = (error: Error) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        reject(error);
+      };
+
+      const resolveOnce = (ref: ImageRef) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        resolve(ref);
+      };
 
       try {
-        widget = createUploadWidget(cloudName, uploadPreset, 'image', (error, result, uploadWidget) => {
-          if (result?.event === 'close' || result?.event === 'abort' || result?.event === 'batch-cancelled') {
-            uploadWidget.close();
-            reject(new Error(UPLOAD_CANCELLED_MESSAGE));
+        widget = createUploadWidget(cloudName, uploadPreset, 'image', (error, result) => {
+          if (settled) {
+            return;
+          }
+
+          if (result?.event === 'close') {
+            if (completedRef) {
+              resolveOnce(completedRef);
+            } else {
+              rejectOnce(new Error(UPLOAD_CANCELLED_MESSAGE));
+            }
+            return;
+          }
+
+          if (result?.event === 'abort' || result?.event === 'batch-cancelled') {
+            rejectOnce(new Error(UPLOAD_CANCELLED_MESSAGE));
             return;
           }
 
           if (error) {
-            uploadWidget.close();
-            reject(new Error(error.message || 'Image upload failed. Please try again.'));
+            rejectOnce(new Error(error.message || 'Image upload failed. Please try again.'));
             return;
           }
 
           if (isSuccessResult(result)) {
-            uploadWidget.close();
-            resolve({
+            completedRef = {
               serviceId: this.id,
               src: result.info.public_id,
               alt: result.info.original_filename || 'Uploaded image',
@@ -314,7 +345,7 @@ class CloudinaryImageService implements ImageService {
                 originalFilename: result.info.original_filename,
                 secureUrl: result.info.secure_url,
               },
-            });
+            };
           }
         });
       } catch (error) {
@@ -346,29 +377,58 @@ class CloudinaryImageService implements ImageService {
 
     return new Promise((resolve, reject) => {
       let widget: CloudinaryWidget;
+      let settled = false;
+      let completedRef: VideoRef | null = null;
+
+      const rejectOnce = (error: Error) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        reject(error);
+      };
+
+      const resolveOnce = (ref: VideoRef) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        resolve(ref);
+      };
 
       try {
         widget = createUploadWidget(
           cloudName,
           videoUploadPreset,
           'video',
-          (error, result, uploadWidget) => {
-            if (result?.event === 'close' || result?.event === 'abort' || result?.event === 'batch-cancelled') {
-              uploadWidget.close();
-              reject(new Error(UPLOAD_CANCELLED_MESSAGE));
+          (error, result) => {
+            if (settled) {
+              return;
+            }
+
+            if (result?.event === 'close') {
+              if (completedRef) {
+                resolveOnce(completedRef);
+              } else {
+                rejectOnce(new Error(UPLOAD_CANCELLED_MESSAGE));
+              }
+              return;
+            }
+
+            if (result?.event === 'abort' || result?.event === 'batch-cancelled') {
+              rejectOnce(new Error(UPLOAD_CANCELLED_MESSAGE));
               return;
             }
 
             if (error) {
-              uploadWidget.close();
-              reject(new Error(error.message || 'Video upload failed. Please try again.'));
+              rejectOnce(new Error(error.message || 'Video upload failed. Please try again.'));
               return;
             }
 
             if (isSuccessResult(result)) {
-              uploadWidget.close();
-
-              resolve({
+              completedRef = {
                 serviceId: this.id,
                 src: result.info.public_id,
                 width: result.info.width,
@@ -383,7 +443,7 @@ class CloudinaryImageService implements ImageService {
                   secureUrl: result.info.secure_url,
                   poster: result.info.thumbnail_url,
                 },
-              });
+              };
             }
           }
         );

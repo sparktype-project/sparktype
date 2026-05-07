@@ -1,7 +1,7 @@
 // src/features/editor/hooks/useFileContent.ts
 
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom'; 
 import { useAppStore } from '@/core/state/useAppStore';
 import { useEditor } from '@/features/editor/contexts/useEditor';
@@ -40,6 +40,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
   const [status, setStatus] = useState<FileStatus>('initializing');
   const [frontmatter, setFrontmatter] = useState<PageFrontmatter | null>(null);
   const [slug, setSlugState] = useState('');
+  const loadedFilePathRef = useRef<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -59,26 +60,28 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
       
       if (isNewFileMode) {
         // Use collection context to determine proper initialization
-        if (collectionContext.isCollectionItem && collectionContext.collectionItemLayout) {
-          // Setup for a new collection item - use collection's default layout
-          setFrontmatter({
-            title: '',
-            layout: collectionContext.collectionItemLayout,
-            date: new Date().toISOString().split('T')[0],
-            // Add any collection-specific defaults here
-          });
-        } else {
-          // Setup for a brand new regular page
-          setFrontmatter({
-            title: '',
-            layout: DEFAULT_PAGE_LAYOUT_PATH,
-            date: new Date().toISOString().split('T')[0],
-          });
+        if (loadedFilePathRef.current !== '__new__') {
+          if (collectionContext.isCollectionItem && collectionContext.collectionItemLayout) {
+            // Setup for a new collection item - use collection's default layout
+            setFrontmatter({
+              title: '',
+              layout: collectionContext.collectionItemLayout,
+              date: new Date().toISOString().split('T')[0],
+              // Add any collection-specific defaults here
+            });
+          } else {
+            // Setup for a brand new regular page
+            setFrontmatter({
+              title: '',
+              layout: DEFAULT_PAGE_LAYOUT_PATH,
+              date: new Date().toISOString().split('T')[0],
+            });
+          }
+
+          setSlugState('');
+          setPendingSlug(null); // Clear any pending changes for new file
+          loadedFilePathRef.current = '__new__';
         }
-        
-        // _markdownContent = 'Start writing...'; // Not currently used
-        setSlugState('');
-        setPendingSlug(null); // Clear any pending changes for new file
        } else {
         console.log('useFileContent - looking for existing file at path:', filePath);
         console.log('useFileContent - available contentFiles:', contentFiles?.map(f => f.path));
@@ -113,10 +116,15 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         }
         console.log('useFileContent - found file with content length:', fileData.content?.length);
         console.log('useFileContent - file content preview:', fileData.content?.substring(0, 100) + (fileData.content && fileData.content.length > 100 ? '...' : ''));
-        setFrontmatter(fileData.frontmatter);
-        // _markdownContent = fileData.content; // Not currently used
-        setSlugState(fileData.slug);
-        setPendingSlug(null); // Clear any pending changes when loading existing file
+        if (loadedFilePathRef.current !== filePath) {
+          setFrontmatter(fileData.frontmatter);
+          // _markdownContent = fileData.content; // Not currently used
+          setSlugState(fileData.slug);
+          setPendingSlug(null); // Clear any pending changes when loading existing file
+          loadedFilePathRef.current = filePath;
+        } else {
+          console.log('useFileContent - file already loaded locally, skipping frontmatter reset');
+        }
       }
 
       // Content is ready - no conversion needed for Plate editor

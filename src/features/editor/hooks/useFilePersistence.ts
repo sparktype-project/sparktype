@@ -14,6 +14,7 @@ import { type MarkdownFrontmatter } from '@/core/types';
 
 // Import utils for content hashing
 import { generateContentHash } from '@/core/libraries/utils';
+import { shouldSeedSavedHashes } from '@/features/editor/utils/saveState';
 
 interface PersistenceParams {
   siteId: string;
@@ -22,11 +23,13 @@ interface PersistenceParams {
   frontmatter: MarkdownFrontmatter | null;
   slug: string;
   getEditorContent: () => string;
+  initialSavedContent?: string;
   applyPendingSlugChange?: (getCurrentContent: () => string, getCurrentFrontmatter: () => MarkdownFrontmatter | null) => Promise<{ success: boolean; newFilePath?: string; error?: string }>;
 }
 
 export function useFilePersistence({
   siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent, applyPendingSlugChange,
+  initialSavedContent,
 }: PersistenceParams) {
   // Use the navigate hook from react-router-dom
   const navigate = useNavigate(); 
@@ -36,9 +39,10 @@ export function useFilePersistence({
   const { 
     saveState, hasUnsavedChanges, registerSaveAction, 
     contentHash, setContentHash, lastSavedHash, setLastSavedHash,
-    setSaveState, setHasUnsavedChanges
+    setSaveState, setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave
   } = useEditor();
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const seededSavedHashFilePathRef = useRef<string | null>(null);
 
   // Autosave that updates state properly but doesn't trigger re-renders
   const handleAutosave = useCallback(async () => {
@@ -90,6 +94,12 @@ export function useFilePersistence({
       // If slug change succeeded and we have a new file path, the save is complete
       // (the slug change process already saved the content with current frontmatter and editor content)
       if (slugResult.newFilePath) {
+        const savedHash = generateContentHash(frontmatter, getEditorContent());
+        setContentHash(savedHash);
+        setLastSavedHash(savedHash);
+        setHasUnsavedChanges(false);
+        setHasUnsavedChangesSinceManualSave(false);
+        setSaveState('saved');
         console.log('Page slug changed and content saved during slug change process - skipping duplicate save');
         return; // Exit early - no need to save again
       }
@@ -132,7 +142,14 @@ export function useFilePersistence({
       };
       await updateContentFileOnly(siteId, fileToUpdate, true); // Silent mode
     }
-  }, [siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent, addOrUpdateContentFile, updateContentFileOnly, getSiteById, navigate, applyPendingSlugChange]);
+
+    const savedHash = generateContentHash(frontmatter, markdownContent);
+    setContentHash(savedHash);
+    setLastSavedHash(savedHash);
+    setHasUnsavedChanges(false);
+    setHasUnsavedChangesSinceManualSave(false);
+    setSaveState('saved');
+  }, [siteId, filePath, isNewFileMode, frontmatter, slug, getEditorContent, addOrUpdateContentFile, updateContentFileOnly, getSiteById, navigate, applyPendingSlugChange, setContentHash, setLastSavedHash, setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave, setSaveState]);
 
   const handleDelete = useCallback(async () => {
     if (isNewFileMode || !frontmatter) return;
@@ -157,6 +174,22 @@ export function useFilePersistence({
   // Effect to update content hash and trigger state changes when content changes
   useEffect(() => {
     if (!frontmatter) return;
+
+    if (shouldSeedSavedHashes({
+      filePath,
+      isNewFileMode,
+      initialSavedContent,
+      previouslySeededFilePath: seededSavedHashFilePathRef.current,
+    })) {
+      const initialHash = generateContentHash(frontmatter, initialSavedContent as string);
+      seededSavedHashFilePathRef.current = filePath;
+      setContentHash(initialHash);
+      setLastSavedHash(initialHash);
+      setSaveState('saved');
+      setHasUnsavedChanges(false);
+      setHasUnsavedChangesSinceManualSave(false);
+      return;
+    }
     
     const currentContent = getEditorContent();
     const newHash = generateContentHash(frontmatter, currentContent);
@@ -175,7 +208,7 @@ export function useFilePersistence({
         setHasUnsavedChanges(false);
       }
     }
-  }, [frontmatter, getEditorContent, contentHash, lastSavedHash, saveState, setContentHash, setSaveState, setHasUnsavedChanges]);
+  }, [frontmatter, filePath, getEditorContent, initialSavedContent, isNewFileMode, contentHash, lastSavedHash, saveState, setContentHash, setLastSavedHash, setSaveState, setHasUnsavedChanges, setHasUnsavedChangesSinceManualSave]);
 
   // This effect handles the autosave logic - triggers only in 'pending' state
   useEffect(() => {

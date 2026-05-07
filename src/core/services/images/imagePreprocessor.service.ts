@@ -15,6 +15,7 @@ interface FieldPresets {
   [presetName: string]: string | undefined | 'export' | 'preview' | 'iframe'; // The processed URL/path for this preset, or metadata
   _originalSrc?: string; // Original source path (for markdown images only)
   _context?: 'export' | 'preview' | 'iframe'; // Context this URL was generated for
+  _sourceSignature?: string; // Detects when an ImageRef changes for the same field
 }
 
 interface ProcessedImageData {
@@ -40,6 +41,17 @@ function getRenderContext(isExport: boolean, forIframe?: boolean): 'export' | 'p
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function buildImageRefSignature(imageRef: ImageRef): string {
+  const signatureData = {
+    serviceId: imageRef.serviceId,
+    src: imageRef.src,
+    version: typeof imageRef.providerData?.version === 'number' ? imageRef.providerData.version : null,
+    secureUrl: typeof imageRef.providerData?.secureUrl === 'string' ? imageRef.providerData.secureUrl : null,
+  };
+
+  return JSON.stringify(signatureData);
 }
 
 function parsePresetDefinition(value: unknown): Partial<ImagePreset> | null {
@@ -359,6 +371,14 @@ export class ImagePreprocessorService {
       contentData[fieldName] = {};
     }
 
+    const fieldData = contentData[fieldName];
+    const sourceSignature = buildImageRefSignature(imageRef);
+
+    if (fieldData._sourceSignature && fieldData._sourceSignature !== sourceSignature) {
+      console.log(`[ImagePreprocessor] Source changed for ${fieldName} in ${contentPath}, refreshing cached presets`);
+      contentData[fieldName] = {};
+    }
+
     // Store metadata
     if (fieldName.startsWith('markdown_image_')) {
       contentData[fieldName]._originalSrc = imageRef.src;
@@ -366,6 +386,7 @@ export class ImagePreprocessorService {
     if (context) {
       contentData[fieldName]._context = context;
     }
+    contentData[fieldName]._sourceSignature = sourceSignature;
 
     // Process each preset
     for (const presetName of presetsToGenerate) {

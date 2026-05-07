@@ -12,6 +12,15 @@ import { UploadCloud, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { MEMORY_CONFIG } from '@/config/editorConfig';
 
+function getProviderPreviewUrl(providerData: unknown): string | null {
+  if (!providerData || typeof providerData !== 'object') {
+    return null;
+  }
+
+  const secureUrl = (providerData as Record<string, unknown>).secureUrl;
+  return typeof secureUrl === 'string' ? secureUrl : null;
+}
+
 interface SiteAssetUploaderProps {
   siteId: string;
   label: string;
@@ -35,13 +44,14 @@ export default function SiteAssetUploader({ siteId, label, value, onChange, onRe
       if (value && site?.manifest && service) {
         try {
           const url = await service.getDisplayUrl(site.manifest, value, { width: 128, height: 128, crop: 'fit' }, false);
-          setPreviewUrl(url);
-          if (url.startsWith('blob:')) {
-            objectUrl = url;
+          const previewUrl = url || getProviderPreviewUrl(value.providerData);
+          setPreviewUrl(previewUrl);
+          if (previewUrl?.startsWith('blob:')) {
+            objectUrl = previewUrl;
           }
         } catch (error) {
           console.error(`Could not generate preview for ${label}:`, error);
-          setPreviewUrl(null);
+          setPreviewUrl(getProviderPreviewUrl(value.providerData));
         }
       } else {
         setPreviewUrl(null);

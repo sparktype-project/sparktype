@@ -2,20 +2,20 @@
   Partial for a single blog post card using SparkType Design System utilities.
   'this' refers to one item from the `collectionItems` array.
 }}
-<article class="border-b border-gray-200 pb-8 mb-8">
+<article class="pb-6 grid grid-cols-3 gap-6">
     {{#if this.frontmatter.featured_image}}
         <a href="{{this.url}}" class="block mb-6">
             {{{image
                 fieldname="featured_image"
-                preset="page_display"
+                preset="thumbnail"
                 alt=this.frontmatter.title
-                class="w-full rounded-lg"
+                class="w-full"
             }}}
         </a>
     {{/if}}
 
-    <div class="">
-        <h2 class="text-3xl mt-0 mb-2 leading-tight">
+    <div class=" col-span-2">
+        <h2 class="text-2xl mt-0 mb-2 leading-tight">
             <a
                 href="{{this.url}}"
                 class="no-underline hover:underline font-bold"
@@ -24,34 +24,35 @@
             </a>
         </h2>
 
-        <p class="text-sm text-gray-500 mb-3 font-headings">
-            Published on {{formatDate this.frontmatter.date}}
-        </p>
+        
 
         {{#if this.frontmatter.description}}
-            <p class="text-text mt-0 mb-4 text-lg flex-1 font-headings">
+            <p class="text-text mt-0 mb-3 text-lg flex-1 font-headings leading-relaxed">
                 {{this.frontmatter.description}}
             </p>
         {{/if}}
 
-        {{#if this.resolvedTags }}
-            <div class="flex flex-wrap gap-2 mb-4">
+        <div class="flex gap-2 text-gray-400 items-center">
+
+ {{#if this.resolvedTags }}
+            <p class="meta text-sm  font-headings text-gray-400! flex flex-row gap-2 items-center">
+            
                 {{#each this.resolvedTags}}
                     {{#each this}}
-                        <span class="inline-flex items-center px-3 py-1 text-sm font-headings bg-slate-100 text-text rounded-full hover:bg-muted/80 transition-colors">
-                            {{this.name}}
+                        <span class="inline-flex items-center ">
+                            #{{this.name}}
                         </span>
                     {{/each}}
                 {{/each}}
-            </div>
+            </p>
+            •
         {{/if}}
+        <p class="text-gray-400! font-headings text-sm">
+            {{formatDate this.frontmatter.date}} 
+        </p>
 
-        <a
-            href="{{this.url}}"
-            class="no-underline inline-flex items-center text-primary font-medium hover:underline transition-colors duration-200 mt-auto font-headings"
-        >
-            Read More
-            <span class="ml-1">→</span>
-        </a>
+
+        </div>
+
     </div>
 </article>

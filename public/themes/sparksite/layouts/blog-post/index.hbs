@@ -2,12 +2,9 @@
   Template for a single blog post using SparkType Design System utilities.
   It receives the full `pageContext` object, which includes `contentFile`.
 }}
-<article class="container max-w-4xl mx-auto px-4 py-8 lg:px-8">
-    
 
-    {{! Post Header: Title and Metadata }}
-    <header class="mb-6 mt-12">
-        <h1 class="text-4xl lg:text-5xl font-bold text-heading mb-4 leading-tight">
+<header class="container max-w-6xl mx-auto px-4 py-8 lg:px-8 mb-6 mt-12">
+        <h1 class="text-4xl lg:text-6xl font-bold text-heading mb-4 leading-tight">
             {{contentFile.frontmatter.title}}
         </h1>
         
@@ -29,21 +26,28 @@
         </div>
 
     </header>
-
-    {{! Display the featured image if one is set in the frontmatter }}
-    {{#if contentFile.frontmatter.featured_image}}
-        <div class="mb-8">
+    {{#if contentFile.frontmatter.banner_image}}
+        <div class="mb-8 object-cover h-[600px]">
             {{{image
-                fieldname="featured_image"
+                fieldname="banner_image"
                 preset="full"
-                class="w-full rounded-lg"
+                class="w-full object-cover h-[600px]"
                 alt="Featured image"
             }}}
         </div>
     {{/if}}
 
+<article class="container max-w-5xl mx-auto px-4 py-8 lg:px-8">
+    
+
+    {{! Post Header: Title and Metadata }}
+    
+
+    {{! Display the featured image if one is set in the frontmatter }}
+    
+
     {{! The main content of the post, rendered from Markdown or Blocks }}
-    <section class="max-w-none prose prose-lg">
+    <section class="max-w-none prose prose-lg lg:prose-xl">
            {{{content}}}
 
     </section>

@@ -4,6 +4,7 @@ import type { ImageRef, ImageService } from '@/core/types';
 import ImageUploadWidget from '../ImageUploadWidget';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getActiveImageService } from '@/core/services/images/images.service';
+import { useEditor } from '@/features/editor/contexts/useEditor';
 
 vi.mock('@/core/state/useAppStore', () => ({
   useAppStore: vi.fn(),
@@ -13,8 +14,15 @@ vi.mock('@/core/services/images/images.service', () => ({
   getActiveImageService: vi.fn(),
 }));
 
+vi.mock('@/features/editor/contexts/useEditor', () => ({
+  useEditor: vi.fn(),
+}));
+
 const mockUseAppStore = vi.mocked(useAppStore);
 const mockGetActiveImageService = vi.mocked(getActiveImageService);
+const mockUseEditor = vi.mocked(useEditor);
+const beginProviderUpload = vi.fn();
+const endProviderUpload = vi.fn();
 
 const baseProps: WidgetProps = {
   id: 'hero-image',
@@ -75,6 +83,10 @@ describe('ImageUploadWidget', () => {
     mockUseAppStore.mockImplementation((selector) => selector({
       getSiteById: () => site,
     } as never));
+    mockUseEditor.mockReturnValue({
+      beginProviderUpload,
+      endProviderUpload,
+    } as never);
   });
 
   afterEach(() => {
@@ -128,5 +140,48 @@ describe('ImageUploadWidget', () => {
       }));
       expect(onChange).toHaveBeenCalledWith(uploadedRef);
     });
+    expect(beginProviderUpload).toHaveBeenCalledTimes(1);
+    expect(endProviderUpload).toHaveBeenCalledTimes(1);
+  });
+
+  test('renders a preview thumbnail for remote providers using the service display URL', async () => {
+    const getDisplayUrl = vi.fn().mockResolvedValue('https://res.cloudinary.com/demo/image/upload/c_fit,w_960,h_540/images/hero.jpg');
+
+    mockGetActiveImageService.mockReturnValue(createImageService({
+      id: 'cloudinary',
+      name: 'Upload to Cloudinary',
+      capabilities: {
+        upload: true,
+        uploadInteraction: 'provider-widget',
+        transforms: true,
+        exportMode: 'metadata-only',
+        importMode: 'metadata-only',
+        videoUpload: true,
+      },
+      getDisplayUrl,
+    }));
+
+    render(<ImageUploadWidget
+      {...baseProps}
+      value={{
+        serviceId: 'cloudinary',
+        src: 'images/hero',
+        alt: 'Hero image',
+        providerData: {
+          secureUrl: 'https://res.cloudinary.com/demo/image/upload/v1/images/hero.jpg',
+        },
+      }}
+    />);
+
+    const preview = await screen.findByAltText('Hero Image preview');
+    expect(preview).toHaveAttribute('src', 'https://res.cloudinary.com/demo/image/upload/c_fit,w_960,h_540/images/hero.jpg');
+    expect(getDisplayUrl).toHaveBeenCalledWith(
+      site.manifest,
+      expect.objectContaining({ src: 'images/hero' }),
+      { width: 960, height: 540, crop: 'fit' },
+      false,
+      false,
+      true
+    );
   });
 });

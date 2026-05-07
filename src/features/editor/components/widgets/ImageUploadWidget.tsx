@@ -5,10 +5,26 @@ import type { WidgetProps } from '@rjsf/utils';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getActiveImageService } from '@/core/services/images/images.service';
 import { UPLOAD_CANCELLED_MESSAGE } from '@/core/services/images/cloudinaryImage.service';
+import { useEditor } from '@/features/editor/contexts/useEditor';
 import { Button } from '@/core/components/ui/button';
 import { UploadCloud, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { MEMORY_CONFIG } from '@/config/editorConfig';
+
+const IMAGE_WIDGET_PREVIEW_OPTIONS = {
+  width: 960,
+  height: 540,
+  crop: 'fit' as const,
+};
+
+function getProviderPreviewUrl(providerData: unknown): string | null {
+  if (!providerData || typeof providerData !== 'object') {
+    return null;
+  }
+
+  const secureUrl = (providerData as Record<string, unknown>).secureUrl;
+  return typeof secureUrl === 'string' ? secureUrl : null;
+}
 
 export default function ImageUploadWidget(props: WidgetProps) {
   const { id, label, value: imageRef, onChange, formContext } = props;
@@ -17,6 +33,7 @@ export default function ImageUploadWidget(props: WidgetProps) {
   const site = useAppStore(state => state.getSiteById(siteId));
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const { beginProviderUpload, endProviderUpload } = useEditor();
   const service = site?.manifest ? getActiveImageService(site.manifest) : undefined;
   const usesProviderWidget = service?.capabilities?.uploadInteraction === 'provider-widget' && typeof service.startUpload === 'function';
 
@@ -28,15 +45,21 @@ export default function ImageUploadWidget(props: WidgetProps) {
           console.log(`[ImageUploadWidget] Using image service:`, service.constructor.name);
           const startTime = Date.now();
 
-          // For upload widget preview, use original image without derivative generation
-          // This prevents blocking and ensures fast preview display
-          const url = await service.getDisplayUrl(site.manifest, imageRef, {}, false, false, true); // Pass skipDerivatives=true
+          const url = await service.getDisplayUrl(
+            site.manifest,
+            imageRef,
+            IMAGE_WIDGET_PREVIEW_OPTIONS,
+            false,
+            false,
+            true
+          );
           const endTime = Date.now();
-          console.log(`[ImageUploadWidget] Preview generated in ${endTime - startTime}ms, url:`, url);
-          setPreviewUrl(url);
+          const previewUrl = url || getProviderPreviewUrl(imageRef.providerData);
+          console.log(`[ImageUploadWidget] Preview generated in ${endTime - startTime}ms, url:`, previewUrl);
+          setPreviewUrl(previewUrl);
         } catch (error) {
           console.error(`[ImageUploadWidget] Could not generate preview for ${label}:`, error);
-          setPreviewUrl(null);
+          setPreviewUrl(getProviderPreviewUrl(imageRef.providerData));
         }
       } else {
         console.log(`[ImageUploadWidget] No preview - imageRef: ${imageRef}, site: ${!!site?.manifest}`);
@@ -69,6 +92,7 @@ export default function ImageUploadWidget(props: WidgetProps) {
     }
 
     console.log(`[ImageUploadWidget] Starting provider upload for ${label}`);
+    beginProviderUpload();
 
     try {
       const uploadStartTime = Date.now();
@@ -86,6 +110,8 @@ export default function ImageUploadWidget(props: WidgetProps) {
       console.error(`[ImageUploadWidget] Provider upload failed for ${label}:`, error);
       const errorMsg = error instanceof Error ? error.message : 'Upload failed. Please try again.';
       toast.error(errorMsg);
+    } finally {
+      endProviderUpload();
     }
   };
 

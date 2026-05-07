@@ -2,7 +2,7 @@
 
 import Handlebars from 'handlebars';
 import DOMPurify from 'dompurify';
-import type { LocalSiteData, PageResolutionResult } from '@/core/types';
+import type { LocalSiteData, PageResolutionResult, ParsedMarkdownFile } from '@/core/types';
 import { PageType } from '@/core/types';
 import { clearAssetContentCache, getAssetContent, getLayoutManifest, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
 import { getActiveImageService } from '@/core/services/images/images.service';
@@ -15,6 +15,66 @@ import { imagePreprocessor } from '@/core/services/images/imagePreprocessor.serv
 import { getUrlForNode } from '@/core/services/urlUtils.service';
 import { getRelativePath } from '@/core/services/relativePaths.service';
 import { SECURITY_CONFIG } from '@/config/editorConfig';
+import type { Node as UnistNode } from 'unist';
+
+interface CollectionDirectiveAttributes {
+    collection?: string;
+    layout?: string;
+    displayType?: string;
+    maxItems?: string;
+    sortBy?: string;
+    sortOrder?: string;
+    [key: string]: unknown;
+}
+
+interface MdastDirectiveNode {
+    type: string;
+    name?: string;
+    attributes?: CollectionDirectiveAttributes;
+    children?: unknown[];
+    value?: string;
+}
+
+interface MdxJsxAttribute {
+    type: 'mdxJsxAttribute';
+    name: string;
+    value: string;
+}
+
+interface MdxJsxFlowElementNode {
+    type: 'mdxJsxFlowElement';
+    name?: string;
+    attributes?: MdxJsxAttribute[];
+    children?: MdxJsxFlowElementNode[];
+}
+
+interface MdastImageNode {
+    type: 'image';
+    url: string;
+}
+
+interface HastElementNode {
+    type: 'element';
+    tagName?: string;
+    properties?: Record<string, unknown>;
+    children?: HastElementNode[];
+}
+
+interface HastRootNode {
+    type: 'root';
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function getDirectiveAttributes(node: MdastDirectiveNode): CollectionDirectiveAttributes {
+    return isRecord(node.attributes) ? node.attributes as CollectionDirectiveAttributes : {};
+}
+
+function escapeDirectiveAttr(value: unknown): string {
+    return Handlebars.escapeExpression(String(value || ''));
+}
 
 /**
  * Defines the options passed to the main render function.
@@ -45,7 +105,7 @@ function sanitizeHtml(htmlContent: string): string {
     }
 
     // Configure DOMPurify to allow scripts from trusted domains only
-    const config: DOMPurify.Config = {
+    const config = {
         // Allow most HTML tags for content formatting
         ALLOWED_TAGS: [
             // Text formatting
@@ -169,7 +229,7 @@ function sanitizeHtml(htmlContent: string): string {
         }
     });
 
-    const sanitized = purify.sanitize(htmlContent, config as any);
+    const sanitized = purify.sanitize(htmlContent, config);
 
     // Clean up hooks
     purify.removeAllHooks();
@@ -358,21 +418,20 @@ export async function render(
           .use(remarkDirective)
           .use(remarkMdx)
           .use(() => {
-            return (tree: any) => {
+            return (tree: UnistNode) => {
               // Process collection_view directives (both leaf and container types)
-              const processCollectionDirective = (node: any) => {
+              const processCollectionDirective = (node: MdastDirectiveNode) => {
                 if (node.name === 'collection_view') {
                   // Convert directive to HTML placeholder for post-processing
-                  const attrs = node.attributes || {};
+                  const attrs = getDirectiveAttributes(node);
 
                   // Escape all attributes to prevent HTML injection
-                  const escapeAttr = (val: any) => Handlebars.escapeExpression(String(val || ''));
-                  const collection = escapeAttr(attrs.collection);
-                  const layout = escapeAttr(attrs.layout);
-                  const displayType = escapeAttr(attrs.displayType);
-                  const maxItems = escapeAttr(attrs.maxItems);
-                  const sortBy = escapeAttr(attrs.sortBy);
-                  const sortOrder = escapeAttr(attrs.sortOrder);
+                  const collection = escapeDirectiveAttr(attrs.collection);
+                  const layout = escapeDirectiveAttr(attrs.layout);
+                  const displayType = escapeDirectiveAttr(attrs.displayType);
+                  const maxItems = escapeDirectiveAttr(attrs.maxItems);
+                  const sortBy = escapeDirectiveAttr(attrs.sortBy);
+                  const sortOrder = escapeDirectiveAttr(attrs.sortOrder);
 
                   const directiveHtml = `<div data-collection-directive="true" data-collection="${collection}" data-layout="${layout}" data-display-type="${displayType}" data-max-items="${maxItems}" data-sort-by="${sortBy}" data-sort-order="${sortOrder}"></div>`;
 
@@ -393,48 +452,51 @@ export async function render(
 
               // Process MDX JSX elements (columns) to add classes and preserve attributes
               // First pass: count columns in each column_group
-              const columnGroupInfo = new Map<any, number>();
-              visit(tree, 'mdxJsxFlowElement', (node: any) => {
-                console.log('[Render Service] Found mdxJsxFlowElement:', node.name);
-                if (node.name === 'column_group') {
+              const columnGroupInfo = new Map<MdxJsxFlowElementNode, number>();
+              visit(tree, 'mdxJsxFlowElement', (node) => {
+                const flowNode = node as MdxJsxFlowElementNode;
+                console.log('[Render Service] Found mdxJsxFlowElement:', flowNode.name);
+                if (flowNode.name === 'column_group') {
                   // Count direct column children
-                  const columnCount = node.children?.filter((child: any) =>
+                  const columnCount = flowNode.children?.filter((child) =>
                     child.type === 'mdxJsxFlowElement' && child.name === 'column'
                   ).length || 0;
                   console.log('[Render Service] column_group has', columnCount, 'columns');
-                  columnGroupInfo.set(node, columnCount);
+                  columnGroupInfo.set(flowNode, columnCount);
                   columnConfigs.add(columnCount);
                 }
               });
 
               // Second pass: add classes to column_group and columns
-              visit(tree, 'mdxJsxFlowElement', (node: any, _index: number | undefined, parent: any) => {
-                if (node.name === 'column_group') {
+              visit(tree, 'mdxJsxFlowElement', (node, _index, parent) => {
+                const flowNode = node as MdxJsxFlowElementNode;
+                const flowParent = parent as MdxJsxFlowElementNode | undefined;
+                if (flowNode.name === 'column_group') {
                   console.log('[Render Service] Adding class to column_group');
                   // Add class for styling
-                  node.attributes = node.attributes || [];
-                  node.attributes.push({
+                  flowNode.attributes = flowNode.attributes || [];
+                  flowNode.attributes.push({
                     type: 'mdxJsxAttribute',
                     name: 'class',
                     value: 'column-group'
                   });
-                } else if (node.name === 'column' && parent) {
+                } else if (flowNode.name === 'column' && flowParent) {
                   // Find the parent column_group to get total column count
-                  const parentGroup = parent.type === 'mdxJsxFlowElement' && parent.name === 'column_group' ? parent : null;
+                  const parentGroup = flowParent.type === 'mdxJsxFlowElement' && flowParent.name === 'column_group' ? flowParent : null;
                   const totalColumns = parentGroup ? columnGroupInfo.get(parentGroup) || 1 : 1;
 
                   console.log('[Render Service] Adding class to column, totalColumns:', totalColumns);
 
                   // Add class with column count for CSS targeting
-                  node.attributes = node.attributes || [];
-                  node.attributes.push({
+                  flowNode.attributes = flowNode.attributes || [];
+                  flowNode.attributes.push({
                     type: 'mdxJsxAttribute',
                     name: 'class',
                     value: `column column-${totalColumns}`
                   });
 
                   // Store total columns as data attribute for potential JS use
-                  node.attributes.push({
+                  flowNode.attributes.push({
                     type: 'mdxJsxAttribute',
                     name: 'data-columns',
                     value: String(totalColumns)
@@ -443,16 +505,17 @@ export async function render(
               });
 
               // Process images to use preprocessed URLs
-              visit(tree, 'image', (node: any) => {
-                if (node.url && (node.url.startsWith('assets/originals/') || node.url.startsWith('assets/images/'))) {
-                  console.log('[Render Service] Processing Sparktype markdown image:', node.url);
+              visit(tree, 'image', (node) => {
+                const imageNode = node as MdastImageNode;
+                if (imageNode.url && (imageNode.url.startsWith('assets/originals/') || imageNode.url.startsWith('assets/images/'))) {
+                  console.log('[Render Service] Processing Sparktype markdown image:', imageNode.url);
 
                   // Get preprocessed URL (page_display preset for markdown images)
                   const contentPath = enrichedResolution.contentFile.path;
                   let processedUrl = imagePreprocessor.getProcessedMarkdownImageUrl(
                     synchronizedSiteData.siteId,
                     contentPath,
-                    node.url,
+                    imageNode.url,
                     'page_display'
                   );
 
@@ -478,14 +541,14 @@ export async function render(
                     }
 
                     // Replace with preprocessed URL
-                    node.url = processedUrl;
+                    imageNode.url = processedUrl;
                   } else {
-                    console.warn('[Render Service] No preprocessed URL found for:', node.url, '- falling back to original');
+                    console.warn('[Render Service] No preprocessed URL found for:', imageNode.url, '- falling back to original');
                     // Fallback: keep original path, which points to assets/originals/
                     // This will work for preview/export as originals are copied
                   }
                 } else {
-                  console.log('[Render Service] Standard image handling for:', node.url);
+                  console.log('[Render Service] Standard image handling for:', imageNode.url);
                 }
               });
             };
@@ -494,39 +557,42 @@ export async function render(
           .use(rehypeSlug) // Add unique IDs to all headings for TOC anchor navigation
           .use(() => {
             // Rehype plugin to add classes to column elements after HTML conversion
-            return (tree: any) => {
+            return (tree: UnistNode) => {
               // Track column groups and their column counts
-              const columnGroupCounts = new Map<any, number>();
+              const columnGroupCounts = new Map<HastElementNode, number>();
 
               // First pass: count columns in each group
-              visit(tree, 'element', (node: any) => {
-                if (node.tagName === 'div' && node.properties?.dataColumn === 'group') {
-                  const columnCount = node.children?.filter((child: any) =>
+              visit(tree, 'element', (node) => {
+                const elementNode = node as HastElementNode;
+                if (elementNode.tagName === 'div' && elementNode.properties?.dataColumn === 'group') {
+                  const columnCount = elementNode.children?.filter((child) =>
                     child.type === 'element' && child.tagName === 'div' && child.properties?.dataColumn === 'item'
                   ).length || 0;
-                  columnGroupCounts.set(node, columnCount);
+                  columnGroupCounts.set(elementNode, columnCount);
                 }
               });
 
               // Second pass: add classes
-              visit(tree, 'element', (node: any, _index: any, parent: any) => {
+              visit(tree, 'element', (node, _index, parent) => {
+                const elementNode = node as HastElementNode;
+                const elementParent = parent as HastRootNode | HastElementNode | undefined;
                 // Check if this came from an MDX element by looking at raw data
-                const isColumnGroup = node.tagName === 'div' &&
-                  node.children?.some((child: any) => child.tagName === 'div');
+                const isColumnGroup = elementNode.tagName === 'div' &&
+                  elementNode.children?.some((child) => child.tagName === 'div');
 
-                if (isColumnGroup && parent?.type === 'root') {
+                if (isColumnGroup && elementParent?.type === 'root') {
                   // This is likely a column_group
-                  const columnCount = node.children?.filter((child: any) =>
+                  const columnCount = elementNode.children?.filter((child) =>
                     child.type === 'element' && child.tagName === 'div'
                   ).length || 0;
 
                   if (columnCount > 1) {
-                    node.properties = node.properties || {};
-                    node.properties.className = ['column-group'];
+                    elementNode.properties = elementNode.properties || {};
+                    elementNode.properties.className = ['column-group'];
                     console.log('[Render Service] Rehype: Added column-group class');
 
                     // Add classes to child columns
-                    node.children?.forEach((child: any) => {
+                    elementNode.children?.forEach((child) => {
                       if (child.type === 'element' && child.tagName === 'div') {
                         child.properties = child.properties || {};
                         child.properties.className = ['column', `column-${columnCount}`];
@@ -728,7 +794,7 @@ async function postProcessCollectionDirectives(
   htmlContent: string,
   siteData: LocalSiteData,
   renderOptions: RenderOptions,
-  currentPageFile: any
+  currentPageFile: ParsedMarkdownFile
 ): Promise<string> {
   // Find all collection directive placeholders
   const directiveRegex = /<div[^>]*data-collection-directive="true"[^>]*>/g;

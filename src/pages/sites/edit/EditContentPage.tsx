@@ -1,6 +1,6 @@
 // src/pages/sites/edit/EditContentPage.tsx
 
-import { useMemo, useEffect, useRef, useCallback } from 'react';
+import { useMemo, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 
 // Global State and UI Management
@@ -28,6 +28,8 @@ import { useFileContent } from '@/features/editor/hooks/useFileContent';
 import { useFilePersistence } from '@/features/editor/hooks/useFilePersistence';
 import CollectionItemList from '@/features/editor/components/CollectionItemList';
 import Loader from '@/core/components/ui/Loader';
+import { normalizeEditorContentForLoad } from '@/features/editor/utils/editorContent';
+import { useEditor } from '@/features/editor/contexts/useEditor';
 
 /**
  * A loading skeleton specifically for the main editor content area.
@@ -59,6 +61,21 @@ function EditContentPageInternal() {
   const { isNewFileMode, filePath, collectionContext } = usePageIdentifier({ siteStructure, allContentFiles, siteData: site || null });
   const { status, frontmatter, slug, setSlug, handleFrontmatterChange, onContentModified, applyPendingSlugChange } = useFileContent(siteId, filePath, isNewFileMode, collectionContext);
   const editorRef = useRef<PlateEditorRef>(null);
+  const initializedEditorSignatureRef = useRef<string | null>(null);
+  const frozenRightSidebarComponentRef = useRef<ReactNode | null>(null);
+  const { activeProviderUploadCount } = useEditor();
+  const initialSavedContent = useMemo(() => {
+    if (isNewFileMode) {
+      return undefined;
+    }
+
+    const fileData = site?.contentFiles?.find(f => f.path === filePath);
+    if (!fileData) {
+      return undefined;
+    }
+
+    return normalizeEditorContentForLoad(fileData.content || '');
+  }, [filePath, isNewFileMode, site?.contentFiles]);
 
   const { handleDelete } = useFilePersistence({
     siteId,
@@ -66,6 +83,7 @@ function EditContentPageInternal() {
     isNewFileMode,
     frontmatter,
     slug,
+    initialSavedContent,
     getEditorContent: () => {
       // Get content from editor ref if available
       if (editorRef.current) {
@@ -91,21 +109,33 @@ function EditContentPageInternal() {
       const timer = setTimeout(() => {
         if (editorRef.current) {
           if (isNewFileMode) {
+            const nextSignature = '__new__';
+            if (initializedEditorSignatureRef.current === nextSignature) {
+              return;
+            }
+
             // Initialize with empty content for new files
             console.log('Initializing new file mode with empty content');
             editorRef.current.initializeWithContent('');
+            initializedEditorSignatureRef.current = nextSignature;
           } else {
             const fileData = site.contentFiles?.find(f => f.path === filePath);
 
             if (fileData) {
               // Process content and initialize editor
               const rawContent = fileData.content || '';
-              const contentToLoad = rawContent.trim();
+              const contentToLoad = normalizeEditorContentForLoad(rawContent);
+              const nextSignature = `${filePath}:${contentToLoad}`;
+
+              if (initializedEditorSignatureRef.current === nextSignature) {
+                return;
+              }
 
               console.log('Initializing editor with content:', contentToLoad.substring(0, 200));
               console.log('Raw content length:', rawContent.length, 'Processed length:', contentToLoad.length);
 
               editorRef.current.initializeWithContent(contentToLoad || '');
+              initializedEditorSignatureRef.current = nextSignature;
             } else {
               console.log('No file data found for path:', filePath);
             }
@@ -151,21 +181,37 @@ function EditContentPageInternal() {
   }, [status, frontmatter, siteManifest, layoutFiles, themeFiles, siteId, filePath, handleFrontmatterChange, isNewFileMode, slug, setSlug, handleDelete, collectionContext]);
 
   useEffect(() => {
+    if (activeProviderUploadCount === 0) {
+      frozenRightSidebarComponentRef.current = rightSidebarComponent;
+    }
+  }, [activeProviderUploadCount, rightSidebarComponent]);
+
+  const displayedRightSidebarComponent = activeProviderUploadCount > 0
+    ? frozenRightSidebarComponentRef.current
+    : rightSidebarComponent;
+
+  useEffect(() => {
     setLeftAvailable(true);
     setLeftSidebarContent(<LeftSidebar />);
     return () => { setLeftAvailable(false); setLeftSidebarContent(null); };
   }, [setLeftAvailable, setLeftSidebarContent]);
 
   useEffect(() => {
-    if (rightSidebarComponent) {
+    if (displayedRightSidebarComponent) {
       setRightAvailable(true);
-      setRightSidebarContent(rightSidebarComponent);
+      setRightSidebarContent(displayedRightSidebarComponent);
     } else {
       setRightAvailable(false);
       setRightSidebarContent(null);
     }
-    return () => { setRightAvailable(false); setRightSidebarContent(null); };
-  }, [rightSidebarComponent, setRightAvailable, setRightSidebarContent]);
+  }, [displayedRightSidebarComponent, setRightAvailable, setRightSidebarContent]);
+
+  useEffect(() => {
+    return () => {
+      setRightAvailable(false);
+      setRightSidebarContent(null);
+    };
+  }, [setRightAvailable, setRightSidebarContent]);
 
   // --- 3. Determine Page State for Rendering ---
   const isSiteEmpty = siteId && siteStructure.length === 0 && !isNewFileMode;

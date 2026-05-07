@@ -74,6 +74,9 @@ describe('cloudinaryImageService', () => {
                 open: () => {
                   open();
                   callback(null, widgetResult);
+                  callback(null, {
+                    event: 'close' as const,
+                  });
                 },
                 close,
               };
@@ -117,8 +120,15 @@ describe('cloudinaryImageService', () => {
       .find((node): node is HTMLScriptElement => node instanceof HTMLScriptElement && node.src === CLOUDINARY_UPLOAD_WIDGET_SCRIPT_SRC);
     expect(script).toBeInstanceOf(HTMLScriptElement);
     expect(script?.src).toBe(CLOUDINARY_UPLOAD_WIDGET_SCRIPT_SRC);
+    expect(window.cloudinary?.createUploadWidget).toHaveBeenCalledWith(
+      expect.objectContaining({
+        singleUploadAutoClose: false,
+        multiple: false,
+      }),
+      expect.any(Function)
+    );
     expect(open).toHaveBeenCalledTimes(1);
-    expect(close).toHaveBeenCalledTimes(1);
+    expect(close).not.toHaveBeenCalled();
   });
 
   test('surfaces a clear error when the widget script fails to load', async () => {
@@ -181,7 +191,99 @@ describe('cloudinaryImageService', () => {
     ).rejects.toThrow('Upload cancelled.');
 
     expect(createUploadWidget).toHaveBeenCalled();
-    expect(close).toHaveBeenCalledTimes(1);
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  test('waits for manual close before resolving a successful upload', async () => {
+    const close = vi.fn();
+    let emitResult: ((error: null, result: {
+      event: 'abort' | 'batch-cancelled' | 'close' | 'queues-end' | 'queues-start' | 'success' | 'upload-added';
+      info?: Record<string, unknown>;
+    }) => void) | undefined;
+    let resolveWidgetReady: (() => void) | undefined;
+    const widgetReady = new Promise<void>((resolve) => {
+      resolveWidgetReady = resolve;
+    });
+    const createUploadWidget = vi.fn((_options, callback) => {
+      emitResult = callback as typeof emitResult;
+      resolveWidgetReady?.();
+      const widget = {
+        open: vi.fn(),
+        close,
+      };
+
+      return widget;
+    });
+
+    vi.spyOn(document.head, 'appendChild').mockImplementation((node) => {
+      if (node instanceof HTMLScriptElement) {
+        queueMicrotask(() => {
+          window.cloudinary = {
+            createUploadWidget,
+          };
+          node.onload?.(new Event('load'));
+        });
+      }
+
+      return node;
+    });
+
+    const { cloudinaryImageService } = await import('../cloudinaryImage.service');
+
+    const uploadPromise = cloudinaryImageService.startUpload?.(
+      'test-site',
+      createContext()
+    );
+
+    expect(uploadPromise).toBeDefined();
+    await widgetReady;
+    expect(emitResult).toBeDefined();
+    const emit = emitResult as (error: null, result: {
+      event: 'abort' | 'batch-cancelled' | 'close' | 'queues-end' | 'queues-start' | 'success' | 'upload-added';
+      info?: Record<string, unknown>;
+    }) => void;
+
+    let settled = false;
+    uploadPromise?.then(() => {
+      settled = true;
+    });
+
+    emit(null, {
+      event: 'success',
+      info: {
+        public_id: 'images/hero',
+        version: 7,
+        format: 'png',
+        secure_url: 'https://res.cloudinary.com/demo-cloud/image/upload/v7/images/hero.png',
+        width: 1200,
+        height: 630,
+        original_filename: 'hero',
+      },
+    });
+
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    expect(close).not.toHaveBeenCalled();
+
+    emit(null, {
+      event: 'close',
+    });
+
+    await expect(uploadPromise).resolves.toEqual({
+      serviceId: 'cloudinary',
+      src: 'images/hero',
+      alt: 'hero',
+      width: 1200,
+      height: 630,
+      providerData: {
+        publicId: 'images/hero',
+        version: 7,
+        format: 'png',
+        originalFilename: 'hero',
+        secureUrl: 'https://res.cloudinary.com/demo-cloud/image/upload/v7/images/hero.png',
+      },
+    });
+    expect(close).not.toHaveBeenCalled();
   });
 
   test('uploads videos through the Cloudinary widget and returns a VideoRef', async () => {
@@ -203,6 +305,9 @@ describe('cloudinaryImageService', () => {
               thumbnail_url: 'https://res.cloudinary.com/demo-cloud/video/upload/so_0/videos/demo-reel.jpg',
               original_filename: 'demo-reel',
             },
+          });
+          callback(null, {
+            event: 'close' as const,
           });
         },
         close,
@@ -250,6 +355,6 @@ describe('cloudinaryImageService', () => {
     });
 
     expect(createUploadWidget).toHaveBeenCalled();
-    expect(close).toHaveBeenCalledTimes(1);
+    expect(close).not.toHaveBeenCalled();
   });
 });
