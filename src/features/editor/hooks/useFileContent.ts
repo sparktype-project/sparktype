@@ -127,8 +127,8 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         }
       }
 
-      // Content is ready - no conversion needed for Plate editor
-      console.log('useFileContent - content ready for Plate editor');
+      // Content is ready - the editor consumes source markdown directly
+      console.log('useFileContent - content ready for markdown editor');
       setStatus('ready');
       
       setHasUnsavedChanges(false);

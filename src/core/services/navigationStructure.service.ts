@@ -23,7 +23,6 @@ function buildNavLinks(
 
   return nodes
     .filter(node => node.type === 'page' && node.navOrder !== undefined)
-    .sort((a, b) => (a.navOrder || 0) - (b.navOrder || 0))
     .map(node => {
       let href: string;
 

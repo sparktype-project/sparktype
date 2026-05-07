@@ -69,13 +69,13 @@ interface CollectionDefinition {
   name: string;
 }
 
-export type PlateEditorRef = {
+export type TipTapEditorRef = {
   getMarkdown: () => string;
   setMarkdown: (markdown: string) => void;
   initializeWithContent: (markdown: string) => void;
 };
 
-interface PlateEditorProps {
+interface TipTapEditorProps {
   onContentChange?: () => void;
   placeholder?: string;
   className?: string;
@@ -213,7 +213,7 @@ function UrlDialog({
   );
 }
 
-export const TipTapEditor = forwardRef<PlateEditorRef, PlateEditorProps>(
+export const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(
   function TipTapEditor(
     {
       onContentChange,

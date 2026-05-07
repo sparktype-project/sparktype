@@ -16,7 +16,7 @@ import ThreeColumnLayout from '@/core/components/layout/ThreeColumnLayout';
 import LeftSidebar from '@/features/editor/components/LeftSidebar';
 import NewPageDialog from '@/features/editor/components/NewPageDialog';
 
-import { PlateEditor, type PlateEditorRef } from '@/components/editor/PlateEditor';
+import { TipTapEditor, type TipTapEditorRef } from '@/components/editor/tiptap/TipTapEditor';
 
 import FrontmatterSidebar from '@/features/editor/components/FrontmatterSidebar';
 import PrimaryContentFields from '@/features/editor/components/PrimaryContentFields';
@@ -65,7 +65,7 @@ function EditContentPageInternal() {
 
   const { isNewFileMode, filePath, collectionContext } = usePageIdentifier({ siteStructure, allContentFiles, siteData: site || null });
   const { status, frontmatter, slug, setSlug, handleFrontmatterChange, onContentModified, applyPendingSlugChange } = useFileContent(siteId, filePath, isNewFileMode, collectionContext);
-  const editorRef = useRef<PlateEditorRef>(null);
+  const editorRef = useRef<TipTapEditorRef>(null);
   const initializedEditorSignatureRef = useRef<string | null>(null);
   const frozenRightSidebarComponentRef = useRef<ReactNode | null>(null);
   const { activeProviderUploadCount } = useEditor();
@@ -118,7 +118,7 @@ function EditContentPageInternal() {
     }
 
     if (status === 'ready' && site?.contentFiles) {
-      // Small delay to ensure PlateEditor component is mounted and ref is set
+      // Small delay to ensure the editor component is mounted and ref is set
       const timer = setTimeout(() => {
         if (editorRef.current) {
           if (isNewFileMode) {
@@ -292,7 +292,7 @@ function EditContentPageInternal() {
                     <CollectionItemList siteId={siteId} collectionId={collectionListId} />
 
                   ) : (
-                    <PlateEditor
+                    <TipTapEditor
                       ref={editorRef}
                       onContentChange={() => {
                         onContentModified();

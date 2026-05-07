@@ -61,7 +61,7 @@ describe('navigationStructure.service', () => {
     vi.clearAllMocks();
   });
 
-  it('generates preview links in nav order and uses menuTitle when present', () => {
+  it('generates preview links in structure order and uses menuTitle when present', () => {
     const siteData = createSiteData([
       createNode('content/contact.md', { title: 'Contact', navOrder: 3 }),
       createNode('content/home.md', { title: 'Home', navOrder: 1 }),
@@ -70,9 +70,9 @@ describe('navigationStructure.service', () => {
     ]);
 
     mockGeneratePreviewUrl
+      .mockReturnValueOnce('/preview/contact')
       .mockReturnValueOnce('/preview/home')
-      .mockReturnValueOnce('/preview/about')
-      .mockReturnValueOnce('/preview/contact');
+      .mockReturnValueOnce('/preview/about');
 
     const result = generateNavLinks(siteData, 'content/current.md', {
       isExport: false,
@@ -81,12 +81,33 @@ describe('navigationStructure.service', () => {
     });
 
     expect(result).toEqual([
+      { href: '/preview/contact', label: 'Contact', children: [] },
       { href: '/preview/home', label: 'Home', children: [] },
       { href: '/preview/about', label: 'About', children: [] },
-      { href: '/preview/contact', label: 'Contact', children: [] },
     ]);
     expect(mockGeneratePreviewUrl).toHaveBeenCalledTimes(3);
     expect(mockGenerateExportUrl).not.toHaveBeenCalled();
+  });
+
+  it('prefers manifest tree order when navOrder is stale after reordering', () => {
+    const siteData = createSiteData([
+      createNode('content/contact.md', { title: 'Contact', navOrder: 3 }),
+      createNode('content/home.md', { title: 'Home', navOrder: 1 }),
+      createNode('content/about.md', { title: 'About', navOrder: 2 }),
+    ]);
+
+    mockGeneratePreviewUrl
+      .mockReturnValueOnce('/preview/contact')
+      .mockReturnValueOnce('/preview/home')
+      .mockReturnValueOnce('/preview/about');
+
+    const result = generateNavLinks(siteData, 'content/current.md', {
+      isExport: false,
+      siteRootPath: '/ignored',
+      forIframe: false,
+    });
+
+    expect(result.map((item) => item.label)).toEqual(['Contact', 'Home', 'About']);
   });
 
   it('builds nested preview navigation and excludes children for collection pages', () => {

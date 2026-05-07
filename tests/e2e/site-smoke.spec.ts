@@ -84,3 +84,22 @@ test('creates the first page and renders it in the viewer', async ({ page }) => 
   const frame = page.frameLocator('iframe[title]');
   await expect(frame.getByText('Start writing your content here.')).toBeVisible();
 });
+
+test('opens the TipTap slash menu and inserts a heading block', async ({ page }) => {
+  const siteTitle = uniqueName('Editor Smoke');
+  const pageTitle = uniqueName('Slash Test');
+
+  await gotoDashboard(page);
+  await createUnprotectedSite(page, siteTitle);
+  await createFirstPage(page, pageTitle);
+
+  const editor = page.locator('.ProseMirror[contenteditable="true"]').first();
+  await editor.click();
+  await page.keyboard.type('/hea');
+
+  await expect(page.getByText('Heading 1')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Slash Heading');
+
+  await expect(page.locator('.ProseMirror h1')).toContainText('Slash Heading');
+});
