@@ -3,11 +3,11 @@ import { getActiveImageService } from '@/core/services/images/images.service';
 import { useAppStore } from '@/core/state/useAppStore';
 import type { ImageRef, VideoRef } from '@/core/types';
 import { toast } from 'sonner';
-import { KEYS } from 'platejs';
+import { MEDIA_TYPES, type MediaType } from '@/components/editor/tiptap/constants';
 
 interface UseSparkTypeUploadProps {
   siteId: string;
-  mediaType?: string;
+  mediaType?: MediaType;
   onUploadComplete?: (mediaRef: ImageRef | VideoRef) => void;
   onUploadError?: (error: unknown) => void;
 }
@@ -22,7 +22,7 @@ export interface SparkTypeUploadedFile {
 
 export function useSparkTypeUpload({
   siteId,
-  mediaType = KEYS.img,
+  mediaType = MEDIA_TYPES.image,
   onUploadComplete,
   onUploadError,
 }: UseSparkTypeUploadProps) {
@@ -64,7 +64,7 @@ export function useSparkTypeUpload({
       };
 
       const mediaRef =
-        mediaType === KEYS.video
+        mediaType === MEDIA_TYPES.video
           ? await (() => {
               if (!imageService.capabilities?.videoUpload || !imageService.uploadVideo) {
                 throw new Error('The active media provider does not support video uploads.');
@@ -77,7 +77,7 @@ export function useSparkTypeUpload({
       clearInterval(progressInterval);
       setProgress(100);
 
-      const displayUrl = mediaType === KEYS.video
+      const displayUrl = mediaType === MEDIA_TYPES.video
         ? await (() => {
             if (!imageService.getVideoDisplayUrl) {
               throw new Error('The active media provider cannot resolve uploaded videos.');

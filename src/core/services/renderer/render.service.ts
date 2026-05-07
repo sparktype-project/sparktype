@@ -2,7 +2,7 @@
 
 import Handlebars from 'handlebars';
 import DOMPurify from 'dompurify';
-import type { LocalSiteData, PageResolutionResult, ParsedMarkdownFile } from '@/core/types';
+import type { ImageRef, LocalSiteData, PageResolutionResult, ParsedMarkdownFile } from '@/core/types';
 import { PageType } from '@/core/types';
 import { clearAssetContentCache, getAssetContent, getLayoutManifest, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
 import { getActiveImageService } from '@/core/services/images/images.service';
@@ -51,6 +51,7 @@ interface MdxJsxFlowElementNode {
 interface MdastImageNode {
     type: 'image';
     url: string;
+    alt?: string | null;
 }
 
 interface HastElementNode {
@@ -74,6 +75,10 @@ function getDirectiveAttributes(node: MdastDirectiveNode): CollectionDirectiveAt
 
 function escapeDirectiveAttr(value: unknown): string {
     return Handlebars.escapeExpression(String(value || ''));
+}
+
+function isAbsoluteOrSpecialImageUrl(url: string): boolean {
+    return /^(?:[a-z]+:)?\/\//i.test(url) || url.startsWith('data:') || url.startsWith('/');
 }
 
 /**
@@ -405,7 +410,7 @@ export async function render(
     // Import the remark processing logic
     const { remark } = await import('remark');
     const { default: remarkDirective } = await import('remark-directive');
-    const { remarkMdx } = await import('@platejs/markdown');
+    const { default: remarkMdx } = await import('remark-mdx');
     const { default: remarkRehype } = await import('remark-rehype');
     const { default: rehypeSlug } = await import('rehype-slug');
     const { default: rehypeStringify } = await import('rehype-stringify');
@@ -418,7 +423,7 @@ export async function render(
           .use(remarkDirective)
           .use(remarkMdx)
           .use(() => {
-            return (tree: UnistNode) => {
+            return async (tree: UnistNode) => {
               // Process collection_view directives (both leaf and container types)
               const processCollectionDirective = (node: MdastDirectiveNode) => {
                 if (node.name === 'collection_view') {
@@ -505,6 +510,7 @@ export async function render(
               });
 
               // Process images to use preprocessed URLs
+              const providerImageResolutions: Array<Promise<void>> = [];
               visit(tree, 'image', (node) => {
                 const imageNode = node as MdastImageNode;
                 if (imageNode.url && (imageNode.url.startsWith('assets/originals/') || imageNode.url.startsWith('assets/images/'))) {
@@ -547,10 +553,33 @@ export async function render(
                     // Fallback: keep original path, which points to assets/originals/
                     // This will work for preview/export as originals are copied
                   }
+                } else if (
+                  imageNode.url &&
+                  imageService.id !== 'local' &&
+                  !isAbsoluteOrSpecialImageUrl(imageNode.url)
+                ) {
+                  console.log('[Render Service] Resolving provider-backed markdown image:', imageNode.url);
+                  const imageRef: ImageRef = {
+                    serviceId: imageService.id,
+                    src: imageNode.url,
+                    alt: imageNode.alt || '',
+                  };
+
+                  providerImageResolutions.push((async () => {
+                    imageNode.url = await imageService.getDisplayUrl(
+                      synchronizedSiteData.manifest,
+                      imageRef,
+                      {},
+                      options.isExport,
+                      options.forIframe,
+                    );
+                  })());
                 } else {
                   console.log('[Render Service] Standard image handling for:', imageNode.url);
                 }
               });
+
+              await Promise.all(providerImageResolutions);
             };
           })
           .use(remarkRehype, { allowDangerousHtml: true })
