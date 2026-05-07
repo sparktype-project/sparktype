@@ -6,8 +6,8 @@ import {
 } from '../editorContent';
 
 describe('normalizeEditorContentForLoad', () => {
-  test('adds the trailing newline Plate serializes for non-empty markdown', () => {
-    expect(normalizeEditorContentForLoad('Start writing your content here.')).toBe('Start writing your content here.\n');
+  test('keeps non-empty markdown unchanged when it already uses unix line endings', () => {
+    expect(normalizeEditorContentForLoad('Start writing your content here.')).toBe('Start writing your content here.');
   });
 
   test('normalizes Windows line endings without trimming content', () => {

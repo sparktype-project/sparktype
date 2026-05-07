@@ -33,6 +33,7 @@ import {
   normalizeEditorContentForLoad,
   shouldReinitializeEditorSession,
 } from '@/features/editor/utils/editorContent';
+import { shouldDisplayCollectionList } from '@/features/editor/utils/editorRoute';
 import { useEditor } from '@/features/editor/contexts/useEditor';
 
 /**
@@ -97,13 +98,21 @@ function EditContentPageInternal() {
     },
     applyPendingSlugChange
   });
+  const isCollectionListPage = shouldDisplayCollectionList(frontmatter, collectionContext);
+  const collectionListId = isCollectionListPage ? frontmatter?.layoutConfig?.collectionId : undefined;
 
   // Initialize editor with content when data is ready
   useEffect(() => {
-    console.log('EditContentPage initialization effect:', { status, hasContentFiles: !!site?.contentFiles, hasEditorRef: !!editorRef.current, filePath, isCollectionLayout: !!frontmatter?.layoutConfig?.collectionId });
+    console.log('EditContentPage initialization effect:', {
+      status,
+      hasContentFiles: !!site?.contentFiles,
+      hasEditorRef: !!editorRef.current,
+      filePath,
+      isCollectionLayout: isCollectionListPage,
+    });
 
     // Don't try to initialize if this is a collection layout page (no editor)
-    if (frontmatter?.layoutConfig?.collectionId) {
+    if (isCollectionListPage) {
       console.log('Skipping editor initialization - collection layout page');
       return;
     }
@@ -145,7 +154,7 @@ function EditContentPageInternal() {
 
       return () => clearTimeout(timer);
     }
-  }, [status, filePath, isNewFileMode, initialSavedContent, frontmatter?.layoutConfig?.collectionId]);
+  }, [status, filePath, isNewFileMode, initialSavedContent, isCollectionListPage, site?.contentFiles]);
 
   // --- 2. Manage Sidebars via UI Store ---
   const { leftSidebarContent, rightSidebarContent, setLeftAvailable, setRightAvailable, setLeftSidebarContent, setRightSidebarContent } = useUIStore(state => state.sidebar);
@@ -279,8 +288,8 @@ function EditContentPageInternal() {
                   />
                 </div>
                 <div className="mt-6 flex-1 min-h-0">
-                  {frontmatter.layoutConfig?.collectionId ? (
-                    <CollectionItemList siteId={siteId} collectionId={frontmatter.layoutConfig.collectionId as string} />
+                  {isCollectionListPage && collectionListId ? (
+                    <CollectionItemList siteId={siteId} collectionId={collectionListId} />
 
                   ) : (
                     <PlateEditor
