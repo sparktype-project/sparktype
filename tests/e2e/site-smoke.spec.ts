@@ -4,6 +4,8 @@ function uniqueName(prefix: string): string {
   return `${prefix} ${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+const selectAllShortcut = process.platform === 'darwin' ? 'Meta+A' : 'Control+A';
+
 async function gotoDashboard(page: Page): Promise<void> {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'My sites' })).toBeVisible();
@@ -15,13 +17,15 @@ async function createUnprotectedSite(page: Page, siteTitle: string): Promise<str
 
   await page.getByLabel('Site Title').fill(siteTitle);
   await page.getByLabel('Site Description (Optional)').fill('Playwright smoke test site');
-  await page.evaluate(() => {
-    const toggle = document.getElementById('edit-protection');
-    if (!(toggle instanceof HTMLElement)) {
+  const editProtectionSwitch = page.locator('#edit-protection');
+  await expect(editProtectionSwitch).toHaveAttribute('data-state', 'checked');
+  await editProtectionSwitch.evaluate((node) => {
+    if (!(node instanceof HTMLElement)) {
       throw new Error('Edit protection switch not found');
     }
-    toggle.click();
+    node.click();
   });
+  await expect(editProtectionSwitch).toHaveAttribute('data-state', 'unchecked');
   await page.getByRole('button', { name: 'Create Site' }).click();
 
   await expect(page).toHaveURL(/#\/sites\/.+\/edit$/);
@@ -94,7 +98,10 @@ test('opens the TipTap slash menu and inserts a heading block', async ({ page })
   await createFirstPage(page, pageTitle);
 
   const editor = page.locator('.ProseMirror[contenteditable="true"]').first();
+  await expect(editor).toContainText('Start writing your content here.');
   await editor.click();
+  await page.keyboard.press(selectAllShortcut);
+  await page.keyboard.press('Backspace');
   await page.keyboard.type('/hea');
 
   await expect(page.getByText('Heading 1')).toBeVisible();
