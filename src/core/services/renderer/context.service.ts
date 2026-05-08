@@ -10,6 +10,7 @@ import type {
     CollectionItemRef,
     StructureNode,
     Tag,
+    ThemeManifest,
 } from '@/core/types';
 import { PageType } from '@/core/types';
 import { generateNavLinks } from '@/core/services/navigationStructure.service';
@@ -18,6 +19,7 @@ import { generateStyleOverrides } from './asset.service';
 import { type RenderOptions } from './render.service';
 import { getRelativePath } from '@/core/services/relativePaths.service';
 import { getTagsByIds } from '@/core/services/tags.service';
+import { getJsonAsset } from '@/core/services/config/configHelpers.service';
 
 // The context object passed into the main body template.
 type ResolvedTags = Record<string, Tag[]>;
@@ -135,6 +137,19 @@ export async function assembleBaseContext(
     }
 
     const { manifest } = siteData;
+    const themeManifest = await getJsonAsset<ThemeManifest>(
+        siteData,
+        'theme',
+        manifest.theme.name,
+        'theme.json'
+    );
+    const themeStylesheets = (themeManifest?.stylesheets ?? [{ path: 'styles.css', type: 'main' as const }])
+        .map((stylesheet) => ({
+            ...stylesheet,
+            href: options.isExport
+                ? `${options.relativeAssetPath ?? ''}_site/themes/${manifest.theme.name}/${stylesheet.path}`
+                : `/themes/${manifest.theme.name}/${stylesheet.path}`,
+        }));
 
     // CORRECTED: Create the appropriate `StructureNode` or `CollectionItemRef` before passing to `getUrlForNode`.
     // We check the manifest to see if the resolved content file is a known collection item.
@@ -173,6 +188,7 @@ export async function assembleBaseContext(
             pageTitle: resolution.pageTitle,
             manifest,
             contentFile: resolution.contentFile,
+            themeStylesheets,
             logo: manifest.logo,
             favicon: manifest.favicon,
             canonicalUrl: new URL(getUrlForNode(urlNode, manifest, false, undefined, siteData), manifest.baseUrl || 'https://example.com').href,

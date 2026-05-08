@@ -4,12 +4,14 @@
   "files": [
     { "path": "theme.json", "type": "manifest" },
     { "path": "base.hbs", "type": "base" },
+    { "path": "font-faces.css", "type": "stylesheet" },
     { "path": "styles.css", "type": "stylesheet" },
     { "path": "partials/head.hbs", "type": "partial", "name": "head" },
     { "path": "partials/header.hbs", "type": "partial", "name": "header" },
     { "path": "partials/footer.hbs", "type": "partial", "name": "footer" }
   ],
   "stylesheets": [
+    { "path": "font-faces.css", "type": "addon" },
     { "path": "styles.css", "type": "main" }
   ],
   "layouts": ["page", "hero-page", "blog-post", "list-view", "case-study", "grid-view"],
@@ -48,26 +50,36 @@
         "title": "Headings style",
         "description": "Choose the font family for all headlines.",
         "enum": [
-          "Geist, system-ui, sans-serif",
-          "\"Geist Mono\", monospace",
-          "\"Gentium Book Plus\", Georgia, serif",
-          "\"IBM Plex Mono\", monospace",
-          "\"IBM Plex Sans\", sans-serif",
-          "\"IBM Plex Serif\", serif",
-          "\"Instrument Serif\", serif",
-          "Inter, system-ui, sans-serif"
+          "var(--font-family-system-sans)",
+          "var(--font-family-system-serif)",
+          "var(--font-family-inter)",
+          "var(--font-family-geist)",
+          "var(--font-family-geist-mono)",
+          "var(--font-family-special-gothic)",
+          "var(--font-family-ibm-plex-sans)",
+          "var(--font-family-ibm-plex-serif)",
+          "var(--font-family-ibm-plex-mono)",
+          "var(--font-family-instrument-serif)",
+          "var(--font-family-instrument-sans)",
+          "var(--font-family-gentium-book-plus)",
+          "var(--font-family-playfair-display)"
         ],
         "enumNames": [
-          "Geist (Sans)",
-          "Geist Mono (Monospace)",
-          "Gentium Book Plus (Serif)",
-          "IBM Plex Mono (Monospace)",
-          "IBM Plex Sans (Sans)",
-          "IBM Plex Serif (Serif)",
-          "Instrument Serif (Serif)",
-          "Inter (Sans)"
+          "System sans",
+          "System serif",
+          "Inter",
+          "Geist",
+          "Geist Mono",
+          "Special Gothic",
+          "IBM Plex Sans",
+          "IBM Plex Serif",
+          "IBM Plex Mono",
+          "Instrument Serif",
+          "Instrument Sans",
+          "Gentium Book Plus",
+          "Playfair Display"
         ],
-        "default": "Inter, system-ui, sans-serif"
+        "default": "var(--font-family-inter)"
       },
 
       "--font-body": {
@@ -75,26 +87,36 @@
         "title": "Body text style",
         "description": "Choose the font family for all paragraphs and lists.",
         "enum": [
-          "Geist, system-ui, sans-serif",
-          "\"Geist Mono\", monospace",
-          "\"Gentium Book Plus\", Georgia, serif",
-          "\"IBM Plex Mono\", monospace",
-          "\"IBM Plex Sans\", sans-serif",
-          "\"IBM Plex Serif\", serif",
-          "\"Instrument Serif\", serif",
-          "Inter, system-ui, sans-serif"
+          "var(--font-family-system-sans)",
+          "var(--font-family-system-serif)",
+          "var(--font-family-inter)",
+          "var(--font-family-geist)",
+          "var(--font-family-geist-mono)",
+          "var(--font-family-special-gothic)",
+          "var(--font-family-ibm-plex-sans)",
+          "var(--font-family-ibm-plex-serif)",
+          "var(--font-family-ibm-plex-mono)",
+          "var(--font-family-instrument-serif)",
+          "var(--font-family-instrument-sans)",
+          "var(--font-family-gentium-book-plus)",
+          "var(--font-family-playfair-display)"
         ],
         "enumNames": [
-          "Geist (Sans)",
-          "Geist Mono (Monospace)",
-          "Gentium Book Plus (Serif)",
-          "IBM Plex Mono (Monospace)",
-          "IBM Plex Sans (Sans)",
-          "IBM Plex Serif (Serif)",
-          "Instrument Serif (Serif)",
-          "Inter (Sans)"
+          "System sans",
+          "System serif",
+          "Inter",
+          "Geist",
+          "Geist Mono",
+          "Special Gothic",
+          "IBM Plex Sans",
+          "IBM Plex Serif",
+          "IBM Plex Mono",
+          "Instrument Serif",
+          "Instrument Sans",
+          "Gentium Book Plus",
+          "Playfair Display"
         ],
-        "default": "\"Gentium Book Plus\", Georgia, serif"
+        "default": "var(--font-family-gentium-book-plus)"
       }
     }
   },
@@ -141,8 +163,8 @@
       "description": "Standard banner image for headers"
     },
     "hero": {
-      "width": 1200,
-      "height": 600,
+      "width": 1600,
+      "height": 800,
       "crop": "fill",
       "gravity": "center",
       "description": "Large hero image for landing pages"

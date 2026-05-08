@@ -8,11 +8,11 @@
             {{contentFile.frontmatter.title}}
         </h1>
         
-        <p class="text-2xl font-headings mb-4 leading-relaxed">{{contentFile.frontmatter.description}} </p>
+        <p class="text-2xl mb-5 leading-relaxed">{{contentFile.frontmatter.description}} </p>
 
         <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500">
             {{#if contentFile.frontmatter.date}}
-                <time datetime="{{contentFile.frontmatter.date}}" class="font-headings">
+                <time datetime="{{contentFile.frontmatter.date}}" class="">
                     Published on {{formatDate contentFile.frontmatter.date}}
                 </time>
             {{/if}}
@@ -30,7 +30,7 @@
         <div class="mb-8 object-cover h-[600px]">
             {{{image
                 fieldname="banner_image"
-                preset="full"
+                preset="hero"
                 class="w-full object-cover h-[600px]"
                 alt="Featured image"
             }}}
@@ -58,7 +58,7 @@
             <div class="flex flex-wrap gap-2">
                 {{#each resolvedTags}}
                     {{#each this}}
-                        <span class="inline-flex items-center px-3 py-1 text-sm font-headings bg-slate-100 text-text rounded-full hover:bg-muted/80 transition-colors">
+                        <span class="inline-flex items-center px-3 py-1 text-sm  bg-slate-100 text-text rounded-full hover:bg-muted/80 transition-colors">
                             {{this.name}}
                         </span>
                     {{/each}}
