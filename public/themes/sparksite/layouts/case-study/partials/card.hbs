@@ -2,7 +2,7 @@
   Partial for a single blog post card using SparkType Design System utilities.
   'this' refers to one item from the `collectionItems` array.
 }}
-<article class="border-b border-gray-200 pb-6">
+<article class="pb-6">
     {{#if this.frontmatter.featured_image}}
         <a href="{{this.url}}" class="block mb-6">
             {{{image
@@ -15,7 +15,7 @@
     {{/if}}
 
     <div class="">
-        <h2 class="text-4xl mt-0 mb-2 leading-tight">
+        <h2 class="text-2xl mt-0 mb-2 leading-tight">
             <a
                 href="{{this.url}}"
                 class="hover:underline"
@@ -24,9 +24,7 @@
             </a>
         </h2>
 
-        <p class="text-sm text-gray-500 mb-3 font-headings">
-            {{formatDate this.frontmatter.date}}
-        </p>
+        
 
         {{#if this.frontmatter.description}}
             <p class="text-text mt-0 mb-4 text-lg flex-1 font-headings">
@@ -46,12 +44,6 @@
             </div>
         {{/if}}
 
-        <a
-            href="{{this.url}}"
-            class="inline-flex items-center text-primary font-medium hover:underline transition-colors duration-200 mt-auto font-headings"
-        >
-            Read More
-            <span class="ml-1">→</span>
-        </a>
+        
     </div>
 </article>
