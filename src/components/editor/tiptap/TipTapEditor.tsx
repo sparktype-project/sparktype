@@ -53,6 +53,13 @@ import {
   type ProviderImageInsertService,
   usesProviderImageInsert,
 } from './imageInsert';
+import {
+  createInsertedVideoContent,
+  insertProviderVideo,
+  supportsUploadedVideoInsert,
+  usesProviderVideoInsert,
+  type ProviderVideoInsertService,
+} from './videoInsert';
 import { PasteMarkdown } from './paste';
 import {
   DEFAULT_COLLECTION_VIEW_ATTRS,
@@ -235,6 +242,17 @@ export const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(
       () => (site?.manifest ? getActiveImageService(site.manifest) : undefined),
       [site],
     );
+    const supportsVideoUpload = useMemo(
+      () => supportsUploadedVideoInsert(activeImageService),
+      [activeImageService],
+    );
+    const supportsFilePickerVideoUpload = useMemo(
+      () => (
+        supportsVideoUpload &&
+        activeImageService?.capabilities?.uploadInteraction !== 'provider-widget'
+      ),
+      [activeImageService, supportsVideoUpload],
+    );
 
     const { uploadFile: uploadImageFile } = useSparkTypeUpload({
       siteId: siteId ?? '',
@@ -337,9 +355,42 @@ export const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(
       requestAnimationFrame(() => imageInputRef.current?.click());
     }, [activeImageService, beginProviderUpload, endProviderUpload, site, siteId]);
 
+    const handleVideoInsertRequest = useCallback(async () => {
+      if (usesProviderVideoInsert(activeImageService) && siteId && site) {
+        await insertProviderVideo({
+          siteId,
+          site,
+          service: activeImageService as ProviderVideoInsertService,
+          beginProviderUpload,
+          endProviderUpload,
+          insertVideo: (attrs) => {
+            const currentEditor = liveEditorRef.current;
+            if (!currentEditor) {
+              return;
+            }
+
+            currentEditor.chain().focus().insertContent(createInsertedVideoContent(attrs)).run();
+          },
+        });
+        return;
+      }
+
+      if (supportsFilePickerVideoUpload) {
+        requestAnimationFrame(() => videoInputRef.current?.click());
+      }
+    }, [
+      activeImageService,
+      beginProviderUpload,
+      endProviderUpload,
+      site,
+      siteId,
+      supportsFilePickerVideoUpload,
+    ]);
+
     const slashItems = useMemo<SlashCommandItem[]>(
-      () => [
-        {
+      () => {
+        const items: SlashCommandItem[] = [
+          {
           title: 'Collection View',
           keywords: ['collection', 'posts', 'listing'],
           icon: <Library className="h-4 w-4" />,
@@ -365,7 +416,7 @@ export const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(
               .run();
           },
         },
-        {
+          {
           title: 'Upload Image',
           keywords: ['image', 'photo', 'upload'],
           icon: <ImageIcon className="h-4 w-4" />,
@@ -374,7 +425,7 @@ export const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(
             void handleImageInsertRequest();
           },
         },
-        {
+          {
           title: 'Image by URL',
           keywords: ['image', 'photo', 'url'],
           icon: <ImageIcon className="h-4 w-4" />,
@@ -383,16 +434,7 @@ export const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(
             setUrlDialogMode('image');
           },
         },
-        {
-          title: 'Upload Video',
-          keywords: ['video', 'upload'],
-          icon: <Video className="h-4 w-4" />,
-          command: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).run();
-            requestAnimationFrame(() => videoInputRef.current?.click());
-          },
-        },
-        {
+          {
           title: 'Video by URL',
           keywords: ['video', 'url', 'embed'],
           icon: <Video className="h-4 w-4" />,
@@ -400,9 +442,30 @@ export const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(
             editor.chain().focus().deleteRange(range).run();
             setUrlDialogMode('video');
           },
-        },
+          },
+        ];
+
+        if (supportsVideoUpload) {
+          items.splice(4, 0, {
+            title: 'Upload Video',
+            keywords: ['video', 'upload'],
+            icon: <Video className="h-4 w-4" />,
+            command: ({ editor, range }) => {
+              editor.chain().focus().deleteRange(range).run();
+              void handleVideoInsertRequest();
+            },
+          });
+        }
+
+        return items;
+      },
+      [
+        createCollectionViewContent,
+        createThreeColumnContent,
+        handleImageInsertRequest,
+        handleVideoInsertRequest,
+        supportsVideoUpload,
       ],
-      [createCollectionViewContent, createThreeColumnContent, handleImageInsertRequest],
     );
 
     const extensions = useMemo(
@@ -444,7 +507,7 @@ export const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(
           lowlight,
         }),
         FileHandler.configure({
-          allowedMimeTypes: ['image/*', 'video/*'],
+          allowedMimeTypes: supportsFilePickerVideoUpload ? ['image/*', 'video/*'] : ['image/*'],
           onPaste: (_editor, files) => {
             void handleFileInsert(files);
           },
@@ -467,7 +530,7 @@ export const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(
         Column,
         ColumnGroup,
       ],
-      [collections, handleFileInsert, placeholder, siteId, slashItems],
+      [collections, handleFileInsert, placeholder, siteId, slashItems, supportsFilePickerVideoUpload],
     );
 
     const editor = useEditor({
@@ -567,7 +630,11 @@ export const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(
         />
 
         {readOnly ? null : (
-          <BubbleMenu editor={editor} className="rounded-md border bg-background p-1 shadow-sm">
+          <BubbleMenu
+            editor={editor}
+            style={{ zIndex: 80 }}
+            className="rounded-md border bg-background p-1 shadow-sm"
+          >
             <div className="flex items-center gap-1">
               <ToolbarButton active={editor.isActive('paragraph')} onClick={() => editor.chain().focus().setParagraph().run()}>
                 P

@@ -7,6 +7,7 @@ import remarkRehype from 'remark-rehype';
 import rehypeStringify from 'rehype-stringify';
 import DOMPurify from 'dompurify';
 import { SECURITY_CONFIG } from '@/config/editorConfig';
+import { replaceCloudinaryHostedVideos } from '../cloudinaryVideoPlayer';
 
 /**
  * Sanitizes HTML with the same security policy as render.service.ts
@@ -76,6 +77,8 @@ function sanitizeMarkdownHtml(htmlContent: string): string {
   });
 
   const config = {
+    ADD_TAGS: ['iframe', 'video', 'audio', 'track', 'source'],
+    ADD_ATTR: ['allow', 'allowfullscreen', 'loading', 'frameborder', 'sandbox'],
     FORBID_ATTR: [
       'onerror', 'onload', 'onclick', 'onmouseover', 'onmouseout', 'onmousedown', 'onmouseup',
       'onmousemove', 'onmouseenter', 'onmouseleave', 'ondblclick', 'oncontextmenu',
@@ -91,7 +94,7 @@ function sanitizeMarkdownHtml(htmlContent: string): string {
   return String(sanitized);
 }
 
-export const markdownHelper: SparktypeHelper = () => ({
+export const markdownHelper: SparktypeHelper = (siteData) => ({
   /**
    * Safely renders Markdown to HTML with XSS protection.
    *
@@ -115,7 +118,7 @@ export const markdownHelper: SparktypeHelper = () => ({
         .use(rehypeStringify, { allowDangerousHtml: true });
 
       const result = processor.processSync(markdownString);
-      const unsafeHtml = String(result);
+      const unsafeHtml = replaceCloudinaryHostedVideos(String(result), siteData.manifest);
 
       // Sanitize HTML with security policy
       const safeHtml = sanitizeMarkdownHtml(unsafeHtml);
