@@ -1,4 +1,4 @@
-# Image Preset System Documentation
+# Image preset system documentation
 
 The Sparktype image preset system uses **template-based preset selection** with **3-tier inheritance** for simple, explicit image processing. Presets are specified directly in templates, making it clear which image size is used where.
 
@@ -6,13 +6,15 @@ The Sparktype image preset system uses **template-based preset selection** with 
 
 The system follows these principles:
 - **Template-level selection**: Templates explicitly specify which preset to use
-- **3-tier inheritance**: Core → Site Config → Layout Config
+- **3-tier inheritance**: Core → Theme Config → Layout Config
 - **Preprocessed for performance**: All images generated before template rendering
 - **Simple and explicit**: No hidden context detection or magic
 
-## How It Works
+---
 
-### 1. Template-Based Preset Selection
+## How it works
+
+### 1. Template-based preset selection
 
 Templates explicitly specify which preset to use with the `preset` parameter:
 
@@ -21,25 +23,27 @@ Templates explicitly specify which preset to use with the `preset` parameter:
 {{{image fieldname="featured_image" preset="thumbnail" alt="Post image"}}}
 
 {{! Full-size image for individual pages }}
-{{{image fieldname="featured_image" preset="full" alt="Post image"}}}
+{{{image fieldname="featured_image" preset="page_display" alt="Post image"}}}
 
 {{! Large hero image for headers }}
 {{{image fieldname="banner_image" preset="hero" alt="Header image"}}}
 
 {{! No preset specified - uses 'original' (no resizing) }}
-{{{image fieldname="photo"}}}
+{{{image fieldname="photo" preset="original"}}}
 ```
 
-### 2. Three-Tier Preset Inheritance
+**Important**: Always specify the preset explicitly. If omitted, defaults to 'original'.
+
+### 2. Three-tier preset inheritance
 
 Presets are defined in three layers, with later layers overriding earlier ones:
 
 ```
 Core Presets (BASE_IMAGE_PRESETS in code)
   ↓ overridden by
-Site Config (manifest.imagePresets)
+Theme Config (themes/{name}/theme.json → image_presets)
   ↓ overridden by
-Layout Config (layout.json presets)
+Layout Config (layouts/{name}/layout.json → image_presets)
 ```
 
 **Example inheritance:**
@@ -48,30 +52,39 @@ Layout Config (layout.json presets)
 // Layer 1: Core preset (editorConfig.ts)
 thumbnail: { width: 300, height: 200, crop: 'fill', gravity: 'center' }
 
-// Layer 2: Site config override (manifest.imagePresets)
-thumbnail: { width: 350, height: 250 }  // Overrides core
+// Layer 2: Theme config override (themes/sparksite/theme.json)
+thumbnail: { width: 350, height: 250 }  // Overrides width and height, keeps crop and gravity
 
-// Layer 3: Layout config override (layout.json)
-thumbnail: { width: 320, height: 240 }  // Overrides site & core
+// Layer 3: Layout config override (layouts/blog-post/layout.json)
+thumbnail: { width: 320 }  // Final: width: 320, height: 250, crop: 'fill', gravity: 'center'
 ```
 
-### 3. Available Base Presets
+**Inheritance priority**: Layout > Theme > Core (later layers win)
+
+### 3. Available base presets
 
 All core presets are defined in `src/config/editorConfig.ts`:
 
 | Preset | Dimensions | Crop | Use Case |
 |--------|------------|------|----------|
 | `thumbnail` | 300×200 | fill | Card previews and small displays |
-| `full` | 960×360 | fill | Standard page content images |
+| `page_display` | 960×360 | fill | Standard page content images |
+| `full` | 800×auto | fill | Full-width images (no height constraint) |
 | `hero` | 1200×600 | fill | Large header and banner images |
-| `logo` | 200×200 | fit | Logos and icons |
+| `logo` | 256×256 | fill | Logos and icons (square) |
 | `avatar` | 150×150 | fill | Profile and author images |
 | `social` | 1200×630 | fill | Social media sharing (Open Graph, Twitter) |
-| `original` | No resize | scale | Original with optimization only |
+| `gallery` | 400×400 | fill | Square gallery grid images |
+| `banner_small` | 600×200 | fill | Small banner images |
+| `original` | No resize | scale | Original image with optimisation only |
 
-## Basic Usage
+**Note**: `auto` means no height constraint - image maintains aspect ratio based on width.
 
-### In Templates
+---
+
+## Basic usage
+
+### In templates
 
 ```handlebars
 {{! Blog post card - small thumbnail }}
@@ -89,11 +102,11 @@ All core presets are defined in `src/config/editorConfig.ts`:
 <article class="post">
   {{{image
     fieldname="featured_image"
-    preset="full"
+    preset="page_display"
     alt="Featured image"
     class="post-image"
   }}}
-  <div class="content">{{content}}</div>
+  <div class="content">{{{content}}}</div>
 </article>
 
 {{! Hero section - large banner }}
@@ -106,31 +119,70 @@ All core presets are defined in `src/config/editorConfig.ts`:
   }}}
 </header>
 
-{{! URL only for meta tags }}
+{{! Social meta tags - URL only }}
 <meta property="og:image" content="{{{image fieldname="featured_image" preset="social" url_only=true}}}" />
 ```
 
-## Advanced Configuration
+### Helper parameters
 
-### Overriding Core Presets in Site Config
+```handlebars
+{{{image
+  fieldname="featured_image"  (required) - Field name in frontmatter
+  preset="thumbnail"           (optional) - Preset name (defaults to 'original')
+  alt="Alt text"              (optional) - Alt text for img tag
+  class="css-class"           (optional) - CSS class for img tag
+  url_only=true               (optional) - Return URL only, not full img tag
+  lazy=false                  (optional) - Disable lazy loading (default: true)
+}}}
+```
 
-Override core presets globally for your entire site:
+---
+
+## Advanced configuration
+
+### Site-level overrides
+
+Override presets globally in `manifest.json`:
 
 ```json
 {
-  "siteId": "my-site",
-  "title": "My Site",
-
   "imagePresets": {
     "thumbnail": {
       "width": 350,
       "height": 250,
       "crop": "fill",
       "gravity": "center",
-      "description": "Custom site-wide thumbnail"
+      "description": "Custom site thumbnail"
     },
-    "full": {
-      "width": 1024,
+    "custom_preset": {
+      "width": 500,
+      "height": 300,
+      "crop": "fit",
+      "gravity": "center"
+    }
+  }
+}
+```
+
+**Usage in templates**:
+```handlebars
+{{{image fieldname="featured_image" preset="custom_preset"}}}
+```
+
+### Theme-level presets
+
+Define theme-specific presets in `themes/{name}/theme.json`:
+
+```json
+{
+  "name": "My Theme",
+  "image_presets": {
+    "thumbnail": {
+      "width": 400,
+      "height": 300
+    },
+    "theme_banner": {
+      "width": 1600,
       "height": 400,
       "crop": "fill",
       "gravity": "center"
@@ -139,487 +191,288 @@ Override core presets globally for your entire site:
 }
 ```
 
-Now all templates using `preset="thumbnail"` will get 350×250 images instead of 300×200.
+These override core presets and are available to all layouts using this theme.
 
-### Layout-Specific Presets
+### Layout-level presets
 
-Define presets specific to a layout in `layout.json`:
+Define layout-specific presets in `layouts/{name}/layout.json`:
 
 ```json
 {
   "name": "Blog Post",
   "layoutType": "single",
-
-  "schema": {
-    "properties": {
-      "featured_image": {
-        "type": "string",
-        "title": "Featured Image"
-      }
-    }
-  },
-
-  "uiSchema": {
-    "featured_image": {
-      "ui:widget": "imageUploader"
-    }
-  },
-
-  "presets": {
+  "image_presets": {
     "thumbnail": {
       "width": 320,
-      "height": 240,
-      "crop": "fill",
-      "gravity": "center",
-      "description": "Blog-specific thumbnail"
+      "height": 240
     },
-    "blog_hero": {
-      "width": 1400,
+    "blog_featured": {
+      "width": 1200,
       "height": 500,
       "crop": "fill",
-      "gravity": "center",
-      "description": "Custom blog hero size"
-    }
-  }
-}
-```
-
-**Then use in templates:**
-
-```handlebars
-{{! Uses layout's thumbnail override (320×240) }}
-{{{image fieldname="featured_image" preset="thumbnail"}}}
-
-{{! Uses layout-specific preset }}
-{{{image fieldname="banner" preset="blog_hero"}}}
-
-{{! Uses core hero preset (1200×600) }}
-{{{image fieldname="header" preset="hero"}}}
-```
-
-### Custom Site-Wide Presets
-
-Add completely new presets in site config:
-
-```json
-{
-  "imagePresets": {
-    "product_card": {
-      "width": 400,
-      "height": 400,
-      "crop": "fill",
-      "gravity": "center",
-      "description": "Square product card"
-    },
-    "product_detail": {
-      "width": 800,
-      "height": 600,
-      "crop": "fit",
-      "gravity": "center",
-      "description": "Product detail page"
-    }
-  }
-}
-```
-
-**Use in templates:**
-
-```handlebars
-{{! Product card }}
-{{{image fieldname="product_image" preset="product_card"}}}
-
-{{! Product detail page }}
-{{{image fieldname="product_image" preset="product_detail"}}}
-```
-
-## Complete Examples
-
-### Example 1: Blog with Cards and Full Posts
-
-**Site Config (manifest.json):**
-```json
-{
-  "imagePresets": {
-    "thumbnail": {
-      "width": 350,
-      "height": 250
-    }
-  }
-}
-```
-
-**Blog Card Template (blog-listing/partials/post-card.hbs):**
-```handlebars
-<article class="card">
-  {{{image
-    fieldname="featured_image"
-    preset="thumbnail"
-    alt=this.frontmatter.title
-  }}}
-  <h2>{{this.frontmatter.title}}</h2>
-</article>
-```
-**Result:** Uses site's thumbnail override (350×250)
-
-**Blog Post Template (blog-post/index.hbs):**
-```handlebars
-<article class="post">
-  {{{image
-    fieldname="featured_image"
-    preset="full"
-    alt="Featured image"
-  }}}
-  <div class="content">{{content}}</div>
-</article>
-```
-**Result:** Uses core full preset (960×360)
-
-### Example 2: Portfolio with Layout-Specific Presets
-
-**Portfolio Project Layout (portfolio-project/layout.json):**
-```json
-{
-  "name": "Portfolio Project",
-  "presets": {
-    "portfolio_hero": {
-      "width": 1400,
-      "height": 700,
-      "crop": "fill",
-      "gravity": "center"
-    },
-    "gallery_image": {
-      "width": 600,
-      "height": 450,
-      "crop": "fill",
       "gravity": "center"
     }
   }
 }
 ```
 
-**Project Page Template (portfolio-project/index.hbs):**
+**Highest priority** - these override both theme and core presets.
+
+---
+
+## Image processing
+
+### Preprocessing phase
+
+**What happens** (before template rendering):
+
+1. **Discovery**: System finds all image references in all content files
+2. **Preset gathering**: Collects ALL available presets (core + theme + layout)
+3. **Generation**: Generates EVERY preset for EVERY image
+4. **Storage**: Stores URLs in memory: `contentPath → fieldName → presetName → URL`
+
+**Code location**: `src/core/services/images/imagePreprocessor.service.ts`
+
+**Key insight**: ALL presets are generated for ALL images during preprocessing, not selectively.
+
+### Runtime rendering
+
+**What happens** (during template compilation):
+
+1. **Template specifies**: `{{{image fieldname="featured_image" preset="thumbnail"}}}`
+2. **Helper looks up**: Pre-generated URL from preprocessing phase
+3. **Returns immediately**: Synchronous lookup, no async processing needed
+
+**Code location**: `src/core/services/renderer/helpers/image.helper.ts`
+
+**Key insight**: Rendering is synchronous because all URLs are pre-generated.
+
+### Preset resolution
+
+**How inheritance works**:
+
+```typescript
+// Start with defaults
+let preset = { crop: 'scale', gravity: 'center' };
+
+// Layer 1: Apply core preset (if exists)
+if (BASE_IMAGE_PRESETS[presetName]) {
+  preset = { ...preset, ...BASE_IMAGE_PRESETS[presetName] };
+}
+
+// Layer 2: Apply theme overrides (if exists)
+if (themeManifest.image_presets?.[presetName]) {
+  preset = { ...preset, ...themeManifest.image_presets[presetName] };
+}
+
+// Layer 3: Apply layout overrides (if exists)
+if (layoutManifest.image_presets?.[presetName]) {
+  preset = { ...preset, ...layoutManifest.image_presets[presetName] };
+}
+
+// Result: Merged preset with highest priority properties winning
+```
+
+---
+
+## Export and caching
+
+### Static site export
+
+**What gets exported**:
+
+1. **Original images**: All source images from `assets/originals/`
+2. **Generated derivatives**: All cached derivatives from preprocessing
+3. **Bundle structure**:
+   ```
+   _site/
+   ├── assets/originals/
+   │   └── {timestamp}-{filename}.{ext}
+   └── assets/derivatives/
+       └── {filename}_w{width}_h{height}_c-{crop}_g-{gravity}.{ext}
+   ```
+
+**Code location**: `src/core/services/builder/asset.builder.ts`
+
+### Derivative caching
+
+**Cache location**: IndexedDB (`derivativeCacheStore`)
+
+**Cache key format**:
+```
+{siteId}/assets/derivatives/{filename}_w{width}_h{height}_c-{crop}_g-{gravity}.{ext}
+```
+
+**Example**:
+```
+site-123/assets/derivatives/photo_w300_h200_c-fill_g-center.jpg
+```
+
+**Persistence**: Derivatives are cached permanently until:
+- Source image is deleted
+- Preset configuration changes
+- Cache is manually cleared
+
+---
+
+## Best practices
+
+### Preset selection
+
+**Choose presets based on context**:
+
 ```handlebars
+{{! Card/grid views - use thumbnail }}
+<div class="card">
+  {{{image fieldname="featured_image" preset="thumbnail"}}}
+</div>
+
+{{! List views - use page_display }}
+<div class="list-item">
+  {{{image fieldname="featured_image" preset="page_display"}}}
+</div>
+
+{{! Full page views - use page_display or full }}
 <article>
-  {{! Uses layout's custom preset }}
-  {{{image
-    fieldname="featured_image"
-    preset="portfolio_hero"
-    alt=contentFile.frontmatter.title
-  }}}
-
-  {{! Gallery images }}
-  {{#each contentFile.frontmatter.gallery}}
-    {{{image
-      fieldname="gallery"
-      preset="gallery_image"
-      alt="Gallery image"
-    }}}
-  {{/each}}
+  {{{image fieldname="featured_image" preset="page_display"}}}
 </article>
-```
 
-**Project Card Template (portfolio-grid/partials/project-card.hbs):**
-```handlebars
-<article class="project-card">
-  {{! Uses core thumbnail preset }}
-  {{{image
-    fieldname="featured_image"
-    preset="thumbnail"
-    alt=this.frontmatter.title
-  }}}
-  <h3>{{this.frontmatter.title}}</h3>
-</article>
-```
+{{! Hero sections - use hero }}
+<header class="hero">
+  {{{image fieldname="banner_image" preset="hero"}}}
+</header>
 
-## Preset Resolution Examples
-
-### Example 1: Core Only
-```typescript
-// Core preset exists
-BASE_IMAGE_PRESETS.avatar = { width: 150, height: 150 }
-
-// No site override
-// No layout override
-
-// Template
-{{{image fieldname="author_photo" preset="avatar"}}}
-
-// Result: 150×150 (core preset)
-```
-
-### Example 2: Site Override
-```typescript
-// Core preset
-BASE_IMAGE_PRESETS.hero = { width: 1200, height: 600 }
-
-// Site override
-manifest.imagePresets.hero = { width: 1400, height: 700 }
-
-// No layout override
-
-// Template
-{{{image fieldname="banner" preset="hero"}}}
-
-// Result: 1400×700 (site override)
-```
-
-### Example 3: Full Override Chain
-```typescript
-// Core preset
-BASE_IMAGE_PRESETS.thumbnail = { width: 300, height: 200, crop: 'fill' }
-
-// Site override
-manifest.imagePresets.thumbnail = { width: 350, height: 250 }
-
-// Layout override
-layout.presets.thumbnail = { width: 320, height: 240 }
-
-// Template
-{{{image fieldname="photo" preset="thumbnail"}}}
-
-// Result: 320×240 (layout override wins)
-```
-
-### Example 4: Custom Preset (No Core)
-```typescript
-// No core preset
-
-// Site defines new preset
-manifest.imagePresets.banner_wide = {
-  width: 1600,
-  height: 400,
-  crop: 'fill',
-  gravity: 'center'
-}
-
-// Template
-{{{image fieldname="header" preset="banner_wide"}}}
-
-// Result: 1600×400 (custom site preset)
-```
-
-## Template Helper Options
-
-The `image` helper accepts these parameters:
-
-| Parameter | Required | Description | Example |
-|-----------|----------|-------------|---------|
-| `fieldname` | Yes | The frontmatter field containing the image | `fieldname="featured_image"` |
-| `preset` | No | Which preset to use (defaults to 'original') | `preset="thumbnail"` |
-| `alt` | No | Alt text for the image | `alt="Description"` |
-| `class` | No | CSS classes to apply | `class="w-full rounded"` |
-| `lazy` | No | Enable lazy loading (default: true) | `lazy=false` |
-| `url_only` | No | Return URL only (for meta tags) | `url_only=true` |
-
-**Examples:**
-
-```handlebars
-{{! Full featured usage }}
-{{{image
-  fieldname="featured_image"
-  preset="thumbnail"
-  alt="Post thumbnail"
-  class="rounded shadow"
-  lazy=true
-}}}
-
-{{! Minimal usage (uses 'original' preset) }}
-{{{image fieldname="photo"}}}
-
-{{! URL only for meta tags }}
+{{! Social meta tags - use social }}
 <meta property="og:image" content="{{{image fieldname="featured_image" preset="social" url_only=true}}}" />
-
-{{! Disable lazy loading for above-the-fold images }}
-{{{image fieldname="hero" preset="hero" lazy=false}}}
 ```
 
-## Best Practices
+### Custom presets
 
-### 1. Use Descriptive Preset Names
+**When to create custom presets**:
 
-```json
-// Good - clear purpose
-{
-  "presets": {
-    "product_thumbnail": { "width": 300, "height": 300 },
-    "product_detail": { "width": 800, "height": 600 }
-  }
-}
+1. **Specific aspect ratios**: Need a non-standard size
+   ```json
+   {
+     "wide_banner": {
+       "width": 1400,
+       "height": 300,
+       "crop": "fill"
+     }
+   }
+   ```
 
-// Less clear
-{
-  "presets": {
-    "small": { "width": 300, "height": 300 },
-    "big": { "width": 800, "height": 600 }
-  }
-}
-```
+2. **Theme-specific layouts**: Different thumbnail sizes per theme
+   ```json
+   {
+     "theme_thumbnail": {
+       "width": 350,
+       "height": 250
+     }
+   }
+   ```
 
-### 2. Be Consistent Across Templates
+3. **Layout-specific images**: Special sizes for specific layouts
+   ```json
+   {
+     "case_study_hero": {
+       "width": 1600,
+       "height": 900,
+       "crop": "fill"
+     }
+   }
+   ```
 
-Use the same preset names for similar purposes:
+**Where to define them**:
+- **Layout-specific**: Define in `layouts/{name}/layout.json`
+- **Theme-specific**: Define in `themes/{name}/theme.json`
+- **Site-wide**: Define in `manifest.json` (though this is less common)
 
-```handlebars
-{{! All card views use 'thumbnail' }}
-{{! blog-listing/partials/post-card.hbs }}
-{{{image fieldname="featured_image" preset="thumbnail"}}}
+### Performance tips
 
-{{! portfolio-grid/partials/project-card.hbs }}
-{{{image fieldname="featured_image" preset="thumbnail"}}}
+1. **Use appropriate presets**: Don't use `hero` when `thumbnail` will do
+   ```handlebars
+   {{! Bad - loads 1200x600 image in small card }}
+   {{{image fieldname="featured_image" preset="hero"}}}
 
-{{! All full pages use 'full' }}
-{{! blog-post/index.hbs }}
-{{{image fieldname="featured_image" preset="full"}}}
+   {{! Good - loads 300x200 image in small card }}
+   {{{image fieldname="featured_image" preset="thumbnail"}}}
+   ```
 
-{{! portfolio-project/index.hbs }}
-{{{image fieldname="featured_image" preset="full"}}}
-```
+2. **Limit custom presets**: More presets = more derivatives = more storage
+   - Reuse existing presets where possible
+   - Delete unused custom presets
 
-### 3. Override Strategically
+3. **Use `lazy=false` sparingly**: Only for above-the-fold images
+   ```handlebars
+   {{! Hero image - disable lazy loading }}
+   {{{image fieldname="hero_image" preset="hero" lazy=false}}}
 
-- **Core presets**: Good defaults for most sites
-- **Site overrides**: Adjust for your site's design system
-- **Layout overrides**: Only when a layout needs different sizing
+   {{! Below-fold images - use lazy loading (default) }}
+   {{{image fieldname="gallery_image" preset="gallery"}}}
+   ```
 
-### 4. Document Custom Presets
-
-Add descriptions to help other developers:
-
-```json
-{
-  "presets": {
-    "feature_card": {
-      "width": 400,
-      "height": 300,
-      "crop": "fill",
-      "gravity": "center",
-      "description": "Used in the features section cards on the homepage"
-    }
-  }
-}
-```
-
-### 5. Use Semantic Names
-
-Preset names should describe their purpose, not their size:
-
-```json
-// Good - semantic
-{
-  "presets": {
-    "card_image": { "width": 300 },
-    "header_banner": { "width": 1200 }
-  }
-}
-
-// Less good - size-based
-{
-  "presets": {
-    "300px": { "width": 300 },
-    "1200px": { "width": 1200 }
-  }
-}
-```
+---
 
 ## Troubleshooting
 
-### Image not appearing
+### Image not displaying
 
-**Check:**
-1. Field name matches exactly: `fieldname="featured_image"`
-2. Field exists in content frontmatter with valid ImageRef
-3. Preset exists in core, site config, or layout config
-4. Browser console for preprocessing errors
+**Check these things**:
 
-### Wrong image size
+1. **Preset specified**: Template must include `preset` parameter
+   ```handlebars
+   {{! Wrong - no preset specified }}
+   {{{image fieldname="featured_image"}}}
 
-**Check:**
-1. Which preset the template is using: `preset="thumbnail"`
-2. Site config for preset overrides: `manifest.imagePresets.thumbnail`
-3. Layout config for preset overrides: `layout.presets.thumbnail`
-4. Inheritance chain: Core → Site → Layout
+   {{! Correct }}
+   {{{image fieldname="featured_image" preset="thumbnail"}}}
+   ```
 
-### Preset not found warning
+2. **Preset exists**: Verify preset is defined in core/theme/layout
+   - Check console for warnings: `[ImagePreprocessor] Could not resolve preset`
 
-```
-[ImagePreprocessor] Preset 'custom_preset' not found in core, site, or layout
-```
+3. **Image preprocessed**: Check console for preprocessing logs
+   - Look for: `[ImagePreprocessor] Processed featured_image with preset 'thumbnail'`
 
-**Solution:** Define the preset in site config or layout config:
+4. **Field name matches**: Frontmatter field must match `fieldname` parameter
+   ```yaml
+   # In frontmatter
+   featured_image:
+     serviceId: local
+     src: assets/originals/image.jpg
+   ```
+   ```handlebars
+   {{! In template - field name must match }}
+   {{{image fieldname="featured_image" preset="thumbnail"}}}
+   ```
 
-```json
-{
-  "presets": {
-    "custom_preset": {
-      "width": 500,
-      "height": 400,
-      "crop": "fill",
-      "gravity": "center"
-    }
-  }
-}
-```
+### Wrong size displayed
 
-### Different sizes on different pages
+**Possible causes**:
 
-This is expected! Templates specify which preset to use:
+1. **Wrong preset used**: Check which preset is specified in template
+2. **Preset overridden**: Layout/theme may override core preset dimensions
+   - Check console: `[ImagePreprocessor] Resolved preset 'thumbnail': core: 300x200, theme: 350x250, layout: 320x240, final: 320x240`
+3. **CSS override**: Image size may be constrained by CSS
 
-```handlebars
-{{! Card partial - thumbnail }}
-{{{image fieldname="featured_image" preset="thumbnail"}}}
+### Performance issues
 
-{{! Full page - full size }}
-{{{image fieldname="featured_image" preset="full"}}}
-```
+**If preprocessing is slow**:
 
-## Technical Details
+1. **Too many presets**: Reduce number of custom presets
+2. **Too many images**: Consider lazy loading or pagination
+3. **Large source images**: Compress before upload (aim for <5MB)
 
-### Preprocessing
-
-Images are preprocessed before template rendering:
-
-1. Preprocessor scans all content for image references
-2. For each image field, generates common presets: `['thumbnail', 'full', 'hero', 'original']`
-3. Each preset is resolved through 3-tier inheritance
-4. Derivatives are generated and cached
-5. URLs stored in memory for synchronous template rendering
-
-### Resolution Algorithm
-
-```typescript
-function resolvePreset(presetName, manifest, layoutManifest) {
-  // 1. Start with core preset (if exists)
-  let preset = BASE_IMAGE_PRESETS[presetName] || { crop: 'scale', gravity: 'center' };
-
-  // 2. Apply site manifest overrides (if exists)
-  if (manifest.imagePresets?.[presetName]) {
-    preset = { ...preset, ...manifest.imagePresets[presetName] };
-  }
-
-  // 3. Apply layout overrides (if exists) - highest priority
-  if (layoutManifest?.presets?.[presetName]) {
-    preset = { ...preset, ...layoutManifest.presets[presetName] };
-  }
-
-  return preset;
-}
-```
-
-### Key Files
-
-- **Core presets**: `src/config/editorConfig.ts` (BASE_IMAGE_PRESETS)
-- **Preprocessor**: `src/core/services/images/imagePreprocessor.service.ts`
-- **Template helper**: `src/core/services/renderer/helpers/image.helper.ts`
-- **Types**: `src/core/types/index.ts` (ImageRef, ImagePreset)
+---
 
 ## Summary
 
-The template-based preset system provides:
+The Sparktype image preset system is straightforward:
 
-- **Explicit control**: Templates specify exactly which preset to use
-- **Simple inheritance**: Core → Site → Layout (easy to understand)
-- **No magic**: What you see in the template is what you get
-- **Flexible overrides**: Customize at any level as needed
-- **Performance**: All images preprocessed for fast rendering
+1. **Define presets**: Core → Theme → Layout (3-tier inheritance)
+2. **Preprocess all**: System generates ALL presets for ALL images
+3. **Template chooses**: `{{{image fieldname="name" preset="preset"}}}`
+4. **Helper looks up**: Synchronous lookup of pre-generated URL
+5. **Export bundles**: All derivatives included in site bundle
 
-Use explicit preset selection in templates, override presets at the appropriate level, and let the system handle the rest.
+**No automatic selection, no context detection** - templates explicitly choose which preset to use.

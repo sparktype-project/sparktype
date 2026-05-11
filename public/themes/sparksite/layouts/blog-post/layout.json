@@ -13,7 +13,7 @@
   "partials": [
     {
       "path": "partials/card.hbs",
-      "name": "Card View",
+      "name": "Card view",
       "description": "Compact cards with title, excerpt, and read more links",
       "isDefault": true
     },
@@ -24,7 +24,7 @@
     }
   ],
   "schema": {
-    "title": "Blog Post Fields",
+    "title": "Blog post fields",
     "type": "object",
     "properties": {
       "author": {
@@ -35,13 +35,6 @@
         "type": "string",
         "title": "Excerpt",
         "description": "A short summary of the post, used in listings and social media previews."
-      },
-      "tags": {
-        "type": "array",
-        "title": "Tags",
-        "items": {
-          "type": "string"
-        }
       }
     }
   },

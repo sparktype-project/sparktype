@@ -78,7 +78,17 @@
       "Bash(mkdir:*)",
       "Bash(cp:*)",
       "Bash(open -a \"Google Chrome\" http://localhost:5173)",
-      "Bash(open:*)"
+      "Bash(open:*)",
+      "Bash(DATA_FORMATS.md)",
+      "Bash(if [ -f DATA_FORMATS_QUICK_REFERENCE.md ])",
+      "Bash(then)",
+      "Bash(DATA_FORMATS_QUICK_REFERENCE.md)",
+      "Bash(else)",
+      "Bash(fi)",
+      "Bash(/Users/matt/Sites/sparktype/docs/DATA_FORMATS_QUICK_REFERENCE.md)",
+      "Bash(/Users/matt/Sites/sparktype/docs/IMAGE_PIPELINE_PROCESS.md)",
+      "Bash(/Users/matt/Sites/sparktype/docs/IMAGE_PRESET_SYSTEM.md)",
+      "Bash(tree -L 3 /Users/matt/Sites/sparktype/public/themes/ -I 'node_modules')"
     ]
   },
   "enableAllProjectMcpServers": true,

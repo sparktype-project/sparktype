@@ -1,46 +1,77 @@
-# Sparktype Theme System
+# Sparktype theme system
 
 ## Overview
 
-The Sparktype theme system uses **Handlebars templates** to render markdown content into static HTML sites. The system has two key components:
+The Sparktype theme system uses **Handlebars templates** to render markdown content into static HTML sites. The system has a hierarchical structure:
 
-1. **Themes** - Global site wrappers that provide the overall page structure (header, footer, base HTML shell)
-2. **Layouts** - Content-specific templates that format individual pages and collections
+1. **Themes** - Self-contained packages providing:
+   - Global site wrapper (header, footer, base HTML shell)
+   - Appearance configuration (colours, fonts, spacing)
+   - Complete collection of layouts for different content types
+   - Theme-specific stylesheets and assets
 
-This document traces the complete flow from source templates in the `public/` folder through to the final published static site.
+2. **Layouts** - Content-specific templates stored inside themes that format:
+   - Individual pages (about, contact, standard content)
+   - Collection items (blog posts, portfolio pieces)
+   - Collection listings (blog archive, portfolio grid)
+
+**Key architectural principle:** Layouts are not standalone; they are tightly coupled to their parent theme. When users select a theme, they gain access to that theme's complete set of layouts.
+
+This document traces the complete flow from source templates in the `public/themes/` folder through to the final published static site.
 
 ---
 
 ## Architecture
 
-### 1. Theme Structure (`public/themes/`)
+### 1. Theme structure (`public/themes/`)
 
-Themes provide the overall page shell and global components. Each theme is a self-contained directory:
+Themes provide the overall page shell, global components, and layouts. Each theme is a self-contained directory containing all its layouts:
 
 ```
 public/themes/
 ├── sparksite/
 │   ├── theme.json           # Theme manifest and configuration
 │   ├── base.hbs             # Main HTML wrapper template
+│   ├── styles.css           # Main theme stylesheet
 │   ├── variables.css        # CSS variables for theming
-│   └── partials/
-│       ├── head.hbs         # <head> section template
-│       ├── header.hbs       # Site header/navigation
-│       └── footer.hbs       # Site footer
+│   ├── partials/
+│   │   ├── head.hbs         # <head> section template
+│   │   ├── header.hbs       # Site header/navigation
+│   │   └── footer.hbs       # Site footer
+│   └── layouts/             # Layouts provided by this theme
+│       ├── page/
+│       │   ├── layout.json
+│       │   └── index.hbs
+│       ├── blog-post/
+│       │   ├── layout.json
+│       │   ├── index.hbs
+│       │   └── partials/
+│       │       └── card.hbs
+│       └── list-view/
+│           ├── layout.json
+│           └── index.hbs
 └── sparkdocs/
     ├── theme.json
     ├── base.hbs
+    ├── styles.css
     ├── variables.css
-    └── partials/
-        ├── head.hbs
-        ├── header.hbs
-        ├── sidebar.hbs      # Docs-specific sidebar
-        └── footer.hbs
+    ├── partials/
+    │   ├── head.hbs
+    │   ├── header.hbs
+    │   ├── sidebar.hbs      # Docs-specific sidebar
+    │   └── footer.hbs
+    └── layouts/             # Layouts for documentation theme
+        ├── docs-page/
+        │   ├── layout.json
+        │   └── index.hbs
+        └── docs-listing/
+            ├── layout.json
+            └── index.hbs
 ```
 
-#### Theme Manifest (`theme.json`)
+#### Theme manifest (`theme.json`)
 
-Defines theme metadata, files, appearance settings, and optional theme-specific data:
+Defines theme metadata, files, appearance settings, available layouts, and optional theme-specific data:
 
 ```json
 {
@@ -49,11 +80,16 @@ Defines theme metadata, files, appearance settings, and optional theme-specific 
   "files": [
     { "path": "theme.json", "type": "manifest" },
     { "path": "base.hbs", "type": "base" },
+    { "path": "styles.css", "type": "stylesheet" },
     { "path": "variables.css", "type": "stylesheet" },
     { "path": "partials/head.hbs", "type": "partial", "name": "head" },
     { "path": "partials/header.hbs", "type": "partial", "name": "header" },
     { "path": "partials/footer.hbs", "type": "partial", "name": "footer" }
   ],
+  "stylesheets": [
+    { "path": "styles.css", "type": "main" }
+  ],
+  "layouts": ["docs-page", "docs-listing", "page", "blog-post"],
   "appearanceSchema": {
     "type": "object",
     "properties": {
@@ -68,15 +104,21 @@ Defines theme metadata, files, appearance settings, and optional theme-specific 
       "header_content": { "type": "string", "format": "textarea" },
       "footer_content": { "type": "string", "format": "textarea" }
     }
+  },
+  "image_presets": {
+    "thumbnail": { "width": 300, "height": 200, "crop": "fill" },
+    "page_display": { "width": 960, "height": 360, "crop": "fill" }
   }
 }
 ```
 
-**Key Schemas:**
-- `appearanceSchema` - User-configurable appearance settings (colors, fonts, spacing)
+**Key fields:**
+- `layouts` - Array of layout IDs provided by this theme (found in `layouts/` subdirectory)
+- `appearanceSchema` - User-configurable appearance settings (colours, fonts, spacing)
 - `themeDataSchema` - Custom data fields specific to the theme (footer text, links, etc.)
+- `image_presets` - Theme-specific image sizing presets (override core presets)
 
-#### Base Template (`base.hbs`)
+#### Base template (`base.hbs`)
 
 The outer HTML shell that wraps all pages:
 
@@ -98,32 +140,33 @@ The outer HTML shell that wraps all pages:
 </html>
 ```
 
-**Key Variables:**
+**Key variables:**
 - `{{> partialName}}` - Includes registered Handlebars partials
 - `{{{body}}}` - Rendered layout content (triple braces = unescaped HTML)
 - `headContext` - Scoped context passed to the head partial
 
 ---
 
-### 2. Layout Structure (`public/layouts/`)
+### 2. Layout structure (inside themes)
 
-Layouts define how specific content types are displayed. Each layout is a directory:
+Layouts define how specific content types are displayed. Layouts are stored inside theme directories at `public/themes/{themeName}/layouts/{layoutId}/`:
 
 ```
-public/layouts/
+public/themes/sparksite/layouts/
 ├── page/
 │   ├── layout.json          # Layout manifest
 │   └── index.hbs            # Main layout template
 ├── blog-post/
 │   ├── layout.json
-│   └── index.hbs
-├── blog-listing/
+│   ├── index.hbs
+│   └── partials/
+│       └── card.hbs         # Card display partial
+├── list-view/
 │   ├── layout.json
 │   ├── index.hbs            # Main collection template
 │   └── partials/
-│       ├── post-card.hbs    # Card display variant
-│       └── post-full.hbs    # Full content variant
-├── docs-page/
+│       └── card.hbs         # Card display variant
+├── grid-view/
 │   ├── layout.json
 │   └── index.hbs
 └── hero-page/
@@ -131,25 +174,26 @@ public/layouts/
     └── index.hbs
 ```
 
-#### Layout Manifest (`layout.json`)
+**Important:** Layouts are not standalone; they are tightly coupled to their theme. When users switch themes, they switch to that theme's collection of layouts.
+
+#### Layout manifest (`layout.json`)
 
 Defines layout metadata, type, fields, and display variants:
 
 ```json
 {
-  "name": "Blog listing",
+  "name": "List view",
   "version": "1.0.0",
-  "description": "Displays a paginated list of items from a 'Blog' collection.",
-  "layoutType": "collection",
+  "description": "Displays a list of items from a collection.",
+  "layoutType": "list",
   "files": [
     { "path": "layout.json", "type": "manifest" },
     { "path": "index.hbs", "type": "template" },
-    { "path": "partials/post-card.hbs", "type": "partial" },
-    { "path": "partials/post-full.hbs", "type": "partial" }
+    { "path": "partials/card.hbs", "type": "partial" }
   ],
   "partials": [
     {
-      "path": "partials/post-card.hbs",
+      "path": "partials/card.hbs",
       "name": "Card View",
       "description": "Compact cards with title, excerpt, and read more links",
       "isDefault": true
@@ -162,26 +206,22 @@ Defines layout metadata, type, fields, and display variants:
     }
   },
   "image_presets": {
-    "featured_image": {
-      "contexts": {
-        "card": "thumbnail",
-        "full": "page_display"
-      }
-    }
+    "featured_image": "thumbnail"
   }
 }
 ```
 
-**Layout Types:**
-- `single` - Individual content pages (blog posts, standard pages)
-- `collection` - Lists of content items (blog listings, portfolio grids)
+**Layout types:**
+- `page` - Single-column standard pages (about, contact pages)
+- `item` - Individual collection items (blog posts, portfolio pieces)
+- `list` - Collection listing pages (blog archive, portfolio grid)
 
 **Partials:**
-- Named template variants for collection items
-- Enable different display modes (card view, list view, grid, etc.)
-- Registered as `{layoutId}/partials/{filename}` in Handlebars
+- Named template variants for displaying collection items
+- Enable different display modes (card view, full content, etc.)
+- Registered as `{layoutId}/partials/{name}` in Handlebars (e.g., `blog-post/partials/card`)
 
-#### Layout Template (`index.hbs`)
+#### Layout template (`index.hbs`)
 
 The content template that receives the page context:
 
@@ -203,7 +243,7 @@ The content template that receives the page context:
 </article>
 ```
 
-**Available Context:**
+**Available context:**
 - `contentFile` - Parsed markdown file with frontmatter and content
 - `siteData` - Full site manifest and configuration
 - `collectionItems` - Items for collection layouts
@@ -211,9 +251,9 @@ The content template that receives the page context:
 
 ---
 
-## Content Integration
+## Content integration
 
-### 1. Content Files with Frontmatter
+### 1. Content files with frontmatter
 
 Content files specify their layout via frontmatter:
 
@@ -234,12 +274,12 @@ featured_image:
 This is my blog post content written in **Markdown**.
 ```
 
-**Key Fields:**
+**Key fields:**
 - `layout` - Specifies which layout to use (must match a layout directory name)
 - `title`, `date`, `published` - Standard metadata
 - Image fields (e.g., `featured_image`) - ImageRef objects for image handling
 
-### 2. Site Manifest Configuration
+### 2. Site manifest configuration
 
 The site's `manifest.json` specifies the active theme:
 
@@ -276,7 +316,7 @@ The site's `manifest.json` specifies the active theme:
 }
 ```
 
-**Theme Configuration Flow:**
+**Theme configuration flow:**
 1. User selects theme in UI → saves to `manifest.theme.name`
 2. User customizes appearance → saves to `manifest.theme.config`
 3. Render service merges config with theme defaults from `theme.json`
@@ -284,9 +324,9 @@ The site's `manifest.json` specifies the active theme:
 
 ---
 
-## Rendering Pipeline
+## Rendering pipeline
 
-### Step 1: Template Preparation (`asset.service.ts`)
+### Step 1: Template preparation (`asset.service.ts`)
 
 **Location:** `src/core/services/renderer/asset.service.ts`
 
@@ -297,16 +337,20 @@ export async function prepareRenderEnvironment(siteData: LocalSiteData): Promise
 }
 ```
 
-**Template Registration:**
+**Template registration:**
 1. Clears existing Handlebars partials
-2. Loads theme manifest and registers theme partials by name:
+2. Gets active theme name from `siteData.manifest.theme.name`
+3. Loads theme manifest (`themes/{themeName}/theme.json`)
+4. Registers theme-level partials by name:
    - `head`, `header`, `footer`, `sidebar`
-3. Loads all layout manifests and registers layout partials with namespace:
-   - `blog-listing/partials/post-card`
-   - `blog-listing/partials/post-full`
-4. Compiles all templates for reuse during rendering
+5. Gets layout IDs from theme manifest's `layouts` array
+6. Loads each layout manifest from `themes/{themeName}/layouts/{layoutId}/layout.json`
+7. Registers layout partials with namespace:
+   - `blog-post/partials/card`
+   - `list-view/partials/card`
+8. Compiles all templates for reuse during rendering
 
-**Handlebars Helpers Registered:**
+**Handlebars helpers registered:**
 - `image` - Renders image tags with service integration
 - `markdown` - Converts markdown to HTML
 - `render_collection` - Renders collection items
@@ -314,7 +358,7 @@ export async function prepareRenderEnvironment(siteData: LocalSiteData): Promise
 - `query` - Filter and query collections
 - Many more (see `src/core/services/renderer/helpers/`)
 
-### Step 2: Content Resolution (`pageResolver.service.ts`)
+### Step 2: Content resolution (`pageResolver.service.ts`)
 
 Resolves URL slugs to content files and layouts:
 
@@ -329,13 +373,13 @@ const resolution = await resolvePageContent(siteData, ['blog', 'my-post']);
 }
 ```
 
-### Step 3: Context Assembly (`context.service.ts`)
+### Step 3: Context assembly (`context.service.ts`)
 
 **Location:** `src/core/services/renderer/context.service.ts`
 
 Builds two context objects for rendering:
 
-#### Page Context
+#### Page context
 Passed to the layout template (`index.hbs`):
 
 ```typescript
@@ -350,7 +394,7 @@ const pageContext = await assemblePageContext(siteData, resolution, options, ima
 }
 ```
 
-#### Base Context
+#### Base context
 Passed to the theme's `base.hbs`:
 
 ```typescript
@@ -370,7 +414,7 @@ const baseContext = await assembleBaseContext(siteData, resolution, options, ima
 }
 ```
 
-### Step 4: Markdown Processing (`render.service.ts`)
+### Step 4: Markdown processing (`render.service.ts`)
 
 **Location:** `src/core/services/renderer/render.service.ts`
 
@@ -392,34 +436,36 @@ const processedContent = await processor.process(markdownContent);
 2. Sparktype asset paths → blob URLs (preview) or relative paths (export)
 3. External images → passed through unchanged
 
-### Step 5: Template Rendering
+### Step 5: Template rendering
 
 **Two-stage rendering process:**
 
-#### Stage 1: Layout Rendering
+#### Stage 1: Layout rendering
 ```typescript
-const bodyTemplateSource = await getAssetContent(siteData, 'layout', resolution.layoutPath, 'index.hbs');
+const themeName = siteData.manifest.theme.name;
+const layoutPath = `layouts/${resolution.layoutPath}/index.hbs`;
+const bodyTemplateSource = await getThemeAssetContent(siteData, themeName, layoutPath);
 const bodyTemplate = Handlebars.compile(bodyTemplateSource);
 const bodyHtml = bodyTemplate(pageContext);
 ```
 
-Produces the main content HTML (article, collection listing, etc.)
+Produces the main content HTML (article, collection listing, etc.) from the layout template inside the theme.
 
-#### Stage 2: Theme Rendering
+#### Stage 2: Theme rendering
 ```typescript
-const baseTemplateSource = await getAssetContent(siteData, 'theme', siteData.manifest.theme.name, 'base.hbs');
+const baseTemplateSource = await getThemeAssetContent(siteData, themeName, 'base.hbs');
 const baseTemplate = Handlebars.compile(baseTemplateSource);
 const finalHtml = baseTemplate({ ...baseContext, body: new Handlebars.SafeString(bodyHtml) });
 ```
 
-Wraps the layout HTML in the full page shell (header, footer, navigation)
+Wraps the layout HTML in the full page shell (header, footer, navigation) using the theme's base template.
 
-**Final Output:**
+**Final output:**
 Complete HTML page ready for browser display or file export.
 
 ---
 
-## Build Process
+## Build process
 
 ### Overview (`siteBuilder.service.ts`)
 
@@ -455,7 +501,7 @@ export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBund
 }
 ```
 
-### HTML Page Generation (`page.builder.ts`)
+### HTML page generation (`page.builder.ts`)
 
 **Location:** `src/core/services/builder/page.builder.ts`
 
@@ -496,14 +542,14 @@ export async function generateHtmlPages(siteData: LocalSiteData): Promise<Record
 }
 ```
 
-**Output Examples:**
+**Output examples:**
 - `index.html` - Homepage
 - `about/index.html` - About page
 - `blog/index.html` - Blog listing page
 - `blog/my-first-post/index.html` - Individual blog post
 - `blog/another-post/index.html` - Another blog post
 
-### Asset Bundling (`asset.builder.ts`)
+### Asset bundling (`asset.builder.ts`)
 
 **Location:** `src/core/services/builder/asset.builder.ts`
 
@@ -528,33 +574,34 @@ export async function bundleAllAssets(bundle: SiteBundle, siteData: LocalSiteDat
         // e.g., '_site/assets/derivatives/123-image-800x600.jpg'
     }
 
-    // 4. Bundle theme files
-    await bundleAssetFiles(bundle, siteData, 'theme', siteData.manifest.theme.name);
-    // Copies: _site/themes/docs/base.hbs, partials/head.hbs, etc.
-
-    // 5. Bundle layout files
-    const usedLayoutIds = [...new Set(siteData.contentFiles.map(f => f.frontmatter.layout))];
-    for (const layoutId of usedLayoutIds) {
-        await bundleAssetFiles(bundle, siteData, 'layout', layoutId);
-        // Copies: _site/layouts/blog-post/index.hbs, layout.json, etc.
-    }
+    // 4. Bundle theme files (including all layouts)
+    const themeName = siteData.manifest.theme.name;
+    await bundleThemeFiles(bundle, siteData, themeName);
+    // Copies:
+    //   _site/themes/{themeName}/base.hbs
+    //   _site/themes/{themeName}/partials/head.hbs
+    //   _site/themes/{themeName}/styles.css
+    //   _site/themes/{themeName}/layouts/page/layout.json
+    //   _site/themes/{themeName}/layouts/page/index.hbs
+    //   _site/themes/{themeName}/layouts/blog-post/layout.json
+    //   _site/themes/{themeName}/layouts/blog-post/index.hbs
+    //   ... (all layouts defined in theme manifest)
 
     // 6. Generate media.json manifest
     await generateMediaDataFile(bundle, siteData);
 }
 ```
 
-**Bundled Assets:**
+**Bundled assets:**
 - `_site/assets/css/styles.css` - Main stylesheet
 - `_site/assets/originals/` - Original uploaded images
 - `_site/assets/derivatives/` - Generated image derivatives
-- `_site/themes/{themeName}/` - Active theme files
-- `_site/layouts/{layoutId}/` - Used layout files
+- `_site/themes/{themeName}/` - Complete theme directory (including all layouts)
 - `_site/data/media.json` - Image metadata manifest
 
 ---
 
-## Published Site Structure
+## Published site structure
 
 The final exported site has this structure:
 
@@ -588,56 +635,59 @@ site-export/
 │   │       └── second-post.md
 │   ├── data/
 │   │   └── media.json                  # Image metadata
-│   ├── themes/
-│   │   └── docs/
-│   │       ├── theme.json
-│   │       ├── base.hbs
-│   │       ├── variables.css
-│   │       └── partials/
-│   │           ├── head.hbs
-│   │           ├── header.hbs
-│   │           └── footer.hbs
-│   └── layouts/
-│       ├── page/
-│       │   ├── layout.json
-│       │   └── index.hbs
-│       └── blog-post/
-│           ├── layout.json
-│           └── index.hbs
+│   └── themes/
+│       └── sparksite/
+│           ├── theme.json
+│           ├── base.hbs
+│           ├── styles.css
+│           ├── variables.css
+│           ├── partials/
+│           │   ├── head.hbs
+│           │   ├── header.hbs
+│           │   └── footer.hbs
+│           └── layouts/                # Layouts stored inside theme
+│               ├── page/
+│               │   ├── layout.json
+│               │   └── index.hbs
+│               └── blog-post/
+│                   ├── layout.json
+│                   ├── index.hbs
+│                   └── partials/
+│                       └── card.hbs
 ├── rss.xml                             # RSS feed
 └── sitemap.xml                         # Sitemap
 ```
 
-### File Organization
+### File organisation
 
-**HTML Files:**
+**HTML files:**
 - Each content item gets its own directory with `index.html`
 - Enables clean URLs: `/blog/first-post/` instead of `/blog/first-post.html`
 - Homepage is at root: `index.html`
 
-**Asset Paths:**
+**Asset paths:**
 - Relative paths from each HTML file to assets
 - `index.html` → `assets/css/styles.css`
 - `blog/post/index.html` → `../../assets/css/styles.css`
 
-**Source Preservation (`_site/`):**
+**Source preservation (`_site/`):**
 - Complete source files bundled for portability
 - Enables site import/export workflow
 - Users can download and re-import sites elsewhere
 
 ---
 
-## Theme Customization Flow
+## Theme customisation flow
 
-### User Perspective
+### User perspective
 
-1. **Select Theme:**
+1. **Select theme:**
    - User chooses theme from dropdown (e.g., "Sparkdocs")
    - Saves to `manifest.theme.name = "docs"`
 
-2. **Customize Appearance:**
+2. **Customise appearance:**
    - UI presents form based on `theme.json` → `appearanceSchema`
-   - User adjusts colors, fonts, spacing
+   - User adjusts colours, fonts, spacing
    - Saves to `manifest.theme.config`:
      ```json
      {
@@ -647,14 +697,14 @@ site-export/
      }
      ```
 
-3. **Configure Theme Data:**
+3. **Configure theme data:**
    - UI presents additional fields from `themeDataSchema`
    - User adds footer content, social links, etc.
    - Saves to `manifest.themeData` (if theme uses it)
 
-### Technical Flow
+### Technical flow
 
-**Configuration Merge (`theme.service.ts`):**
+**Configuration merge (`theme.service.ts`):**
 
 ```typescript
 export const getMergedThemeDataForForm = async (
@@ -675,7 +725,7 @@ export const getMergedThemeDataForForm = async (
 };
 ```
 
-**CSS Variable Generation (`asset.service.ts`):**
+**CSS variable generation (`asset.service.ts`):**
 
 ```typescript
 export function generateStyleOverrides(themeConfig: Record<string, string | number | boolean>): string {
@@ -688,7 +738,7 @@ export function generateStyleOverrides(themeConfig: Record<string, string | numb
 }
 ```
 
-**Rendered Output:**
+**Rendered output:**
 
 ```html
 <style id="signum-style-overrides">
@@ -706,11 +756,11 @@ These CSS variables are then used in theme templates and stylesheets.
 
 ---
 
-## Complete Rendering Example
+## Complete rendering example
 
-### Input Files
+### Input files
 
-**Content File:** `content/blog/hello-world.md`
+**Content file:** `content/blog/hello-world.md`
 ```markdown
 ---
 title: Hello World
@@ -733,14 +783,14 @@ Welcome to my **first blog post**!
 }
 ```
 
-### Processing Steps
+### Processing steps
 
 1. **Resolution:**
    - URL: `/blog/hello-world`
    - Resolves to: `content/blog/hello-world.md`
    - Layout: `blog-post` (from frontmatter)
 
-2. **Context Assembly:**
+2. **Context assembly:**
    ```javascript
    pageContext = {
      contentFile: {
@@ -751,13 +801,13 @@ Welcome to my **first blog post**!
    }
    ```
 
-3. **Markdown Processing:**
+3. **Markdown processing:**
    ```
    'Welcome to my **first blog post**!'
    → '<p>Welcome to my <strong>first blog post</strong>!</p>'
    ```
 
-4. **Layout Rendering** (`layouts/blog-post/index.hbs`):
+4. **Layout rendering** (`layouts/blog-post/index.hbs`):
    ```html
    <article class="max-w-4xl mx-auto">
        <h1>Hello World</h1>
@@ -768,7 +818,7 @@ Welcome to my **first blog post**!
    </article>
    ```
 
-5. **Theme Rendering** (`themes/sparksite/base.hbs`):
+5. **Theme rendering** (`themes/sparksite/base.hbs`):
    ```html
    <!DOCTYPE html>
    <html lang="en">
@@ -789,7 +839,7 @@ Welcome to my **first blog post**!
    </html>
    ```
 
-### Export Output
+### Export output
 
 **File:** `blog/hello-world/index.html`
 ```html
@@ -818,15 +868,15 @@ Welcome to my **first blog post**!
 
 ---
 
-## Key Service Files
+## Key service files
 
-### Rendering Pipeline
+### Rendering pipeline
 - `src/core/services/renderer/render.service.ts` - Main rendering orchestration
 - `src/core/services/renderer/asset.service.ts` - Template registration and caching
 - `src/core/services/renderer/context.service.ts` - Context assembly for templates
 - `src/core/services/renderer/helpers/` - Handlebars helper functions
 
-### Builder Services
+### Builder services
 - `src/core/services/siteBuilder.service.ts` - Main build orchestration
 - `src/core/services/builder/page.builder.ts` - HTML page generation
 - `src/core/services/builder/asset.builder.ts` - Asset bundling
@@ -849,11 +899,11 @@ Welcome to my **first blog post**!
 
 The Sparktype theme system provides a flexible, template-based approach to static site generation:
 
-1. **Themes** provide the global page structure and branding
-2. **Layouts** define how specific content types are displayed
-3. **Content files** specify their layout via frontmatter
+1. **Themes** provide the global page structure, branding, and all available layouts
+2. **Layouts** are stored inside themes and define how specific content types are displayed
+3. **Content files** specify their layout via frontmatter (must be available in the active theme)
 4. **Handlebars templates** are compiled and rendered with rich context data
 5. **Build process** generates complete static sites with proper relative paths
 6. **Exported sites** are fully portable with source files included
 
-The system's modularity allows for easy theme switching, layout customization, and content portability while maintaining a clean separation between content, presentation, and site structure.
+The system's architecture tightly couples layouts to themes, meaning when users switch themes they also switch to that theme's collection of layouts. This ensures visual consistency and allows theme authors to provide purpose-built layouts that match their theme's design system.

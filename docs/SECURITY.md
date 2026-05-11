@@ -1,50 +1,54 @@
-# Sparktype Security Architecture
+# Sparktype security architecture
 
 This document provides a comprehensive overview of Sparktype's security model, focusing on JavaScript execution, theme validation, and external resource integration.
 
-## Table of Contents
+## Table of contents
 
-1. [Security Philosophy](#security-philosophy)
-2. [SiteViewer Sandbox Architecture](#siteviewer-sandbox-architecture)
-3. [Theme Validation System](#theme-validation-system)
-4. [External Script Integration](#external-script-integration)
-5. [Attack Vectors & Mitigations](#attack-vectors--mitigations)
-6. [Developer Guidelines](#developer-guidelines)
+1. [Security philosophy](#security-philosophy)
+2. [SiteViewer sandbox architecture](#siteviewer-sandbox-architecture)
+3. [Theme validation system](#theme-validation-system)
+   - [File type allowlist](#file-type-allowlist)
+   - [Template validation rules](#template-validation-rules)
+   - [CSS validation and sanitisation](#css-validation-and-sanitisation)
+   - [HTML sanitisation](#html-sanitisation)
+4. [External script integration](#external-script-integration)
+5. [Attack vectors and mitigations](#attack-vectors-and-mitigations)
+6. [Developer guidelines](#developer-guidelines)
 
 ---
 
-## Security Philosophy
+## Security philosophy
 
-Sparktype follows a **defense-in-depth** security model with these core principles:
+Sparktype follows a **defence-in-depth** security model with these core principles:
 
-1. **Preview Isolation**: No untrusted code executes in the editor/preview environment
-2. **Validation at Import**: All themes are validated before acceptance
-3. **Allowlist-Based**: Only explicitly trusted resources are permitted
-4. **User Control**: Clear visibility into what external resources themes use
-5. **Export Freedom**: Published sites are user-controlled and unrestricted
+1. **Preview isolation**: No untrusted code executes in the editor/preview environment
+2. **Validation at import**: All themes are validated before acceptance
+3. **Allowlist-based**: Only explicitly trusted resources are permitted
+4. **User control**: Clear visibility into what external resources themes use
+5. **Export freedom**: Published sites are user-controlled and unrestricted
 
-### Trust Boundaries
+### Trust boundaries
 
 ```
 ┌─────────────────────────────────────────────┐
 │ SPARKTYPE EDITOR                            │
-│ (Fully Controlled Environment)              │
+│ (Fully controlled environment)              │
 │                                             │
-│  ┌───────────────────────────────────────┐ │
-│  │ SiteViewer (Sandboxed iFrame)        │ │
-│  │ - AlpineJS (Sparktype-controlled)    │ │
-│  │ - Handlebars templates (validated)   │ │
-│  │ - No external scripts                │ │
-│  │ - No custom JavaScript               │ │
-│  └───────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────┐ │
+│  │ SiteViewer (sandboxed iframe)          │ │
+│  │ - AlpineJS (Sparktype-controlled)      │ │
+│  │ - Handlebars templates (validated)     │ │
+│  │ - No external scripts                  │ │
+│  │ - No custom JavaScript                 │ │
+│  └────────────────────────────────────────┘ │
 │                                             │
 └─────────────────────────────────────────────┘
                      ↓
-              [User Exports]
+              [User exports]
                      ↓
 ┌─────────────────────────────────────────────┐
 │ PUBLISHED SITE                              │
-│ (User-Controlled Environment)               │
+│ (User-controlled environment)               │
 │                                             │
 │  - All theme templates                      │
 │  - External scripts (if declared)           │
@@ -55,15 +59,15 @@ Sparktype follows a **defense-in-depth** security model with these core principl
 
 ---
 
-## SiteViewer Sandbox Architecture
+## SiteViewer sandbox architecture
 
 ### Implementation
 
-**File**: `/Users/mattkevan/Sites/sparktype/src/features/viewer/components/SiteViewer.tsx`
+**File**: `src/features/viewer/components/SiteViewer.tsx`
 
 The SiteViewer component renders site previews in a sandboxed iframe with strict security controls.
 
-### Sandbox Attributes
+### Sandbox attributes
 
 ```typescript
 const sandboxAttributes =
@@ -72,17 +76,17 @@ const sandboxAttributes =
     : 'allow-scripts allow-forms';
 ```
 
-**Development Mode**:
+**Development mode**:
 - `allow-scripts`: Permits JavaScript execution (for AlpineJS + navigation)
 - `allow-forms`: Allows form submission
 - `allow-same-origin`: Enables LocalStorage access (needed for development)
 
-**Production Mode**:
+**Production mode**:
 - `allow-scripts`: Permits JavaScript execution
 - `allow-forms`: Allows form submission
 - ❌ **No `allow-same-origin`**: Prevents access to parent window storage/cookies
 
-### What the Sandbox Blocks
+### What the sandbox blocks
 
 Even with `allow-scripts`, the iframe sandbox prevents:
 
@@ -93,9 +97,9 @@ Even with `allow-scripts`, the iframe sandbox prevents:
 - ❌ Setting cookies on parent domain
 - ❌ Breaking out of the iframe
 
-### Script Injection Control
+### Script injection control
 
-**Key Insight**: The communication script (lines 81-163 in SiteViewer.tsx) is **injected by Sparktype**, not by themes.
+**Key insight**: The communication script (lines 86-168 in SiteViewer.tsx) is **injected by Sparktype**, not by themes.
 
 ```typescript
 const communicationScript = `
@@ -113,11 +117,11 @@ const finalHtml = pureHtml.replace('</body>', `${communicationScript}</body>`);
 - All JavaScript in preview is Sparktype-controlled
 - Theme templates are pure Handlebars (no script execution capability)
 
-### AlpineJS Integration
+### AlpineJS integration
 
-AlpineJS is loaded **by Sparktype**, not by themes:
+AlpineJS is loaded **by themes** in their base template, but the version and source are validated during theme import:
 
-**File**: `/Users/mattkevan/Sites/sparktype/public/themes/sparksite/base.hbs`
+**File**: `public/themes/sparksite/base.hbs`
 
 ```html
 <body>
@@ -129,16 +133,17 @@ AlpineJS is loaded **by Sparktype**, not by themes:
 ```
 
 **Security properties**:
-- AlpineJS version controlled by Sparktype
+- AlpineJS loaded from trusted CDN (cdn.jsdelivr.net)
 - Declarative directives only (`x-data`, `x-show`, `x-on:`)
 - No `eval()` or `Function()` constructors exposed to themes
 - Directives are data attributes, not executable code
+- Theme validation ensures only trusted script domains are used
 
 ---
 
-## Theme Validation System
+## Theme validation system
 
-### Validation Pipeline
+### Validation pipeline
 
 ```
 ┌─────────────┐
@@ -180,10 +185,11 @@ AlpineJS is loaded **by Sparktype**, not by themes:
        │
        ↓
 ┌─────────────────────────────────┐
-│ 5. CSS Sanitization             │
+│ 5. CSS Sanitisation             │
 │    - @import domain allowlist   │
 │    - No javascript: in url()    │
 │    - Font CDN validation        │
+│    - CSS expression() blocked   │
 └──────┬──────────────────────────┘
        │
        ↓
@@ -192,7 +198,7 @@ AlpineJS is loaded **by Sparktype**, not by themes:
 └─────────────┘
 ```
 
-### File Type Allowlist
+### File type allowlist
 
 **Configuration**: `src/config/editorConfig.ts` → `SECURITY_CONFIG.THEME_ALLOWED_EXTENSIONS`
 
@@ -207,7 +213,7 @@ AlpineJS is loaded **by Sparktype**, not by themes:
 - `.exe`, `.sh`, `.bat`, `.cmd`, `.app` - Executables
 - `.php`, `.py`, `.rb`, `.pl`, `.asp`, `.jsp` - Server scripts
 
-### Template Validation Rules
+### Template validation rules
 
 **Service**: `src/core/services/themeValidation.service.ts`
 
@@ -252,9 +258,9 @@ function validateHandlebarsTemplate(content: string): ValidationResult {
 - ❌ `href="javascript:alert()"`
 - ❌ Invalid Handlebars syntax
 
-### CSS Validation & Sanitization
+### CSS validation and sanitisation
 
-**Font Domain Allowlist**: `SECURITY_CONFIG.TRUSTED_FONT_DOMAINS`
+**Font domain allowlist**: `SECURITY_CONFIG.TRUSTED_FONT_DOMAINS`
 
 Supported font services:
 - Google Fonts (`fonts.googleapis.com`, `fonts.gstatic.com`)
@@ -290,7 +296,7 @@ function validateCSS(content: string): ValidationResult {
 }
 ```
 
-**Sanitization** removes unauthorized imports:
+**Sanitisation** removes unauthorised imports:
 
 ```typescript
 function sanitizeCSS(content: string): string {
@@ -304,11 +310,40 @@ function sanitizeCSS(content: string): string {
 }
 ```
 
+### HTML sanitisation
+
+**Service**: `src/core/services/renderer/render.service.ts` and `src/core/services/renderer/helpers/markdown.helper.ts`
+
+All rendered HTML passes through DOMPurify sanitisation as a defence-in-depth measure:
+
+**Key protections**:
+- **Inline scripts removed**: Scripts without `src` attribute are blocked
+- **External scripts validated**: Only TRUSTED_SCRIPT_DOMAINS allowed
+- **Event handlers blocked**: Comprehensive FORBID_ATTR list including:
+  - `onerror`, `onload`, `onclick`, `onmouseover`, etc.
+  - Media events: `oncanplay`, `onended`, `onprogress`, etc.
+  - All inline JavaScript event handlers
+- **iframe validation**:
+  - HTTPS enforcement for all iframe sources
+  - Automatic sandbox attributes added
+  - Invalid or missing src attributes blocked
+- **Alpine.js support**: `x-data`, `x-on`, `@click`, `:class` attributes allowed
+- **Data attributes**: Permitted for legitimate uses
+
+**Sanitisation points**:
+1. **Template rendering**: All Handlebars output sanitised in render.service.ts
+2. **Markdown content**: Markdown-to-HTML conversion sanitised in markdown.helper.ts
+3. **Theme data**: String values in theme configuration sanitised via HtmlSanitizerService
+
+This provides multiple layers of XSS protection even if template validation is bypassed.
+
 ---
 
-## External Script Integration
+## External script integration
 
-### Future Feature: Declarative Script Loading
+### Declarative script loading
+
+**Status**: Validation implemented, loading not yet active
 
 **Scope**: Published sites only (never in preview)
 
@@ -348,9 +383,9 @@ Themes will be able to declare external scripts in their manifest for services l
 
 ---
 
-## Attack Vectors & Mitigations
+## Attack vectors and mitigations
 
-### 1. Cross-Site Scripting (XSS)
+### 1. Cross-site scripting (XSS)
 
 **Attack**: Malicious theme injects `<script>` tags or event handlers
 
@@ -359,22 +394,25 @@ Themes will be able to declare external scripts in their manifest for services l
 - ✅ Inline event handlers blocked
 - ✅ Handlebars auto-escapes output by default
 - ✅ javascript: URLs blocked in href/src
+- ✅ DOMPurify sanitisation in render.service.ts and markdown.helper.ts
+- ✅ Comprehensive FORBID_ATTR list blocks all event handlers
 
-**Status**: ✅ PROTECTED
+**Status**: ✅ Protected
 
-### 2. CSS Injection
+### 2. CSS injection
 
 **Attack**: Malicious CSS exfiltrates data or performs clickjacking
 
 **Mitigation**:
 - ✅ @import limited to trusted font domains
 - ✅ javascript: URLs in CSS blocked
-- ✅ CSS sanitization removes unauthorized imports
+- ✅ CSS sanitisation removes unauthorised imports
+- ✅ CSS expression() blocked (IE-specific security risk)
 - ⚠️ CSS can still be used for visual attacks (low risk)
 
-**Status**: ✅ PROTECTED (with minor limitations)
+**Status**: ✅ Protected (with minor limitations)
 
-### 3. Zip Bomb
+### 3. Zip bomb
 
 **Attack**: Highly compressed ZIP expands to exhaust memory
 
@@ -384,20 +422,21 @@ Themes will be able to declare external scripts in their manifest for services l
 - ✅ File count limit (500 files)
 - ✅ Per-file size limit (5MB)
 
-**Status**: ✅ PROTECTED
+**Status**: ✅ Protected
 
-### 4. Path Traversal
+### 4. Path traversal
 
 **Attack**: ZIP contains `../../` paths to escape theme directory
 
 **Mitigation**:
 - ✅ Path validation rejects `..` in file paths
 - ✅ Paths must be relative (no leading `/`)
-- ✅ Special characters blocked in paths
+- ✅ Special characters blocked in paths (`<>:"|?*`)
+- ✅ Hidden files blocked (except .gitkeep and .htaccess)
 
-**Status**: ✅ PROTECTED
+**Status**: ✅ Protected
 
-### 5. JavaScript Execution in Preview
+### 5. JavaScript execution in preview
 
 **Attack**: Theme tricks Sparktype into running malicious JS in preview
 
@@ -406,30 +445,32 @@ Themes will be able to declare external scripts in their manifest for services l
 - ✅ No `<script>` tags allowed in templates
 - ✅ No inline event handlers
 - ✅ Navigation script injected by Sparktype, not theme
-- ✅ AlpineJS loaded by Sparktype (controlled version)
+- ✅ AlpineJS loaded from trusted CDN (validated at theme import)
+- ✅ DOMPurify sanitisation of all rendered HTML
 
-**Status**: ✅ PROTECTED
+**Status**: ✅ Protected
 
-### 6. External Resource Loading
+### 6. External resource loading
 
 **Attack**: Theme loads malicious scripts from compromised CDN
 
 **Mitigation**:
-- ✅ Scripts never load in preview (export only)
-- ✅ Domain allowlist enforced
-- ✅ SRI (Subresource Integrity) validation
+- ✅ External scripts validated against TRUSTED_SCRIPT_DOMAINS
+- ✅ HTTPS enforcement for all external resources
+- ✅ SRI (Subresource Integrity) validation for declared scripts
+- ✅ Scripts only load in published sites, never in preview
 - ✅ User must explicitly configure API keys
 - ✅ Clear warnings in UI
 
-**Status**: ✅ PROTECTED (with user awareness)
+**Status**: ✅ Protected (with user awareness)
 
 ---
 
-## Developer Guidelines
+## Developer guidelines
 
-### For Theme Developers
+### For theme developers
 
-#### ✅ DO:
+#### ✅ Do:
 - Use AlpineJS directives for interactivity
 - Import fonts from trusted CDNs (Google Fonts, Bunny Fonts, Typekit)
 - Include self-hosted fonts in theme package
@@ -437,17 +478,17 @@ Themes will be able to declare external scripts in their manifest for services l
 - Declare external scripts in manifest (for published sites)
 - Document required API keys clearly
 
-#### ❌ DON'T:
+#### ❌ Don't:
 - Include `.js` files in theme package
 - Add `<script>` tags to templates
 - Use inline event handlers (`onclick=""`)
 - Use `javascript:` URLs
 - Import CSS from untrusted domains
-- Rely on scripts in preview (they won't load)
+- Rely on external scripts in preview (they won't load)
 
-### For Sparktype Developers
+### For Sparktype developers
 
-#### Security Checklist
+#### Security checklist
 
 When modifying theme or rendering code:
 
@@ -457,7 +498,7 @@ When modifying theme or rendering code:
 4. ✅ Does this load external resources in preview?
 5. ✅ Does this expand the attack surface?
 
-#### Testing Security
+#### Testing security
 
 ```bash
 # Test theme validation
@@ -467,7 +508,7 @@ npm run test -- themeValidation.service.test.ts
 # (Create test fixtures with XSS attempts, path traversal, etc.)
 ```
 
-#### Adding Trusted Domains
+#### Adding trusted domains
 
 To add a new trusted domain:
 
@@ -480,29 +521,14 @@ To add a new trusted domain:
 
 ---
 
-## Security Audit Log
+## Security audit log
 
 | Date | Change | Rationale |
 |------|--------|-----------|
 | 2025-01 | Initial security architecture | Establish baseline protections |
 | 2025-01 | Added font domain allowlist | Support professional font services while maintaining security |
 | 2025-01 | Implemented theme validation service | Prevent malicious themes at import time |
-
----
-
-## Reporting Security Issues
-
-If you discover a security vulnerability in Sparktype:
-
-1. **DO NOT** create a public GitHub issue
-2. Email security concerns to: [security@sparktype.org]
-3. Include:
-   - Description of the vulnerability
-   - Steps to reproduce
-   - Potential impact
-   - Suggested fix (if any)
-
-We will respond within 48 hours and work with you to address the issue.
+| 2025-01 | Added DOMPurify sanitisation | Defence-in-depth HTML sanitisation for rendered content |
 
 ---
 

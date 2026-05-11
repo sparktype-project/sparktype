@@ -950,8 +950,8 @@ async function postProcessCollectionDirectives(
             // Validate layoutId contains only safe characters to prevent class injection
             const safeLayoutId = /^[a-z0-9-]+$/i.test(config.layout) ? config.layout : 'list';
             const containerClass = safeLayoutId.includes('grid')
-              ? 'collection-grid grid gap-4'
-              : 'collection-list space-y-4';
+              ? 'not-prose collection-grid'
+              : 'not-prose collection-list';
 
             const renderedContent = `<div class="${containerClass}">\n${renderedItems.join('\n')}\n</div>`;
 
