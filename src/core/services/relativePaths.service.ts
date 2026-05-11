@@ -22,6 +22,10 @@
  * @returns {string} The calculated relative path.
  */
 export function getRelativePath(fromPath: string, toPath: string): string {
+  if (/^(?:[a-z]+:)?\/\//i.test(toPath) || toPath.startsWith('data:')) {
+    return toPath;
+  }
+
   if (fromPath === toPath) {
     return toPath.split('/').pop() || '';
   }
