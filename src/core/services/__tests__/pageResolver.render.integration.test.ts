@@ -229,4 +229,42 @@ describe('page resolver and render integration', () => {
     expect(normalized).toContain('src="https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/bcc-wf"');
     expect(normalized).not.toContain('src="bcc-wf"');
   });
+
+  test('renders uploaded cloudinary videos with the hosted iframe player', async () => {
+    const site = createSiteFixture('customThemeSite');
+    site.manifest.settings = {
+      ...site.manifest.settings,
+      cloudinary: {
+        cloudName: 'demo-cloud',
+      },
+    };
+    site.contentFiles![0] = {
+      ...site.contentFiles![0],
+      content:
+        '<video src="https://res.cloudinary.com/demo-cloud/video/upload/v3/videos/demo.mp4" controls preload="metadata" data-sparktype-upload="true" data-sparktype-service-id="cloudinary" data-sparktype-video-src="videos/demo" data-sparktype-width="1920" data-sparktype-height="1080"></video>',
+    };
+
+    getActiveImageServiceMock.mockReturnValue({
+      id: 'cloudinary',
+      getDisplayUrl: vi.fn(),
+    });
+
+    const resolution: PageResolutionResult = {
+      type: PageType.SinglePage,
+      pageTitle: 'Home',
+      contentFile: site.contentFiles![0],
+      layoutPath: 'page',
+    };
+
+    const html = await render(site, resolution, {
+      siteRootPath: '/',
+      isExport: false,
+    });
+
+    const normalized = compactHtml(html);
+    expect(normalized).toContain('data-sparktype-cloudinary-player="true"');
+    expect(normalized).toContain('src="https://player.cloudinary.com/embed/?cloud_name=demo-cloud&amp;public_id=videos%2Fdemo&amp;source%5Bsource_types%5D%5B0%5D=mp4"');
+    expect(normalized).toContain('padding-top:56.25%');
+    expect(normalized).not.toContain('<video');
+  });
 });

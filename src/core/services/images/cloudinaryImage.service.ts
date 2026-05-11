@@ -358,6 +358,10 @@ class CloudinaryImageService implements ImageService {
   }
 
   async uploadVideo(_file: File, siteId: string, context?: ImageServiceContext): Promise<VideoRef> {
+    return this.startVideoUpload(siteId, context);
+  }
+
+  async startVideoUpload(siteId: string, context?: ImageServiceContext): Promise<VideoRef> {
     if (!context?.manifest) {
       throw new Error(`Cloudinary video upload for ${siteId} requires manifest context.`);
     }
@@ -374,7 +378,6 @@ class CloudinaryImageService implements ImageService {
     }
 
     await ensureUploadWidgetLoaded();
-
     return new Promise((resolve, reject) => {
       let widget: CloudinaryWidget;
       let settled = false;
@@ -431,6 +434,7 @@ class CloudinaryImageService implements ImageService {
               completedRef = {
                 serviceId: this.id,
                 src: result.info.public_id,
+                poster: result.info.thumbnail_url,
                 width: result.info.width,
                 height: result.info.height,
                 duration: result.info.duration,

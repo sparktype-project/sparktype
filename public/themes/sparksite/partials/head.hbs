@@ -58,59 +58,11 @@
     <link rel="alternate" type="application/rss+xml" title="{{manifest.title}}" href="/rss.xml">
 {{/if}}
 
- {{!-- STYLESHEETS --}}
+{{!-- STYLESHEETS --}}
 
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&family=Gentium+Book+Plus:ital@0;1&family=IBM+Plex+Serif:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=Instrument+Serif:ital@0;1&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
-</style>
-
-{{#if @root.options.isExport}}
-    <link rel="stylesheet" href="{{@root.options.relativeAssetPath}}_site/themes/{{manifest.theme.name}}/styles.css">
-{{else}}
-    <link rel="stylesheet" href="/themes/{{manifest.theme.name}}/styles.css">
-{{/if}}
+{{#each @root.headContext.themeStylesheets}}
+    <link rel="stylesheet" href="{{this.href}}">
+{{/each}}
 
 {{!-- This is where the user's custom choices are injected as CSS variables --}}
 {{{styleOverrides}}}
-
-<style>
-    :root {
-        --font-headings: Inter, system-ui, -apple-system, sans-serif;
-        --font-body: "Gentium Book Plus", Georgia, serif;
-    }
-
-    body {
-        background-color: var(--color-background);
-        color: var(--color-text);
-        font-family: var(--font-body, "Gentium Book Plus", Georgia, serif);
-    }
-
-    h1, h2, h3, h4, h5, h6,
-    .font-headings {
-        font-family: var(--font-headings, Inter, system-ui, -apple-system, sans-serif);
-        color: var(--color-headings);
-    }
-
-    a,
-    a:link,
-    a:visited,
-    .text-primary {
-        color: var(--color-primary);
-    }
-
-    .prose,
-    .prose-lg {
-        --tw-prose-body: var(--color-text);
-        --tw-prose-headings: var(--color-headings);
-        --tw-prose-lead: var(--color-text);
-        --tw-prose-links: var(--color-primary);
-        --tw-prose-bold: var(--color-headings);
-        --tw-prose-counters: var(--color-primary);
-        --tw-prose-bullets: var(--color-primary);
-        --tw-prose-quotes: var(--color-headings);
-        --tw-prose-quote-borders: var(--color-primary);
-        --tw-prose-captions: var(--color-text);
-        --tw-prose-code: var(--color-headings);
-        --tw-prose-kbd: var(--color-headings);
-    }
-</style>

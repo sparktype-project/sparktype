@@ -340,6 +340,7 @@ describe('cloudinaryImageService', () => {
     ).resolves.toEqual({
       serviceId: 'cloudinary',
       src: 'videos/demo-reel',
+      poster: 'https://res.cloudinary.com/demo-cloud/video/upload/so_0/videos/demo-reel.jpg',
       width: 1920,
       height: 1080,
       duration: 24.6,

@@ -1,0 +1,209 @@
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/geist@latest/latin-400-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/geist@latest/latin-400-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/geist@latest/latin-700-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/geist@latest/latin-700-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/geist-mono@latest/latin-400-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/geist-mono@latest/latin-400-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/geist-mono@latest/latin-700-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/geist-mono@latest/latin-700-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Special Gothic';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/special-gothic@latest/latin-400-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/special-gothic@latest/latin-400-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Special Gothic';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/special-gothic@latest/latin-700-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/special-gothic@latest/latin-700-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-sans@latest/latin-400-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-sans@latest/latin-400-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-sans@latest/latin-700-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-sans@latest/latin-700-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'IBM Plex Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-serif@latest/latin-400-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-serif@latest/latin-400-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'IBM Plex Serif';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-serif@latest/latin-700-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-serif@latest/latin-700-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@latest/latin-400-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@latest/latin-400-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@latest/latin-700-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@latest/latin-700-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Instrument Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/instrument-serif@latest/latin-400-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/instrument-serif@latest/latin-400-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Instrument Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/instrument-sans@latest/latin-400-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/instrument-sans@latest/latin-400-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Instrument Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/instrument-sans@latest/latin-700-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/instrument-sans@latest/latin-700-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Gentium Book Plus';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/gentium-book-plus@latest/latin-400-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/gentium-book-plus@latest/latin-400-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Gentium Book Plus';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/gentium-book-plus@latest/latin-700-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/gentium-book-plus@latest/latin-700-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/playfair-display@latest/latin-400-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/playfair-display@latest/latin-400-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/fontsource/fonts/playfair-display@latest/latin-700-normal.woff2') format('woff2'),
+    url('https://cdn.jsdelivr.net/fontsource/fonts/playfair-display@latest/latin-700-normal.woff') format('woff');
+}

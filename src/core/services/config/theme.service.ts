@@ -4,6 +4,48 @@ import type { RJSFSchema } from '@rjsf/utils';
 import type { ThemeConfig } from '@/core/types';
 import { getJsonAsset } from './configHelpers.service';
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const normalizeSchemaEnumLabels = (schema: RJSFSchema): RJSFSchema => {
+  const normalizedEntries = Object.entries(schema).map(([key, value]) => {
+    if (Array.isArray(value)) {
+      return [
+        key,
+        value.map((item) => (isPlainObject(item) ? normalizeSchemaEnumLabels(item as RJSFSchema) : item)),
+      ];
+    }
+
+    if (isPlainObject(value)) {
+      return [key, normalizeSchemaEnumLabels(value as RJSFSchema)];
+    }
+
+    return [key, value];
+  });
+
+  const normalizedSchema = Object.fromEntries(normalizedEntries) as RJSFSchema & {
+    enum?: unknown[];
+    enumNames?: unknown[];
+    oneOf?: unknown[];
+  };
+
+  if (
+    Array.isArray(normalizedSchema.enum) &&
+    Array.isArray(normalizedSchema.enumNames) &&
+    normalizedSchema.enum.length === normalizedSchema.enumNames.length &&
+    !normalizedSchema.oneOf
+  ) {
+    normalizedSchema.oneOf = normalizedSchema.enum.map((value, index) => ({
+      const: value,
+      title: String(normalizedSchema.enumNames?.[index] ?? value),
+    }));
+    delete normalizedSchema.enum;
+    delete normalizedSchema.enumNames;
+  }
+
+  return normalizedSchema;
+};
+
 // Extract default values from JSON schema
 const extractDefaultsFromSchema = (schema: RJSFSchema): Record<string, unknown> => {
   const defaults: Record<string, unknown> = {};
@@ -90,7 +132,7 @@ export const getMergedThemeDataForForm = async (
   try {
     // Load the theme data (this function should already exist)
     const themeData = await getThemeData(themeName, siteId);
-    const schema = themeData?.appearanceSchema;
+    const schema = themeData?.appearanceSchema ? normalizeSchemaEnumLabels(themeData.appearanceSchema as RJSFSchema) : null;
     
     if (!schema || !schema.properties) {
       return { schema: null, initialConfig: {} };
@@ -123,7 +165,7 @@ export const getMergedThemeDataFieldsForForm = async (
   try {
     // Load the theme data
     const themeData = await getThemeData(themeName, siteId);
-    const schema = themeData?.themeDataSchema;
+    const schema = themeData?.themeDataSchema ? normalizeSchemaEnumLabels(themeData.themeDataSchema as RJSFSchema) : null;
     
     if (!schema || !schema.properties) {
       return { schema: null, initialData: {} };

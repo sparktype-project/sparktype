@@ -588,6 +588,7 @@ export interface ImageService {
   upload(file: File, siteId: string, context?: ImageServiceContext): Promise<ImageRef>;
   startUpload?(siteId: string, context?: ImageServiceContext): Promise<ImageRef>;
   uploadVideo?(file: File, siteId: string, context?: ImageServiceContext): Promise<VideoRef>;
+  startVideoUpload?(siteId: string, context?: ImageServiceContext): Promise<VideoRef>;
   getDisplayUrl(manifest: Manifest, ref: ImageRef, options: ImageTransformOptions, isExport: boolean, forIframe?: boolean, skipDerivatives?: boolean): Promise<string>;
   getVideoDisplayUrl?(manifest: Manifest, ref: VideoRef, isExport: boolean): Promise<string>;
   getExportableAssets(siteId: string, allImageRefs: ImageRef[]): Promise<{ path: string; data: Blob; }[]>;
