@@ -230,6 +230,35 @@ describe('page resolver and render integration', () => {
     expect(normalized).not.toContain('src="bcc-wf"');
   });
 
+  test('preserves preprocessed absolute markdown image URLs during export', async () => {
+    const site = createSiteFixture('customThemeSite');
+    site.contentFiles![0] = {
+      ...site.contentFiles![0],
+      content: '![Uploaded image](assets/originals/mk)',
+    };
+    getProcessedMarkdownImageUrlMock.mockReturnValue(
+      'https://res.cloudinary.com/dhcgic4ld/image/upload/c_fill,g_xy_center,h_256,w_256/f_auto/q_auto/mk'
+    );
+
+    const resolution: PageResolutionResult = {
+      type: PageType.SinglePage,
+      pageTitle: 'Home',
+      contentFile: site.contentFiles![0],
+      layoutPath: 'page',
+    };
+
+    const html = await render(site, resolution, {
+      siteRootPath: '/',
+      isExport: true,
+    });
+
+    const normalized = compactHtml(html);
+    expect(normalized).toContain(
+      'src="https://res.cloudinary.com/dhcgic4ld/image/upload/c_fill,g_xy_center,h_256,w_256/f_auto/q_auto/mk"'
+    );
+    expect(normalized).not.toContain('/https://res.cloudinary.com/');
+  });
+
   test('renders uploaded cloudinary videos with the hosted iframe player', async () => {
     const site = createSiteFixture('customThemeSite');
     site.manifest.settings = {

@@ -131,6 +131,10 @@ function isAbsoluteOrSpecialImageUrl(url: string): boolean {
     return /^(?:[a-z]+:)?\/\//i.test(url) || url.startsWith('data:') || url.startsWith('/');
 }
 
+function isExternalOrDataImageUrl(url: string): boolean {
+    return /^(?:[a-z]+:)?\/\//i.test(url) || url.startsWith('data:');
+}
+
 /**
  * Defines the options passed to the main render function.
  */
@@ -607,7 +611,7 @@ export async function render(
                     console.log('[Render Service] Using preprocessed URL:', processedUrl);
 
                     // Convert to relative path for export mode
-                    if (options.isExport) {
+                    if (options.isExport && !isExternalOrDataImageUrl(processedUrl)) {
                       const currentPageNode = {
                         type: 'page' as const,
                         title: enrichedResolution.contentFile.frontmatter.title,
@@ -876,12 +880,12 @@ async function postProcessSparkTypeImagesForExport(
         true // isExport = true for derivative filename
       );
       
-      // Generate relative path from current page to the asset
-      // Strip leading slash from derivative filename if present
-      const cleanDerivativeFilename = derivativeFilename.startsWith('/') 
-        ? derivativeFilename.substring(1) 
-        : derivativeFilename;
-      const relativePath = getRelativePath(currentPagePath, cleanDerivativeFilename);
+      const relativePath = isExternalOrDataImageUrl(derivativeFilename)
+        ? derivativeFilename
+        : getRelativePath(
+            currentPagePath,
+            derivativeFilename.startsWith('/') ? derivativeFilename.substring(1) : derivativeFilename
+          );
       
       // Replace the entire img tag with relative derivative path
       const newImg = fullMatch.replace(`src="${assetPath}"`, `src="${relativePath}"`).replace(' data-sparktype-asset="true"', '');

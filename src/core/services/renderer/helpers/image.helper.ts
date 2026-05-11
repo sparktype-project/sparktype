@@ -30,6 +30,10 @@ interface ImageHelperContext {
   frontmatter?: Record<string, unknown>;
 }
 
+function isExternalOrDataImageUrl(url: string): boolean {
+  return /^(?:[a-z]+:)?\/\//i.test(url) || url.startsWith('data:');
+}
+
 export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => {
   return {
     /**
@@ -113,7 +117,7 @@ export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => {
       }
 
       // Convert to relative path for export mode
-      if (rootContext.options.isExport && rootContext.contentFile) {
+      if (rootContext.options.isExport && rootContext.contentFile && !isExternalOrDataImageUrl(processedUrl)) {
         // Calculate current page path (the page being rendered, not the content file containing the image)
         const currentPageNode: StructureNode = {
           type: 'page' as const,
