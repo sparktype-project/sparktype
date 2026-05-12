@@ -2,11 +2,12 @@ import { defineConfig } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 import { createThemePreviewReloadPlugin } from './src/dev/themePreviewReloadPlugin';
+import { createRemoteImportProxyPlugin } from './src/dev/remoteImportProxyPlugin';
 
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
-  plugins: [tailwindcss(), createThemePreviewReloadPlugin()],
+  plugins: [tailwindcss(), createThemePreviewReloadPlugin(), createRemoteImportProxyPlugin()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

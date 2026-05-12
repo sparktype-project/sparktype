@@ -7,7 +7,7 @@
         <a href="{{this.url}}" class="block mb-6">
             {{{image
                 fieldname="featured_image"
-                preset="page_display"
+                preset="thumbnail"
                 alt=this.frontmatter.title
                 class="w-full"
             }}}
@@ -36,7 +36,7 @@
             <div class="flex flex-wrap gap-2 mb-4">
                 {{#each this.resolvedTags}}
                     {{#each this}}
-                        <span class="inline-flex items-center px-3 py-1 text-sm font-headings bg-slate-100 text-text rounded-full hover:bg-muted/80 transition-colors">
+                        <span class="inline-flex items-center px-3 py-1 text-sm bg-slate-100 text-text rounded-full hover:bg-muted/80 transition-colors">
                             {{this.name}}
                         </span>
                     {{/each}}

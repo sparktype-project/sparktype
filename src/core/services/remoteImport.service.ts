@@ -7,18 +7,29 @@ import type {
   ParsedMarkdownFile,
   RawFile,
   MediaManifest,
+  ThemeManifest,
+  LayoutManifest,
 } from '@/core/types';
 import { parseMarkdownString } from '@/core/libraries/markdownParser';
 import { isTauriApp } from '@/core/utils/platform';
 import { importMediaManifest } from './images/mediaManifest.service';
+import { flattenStructure } from './fileTree.service';
+import type { AuthenticationResult, SiteAuthConfig } from './webauthn.service';
 
 const SIGNUM_FOLDER = '_site';
+const REMOTE_IMPORT_PROXY_PATH = '/.netlify/functions/remote-import';
 
 export interface GitHubRepoInfo {
   owner: string;
   repo: string;
   branch?: string;
 }
+
+type ImportResult = LocalSiteData & { imageAssetsToSave?: { [path: string]: Blob } };
+type AuthenticateSiteImport = (
+  siteId: string,
+  authConfig: SiteAuthConfig
+) => Promise<AuthenticationResult>;
 
 /**
  * Parses a GitHub URL to extract owner, repo, and optional branch information
@@ -55,16 +66,7 @@ export function parseGitHubUrl(url: string): GitHubRepoInfo | null {
  */
 async function downloadData(url: string): Promise<ArrayBuffer> {
   try {
-    let response: Response;
-
-    if (isTauriApp()) {
-      // Use Tauri HTTP plugin in desktop app
-      const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http');
-      response = await tauriFetch(url, { method: 'GET' });
-    } else {
-      // Use standard fetch in browser
-      response = await fetch(url, { method: 'GET' });
-    }
+    const response = await fetchRemoteResponse(url);
 
     if (!response.ok) {
       throw new Error(`Failed to download from ${url}: ${response.status} ${response.statusText}`);
@@ -77,12 +79,104 @@ async function downloadData(url: string): Promise<ArrayBuffer> {
   }
 }
 
+async function fetchRemoteResponse(url: string): Promise<Response> {
+  if (isTauriApp()) {
+    const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http');
+    return tauriFetch(url, { method: 'GET' });
+  }
+
+  if (shouldUseRemoteImportProxy(url)) {
+    return fetch(`${REMOTE_IMPORT_PROXY_PATH}?url=${encodeURIComponent(url)}`, { method: 'GET' });
+  }
+
+  return fetch(url, { method: 'GET' });
+}
+
+function shouldUseRemoteImportProxy(url: string): boolean {
+  if (typeof window === 'undefined' || !window.location?.origin) {
+    return false;
+  }
+
+  try {
+    const targetUrl = new URL(url);
+    const currentOrigin = window.location.origin;
+    return targetUrl.origin !== currentOrigin && /^https?:$/.test(targetUrl.protocol);
+  } catch {
+    return false;
+  }
+}
+
+function normalizeSiteUrl(siteUrl: string): string {
+  let normalized: URL;
+
+  try {
+    normalized = new URL(siteUrl.trim());
+  } catch {
+    throw new Error('Invalid site URL. Please provide a valid Sparktype site URL.');
+  }
+
+  normalized.search = '';
+  normalized.hash = '';
+
+  if (!normalized.pathname.endsWith('/')) {
+    normalized.pathname = `${normalized.pathname}/`;
+  }
+
+  return normalized.toString();
+}
+
+function getRemoteSiteAssetUrl(siteBaseUrl: string, relativePath: string): string {
+  return new URL(relativePath, siteBaseUrl).toString();
+}
+
+async function fetchRemoteTextFile(url: string, errorMessage: string, optional = false): Promise<string | null> {
+  const response = await fetchRemoteResponse(url);
+
+  if (response.status === 404 && optional) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`${errorMessage}: ${response.status} ${response.statusText}`);
+  }
+
+  return response.text();
+}
+
+async function fetchRemoteBinaryFile(url: string, errorMessage: string, optional = false): Promise<ArrayBuffer | null> {
+  const response = await fetchRemoteResponse(url);
+
+  if (response.status === 404 && optional) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`${errorMessage}: ${response.status} ${response.statusText}`);
+  }
+
+  return response.arrayBuffer();
+}
+
+function addFileToZip(zipFolder: JSZip | null, relativePath: string, content: string | ArrayBuffer): void {
+  if (!zipFolder) {
+    throw new Error('Failed to create site folder structure');
+  }
+
+  zipFolder.file(relativePath, content);
+}
+
+function getImportedContentPaths(manifest: Manifest): string[] {
+  const structurePaths = flattenStructure(manifest.structure).map((node) => node.path);
+  const collectionItemPaths = (manifest.collectionItems || []).map((item) => item.path);
+  return [...new Set([...structurePaths, ...collectionItemPaths])];
+}
+
 
 /**
  * Processes a ZIP archive and extracts site data, similar to importSiteFromZip
  * Exported for testing purposes.
  */
-export async function processSiteZip(zipData: ArrayBuffer): Promise<LocalSiteData & { imageAssetsToSave?: { [path: string]: Blob } }> {
+export async function processSiteZip(zipData: ArrayBuffer): Promise<ImportResult> {
   const zip = await JSZip.loadAsync(zipData);
   const signumFolder = zip.folder(SIGNUM_FOLDER);
 
@@ -215,7 +309,7 @@ export async function processSiteZip(zipData: ArrayBuffer): Promise<LocalSiteDat
  * Imports a site from a GitHub repository
  * Downloads the repository archive and extracts the _site folder
  */
-export async function importSiteFromGitHub(repoUrl: string, branch?: string): Promise<LocalSiteData & { imageAssetsToSave?: { [path: string]: Blob } }> {
+export async function importSiteFromGitHub(repoUrl: string, branch?: string): Promise<ImportResult> {
 
   const repoInfo = parseGitHubUrl(repoUrl);
   if (!repoInfo) {
@@ -296,5 +390,203 @@ export async function importSiteFromGitHub(repoUrl: string, branch?: string): Pr
     return await processSiteZip(restructuredZipData);
   } catch (error) {
     throw new Error(`Failed to import site from GitHub: ${(error as Error).message}`);
+  }
+}
+
+export async function importSiteFromUrl(
+  siteUrl: string,
+  authenticate?: AuthenticateSiteImport
+): Promise<ImportResult> {
+  const normalizedSiteUrl = normalizeSiteUrl(siteUrl);
+  const zip = new JSZip();
+  const siteFolder = zip.folder(SIGNUM_FOLDER);
+
+  try {
+    const manifestUrl = getRemoteSiteAssetUrl(normalizedSiteUrl, `${SIGNUM_FOLDER}/manifest.json`);
+    const manifestContent = await fetchRemoteTextFile(
+      manifestUrl,
+      'Failed to fetch _site/manifest.json'
+    );
+
+    if (!manifestContent) {
+      throw new Error('Failed to fetch _site/manifest.json');
+    }
+
+    let manifest: Manifest;
+    try {
+      manifest = JSON.parse(manifestContent) as Manifest;
+    } catch (error) {
+      throw new Error(`Invalid _site/manifest.json: ${(error as Error).message}`);
+    }
+
+    if (!manifest.siteId || !manifest.title || !manifest.theme?.name) {
+      throw new Error('Invalid _site/manifest.json: missing required Sparktype site fields.');
+    }
+
+    addFileToZip(siteFolder, 'manifest.json', manifestContent);
+
+    if (manifest.auth?.requiresAuth) {
+      if (!authenticate) {
+        throw new Error('This site is protected and requires passkey authentication before import.');
+      }
+
+      const authResult = await authenticate(manifest.siteId, manifest.auth);
+      if (!authResult.success) {
+        throw new Error(authResult.error || 'Authentication failed');
+      }
+    }
+
+    const contentPaths = getImportedContentPaths(manifest);
+    if (contentPaths.length === 0) {
+      throw new Error('No content files were referenced by the imported site manifest.');
+    }
+
+    const layoutIds = new Set<string>();
+    for (const contentPath of contentPaths) {
+      const contentUrl = getRemoteSiteAssetUrl(normalizedSiteUrl, `${SIGNUM_FOLDER}/${contentPath}`);
+      const content = await fetchRemoteTextFile(
+        contentUrl,
+        `Failed to fetch required content file "${contentPath}"`
+      );
+
+      if (!content) {
+        throw new Error(`Failed to fetch required content file "${contentPath}"`);
+      }
+
+      addFileToZip(siteFolder, contentPath, content);
+
+      const parsed = parseMarkdownString(content);
+      if (parsed.frontmatter.layout && typeof parsed.frontmatter.layout === 'string') {
+        layoutIds.add(parsed.frontmatter.layout);
+      }
+    }
+
+    const themeName = manifest.theme.name;
+    const themeManifestPath = `themes/${themeName}/theme.json`;
+    const themeManifestUrl = getRemoteSiteAssetUrl(normalizedSiteUrl, `${SIGNUM_FOLDER}/${themeManifestPath}`);
+    const themeManifestContent = await fetchRemoteTextFile(
+      themeManifestUrl,
+      `Failed to fetch theme manifest for "${themeName}"`
+    );
+
+    if (!themeManifestContent) {
+      throw new Error(`Failed to fetch theme manifest for "${themeName}"`);
+    }
+
+    addFileToZip(siteFolder, themeManifestPath, themeManifestContent);
+
+    let themeManifest: ThemeManifest;
+    try {
+      themeManifest = JSON.parse(themeManifestContent) as ThemeManifest;
+    } catch (error) {
+      throw new Error(`Invalid theme manifest for "${themeName}": ${(error as Error).message}`);
+    }
+
+    for (const file of themeManifest.files || []) {
+      if (file.path === 'theme.json') continue;
+
+      const themeFilePath = `themes/${themeName}/${file.path}`;
+      const themeFileUrl = getRemoteSiteAssetUrl(normalizedSiteUrl, `${SIGNUM_FOLDER}/${themeFilePath}`);
+      const themeFileContent = await fetchRemoteTextFile(
+        themeFileUrl,
+        `Failed to fetch theme file "${themeFilePath}"`
+      );
+
+      if (!themeFileContent) {
+        throw new Error(`Failed to fetch theme file "${themeFilePath}"`);
+      }
+
+      addFileToZip(siteFolder, themeFilePath, themeFileContent);
+    }
+
+    for (const layoutId of layoutIds) {
+      const layoutManifestPath = `themes/${themeName}/layouts/${layoutId}/layout.json`;
+      const layoutManifestUrl = getRemoteSiteAssetUrl(normalizedSiteUrl, `${SIGNUM_FOLDER}/${layoutManifestPath}`);
+      const layoutManifestContent = await fetchRemoteTextFile(
+        layoutManifestUrl,
+        `Failed to fetch layout manifest for "${layoutId}"`
+      );
+
+      if (!layoutManifestContent) {
+        throw new Error(`Failed to fetch layout manifest for "${layoutId}"`);
+      }
+
+      addFileToZip(siteFolder, layoutManifestPath, layoutManifestContent);
+
+      let layoutManifest: LayoutManifest;
+      try {
+        layoutManifest = JSON.parse(layoutManifestContent) as LayoutManifest;
+      } catch (error) {
+        throw new Error(`Invalid layout manifest for "${layoutId}": ${(error as Error).message}`);
+      }
+
+      for (const file of layoutManifest.files || []) {
+        if (file.path === 'layout.json') continue;
+
+        const layoutFilePath = `themes/${themeName}/layouts/${layoutId}/${file.path}`;
+        const layoutFileUrl = getRemoteSiteAssetUrl(normalizedSiteUrl, `${SIGNUM_FOLDER}/${layoutFilePath}`);
+        const layoutFileContent = await fetchRemoteTextFile(
+          layoutFileUrl,
+          `Failed to fetch layout file "${layoutFilePath}"`
+        );
+
+        if (!layoutFileContent) {
+          throw new Error(`Failed to fetch layout file "${layoutFilePath}"`);
+        }
+
+        addFileToZip(siteFolder, layoutFilePath, layoutFileContent);
+      }
+    }
+
+    const secretsPath = 'secrets.json';
+    const secretsContent = await fetchRemoteTextFile(
+      getRemoteSiteAssetUrl(normalizedSiteUrl, `${SIGNUM_FOLDER}/${secretsPath}`),
+      'Failed to fetch _site/secrets.json',
+      true
+    );
+    if (secretsContent) {
+      addFileToZip(siteFolder, secretsPath, secretsContent);
+    }
+
+    const mediaManifestPath = 'data/media.json';
+    const mediaManifestContent = await fetchRemoteTextFile(
+      getRemoteSiteAssetUrl(normalizedSiteUrl, `${SIGNUM_FOLDER}/${mediaManifestPath}`),
+      'Failed to fetch _site/data/media.json',
+      true
+    );
+
+    if (mediaManifestContent) {
+      addFileToZip(siteFolder, mediaManifestPath, mediaManifestContent);
+
+      try {
+        const mediaManifest = JSON.parse(mediaManifestContent) as MediaManifest;
+        for (const imagePath of Object.keys(mediaManifest.images || {})) {
+          const filename = imagePath.split('/').pop();
+          if (!filename) continue;
+
+          const binaryContent = await fetchRemoteBinaryFile(
+            getRemoteSiteAssetUrl(normalizedSiteUrl, `${SIGNUM_FOLDER}/assets/originals/${filename}`),
+            `Failed to fetch image asset "${imagePath}"`,
+            true
+          );
+
+          if (binaryContent) {
+            addFileToZip(siteFolder, `assets/originals/${filename}`, binaryContent);
+          }
+        }
+      } catch (error) {
+        console.warn('[UrlImport] Failed to parse media.json, continuing without original image fetch:', error);
+      }
+    }
+
+    const restructuredZipData = await zip.generateAsync({
+      type: 'arraybuffer',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 }
+    });
+
+    return processSiteZip(restructuredZipData);
+  } catch (error) {
+    throw new Error(`Failed to import site from URL: ${(error as Error).message}`);
   }
 }

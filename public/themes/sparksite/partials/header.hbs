@@ -111,7 +111,7 @@
      x-transition:leave-start="opacity-100"
      x-transition:leave-end="opacity-0"
      @click="isMobileMenuOpen = false"
-     class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+     class="fixed inset-0 z-40 bg-white/50 backdrop-blur-sm md:hidden"
      x-cloak>
 </div>
 
@@ -123,7 +123,7 @@
      x-transition:leave="transform transition ease-in-out duration-300"
      x-transition:leave-start="translate-x-0"
      x-transition:leave-end="translate-x-full"
-     class="fixed top-0 right-0 bottom-0 z-50 w-80 bg-background border-l border-border shadow-xl flex flex-col md:hidden"
+     class="fixed top-0 right-0 bottom-0 z-50 w-80 bg-background shadow-xl flex flex-col md:hidden"
      id="mobile-menu"
      role="dialog"
      aria-modal="true"
@@ -132,7 +132,7 @@
      x-trap="isMobileMenuOpen">
      
     {{!-- Mobile Menu Header --}}
-    <div class="flex items-center justify-between p-4 border-b border-border">
+    <div class="flex items-center justify-between p-4">
         <div @click="isMobileMenuOpen = false" 
                 type="button" 
                 class="inline-flex items-center justify-center p-2 rounded-md text-text hover:text-primary transition-colors"
@@ -144,15 +144,15 @@
     </div>
 
     {{!-- Mobile Navigation --}}
-    <nav class="flex-1 overflow-y-auto p-4 font-headings">
+    <nav class="flex-1 overflow-y-auto p-4">
         <div class="flex gap-4 flex-col">
             {{#each @root.navLinks}}
                 {{#if this.children.length}}
                     {{!-- Navigation Item with Submenu --}}
                     <div x-data="{ open: false }" class="space-y-1">
-                        <div class="flex items-center justify-between font-headings">
+                        <div class="flex items-center justify-between">
                             <a href="{{this.href}}" 
-                               class="flex-1 block px-3 py-2 text-base hover:text-primary hover:bg-muted rounded-md transition-colors"
+                               class="flex-1 block px-3 py-2 text-base hover:underline"
                                @click="isMobileMenuOpen = false">
                                 {{this.label}}
                             </a>
@@ -179,7 +179,7 @@
                              class="pl-4 space-y-1 border-l-2 border-border ml-3">
                             {{#each this.children}}
                                 <a href="{{this.href}}" 
-                                   class="block px-3 py-2 text-sm text-muted hover:text-text hover:bg-muted rounded-md transition-colors font-headings"
+                                   class="block px-3 py-2 text-sm text-muted hover:underline"
                                    @click="isMobileMenuOpen = false">
                                     {{this.label}}
                                 </a>
@@ -189,7 +189,7 @@
                 {{else}}
                     {{!-- Simple Navigation Item --}}
                     <a href="{{this.href}}" 
-                       class="block text-base text-text hover:text-primary hover:bg-muted rounded-md transition-colors"
+                       class="block text-base text-text hover:underline "
                        @click="isMobileMenuOpen = false">
                         {{this.label}}
                     </a>

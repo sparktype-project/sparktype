@@ -9,27 +9,27 @@ import { type LocalSiteData } from '@/core/types';
 
 // Services
 import { importSiteFromZip, exportSiteBackup } from '@/core/services/siteBackup.service';
-import { importSiteFromGitHub } from '@/core/services/remoteImport.service';
+import { importSiteFromGitHub, importSiteFromUrl } from '@/core/services/remoteImport.service';
 import { saveAllImageAssetsForSite } from '@/core/services/localFileSystem.service';
 import { slugify } from '@/core/libraries/utils';
 
 // UI Components & Icons
 import { Button } from '@/core/components/ui/button';
 import { toast } from 'sonner';
-import { Eye, Edit3, Archive, Trash2, MoreVertical, Upload, FilePlus2, ChevronDown, Github } from 'lucide-react';
+import { Eye, Edit3, Archive, Trash2, MoreVertical, Upload, FilePlus2, ChevronDown, Github, Globe } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/core/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/core/components/ui/alert-dialog";
 import CreateSiteModal from '@/core/components/CreateSiteModal';
-import ImportModal from '@/core/components/ImportModal';
+import ImportModal, { type ImportModalMode } from '@/core/components/ImportModal';
 import UnifiedHeader from '@/core/components/UnifiedHeader';
 
 export default function HomePageDashboard() {
-  const { sites, getSiteById, addSite, updateSiteSecrets, loadSite, deleteSiteAndState } = useAppStore();
+  const { sites, getSiteById, addSite, updateSiteSecrets, loadSite, deleteSiteAndState, authenticateForSite } = useAppStore();
   const [isImporting, setIsImporting] = useState(false);
   const [isOverwriteDialogOpen, setIsOverwriteDialogOpen] = useState(false);
   const [importedData, setImportedData] = useState<(LocalSiteData & { imageAssetsToSave?: Record<string, Blob> }) | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isGitHubImportOpen, setIsGitHubImportOpen] = useState(false);
+  const [activeImportModal, setActiveImportModal] = useState<ImportModalMode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const finishImport = useCallback(async (data: LocalSiteData & { imageAssetsToSave?: Record<string, Blob> }) => {
@@ -130,6 +130,26 @@ export default function HomePageDashboard() {
     }
   };
 
+  const handleUrlImport = async (siteUrl: string) => {
+    setIsImporting(true);
+    toast.info("Importing site from URL...");
+    try {
+      const data = await importSiteFromUrl(siteUrl, authenticateForSite);
+      const existingSite = getSiteById(data.siteId);
+      if (existingSite) {
+        setImportedData(data);
+        setIsOverwriteDialogOpen(true);
+      } else {
+        await finishImport(data);
+      }
+    } catch (error) {
+      console.error("Error during URL import:", error);
+      toast.error(`URL import failed: ${(error as Error).message}`);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   // Listen for global import trigger from menu
   useEffect(() => {
     const handleTriggerImport = () => {
@@ -176,9 +196,13 @@ export default function HomePageDashboard() {
                   Upload ZIP file
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setIsGitHubImportOpen(true)} disabled={isImporting}>
+                <DropdownMenuItem onClick={() => setActiveImportModal('github')} disabled={isImporting}>
                   <Github className="mr-2 h-4 w-4" />
                   Import from GitHub repo
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setActiveImportModal('url')} disabled={isImporting}>
+                  <Globe className="mr-2 h-4 w-4" />
+                  Import from URL
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -286,9 +310,12 @@ export default function HomePageDashboard() {
 
       {/* GitHub Import Modal - Available on both web and Tauri */}
       <ImportModal
-        open={isGitHubImportOpen}
-        onOpenChange={setIsGitHubImportOpen}
-        onImport={handleGitHubImport}
+        open={activeImportModal !== null}
+        onOpenChange={(open) => {
+          if (!open) setActiveImportModal(null);
+        }}
+        mode={activeImportModal ?? 'github'}
+        onImport={activeImportModal === 'url' ? handleUrlImport : handleGitHubImport}
       />
     </>
   );

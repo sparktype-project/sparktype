@@ -4,15 +4,18 @@ import { Button } from '@/core/components/ui/button';
 import { Input } from '@/core/components/ui/input';
 import { Label } from '@/core/components/ui/label';
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/core/components/ui/alert-dialog';
-import { Loader2, Github } from 'lucide-react';
+import { Loader2, Github, Globe } from 'lucide-react';
+
+export type ImportModalMode = 'github' | 'url';
 
 interface ImportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  mode: ImportModalMode;
   onImport: (value: string, branch?: string) => Promise<void>;
 }
 
-export default function ImportModal({ open, onOpenChange, onImport }: ImportModalProps) {
+export default function ImportModal({ open, onOpenChange, mode, onImport }: ImportModalProps) {
   const [value, setValue] = useState('');
   const [branch, setBranch] = useState('');
   const [isImporting, setIsImporting] = useState(false);
@@ -42,16 +45,22 @@ export default function ImportModal({ open, onOpenChange, onImport }: ImportModa
     }
   };
 
-  const title = 'Import from GitHub';
-  const placeholder = 'https://github.com/username/repository';
-  const description = 'Enter a GitHub repository URL containing a built Sparktype site. We\'ll look for the _site folder in the repository.';
+  const isGitHub = mode === 'github';
+  const title = isGitHub ? 'Import from GitHub' : 'Import from URL';
+  const placeholder = isGitHub
+    ? 'https://github.com/username/repository'
+    : 'https://example.com/site/';
+  const description = isGitHub
+    ? 'Enter a GitHub repository URL containing a built Sparktype site. We\'ll look for the _site folder in the repository.'
+    : 'Enter a published Sparktype site URL. We\'ll fetch the bundled _site source files from that site.';
+  const valueLabel = isGitHub ? 'Repository URL' : 'Site URL';
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="sm:max-w-md">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <Github className="h-5 w-5" />
+            {isGitHub ? <Github className="h-5 w-5" /> : <Globe className="h-5 w-5" />}
             {title}
           </AlertDialogTitle>
           <AlertDialogDescription>
@@ -62,7 +71,7 @@ export default function ImportModal({ open, onOpenChange, onImport }: ImportModa
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="import-value">
-              Repository URL
+              {valueLabel}
             </Label>
             <Input
               id="import-value"
@@ -74,19 +83,21 @@ export default function ImportModal({ open, onOpenChange, onImport }: ImportModa
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="branch">Branch (optional)</Label>
-            <Input
-              id="branch"
-              placeholder="main"
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-              disabled={isImporting}
-            />
-            <p className="text-sm text-muted-foreground">
-              Leave empty to use the default branch (main/master)
-            </p>
-          </div>
+          {isGitHub && (
+            <div className="space-y-2">
+              <Label htmlFor="branch">Branch (optional)</Label>
+              <Input
+                id="branch"
+                placeholder="main"
+                value={branch}
+                onChange={(e) => setBranch(e.target.value)}
+                disabled={isImporting}
+              />
+              <p className="text-sm text-muted-foreground">
+                Leave empty to use the default branch (main/master)
+              </p>
+            </div>
+          )}
 
           <AlertDialogFooter>
             <Button
