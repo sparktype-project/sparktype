@@ -94,7 +94,14 @@ export async function assemblePageContext(
               slug: resolution.contentFile.slug
             };
             // Also need forFilePath=true for the current page path
-            const currentPagePath = getUrlForNode(currentPageNode, manifest, options.isExport, undefined, siteData, true);
+            const currentPagePath = getUrlForNode(
+              currentPageNode,
+              manifest,
+              options.isExport,
+              resolution.pageNumber,
+              siteData,
+              true,
+            );
 
             let itemUrl: string;
             if (options.isExport) {
@@ -175,7 +182,7 @@ export async function assembleBaseContext(
 
     // For navigation link calculation, we need the full file path (with index.html)
     // to correctly calculate relative paths from the current page
-    const currentPagePath = getUrlForNode(urlNode, manifest, true, undefined, siteData, true);
+    const currentPagePath = getUrlForNode(urlNode, manifest, true, resolution.pageNumber, siteData, true);
 
     // Logo and favicon are now handled by the image helper system via preprocessing
     return {
@@ -191,7 +198,10 @@ export async function assembleBaseContext(
             themeStylesheets,
             logo: manifest.logo,
             favicon: manifest.favicon,
-            canonicalUrl: new URL(getUrlForNode(urlNode, manifest, false, undefined, siteData), manifest.baseUrl || 'https://example.com').href,
+            canonicalUrl: new URL(
+              getUrlForNode(urlNode, manifest, false, resolution.pageNumber, siteData),
+              manifest.baseUrl || 'https://example.com',
+            ).href,
             baseUrl: options.relativeAssetPath ?? '/',
             styleOverrides: new Handlebars.SafeString(generateStyleOverrides(manifest.theme.config)),
         },

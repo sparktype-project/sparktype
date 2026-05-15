@@ -1,7 +1,7 @@
 // src/features/editor/components/FrontmatterSidebar.tsx
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Manifest, RawFile, MarkdownFrontmatter, LayoutConfig } from '@/core/types';
+import type { Manifest, RawFile, MarkdownFrontmatter } from '@/core/types';
 import { type CollectionContext } from '@/core/services/collectionContext.service';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getAvailableLayouts } from '@/core/services/config/configHelpers.service';
@@ -17,7 +17,6 @@ import { Trash2, Home } from 'lucide-react';
 
 // Form & Sub-component Imports
 import LayoutSelector from '@/features/editor/components/forms/LayoutSelector';
-import CollectionConfigForm from '@/features/editor/components/forms/CollectionConfigForm';
 // CORRECTED: The import casing now exactly matches the actual filename 'PageMetaDataForm.tsx'.
 import PageMetadataForm from '@/features/editor/components/forms/PageMetaDataForm';
 import AdvancedSettingsForm from '@/features/editor/components/forms/AdvancedSettingsForm';
@@ -81,7 +80,7 @@ export default function FrontmatterSidebar({
       setIsLoading(false);
     }
     fetchAllLayouts();
-  }, [manifest, layoutFiles, themeFiles]);
+  }, [siteId, manifest, layoutFiles, themeFiles]);
 
   // Use the collection context passed from the parent component
   const isCollectionItem = collectionContext.isCollectionItem;
@@ -94,8 +93,8 @@ export default function FrontmatterSidebar({
 
   // Display collection toggle state - determines if this page shows collection content
   const isDisplayingCollection = useMemo(() => {
-    return currentLayoutManifest?.layoutType === 'list';
-  }, [currentLayoutManifest]);
+    return frontmatter.displayCollection === true;
+  }, [frontmatter.displayCollection]);
 
   // If this is a collection item, get its layout manifest
   const itemLayoutManifest = useMemo(() => {
@@ -108,13 +107,21 @@ export default function FrontmatterSidebar({
       // Switching to list mode - select first available list layout
       const listLayout = allLayouts.find(l => l.layoutType === 'list');
       if (listLayout) {
-        onFrontmatterChange({ layout: listLayout.id, layoutConfig: undefined });
+        onFrontmatterChange({
+          displayCollection: true,
+          layout: listLayout.id,
+          layoutConfig: undefined,
+        });
       }
     } else {
       // Switching to page mode - select first available page layout
       const pageLayout = allLayouts.find(l => l.layoutType === 'page');
       if (pageLayout) {
-        onFrontmatterChange({ layout: pageLayout.id, layoutConfig: undefined });
+        onFrontmatterChange({
+          displayCollection: false,
+          layout: pageLayout.id,
+          layoutConfig: undefined,
+        });
       }
     }
   }, [allLayouts, onFrontmatterChange]);
@@ -124,16 +131,15 @@ export default function FrontmatterSidebar({
     if (!selectedLayout) return;
 
     // When layout changes, reset layoutConfig if the new layout is not a list type.
-    const newFrontmatter: Partial<MarkdownFrontmatter> = { layout: newLayoutId };
+    const newFrontmatter: Partial<MarkdownFrontmatter> = {
+      layout: newLayoutId,
+      displayCollection: isDisplayingCollection,
+    };
     if (selectedLayout.layoutType !== 'list') {
       newFrontmatter.layoutConfig = undefined;
     }
     onFrontmatterChange(newFrontmatter);
-  }, [onFrontmatterChange, allLayouts]);
-
-  const handleLayoutConfigChange = useCallback((newConfig: LayoutConfig) => {
-    onFrontmatterChange({ layoutConfig: newConfig });
-  }, [onFrontmatterChange]);
+  }, [onFrontmatterChange, allLayouts, isDisplayingCollection]);
 
   const handleTagsChange = useCallback((groupId: string, tagIds: string[]) => {
     const currentTags = frontmatter.tags || {};
@@ -158,9 +164,6 @@ export default function FrontmatterSidebar({
   }
 
   const defaultOpenSections = ['layout', 'metadata', 'advanced'];
-  if (currentLayoutManifest?.layoutType === 'list') {
-    defaultOpenSections.push('collection-config');
-  }
   if (isCollectionItem && parentCollection) {
     defaultOpenSections.push('tags');
   }
@@ -203,20 +206,6 @@ export default function FrontmatterSidebar({
                   selectedLayoutId={frontmatter.layout || ''}
                   onChange={handleLayoutChange}
                   filterByType={isDisplayingCollection ? 'list' : 'page'}
-                />
-              </AccordionContent>
-            </AccordionItem>
-          )}
-
-          {/* Collection Configuration - Shown only when displaying collection */}
-          {isDisplayingCollection && (
-            <AccordionItem value="collection-config">
-              <AccordionTrigger>Collection display</AccordionTrigger>
-              <AccordionContent className='p-2'>
-                <CollectionConfigForm
-                  siteId={siteId}
-                  layoutConfig={frontmatter.layoutConfig}
-                  onLayoutConfigChange={handleLayoutConfigChange}
                 />
               </AccordionContent>
             </AccordionItem>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Node } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper, type ReactNodeViewProps } from '@tiptap/react';
 import { Settings2 } from 'lucide-react';
@@ -6,6 +6,7 @@ import { Button } from '@/core/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -18,6 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/core/components/ui/select';
+import { useAppStore } from '@/core/state/useAppStore';
+import { getCollectionContent, getCollections } from '@/core/services/collections.service';
+import { getLayoutManifest } from '@/core/services/config/configHelpers.service';
+import { getAppliedTagsForCollection } from '@/core/services/tags.service';
+import { SimpleMultiSelect, type SimpleMultiSelectOption } from '@/features/editor/components/SimpleMultiSelect';
 import {
   DEFAULT_COLLECTION_VIEW_ATTRS,
   parseCollectionViewAttrs,
@@ -32,11 +38,28 @@ interface CollectionDefinition {
 
 interface CollectionViewOptions {
   collections?: CollectionDefinition[];
+  siteId?: string;
 }
 
-function CollectionViewNode(props: ReactNodeViewProps<HTMLDivElement>) {
+const COLLECTION_VIEW_LAYOUT_OPTIONS = [
+  { value: 'list-view', label: 'List' },
+  { value: 'grid-view', label: 'Grid' },
+];
+
+export function CollectionViewNode(props: ReactNodeViewProps<HTMLDivElement>) {
   const { node, updateAttributes, selected, extension } = props;
-  const collections = (extension.options.collections as CollectionDefinition[] | undefined) ?? [];
+  const siteId = extension.options.siteId as string | undefined;
+  const siteData = useAppStore((state) => (siteId ? state.getSiteById(siteId) : undefined));
+  const collections = useMemo(() => {
+    if (siteData?.manifest) {
+      return getCollections(siteData.manifest).map((collection) => ({
+        id: collection.id,
+        name: collection.name,
+      }));
+    }
+
+    return (extension.options.collections as CollectionDefinition[] | undefined) ?? [];
+  }, [extension.options.collections, siteData]);
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState({
     collection: (node.attrs.collection as string) || DEFAULT_COLLECTION_VIEW_ATTRS.collection,
@@ -46,14 +69,99 @@ function CollectionViewNode(props: ReactNodeViewProps<HTMLDivElement>) {
     sortBy: (node.attrs.sortBy as string) || DEFAULT_COLLECTION_VIEW_ATTRS.sortBy,
     sortOrder: (node.attrs.sortOrder as string) || DEFAULT_COLLECTION_VIEW_ATTRS.sortOrder,
     tagFilters: Array.isArray(node.attrs.tagFilters)
-      ? (node.attrs.tagFilters as string[]).join(', ')
-      : '',
+      ? (node.attrs.tagFilters as string[])
+      : DEFAULT_COLLECTION_VIEW_ATTRS.tagFilters,
   });
+  const [availableDisplayTypes, setAvailableDisplayTypes] = useState<Array<{
+    value: string;
+    label: string;
+    description?: string;
+    isDefault?: boolean;
+  }>>([]);
 
   const selectedCollection = useMemo(
-    () => collections.find((collection) => collection.id === node.attrs.collection),
-    [collections, node.attrs.collection],
+    () => collections.find((collection) => collection.id === draft.collection),
+    [collections, draft.collection],
   );
+
+  const collectionTagFilters = useMemo(() => {
+    if (!siteData || !selectedCollection) {
+      return [];
+    }
+
+    const collectionItems = getCollectionContent(siteData, selectedCollection.id);
+    return getAppliedTagsForCollection(siteData, selectedCollection.id, collectionItems);
+  }, [siteData, selectedCollection]);
+
+  const availableTagOptions = useMemo(() => {
+    return collectionTagFilters.flatMap(({ tagGroup, tags }) =>
+      tags.map((tag) => ({
+        groupId: tagGroup.id,
+        groupName: tagGroup.name,
+        label: tag.name,
+        value: tag.id,
+      })),
+    );
+  }, [collectionTagFilters]);
+
+  useEffect(() => {
+    setDraft({
+      collection: (node.attrs.collection as string) || DEFAULT_COLLECTION_VIEW_ATTRS.collection,
+      layout: (node.attrs.layout as string) || DEFAULT_COLLECTION_VIEW_ATTRS.layout,
+      displayType: (node.attrs.displayType as string) || DEFAULT_COLLECTION_VIEW_ATTRS.displayType,
+      maxItems: Number(node.attrs.maxItems) || DEFAULT_COLLECTION_VIEW_ATTRS.maxItems,
+      sortBy: (node.attrs.sortBy as string) || DEFAULT_COLLECTION_VIEW_ATTRS.sortBy,
+      sortOrder: (node.attrs.sortOrder as string) || DEFAULT_COLLECTION_VIEW_ATTRS.sortOrder,
+      tagFilters: Array.isArray(node.attrs.tagFilters)
+        ? (node.attrs.tagFilters as string[])
+        : DEFAULT_COLLECTION_VIEW_ATTRS.tagFilters,
+    });
+  }, [node.attrs]);
+
+  useEffect(() => {
+    async function loadDisplayTypes() {
+      if (!siteData || !selectedCollection) {
+        setAvailableDisplayTypes([]);
+        return;
+      }
+
+      const collection = getCollections(siteData.manifest).find((item) => item.id === selectedCollection.id);
+      const itemLayoutId = collection?.defaultItemLayout;
+      if (!itemLayoutId) {
+        setAvailableDisplayTypes([]);
+        return;
+      }
+
+      try {
+        const itemLayoutManifest = await getLayoutManifest(siteData, itemLayoutId);
+        if (!itemLayoutManifest?.partials) {
+          setAvailableDisplayTypes([]);
+          return;
+        }
+
+        setAvailableDisplayTypes(itemLayoutManifest.partials.map((partial) => {
+          const pathParts = partial.path.split('/');
+          const filename = pathParts[pathParts.length - 1]?.replace('.hbs', '') || '';
+          return {
+            value: filename,
+            label: partial.name,
+            description: partial.description,
+            isDefault: partial.isDefault,
+          };
+        }));
+      } catch (error) {
+        console.error('[CollectionView] Failed to load display types:', error);
+        setAvailableDisplayTypes([]);
+      }
+    }
+
+    void loadDisplayTypes();
+  }, [siteData, selectedCollection]);
+
+  const defaultDisplayType = useMemo(() => {
+    const defaultPartial = availableDisplayTypes.find((type) => type.isDefault);
+    return defaultPartial?.value || availableDisplayTypes[0]?.value || '';
+  }, [availableDisplayTypes]);
 
   return (
     <NodeViewWrapper className="my-4" contentEditable={false}>
@@ -79,12 +187,21 @@ function CollectionViewNode(props: ReactNodeViewProps<HTMLDivElement>) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit collection view</DialogTitle>
+            <DialogDescription>Choose how this collection is rendered in the page body.</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4">
             <div className="grid gap-2">
               <span className="text-sm font-medium">Collection</span>
-              <Select value={draft.collection} onValueChange={(value) => setDraft((current) => ({ ...current, collection: value }))}>
+              <Select
+                value={draft.collection}
+                onValueChange={(value) => setDraft((current) => ({
+                  ...current,
+                  collection: value,
+                  displayType: '',
+                  tagFilters: [],
+                }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a collection" />
                 </SelectTrigger>
@@ -100,12 +217,38 @@ function CollectionViewNode(props: ReactNodeViewProps<HTMLDivElement>) {
 
             <div className="grid gap-2">
               <span className="text-sm font-medium">Layout</span>
-              <Input value={draft.layout} onChange={(event) => setDraft((current) => ({ ...current, layout: event.target.value }))} />
+              <Select value={draft.layout} onValueChange={(value) => setDraft((current) => ({ ...current, layout: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COLLECTION_VIEW_LAYOUT_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-2">
               <span className="text-sm font-medium">Display type</span>
-              <Input value={draft.displayType} onChange={(event) => setDraft((current) => ({ ...current, displayType: event.target.value }))} />
+              <Select
+                value={draft.displayType || defaultDisplayType}
+                onValueChange={(value) => setDraft((current) => ({ ...current, displayType: value }))}
+                disabled={availableDisplayTypes.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select display type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableDisplayTypes.map((displayType) => (
+                    <SelectItem key={displayType.value} value={displayType.value}>
+                      {displayType.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -126,7 +269,13 @@ function CollectionViewNode(props: ReactNodeViewProps<HTMLDivElement>) {
 
               <div className="grid gap-2">
                 <span className="text-sm font-medium">Tag filters</span>
-                <Input value={draft.tagFilters} onChange={(event) => setDraft((current) => ({ ...current, tagFilters: event.target.value }))} />
+                <SimpleMultiSelect
+                  options={availableTagOptions as SimpleMultiSelectOption[]}
+                  selected={draft.tagFilters}
+                  onChange={(selected) => setDraft((current) => ({ ...current, tagFilters: selected }))}
+                  placeholder={availableTagOptions.length > 0 ? 'Select tags...' : 'No tags available'}
+                  className="w-full"
+                />
               </div>
             </div>
 
@@ -170,14 +319,11 @@ function CollectionViewNode(props: ReactNodeViewProps<HTMLDivElement>) {
                 updateAttributes({
                   collection: draft.collection,
                   layout: draft.layout,
-                  displayType: draft.displayType,
+                  displayType: draft.displayType || defaultDisplayType,
                   maxItems: draft.maxItems,
                   sortBy: draft.sortBy,
                   sortOrder: draft.sortOrder,
-                  tagFilters: draft.tagFilters
-                    .split(',')
-                    .map((value) => value.trim())
-                    .filter(Boolean),
+                  tagFilters: draft.tagFilters,
                 });
                 setIsOpen(false);
               }}
@@ -201,6 +347,7 @@ export const CollectionView = Node.create<CollectionViewOptions>({
   addOptions() {
     return {
       collections: [],
+      siteId: undefined,
     };
   },
 

@@ -17,6 +17,67 @@ vi.mock('@/core/services/renderer/render.service', () => ({
 
 import { generateHtmlPages } from '../page.builder';
 
+function enableCollectionPagination() {
+  const site = createSiteFixture('collectionSite');
+
+  site.contentFiles![1] = {
+    ...site.contentFiles![1],
+    frontmatter: {
+      ...site.contentFiles![1]!.frontmatter,
+      layoutConfig: {
+        ...site.contentFiles![1]!.frontmatter.layoutConfig,
+        pagination: {
+          enabled: true,
+          itemsPerPage: 2,
+        },
+      },
+    },
+  };
+
+  site.contentFiles!.push(
+    {
+      path: 'content/posts/second-post.md',
+      slug: 'posts/second-post',
+      frontmatter: {
+        title: 'Second Post',
+        layout: 'post',
+        date: '2025-01-09',
+      },
+      content: 'Second post body',
+    },
+    {
+      path: 'content/posts/third-post.md',
+      slug: 'posts/third-post',
+      frontmatter: {
+        title: 'Third Post',
+        layout: 'post',
+        date: '2025-01-08',
+      },
+      content: 'Third post body',
+    },
+  );
+
+  site.manifest.collectionItems = [
+    ...(site.manifest.collectionItems || []),
+    {
+      collectionId: 'posts',
+      slug: 'second-post',
+      path: 'content/posts/second-post.md',
+      title: 'Second Post',
+      url: '',
+    },
+    {
+      collectionId: 'posts',
+      slug: 'third-post',
+      path: 'content/posts/third-post.md',
+      title: 'Third Post',
+      url: '',
+    },
+  ];
+
+  return site;
+}
+
 describe('page.builder fixture coverage', () => {
   beforeEach(() => {
     renderMock.mockClear();
@@ -55,5 +116,28 @@ describe('page.builder fixture coverage', () => {
       'posts/launch-day/index.html',
     ]);
     expect(pages['posts/launch-day/index.html']).toContain('content/posts/launch-day.md');
+  });
+
+  test('builds paginated collection listing pages when pagination is enabled', async () => {
+    const site = enableCollectionPagination();
+
+    const pages = await generateHtmlPages(site);
+
+    expect(Object.keys(pages).sort()).toEqual([
+      'index.html',
+      'posts/index.html',
+      'posts/launch-day/index.html',
+      'posts/page/2/index.html',
+      'posts/second-post/index.html',
+      'posts/third-post/index.html',
+    ]);
+    expect(renderMock).toHaveBeenCalledWith(
+      site,
+      expect.objectContaining({
+        contentFile: expect.objectContaining({ path: 'content/posts.md' }),
+        pageNumber: 2,
+      }),
+      expect.anything(),
+    );
   });
 });

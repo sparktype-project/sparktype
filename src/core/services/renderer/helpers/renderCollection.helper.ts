@@ -5,6 +5,7 @@ import type { SparktypeHelper } from './types';
 import type { ParsedMarkdownFile, LayoutConfig, LocalSiteData, LayoutManifest } from '@/core/types';
 import type { HelperOptions } from 'handlebars';
 import { getCollectionContent, getCollection, sortCollectionItems } from '@/core/services/collections.service';
+import { filterContentBySelectedTags } from '@/core/services/tags.service';
 
 /**
  * Defines the expected shape of the root context object passed by the theme engine.
@@ -59,6 +60,10 @@ export const renderCollectionHelper: SparktypeHelper = () => ({
       }
       let collectionItems = getCollectionContent(root.siteData, layoutConfig.collectionId);
 
+      if (layoutConfig.filterTags?.length) {
+        collectionItems = filterContentBySelectedTags(root.siteData.manifest, collectionItems, layoutConfig.filterTags);
+      }
+
       // Apply sorting if specified in layoutConfig
       if (layoutConfig.sortBy) {
         collectionItems = sortCollectionItems(collectionItems, layoutConfig.sortBy, layoutConfig.sortOrder || 'desc');
@@ -93,4 +98,3 @@ export const renderCollectionHelper: SparktypeHelper = () => ({
     }
   }
 });
-

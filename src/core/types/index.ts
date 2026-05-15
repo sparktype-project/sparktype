@@ -310,6 +310,7 @@ export interface ThemeInfo {
 export interface MarkdownFrontmatter {
   title: string;
   layout: string; 
+  displayCollection?: boolean;
   layoutConfig?: LayoutConfig; // Collection layout configuration
   homepage?: boolean;
   tags?: Record<string, string[]>; // groupId -> array of tag IDs
@@ -470,6 +471,7 @@ interface BasePageResolution {
   layoutPath: string;
   collectionItems?: ParsedMarkdownFile[]; 
   pagination?: PaginationData;
+  pageNumber?: number;
 }
 
 /**

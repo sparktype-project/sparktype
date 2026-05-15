@@ -1,10 +1,13 @@
 import type { MarkdownFrontmatter } from '@/core/types';
 import type { CollectionContext } from '@/core/services/collectionContext.service';
 
-export function shouldDisplayCollectionList(
+export function shouldUseCollectionDisplayEditor(
   frontmatter: MarkdownFrontmatter | null | undefined,
   collectionContext: CollectionContext,
 ): boolean {
-  return Boolean(frontmatter?.layoutConfig?.collectionId) && !collectionContext.isCollectionItem;
-}
+  if (collectionContext.isCollectionItem) {
+    return false;
+  }
 
+  return frontmatter?.displayCollection === true;
+}

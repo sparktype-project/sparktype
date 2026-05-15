@@ -2,9 +2,10 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useAppStore } from '@/core/state/useAppStore';
-import { getCollections } from '@/core/services/collections.service';
+import { getCollectionContent, getCollections } from '@/core/services/collections.service';
 import { getLayoutManifest } from '@/core/services/config/configHelpers.service';
 import type { LayoutConfig } from '@/core/types';
+import { getAppliedTagsForCollection } from '@/core/services/tags.service';
 
 // UI Components
 import { Label } from '@/core/components/ui/label';
@@ -17,6 +18,7 @@ import {
 } from '@/core/components/ui/select';
 import { Switch } from '@/core/components/ui/switch';
 import { Input } from '@/core/components/ui/input';
+import { SimpleMultiSelect, type SimpleMultiSelectOption } from '@/features/editor/components/SimpleMultiSelect';
 
 interface CollectionConfigFormProps {
   siteId: string;
@@ -57,6 +59,15 @@ export default function CollectionConfigForm({
     if (!layoutConfig?.collectionId) return null;
     return collections.find(c => c.id === layoutConfig.collectionId);
   }, [collections, layoutConfig?.collectionId]);
+
+  const collectionTagFilters = useMemo(() => {
+    if (!siteData || !selectedCollection) {
+      return [];
+    }
+
+    const collectionItems = getCollectionContent(siteData, selectedCollection.id);
+    return getAppliedTagsForCollection(siteData, selectedCollection.id, collectionItems);
+  }, [siteData, selectedCollection]);
 
   // Load available display types from the collection's item layout
   useEffect(() => {
@@ -127,7 +138,7 @@ export default function CollectionConfigForm({
         <Label htmlFor="collection-select">Data source</Label>
         <Select
           value={layoutConfig?.collectionId || ''}
-          onValueChange={(value) => handleConfigChange({ collectionId: value })}
+          onValueChange={(value) => handleConfigChange({ collectionId: value, filterTags: undefined })}
         >
           <SelectTrigger id="collection-select" className="w-full">
             <SelectValue placeholder="Select a collection to display..." />
@@ -203,6 +214,58 @@ export default function CollectionConfigForm({
           </SelectContent>
         </Select>
       </div>
+
+      {/* Tag Filters */}
+      {selectedCollection && (
+        <div className="space-y-3 pt-2 border-t">
+          <div className="space-y-1">
+            <Label className="text-sm font-medium">Tag filter</Label>
+            <p className="text-xs text-muted-foreground">
+              Limit this view to tags already used by items in the selected collection.
+            </p>
+          </div>
+
+          {collectionTagFilters.length > 0 ? (
+            <div className="space-y-4">
+              {collectionTagFilters.map(({ tagGroup, tags }) => {
+                const options: SimpleMultiSelectOption[] = tags.map((tag) => ({
+                  label: tag.name,
+                  value: tag.id,
+                }));
+
+                const selectedTagsForGroup = (layoutConfig?.filterTags || []).filter((tagId) =>
+                  tags.some((tag) => tag.id === tagId),
+                );
+
+                return (
+                  <div key={tagGroup.id} className="space-y-2">
+                    <Label className="text-sm font-medium">{tagGroup.name}</Label>
+                    <SimpleMultiSelect
+                      options={options}
+                      selected={selectedTagsForGroup}
+                      onChange={(selectedTagIds) => {
+                        const otherSelectedTagIds = (layoutConfig?.filterTags || []).filter((tagId) =>
+                          !tags.some((tag) => tag.id === tagId),
+                        );
+                        handleConfigChange({ filterTags: [...otherSelectedTagIds, ...selectedTagIds] });
+                      }}
+                      placeholder={`Select ${tagGroup.name.toLowerCase()}...`}
+                      className="w-full"
+                    />
+                    {tagGroup.description && (
+                      <p className="text-xs text-muted-foreground">{tagGroup.description}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground p-2 border rounded-md bg-muted/50">
+              No applicable tags are currently assigned to items in this collection.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Pagination Settings */}
       <div className="space-y-3 pt-2 border-t">

@@ -4,6 +4,58 @@ import type { LocalSiteData, PageResolutionResult } from '@/core/types';
 import { PageType } from '@/core/types';
 import { getUrlForNode } from './urlUtils.service';
 import { flattenStructure } from './fileTree.service';
+import { getTotalCollectionPages, isPaginationEnabled } from './collectionPagination.service';
+
+function parsePaginationSegments(slugArray: string[]): {
+    baseSlugArray: string[];
+    pageNumber?: number;
+    isInvalid: boolean;
+} {
+    if (slugArray.length >= 2 && slugArray[slugArray.length - 2] === 'page') {
+        const pageNumber = Number(slugArray[slugArray.length - 1]);
+        if (!Number.isInteger(pageNumber) || pageNumber < 2) {
+            return {
+                baseSlugArray: slugArray,
+                isInvalid: true,
+            };
+        }
+
+        return {
+            baseSlugArray: slugArray.slice(0, -2),
+            pageNumber,
+            isInvalid: false,
+        };
+    }
+
+    return {
+        baseSlugArray: slugArray,
+        isInvalid: false,
+    };
+}
+
+function validatePaginatedPageRequest(
+    siteData: LocalSiteData,
+    pagePath: string,
+    pageNumber?: number,
+): string | null {
+    if (!pageNumber) {
+        return null;
+    }
+
+    const contentFile = siteData.contentFiles?.find((file) => file.path === pagePath);
+    const layoutConfig = contentFile?.frontmatter.layoutConfig;
+
+    if (!contentFile || !layoutConfig?.collectionId || !isPaginationEnabled(layoutConfig)) {
+        return 'Pagination is not enabled for this page.';
+    }
+
+    const totalPages = getTotalCollectionPages(siteData, layoutConfig);
+    if (pageNumber > totalPages) {
+        return `Pagination page ${pageNumber} exceeds the available ${totalPages} page(s).`;
+    }
+
+    return null;
+}
 
 /**
  * Finds the correct page to render based on a URL slug path. This is the
@@ -25,12 +77,21 @@ export async function resolvePageContent(
 ): Promise<PageResolutionResult> {
 
     const { manifest, contentFiles } = siteData;
-    const pathFromSlug = slugArray.join('/');
+    const paginationRequest = parsePaginationSegments(slugArray);
+    if (paginationRequest.isInvalid) {
+        return {
+            type: PageType.NotFound,
+            errorMessage: `Invalid pagination URL path: /${slugArray.join('/')}`,
+        };
+    }
+
+    const { baseSlugArray, pageNumber } = paginationRequest;
+    const pathFromSlug = baseSlugArray.join('/');
 
     // --- Step 1: Resolve against regular pages in the navigation structure ---
 
     // Handle homepage request (empty slug array)
-    if (slugArray.length === 0 || (slugArray.length === 1 && slugArray[0] === '')) {
+    if (baseSlugArray.length === 0 || (baseSlugArray.length === 1 && baseSlugArray[0] === '')) {
         const homepageNode = manifest.structure[0];
         if (!homepageNode) {
             return { type: PageType.NotFound, errorMessage: "No homepage has been designated for this site." };
@@ -39,8 +100,18 @@ export async function resolvePageContent(
         if (!contentFile) {
             return { type: PageType.NotFound, errorMessage: `Homepage file at "${homepageNode.path}" is missing.` };
         }
+        const paginationError = validatePaginatedPageRequest(siteData, homepageNode.path, pageNumber);
+        if (paginationError) {
+            return { type: PageType.NotFound, errorMessage: paginationError };
+        }
         // NOTE: Collection querying for listing pages is now handled by the renderer, not the resolver.
-        return { type: PageType.SinglePage, pageTitle: contentFile.frontmatter.title, contentFile, layoutPath: contentFile.frontmatter.layout };
+        return {
+            type: PageType.SinglePage,
+            pageTitle: contentFile.frontmatter.title,
+            contentFile,
+            layoutPath: contentFile.frontmatter.layout,
+            pageNumber,
+        };
     }
 
     // Attempt to find a regular page by matching its generated URL.
@@ -53,7 +124,17 @@ export async function resolvePageContent(
             if (!contentFile) {
                  return { type: PageType.NotFound, errorMessage: `Page file at "${node.path}" is missing.` };
             }
-            return { type: PageType.SinglePage, pageTitle: contentFile.frontmatter.title, contentFile, layoutPath: contentFile.frontmatter.layout };
+            const paginationError = validatePaginatedPageRequest(siteData, node.path, pageNumber);
+            if (paginationError) {
+                return { type: PageType.NotFound, errorMessage: paginationError };
+            }
+            return {
+                type: PageType.SinglePage,
+                pageTitle: contentFile.frontmatter.title,
+                contentFile,
+                layoutPath: contentFile.frontmatter.layout,
+                pageNumber,
+            };
         }
     }
 
@@ -62,6 +143,12 @@ export async function resolvePageContent(
     for (const itemRef of collectionItems) {
         const itemUrl = getUrlForNode(itemRef, manifest, false, undefined, siteData);
         if (itemUrl === pathFromSlug) {
+            if (pageNumber) {
+                return {
+                    type: PageType.NotFound,
+                    errorMessage: 'Collection item pages do not support paginated URLs.',
+                };
+            }
             const contentFile = contentFiles?.find(f => f.path === itemRef.path);
             if (!contentFile) {
                 return { type: PageType.NotFound, errorMessage: `Collection item file at "${itemRef.path}" is missing.` };

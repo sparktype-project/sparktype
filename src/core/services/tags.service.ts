@@ -1,7 +1,7 @@
 // src/core/services/tags.service.ts
 
-import type { Manifest, Tag, ParsedMarkdownFile } from '@/core/types';
-import { getTagGroup } from './tagGroups.service';
+import type { Manifest, Tag, ParsedMarkdownFile, TagGroup } from '@/core/types';
+import { getTagGroup, getTagGroupsForCollection } from './tagGroups.service';
 
 /**
  * ============================================================================
@@ -92,6 +92,80 @@ export function getContentTags(manifest: Manifest, contentFile: ParsedMarkdownFi
   }
   
   return result;
+}
+
+/**
+ * Gets the subset of applicable tags that are actually used by items in a collection.
+ * Results are grouped by tag group and limited to groups that apply to the collection.
+ */
+export function getAppliedTagsForCollection(
+  siteData: { manifest: Manifest; contentFiles?: ParsedMarkdownFile[] },
+  collectionId: string,
+  collectionItems: ParsedMarkdownFile[],
+): Array<{ tagGroup: TagGroup; tags: Tag[] }> {
+  const applicableTagGroups = getTagGroupsForCollection(siteData.manifest, collectionId);
+
+  return applicableTagGroups
+    .map((tagGroup) => {
+      const usedTagIds = new Set<string>();
+
+      for (const item of collectionItems) {
+        const groupTagIds = item.frontmatter.tags?.[tagGroup.id];
+        if (!Array.isArray(groupTagIds)) {
+          continue;
+        }
+
+        for (const tagId of groupTagIds) {
+          usedTagIds.add(tagId);
+        }
+      }
+
+      const tags = getTagsByIds(siteData.manifest, Array.from(usedTagIds));
+      return { tagGroup, tags };
+    })
+    .filter(({ tags }) => tags.length > 0);
+}
+
+/**
+ * Filters collection items by selected tag IDs. Multiple selected tags within the same
+ * group behave as OR, while selections across groups behave as AND.
+ */
+export function filterContentBySelectedTags(
+  manifest: Manifest,
+  contentFiles: ParsedMarkdownFile[],
+  selectedTagIds?: string[],
+): ParsedMarkdownFile[] {
+  if (!selectedTagIds || selectedTagIds.length === 0) {
+    return contentFiles;
+  }
+
+  const selectedTags = getTagsByIds(manifest, selectedTagIds);
+  if (selectedTags.length === 0) {
+    return contentFiles;
+  }
+
+  const selectedByGroup = new Map<string, Set<string>>();
+  for (const tag of selectedTags) {
+    const groupTagIds = selectedByGroup.get(tag.groupId) ?? new Set<string>();
+    groupTagIds.add(tag.id);
+    selectedByGroup.set(tag.groupId, groupTagIds);
+  }
+
+  return contentFiles.filter((file) => {
+    for (const [groupId, groupTagIds] of selectedByGroup.entries()) {
+      const fileTagIds = file.frontmatter.tags?.[groupId];
+      if (!Array.isArray(fileTagIds)) {
+        return false;
+      }
+
+      const hasMatchingTag = fileTagIds.some((tagId) => groupTagIds.has(tagId));
+      if (!hasMatchingTag) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 }
 
 // --- VALIDATION & UTILITY HELPERS ---

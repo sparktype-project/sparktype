@@ -5,6 +5,7 @@ import { flattenStructure } from '@/core/services/fileTree.service';
 import { resolvePageContent } from '@/core/services/pageResolver.service';
 import { render } from '@/core/services/renderer/render.service';
 import { generateExportUrl } from '@/core/services/urlUtils.service';
+import { getTotalCollectionPages, isPaginationEnabled } from '@/core/services/collectionPagination.service';
 
 /**
  * ============================================================================
@@ -56,6 +57,36 @@ export async function generateHtmlPages(siteData: LocalSiteData): Promise<Record
         } catch (error) {
             console.error(`[PageBuilder] ❌ Failed to render page ${outputPath}:`, error);
             throw error; // Re-throw to stop the build process
+        }
+
+        const layoutConfig = nodeFile?.frontmatter.layoutConfig;
+        if (nodeFile && layoutConfig?.collectionId && isPaginationEnabled(layoutConfig)) {
+            const totalPages = getTotalCollectionPages(siteData, layoutConfig);
+
+            for (let pageNumber = 2; pageNumber <= totalPages; pageNumber += 1) {
+                const paginatedSlugArray = [...slugArray, 'page', String(pageNumber)];
+                const paginatedResolution = await resolvePageContent(siteData, paginatedSlugArray);
+                if (paginatedResolution.type === PageType.NotFound) {
+                    console.warn(`[Build] Skipping paginated page: ${node.path} page ${pageNumber}. Reason: ${paginatedResolution.errorMessage}`);
+                    continue;
+                }
+
+                const paginatedOutputPath = generateExportUrl(node, manifest, pageNumber, siteData, undefined, true);
+                const paginatedRelativeAssetPath = '../'.repeat((paginatedOutputPath.match(/\//g) || []).length);
+
+                try {
+                    const finalHtml = await render(siteData, paginatedResolution, {
+                        siteRootPath: '/',
+                        isExport: true,
+                        relativeAssetPath: paginatedRelativeAssetPath,
+                    });
+                    htmlPages[paginatedOutputPath] = finalHtml;
+                    console.log(`[PageBuilder] ✅ Successfully generated ${paginatedOutputPath} (${finalHtml.length} characters)`);
+                } catch (error) {
+                    console.error(`[PageBuilder] ❌ Failed to render paginated page ${paginatedOutputPath}:`, error);
+                    throw error;
+                }
+            }
         }
     }
 

@@ -11,6 +11,7 @@ import { type MarkdownFrontmatter } from '@/core/types';
 
 // UI Components
 import { Button } from '@/core/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/core/components/ui/card';
 import { FilePlus } from 'lucide-react';
 import ThreeColumnLayout from '@/core/components/layout/ThreeColumnLayout';
 import LeftSidebar from '@/features/editor/components/LeftSidebar';
@@ -21,19 +22,19 @@ import { TipTapEditor, type TipTapEditorRef } from '@/components/editor/tiptap/T
 import FrontmatterSidebar from '@/features/editor/components/FrontmatterSidebar';
 import PrimaryContentFields from '@/features/editor/components/PrimaryContentFields';
 import SaveButton from '@/features/editor/components/SaveButton';
+import CollectionConfigForm from '@/features/editor/components/forms/CollectionConfigForm';
 
 // Modular Hooks
 import { usePageIdentifier } from '@/features/editor/hooks/usePageIdentifier';
 import { useFileContent } from '@/features/editor/hooks/useFileContent';
 import { useFilePersistence } from '@/features/editor/hooks/useFilePersistence';
-import CollectionItemList from '@/features/editor/components/CollectionItemList';
 import Loader from '@/core/components/ui/Loader';
 import {
   getEditorSessionKey,
   normalizeEditorContentForLoad,
   shouldReinitializeEditorSession,
 } from '@/features/editor/utils/editorContent';
-import { shouldDisplayCollectionList } from '@/features/editor/utils/editorRoute';
+import { shouldUseCollectionDisplayEditor } from '@/features/editor/utils/editorRoute';
 import { useEditor } from '@/features/editor/contexts/useEditor';
 
 /**
@@ -98,8 +99,12 @@ function EditContentPageInternal() {
     },
     applyPendingSlugChange
   });
-  const isCollectionListPage = shouldDisplayCollectionList(frontmatter, collectionContext);
-  const collectionListId = isCollectionListPage ? frontmatter?.layoutConfig?.collectionId : undefined;
+
+  // Extract stable references to prevent re-renders on content file changes
+  const siteManifest = useMemo(() => site?.manifest, [site?.manifest]);
+  const layoutFiles = useMemo(() => site?.layoutFiles, [site?.layoutFiles]);
+  const themeFiles = useMemo(() => site?.themeFiles, [site?.themeFiles]);
+  const isCollectionDisplayPage = shouldUseCollectionDisplayEditor(frontmatter, collectionContext);
 
   // Initialize editor with content when data is ready
   useEffect(() => {
@@ -108,11 +113,11 @@ function EditContentPageInternal() {
       hasContentFiles: !!site?.contentFiles,
       hasEditorRef: !!editorRef.current,
       filePath,
-      isCollectionLayout: isCollectionListPage,
+      isCollectionLayout: isCollectionDisplayPage,
     });
 
-    // Don't try to initialize if this is a collection layout page (no editor)
-    if (isCollectionListPage) {
+    // Collection display pages do not have a body editor.
+    if (isCollectionDisplayPage) {
       console.log('Skipping editor initialization - collection layout page');
       return;
     }
@@ -154,15 +159,10 @@ function EditContentPageInternal() {
 
       return () => clearTimeout(timer);
     }
-  }, [status, filePath, isNewFileMode, initialSavedContent, isCollectionListPage, site?.contentFiles]);
+  }, [status, filePath, isNewFileMode, initialSavedContent, isCollectionDisplayPage, site?.contentFiles]);
 
   // --- 2. Manage Sidebars via UI Store ---
   const { leftSidebarContent, rightSidebarContent, setLeftAvailable, setRightAvailable, setLeftSidebarContent, setRightSidebarContent } = useUIStore(state => state.sidebar);
-
-  // Extract stable references to prevent re-renders on content file changes
-  const siteManifest = useMemo(() => site?.manifest, [site?.manifest]);
-  const layoutFiles = useMemo(() => site?.layoutFiles, [site?.layoutFiles]);
-  const themeFiles = useMemo(() => site?.themeFiles, [site?.themeFiles]);
 
   const rightSidebarComponent = useMemo(() => {
     if (status !== 'ready' || !frontmatter || !siteId || !siteManifest) {
@@ -288,9 +288,24 @@ function EditContentPageInternal() {
                   />
                 </div>
                 <div className="mt-6 flex-1 min-h-0">
-                  {isCollectionListPage && collectionListId ? (
-                    <CollectionItemList siteId={siteId} collectionId={collectionListId} />
-
+                  {isCollectionDisplayPage ? (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Display settings</CardTitle>
+                        <CardDescription>
+                          Choose which collection this page renders and how its items are sorted, paginated, and displayed.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <CollectionConfigForm
+                          siteId={siteId}
+                          layoutConfig={frontmatter.layoutConfig}
+                          onLayoutConfigChange={(layoutConfig) => {
+                            handleFrontmatterChange({ layoutConfig });
+                          }}
+                        />
+                      </CardContent>
+                    </Card>
                   ) : (
                     <TipTapEditor
                       ref={editorRef}

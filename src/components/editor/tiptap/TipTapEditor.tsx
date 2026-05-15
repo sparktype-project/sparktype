@@ -526,6 +526,7 @@ export const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(
         MediaEmbed,
         CollectionView.configure({
           collections,
+          siteId,
         }),
         Column,
         ColumnGroup,

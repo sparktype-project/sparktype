@@ -1,5 +1,6 @@
 import type { LocalSiteData, PageResolutionResult } from '@/core/types';
 import { PageType } from '@/core/types';
+import Handlebars from 'handlebars';
 import { compactHtml } from '@/test/support/html';
 import { createSiteFixture } from '@/test/support/siteFixtures';
 
@@ -142,6 +143,74 @@ describe('page resolver and render integration', () => {
     });
   });
 
+  test('resolves paginated collection display routes when pagination is enabled', async () => {
+    const site = createSiteFixture('collectionSite');
+
+    site.contentFiles![1] = {
+      ...site.contentFiles![1],
+      frontmatter: {
+        ...site.contentFiles![1]!.frontmatter,
+        layoutConfig: {
+          ...site.contentFiles![1]!.frontmatter.layoutConfig,
+          pagination: {
+            enabled: true,
+            itemsPerPage: 2,
+          },
+        },
+      },
+    };
+
+    site.contentFiles!.push(
+      {
+        path: 'content/posts/second-post.md',
+        slug: 'posts/second-post',
+        frontmatter: {
+          title: 'Second Post',
+          layout: 'post',
+          date: '2025-01-09',
+        },
+        content: 'Second post body',
+      },
+      {
+        path: 'content/posts/third-post.md',
+        slug: 'posts/third-post',
+        frontmatter: {
+          title: 'Third Post',
+          layout: 'post',
+          date: '2025-01-08',
+        },
+        content: 'Third post body',
+      },
+    );
+
+    site.manifest.collectionItems = [
+      ...(site.manifest.collectionItems || []),
+      {
+        collectionId: 'posts',
+        slug: 'second-post',
+        path: 'content/posts/second-post.md',
+        title: 'Second Post',
+        url: '',
+      },
+      {
+        collectionId: 'posts',
+        slug: 'third-post',
+        path: 'content/posts/third-post.md',
+        title: 'Third Post',
+        url: '',
+      },
+    ];
+
+    await expect(resolvePageContent(site, ['posts', 'page', '2'])).resolves.toMatchObject({
+      type: PageType.SinglePage,
+      contentFile: expect.objectContaining({ path: 'content/posts.md' }),
+      pageNumber: 2,
+    });
+    await expect(resolvePageContent(site, ['posts', 'page', '3'])).resolves.toMatchObject({
+      type: PageType.NotFound,
+    });
+  });
+
   test('renders custom theme pages with merged theme config and parent layout inheritance', async () => {
     const site = createSiteFixture('customThemeSite');
     const resolution: PageResolutionResult = {
@@ -161,6 +230,54 @@ describe('page resolver and render integration', () => {
     expect(normalized).toContain('data-accent="#0f766e"');
     expect(normalized).toContain('<footer>Custom brand</footer>');
     expect(normalized).toContain('<main data-layout="page">');
+  });
+
+  test('renders collection_view directives inside page content', async () => {
+    const site = createSiteFixture('collectionSite');
+    site.contentFiles![0] = {
+      ...site.contentFiles![0],
+      content: '::collection_view{collection="posts" layout="list-view" maxItems="1"}',
+    };
+
+    Handlebars.registerPartial('post/partials/card', '<article data-collection-item>{{frontmatter.title}}</article>');
+
+    getLayoutManifestMock.mockImplementation(async (_siteData: LocalSiteData, layoutId: string) => {
+      if (layoutId === 'post') {
+        return {
+          id: 'post',
+          name: 'Post',
+          layoutType: 'item',
+          partials: [
+            {
+              path: 'card.hbs',
+              name: 'Card',
+              isDefault: true,
+            },
+          ],
+        };
+      }
+
+      return {
+        id: 'page',
+        name: 'Page',
+        layoutType: 'page',
+        parentLayout: 'base',
+      };
+    });
+
+    const resolution = await resolvePageContent(site, []);
+    expect(resolution.type).toBe(PageType.SinglePage);
+
+    const html = await render(site, resolution, {
+      siteRootPath: '/',
+      isExport: false,
+    });
+
+    const normalized = compactHtml(html);
+    expect(normalized).toContain('data-collection-item');
+    expect(normalized).toContain('Launch Day');
+
+    delete Handlebars.partials['post/partials/card'];
   });
 
   test('sanitizes unsafe html by stripping executable and embedded content', async () => {
@@ -295,5 +412,327 @@ describe('page resolver and render integration', () => {
     expect(normalized).toContain('src="https://player.cloudinary.com/embed/?cloud_name=demo-cloud&amp;public_id=videos%2Fdemo&amp;source%5Bsource_types%5D%5B0%5D=mp4"');
     expect(normalized).toContain('padding-top:56.25%');
     expect(normalized).not.toContain('<video');
+  });
+
+  test('renders paginated collection pages with pagination context for list layouts', async () => {
+    const site = createSiteFixture('collectionSite');
+
+    site.contentFiles![1] = {
+      ...site.contentFiles![1],
+      frontmatter: {
+        ...site.contentFiles![1]!.frontmatter,
+        layoutConfig: {
+          ...site.contentFiles![1]!.frontmatter.layoutConfig,
+          pagination: {
+            enabled: true,
+            itemsPerPage: 2,
+          },
+        },
+      },
+    };
+
+    site.contentFiles!.push(
+      {
+        path: 'content/posts/second-post.md',
+        slug: 'posts/second-post',
+        frontmatter: {
+          title: 'Second Post',
+          layout: 'post',
+          date: '2025-01-09',
+        },
+        content: 'Second post body',
+      },
+      {
+        path: 'content/posts/third-post.md',
+        slug: 'posts/third-post',
+        frontmatter: {
+          title: 'Third Post',
+          layout: 'post',
+          date: '2025-01-08',
+        },
+        content: 'Third post body',
+      },
+    );
+
+    site.manifest.collectionItems = [
+      ...(site.manifest.collectionItems || []),
+      {
+        collectionId: 'posts',
+        slug: 'second-post',
+        path: 'content/posts/second-post.md',
+        title: 'Second Post',
+        url: '',
+      },
+      {
+        collectionId: 'posts',
+        slug: 'third-post',
+        path: 'content/posts/third-post.md',
+        title: 'Third Post',
+        url: '',
+      },
+    ];
+
+    getLayoutManifestMock.mockImplementation(async (_siteData: LocalSiteData, layoutId: string) => {
+      if (layoutId === 'listing') {
+        return {
+          id: 'listing',
+          name: 'Listing',
+          layoutType: 'list',
+        };
+      }
+
+      return {
+        id: 'post',
+        name: 'Post',
+        layoutType: 'item',
+        partials: [],
+      };
+    });
+    getThemeAssetContentMock.mockImplementation(async (_siteData: unknown, _themeName: string, assetPath: string) => {
+      if (assetPath === 'layouts/listing/index.hbs') {
+        return `<main>{{#each collectionItems}}<article>{{frontmatter.title}}</article>{{/each}}{{#if pagination}}<nav data-pagination="{{pagination.currentPage}}/{{pagination.totalPages}}" data-prev="{{pagination.prevPageUrl}}" data-next="{{pagination.nextPageUrl}}"></nav>{{/if}}</main>`;
+      }
+      if (assetPath === 'listing.hbs') {
+        return `{{{body}}}`;
+      }
+      if (assetPath === 'base.hbs') {
+        return `<html><body>{{{body}}}</body></html>`;
+      }
+      return null;
+    });
+    assemblePageContextMock.mockImplementation(async (_siteData: LocalSiteData, resolution: PageResolutionResult) => ({
+      ...resolution,
+      pageTitle: resolution.type === PageType.SinglePage ? resolution.contentFile.frontmatter.title : 'Not Found',
+      contentFile: resolution.type === PageType.SinglePage ? resolution.contentFile : undefined,
+    }));
+    assembleBaseContextMock.mockResolvedValue({});
+
+    const resolution = await resolvePageContent(site, ['posts', 'page', '2']);
+    expect(resolution.type).toBe(PageType.SinglePage);
+
+    const html = await render(site, resolution, {
+      siteRootPath: '/',
+      isExport: false,
+    });
+
+    const normalized = compactHtml(html);
+    expect(normalized).toContain('<article>Third Post</article>');
+    expect(normalized).not.toContain('<article>Launch Day</article>');
+    expect(normalized).toContain('data-pagination="2/2"');
+    expect(normalized).toContain('data-prev="#/sites/collection-site/view/posts"');
+  });
+
+  test('renders iframe-safe pager links for paginated collection previews', async () => {
+    const site = createSiteFixture('collectionSite');
+
+    site.contentFiles![1] = {
+      ...site.contentFiles![1],
+      frontmatter: {
+        ...site.contentFiles![1]!.frontmatter,
+        layoutConfig: {
+          ...site.contentFiles![1]!.frontmatter.layoutConfig,
+          pagination: {
+            enabled: true,
+            itemsPerPage: 2,
+          },
+        },
+      },
+    };
+
+    site.contentFiles!.push(
+      {
+        path: 'content/posts/second-post.md',
+        slug: 'posts/second-post',
+        frontmatter: {
+          title: 'Second Post',
+          layout: 'post',
+          date: '2025-01-09',
+        },
+        content: 'Second post body',
+      },
+      {
+        path: 'content/posts/third-post.md',
+        slug: 'posts/third-post',
+        frontmatter: {
+          title: 'Third Post',
+          layout: 'post',
+          date: '2025-01-08',
+        },
+        content: 'Third post body',
+      },
+    );
+
+    site.manifest.collectionItems = [
+      ...(site.manifest.collectionItems || []),
+      {
+        collectionId: 'posts',
+        slug: 'second-post',
+        path: 'content/posts/second-post.md',
+        title: 'Second Post',
+        url: '',
+      },
+      {
+        collectionId: 'posts',
+        slug: 'third-post',
+        path: 'content/posts/third-post.md',
+        title: 'Third Post',
+        url: '',
+      },
+    ];
+
+    getLayoutManifestMock.mockImplementation(async (_siteData: LocalSiteData, layoutId: string) => {
+      if (layoutId === 'listing') {
+        return {
+          id: 'listing',
+          name: 'Listing',
+          layoutType: 'list',
+        };
+      }
+
+      return {
+        id: 'post',
+        name: 'Post',
+        layoutType: 'item',
+        partials: [],
+      };
+    });
+    getThemeAssetContentMock.mockImplementation(async (_siteData: unknown, _themeName: string, assetPath: string) => {
+      if (assetPath === 'layouts/listing/index.hbs') {
+        return `<main>{{#if pagination}}<nav data-prev="{{pagination.prevPageUrl}}" data-next="{{pagination.nextPageUrl}}"></nav>{{/if}}</main>`;
+      }
+      if (assetPath === 'listing.hbs') {
+        return `{{{body}}}`;
+      }
+      if (assetPath === 'base.hbs') {
+        return `<html><body>{{{body}}}</body></html>`;
+      }
+      return null;
+    });
+    assemblePageContextMock.mockImplementation(async (_siteData: LocalSiteData, resolution: PageResolutionResult) => ({
+      ...resolution,
+      pageTitle: resolution.type === PageType.SinglePage ? resolution.contentFile.frontmatter.title : 'Not Found',
+      contentFile: resolution.type === PageType.SinglePage ? resolution.contentFile : undefined,
+    }));
+    assembleBaseContextMock.mockResolvedValue({});
+
+    const resolution = await resolvePageContent(site, ['posts', 'page', '2']);
+    expect(resolution.type).toBe(PageType.SinglePage);
+
+    const html = await render(site, resolution, {
+      siteRootPath: '/',
+      isExport: false,
+      forIframe: true,
+    });
+
+    const normalized = compactHtml(html);
+    expect(normalized).toContain('data-prev="posts"');
+    expect(normalized).not.toContain('#/sites/collection-site/view/posts');
+  });
+
+  test('renders export-safe pager links for downloaded paginated collection pages', async () => {
+    const site = createSiteFixture('collectionSite');
+
+    site.contentFiles![1] = {
+      ...site.contentFiles![1],
+      frontmatter: {
+        ...site.contentFiles![1]!.frontmatter,
+        layoutConfig: {
+          ...site.contentFiles![1]!.frontmatter.layoutConfig,
+          pagination: {
+            enabled: true,
+            itemsPerPage: 2,
+          },
+        },
+      },
+    };
+
+    site.contentFiles!.push(
+      {
+        path: 'content/posts/second-post.md',
+        slug: 'posts/second-post',
+        frontmatter: {
+          title: 'Second Post',
+          layout: 'post',
+          date: '2025-01-09',
+        },
+        content: 'Second post body',
+      },
+      {
+        path: 'content/posts/third-post.md',
+        slug: 'posts/third-post',
+        frontmatter: {
+          title: 'Third Post',
+          layout: 'post',
+          date: '2025-01-08',
+        },
+        content: 'Third post body',
+      },
+    );
+
+    site.manifest.collectionItems = [
+      ...(site.manifest.collectionItems || []),
+      {
+        collectionId: 'posts',
+        slug: 'second-post',
+        path: 'content/posts/second-post.md',
+        title: 'Second Post',
+        url: '',
+      },
+      {
+        collectionId: 'posts',
+        slug: 'third-post',
+        path: 'content/posts/third-post.md',
+        title: 'Third Post',
+        url: '',
+      },
+    ];
+
+    getLayoutManifestMock.mockImplementation(async (_siteData: LocalSiteData, layoutId: string) => {
+      if (layoutId === 'listing') {
+        return {
+          id: 'listing',
+          name: 'Listing',
+          layoutType: 'list',
+        };
+      }
+
+      return {
+        id: 'post',
+        name: 'Post',
+        layoutType: 'item',
+        partials: [],
+      };
+    });
+    getThemeAssetContentMock.mockImplementation(async (_siteData: unknown, _themeName: string, assetPath: string) => {
+      if (assetPath === 'layouts/listing/index.hbs') {
+        return `<main>{{#if pagination}}<nav data-prev="{{pagination.prevPageUrl}}" data-next="{{pagination.nextPageUrl}}"></nav>{{/if}}</main>`;
+      }
+      if (assetPath === 'listing.hbs') {
+        return `{{{body}}}`;
+      }
+      if (assetPath === 'base.hbs') {
+        return `<html><body>{{{body}}}</body></html>`;
+      }
+      return null;
+    });
+    assemblePageContextMock.mockImplementation(async (_siteData: LocalSiteData, resolution: PageResolutionResult) => ({
+      ...resolution,
+      pageTitle: resolution.type === PageType.SinglePage ? resolution.contentFile.frontmatter.title : 'Not Found',
+      contentFile: resolution.type === PageType.SinglePage ? resolution.contentFile : undefined,
+    }));
+    assembleBaseContextMock.mockResolvedValue({});
+
+    const resolution = await resolvePageContent(site, ['posts', 'page', '2']);
+    expect(resolution.type).toBe(PageType.SinglePage);
+
+    const html = await render(site, resolution, {
+      siteRootPath: '/',
+      isExport: true,
+      relativeAssetPath: '../../../',
+    });
+
+    const normalized = compactHtml(html);
+    expect(normalized).toContain('data-prev="../../index.html"');
+    expect(normalized).toContain('data-next=""');
   });
 });

@@ -66,6 +66,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
             setFrontmatter({
               title: '',
               layout: collectionContext.collectionItemLayout,
+              displayCollection: false,
               date: new Date().toISOString().split('T')[0],
               // Add any collection-specific defaults here
             });
@@ -74,6 +75,7 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
             setFrontmatter({
               title: '',
               layout: DEFAULT_PAGE_LAYOUT_PATH,
+              displayCollection: false,
               date: new Date().toISOString().split('T')[0],
             });
           }
@@ -117,7 +119,10 @@ export function useFileContent(siteId: string, filePath: string, isNewFileMode: 
         console.log('useFileContent - found file with content length:', fileData.content?.length);
         console.log('useFileContent - file content preview:', fileData.content?.substring(0, 100) + (fileData.content && fileData.content.length > 100 ? '...' : ''));
         if (loadedFilePathRef.current !== filePath) {
-          setFrontmatter(fileData.frontmatter);
+          setFrontmatter({
+            displayCollection: false,
+            ...fileData.frontmatter,
+          });
           // _markdownContent = fileData.content; // Not currently used
           setSlugState(fileData.slug);
           setPendingSlug(null); // Clear any pending changes when loading existing file

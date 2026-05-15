@@ -2,7 +2,7 @@
 
 import Handlebars from 'handlebars';
 import DOMPurify from 'dompurify';
-import type { ImageRef, LocalSiteData, PageResolutionResult, ParsedMarkdownFile } from '@/core/types';
+import type { ImageRef, LocalSiteData, PageResolutionResult, ParsedMarkdownFile, StructureNode } from '@/core/types';
 import { PageType } from '@/core/types';
 import { clearAssetContentCache, getAssetContent, getLayoutManifest, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
 import { getActiveImageService } from '@/core/services/images/images.service';
@@ -12,11 +12,19 @@ import { assemblePageContext, assembleBaseContext } from './context.service';
 import { getCollectionContent, sortCollectionItems } from '@/core/services/collections.service';
 import type { ImageService } from '@/core/types';
 import { imagePreprocessor } from '@/core/services/images/imagePreprocessor.service';
-import { getUrlForNode } from '@/core/services/urlUtils.service';
+import { generateExportUrl, generatePreviewUrl, getUrlForNode } from '@/core/services/urlUtils.service';
 import { getRelativePath } from '@/core/services/relativePaths.service';
 import { SECURITY_CONFIG } from '@/config/editorConfig';
 import type { Node as UnistNode } from 'unist';
 import { replaceCloudinaryHostedVideos } from './cloudinaryVideoPlayer';
+import {
+  createPaginationData,
+  getCollectionItemsForLayoutConfig,
+  getCollectionPaginationState,
+  getItemsPerPage,
+  isPaginationEnabled,
+} from '@/core/services/collectionPagination.service';
+import { filterContentBySelectedTags } from '@/core/services/tags.service';
 
 interface CollectionDirectiveAttributes {
     collection?: string;
@@ -25,6 +33,7 @@ interface CollectionDirectiveAttributes {
     maxItems?: string;
     sortBy?: string;
     sortOrder?: string;
+    tagFilters?: string;
     [key: string]: unknown;
 }
 
@@ -425,7 +434,7 @@ export async function render(
     if (pageLayoutManifest.layoutType === 'list') {
       const layoutConfig = resolution.contentFile.frontmatter.layoutConfig;
       if (layoutConfig && layoutConfig.collectionId) {
-        let collectionItems = getCollectionContent(synchronizedSiteData, layoutConfig.collectionId);
+        const collectionItems = getCollectionItemsForLayoutConfig(synchronizedSiteData, layoutConfig);
 
         // Get the collection to retrieve its default item layout
         const collection = synchronizedSiteData.manifest.collections?.find(c => c.id === layoutConfig.collectionId);
@@ -434,16 +443,89 @@ export async function render(
           console.log('[Render Service] Collection uses item layout:', itemLayoutId);
         }
 
-        // Apply sorting - always sort by date if no sortBy specified
-        const sortBy = layoutConfig.sortBy || 'date';
-        const sortOrder = layoutConfig.sortOrder || 'desc';
-
-        collectionItems = sortCollectionItems(collectionItems, sortBy, sortOrder);
-
-        enrichedResolution = {
-          ...resolution,
-          collectionItems
+        const requestedPage = resolution.pageNumber;
+        const currentPageNode: StructureNode = {
+          type: 'page',
+          title: resolution.contentFile.frontmatter.title,
+          path: resolution.contentFile.path,
+          slug: resolution.contentFile.slug,
         };
+
+        if (isPaginationEnabled(layoutConfig)) {
+          const paginationState = getCollectionPaginationState(
+            collectionItems.length,
+            requestedPage,
+            getItemsPerPage(layoutConfig),
+          );
+          const currentPagePath = generateExportUrl(
+            currentPageNode,
+            synchronizedSiteData.manifest,
+            paginationState.currentPage,
+            synchronizedSiteData,
+            undefined,
+            true,
+          );
+          const previousPageNumber = paginationState.currentPage > 1 ? paginationState.currentPage - 1 : undefined;
+          const nextPageNumber = paginationState.currentPage < paginationState.totalPages
+            ? paginationState.currentPage + 1
+            : undefined;
+          const getPaginationPageUrl = (targetPage: number | undefined) => {
+            if (!targetPage) {
+              return undefined;
+            }
+
+            if (options.forIframe) {
+              const iframeUrl = generateExportUrl(
+                currentPageNode,
+                synchronizedSiteData.manifest,
+                targetPage,
+                synchronizedSiteData,
+                undefined,
+                false,
+                true,
+              );
+              return iframeUrl === '' ? '/' : iframeUrl;
+            }
+
+            if (options.isExport) {
+              const exportFilePath = generateExportUrl(
+                currentPageNode,
+                synchronizedSiteData.manifest,
+                targetPage,
+                synchronizedSiteData,
+                undefined,
+                true,
+              );
+              return getRelativePath(currentPagePath, exportFilePath);
+            }
+
+            return generatePreviewUrl(
+              currentPageNode,
+              synchronizedSiteData.manifest,
+              synchronizedSiteData.siteId,
+              targetPage,
+              synchronizedSiteData,
+            );
+          };
+          const prevPageUrl = previousPageNumber
+            ? getPaginationPageUrl(previousPageNumber)
+            : undefined;
+          const nextPageUrl = nextPageNumber
+            ? getPaginationPageUrl(nextPageNumber)
+            : undefined;
+
+          enrichedResolution = {
+            ...resolution,
+            pageNumber: paginationState.currentPage,
+            collectionItems: collectionItems.slice(paginationState.startIndex, paginationState.endIndex),
+            pagination: createPaginationData(paginationState, prevPageUrl, nextPageUrl),
+          };
+        } else {
+          enrichedResolution = {
+            ...resolution,
+            collectionItems,
+          };
+        }
       }
     }
 
@@ -492,8 +574,9 @@ export async function render(
                   const maxItems = escapeDirectiveAttr(attrs.maxItems);
                   const sortBy = escapeDirectiveAttr(attrs.sortBy);
                   const sortOrder = escapeDirectiveAttr(attrs.sortOrder);
+                  const tagFilters = escapeDirectiveAttr(attrs.tagFilters);
 
-                  const directiveHtml = `<div data-collection-directive="true" data-collection="${collection}" data-layout="${layout}" data-display-type="${displayType}" data-max-items="${maxItems}" data-sort-by="${sortBy}" data-sort-order="${sortOrder}"></div>`;
+                  const directiveHtml = `<div data-collection-directive="true" data-collection="${collection}" data-layout="${layout}" data-display-type="${displayType}" data-max-items="${maxItems}" data-sort-by="${sortBy}" data-sort-order="${sortOrder}" data-tag-filters="${tagFilters}"></div>`;
 
                   // Replace the directive node with an HTML node
                   node.type = 'html';
@@ -618,8 +701,14 @@ export async function render(
                         path: enrichedResolution.contentFile.path,
                         slug: enrichedResolution.contentFile.slug
                       };
-                      const currentPagePath = getUrlForNode(currentPageNode, synchronizedSiteData.manifest, true, undefined, synchronizedSiteData);
-
+                      const currentPagePath = getUrlForNode(
+                        currentPageNode,
+                        synchronizedSiteData.manifest,
+                        true,
+                        enrichedResolution.pageNumber,
+                        synchronizedSiteData,
+                      );
+                      
                       // Strip leading slash from processed URL if present
                       const cleanProcessedUrl = processedUrl.startsWith('/')
                         ? processedUrl.substring(1)
@@ -747,7 +836,13 @@ export async function render(
           path: enrichedResolution.contentFile.path,
           slug: enrichedResolution.contentFile.slug
         };
-        const currentPagePath = getUrlForNode(currentPageNode, synchronizedSiteData.manifest, options.isExport, undefined, synchronizedSiteData);
+        const currentPagePath = getUrlForNode(
+          currentPageNode,
+          synchronizedSiteData.manifest,
+          options.isExport,
+          enrichedResolution.pageNumber,
+          synchronizedSiteData,
+        );
         
         if (!options.isExport) {
           // For preview: convert asset paths to blob URLs or data URLs
@@ -928,6 +1023,7 @@ async function postProcessCollectionDirectives(
       const maxItemsMatch = fullMatch.match(/data-max-items="([^"]*)"/) || [];
       const sortByMatch = fullMatch.match(/data-sort-by="([^"]*)"/) || [];
       const sortOrderMatch = fullMatch.match(/data-sort-order="([^"]*)"/) || [];
+      const tagFiltersMatch = fullMatch.match(/data-tag-filters="([^"]*)"/) || [];
 
       const config = {
         collectionId: collectionMatch[1] || '',
@@ -935,7 +1031,11 @@ async function postProcessCollectionDirectives(
         displayType: displayTypeMatch[1] || '',
         maxItems: parseInt(maxItemsMatch[1] || '10'),
         sortBy: sortByMatch[1] || 'date',
-        sortOrder: (sortOrderMatch[1] || 'desc') as 'asc' | 'desc'
+        sortOrder: (sortOrderMatch[1] || 'desc') as 'asc' | 'desc',
+        tagFilters: (tagFiltersMatch[1] || '')
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean),
       };
 
       console.log('[Render Service] Processing collection directive with config:', config);
@@ -961,6 +1061,10 @@ async function postProcessCollectionDirectives(
 
         // Get collection items
         let items = getCollectionContent(siteData, config.collectionId);
+
+        if (config.tagFilters.length > 0) {
+          items = filterContentBySelectedTags(siteData.manifest, items, config.tagFilters);
+        }
 
         if (items && items.length > 0) {
           // Apply sorting
