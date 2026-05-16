@@ -290,9 +290,9 @@ export default function CollectionConfigForm({
             <Label htmlFor="items-per-page">Items per page</Label>
             <Input
               id="items-per-page"
-              type="number"
-              min="1"
-              max="100"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={layoutConfig.pagination?.itemsPerPage || 10}
               onChange={(e) =>
                 handleConfigChange({

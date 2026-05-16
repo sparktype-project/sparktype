@@ -148,4 +148,36 @@ describe('CollectionConfigForm', () => {
     expect(screen.queryByText('News topic')).not.toBeInTheDocument();
     expect(screen.queryByText('World')).not.toBeInTheDocument();
   });
+
+  test('uses a standard text input for items per page when pagination is enabled', () => {
+    mockUseAppStore.mockImplementation((selector: unknown) => {
+      const state = {
+        getSiteById: () => site,
+      };
+
+      if (typeof selector === 'function') {
+        return selector(state);
+      }
+
+      return state;
+    });
+
+    render(
+      <CollectionConfigForm
+        siteId="site-1"
+        layoutConfig={{
+          collectionId: 'posts',
+          layout: 'post',
+          pagination: {
+            enabled: true,
+            itemsPerPage: 12,
+          },
+        }}
+        onLayoutConfigChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('textbox', { name: 'Items per page' })).toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'Items per page' })).not.toBeInTheDocument();
+  });
 });
