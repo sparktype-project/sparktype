@@ -169,6 +169,7 @@ describe('EditContentPage', () => {
     });
 
     mockUsePageIdentifier.mockReturnValue({
+      siteId: 'site-1',
       isNewFileMode: false,
       filePath: 'content/posts.md',
       collectionContext: {

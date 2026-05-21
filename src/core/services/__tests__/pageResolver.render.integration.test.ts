@@ -1,4 +1,4 @@
-import type { LocalSiteData, PageResolutionResult } from '@/core/types';
+import type { LayoutConfig, LocalSiteData, PageResolutionResult } from '@/core/types';
 import { PageType } from '@/core/types';
 import Handlebars from 'handlebars';
 import { compactHtml } from '@/test/support/html';
@@ -80,6 +80,29 @@ vi.mock('@/core/services/images/imagePreprocessor.service', () => ({
 import { resolvePageContent } from '../pageResolver.service';
 import { render } from '../renderer/render.service';
 
+function enableCollectionPagination(site: LocalSiteData, itemsPerPage = 2) {
+  const listingFile = site.contentFiles?.[1];
+  const layoutConfig = listingFile?.frontmatter.layoutConfig as LayoutConfig;
+
+  if (!listingFile) {
+    throw new Error('Expected collection listing fixture at contentFiles[1].');
+  }
+
+  site.contentFiles![1] = {
+    ...listingFile,
+    frontmatter: {
+      ...listingFile.frontmatter,
+      layoutConfig: {
+        ...layoutConfig,
+        pagination: {
+          enabled: true,
+          itemsPerPage,
+        },
+      },
+    },
+  };
+}
+
 describe('page resolver and render integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -146,19 +169,7 @@ describe('page resolver and render integration', () => {
   test('resolves paginated collection display routes when pagination is enabled', async () => {
     const site = createSiteFixture('collectionSite');
 
-    site.contentFiles![1] = {
-      ...site.contentFiles![1],
-      frontmatter: {
-        ...site.contentFiles![1]!.frontmatter,
-        layoutConfig: {
-          ...site.contentFiles![1]!.frontmatter.layoutConfig,
-          pagination: {
-            enabled: true,
-            itemsPerPage: 2,
-          },
-        },
-      },
-    };
+    enableCollectionPagination(site);
 
     site.contentFiles!.push(
       {
@@ -417,19 +428,7 @@ describe('page resolver and render integration', () => {
   test('renders paginated collection pages with pagination context for list layouts', async () => {
     const site = createSiteFixture('collectionSite');
 
-    site.contentFiles![1] = {
-      ...site.contentFiles![1],
-      frontmatter: {
-        ...site.contentFiles![1]!.frontmatter,
-        layoutConfig: {
-          ...site.contentFiles![1]!.frontmatter.layoutConfig,
-          pagination: {
-            enabled: true,
-            itemsPerPage: 2,
-          },
-        },
-      },
-    };
+    enableCollectionPagination(site);
 
     site.contentFiles!.push(
       {
@@ -525,19 +524,7 @@ describe('page resolver and render integration', () => {
   test('renders iframe-safe pager links for paginated collection previews', async () => {
     const site = createSiteFixture('collectionSite');
 
-    site.contentFiles![1] = {
-      ...site.contentFiles![1],
-      frontmatter: {
-        ...site.contentFiles![1]!.frontmatter,
-        layoutConfig: {
-          ...site.contentFiles![1]!.frontmatter.layoutConfig,
-          pagination: {
-            enabled: true,
-            itemsPerPage: 2,
-          },
-        },
-      },
-    };
+    enableCollectionPagination(site);
 
     site.contentFiles!.push(
       {
@@ -632,19 +619,7 @@ describe('page resolver and render integration', () => {
   test('renders export-safe pager links for downloaded paginated collection pages', async () => {
     const site = createSiteFixture('collectionSite');
 
-    site.contentFiles![1] = {
-      ...site.contentFiles![1],
-      frontmatter: {
-        ...site.contentFiles![1]!.frontmatter,
-        layoutConfig: {
-          ...site.contentFiles![1]!.frontmatter.layoutConfig,
-          pagination: {
-            enabled: true,
-            itemsPerPage: 2,
-          },
-        },
-      },
-    };
+    enableCollectionPagination(site);
 
     site.contentFiles!.push(
       {

@@ -1,4 +1,4 @@
-import type { PageResolutionResult } from '@/core/types';
+import type { LayoutConfig, PageResolutionResult } from '@/core/types';
 import { createSiteFixture } from '@/test/support/siteFixtures';
 
 const { renderMock } = vi.hoisted(() => ({
@@ -19,13 +19,19 @@ import { generateHtmlPages } from '../page.builder';
 
 function enableCollectionPagination() {
   const site = createSiteFixture('collectionSite');
+  const listingFile = site.contentFiles?.[1];
+  const layoutConfig = listingFile?.frontmatter.layoutConfig as LayoutConfig;
+
+  if (!listingFile) {
+    throw new Error('Expected collection listing fixture at contentFiles[1].');
+  }
 
   site.contentFiles![1] = {
-    ...site.contentFiles![1],
+    ...listingFile,
     frontmatter: {
-      ...site.contentFiles![1]!.frontmatter,
+      ...listingFile.frontmatter,
       layoutConfig: {
-        ...site.contentFiles![1]!.frontmatter.layoutConfig,
+        ...layoutConfig,
         pagination: {
           enabled: true,
           itemsPerPage: 2,

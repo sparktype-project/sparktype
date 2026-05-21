@@ -1,3 +1,4 @@
+import { createRef } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -126,9 +127,11 @@ const site = {
   ],
 };
 
-function createProps(): ReactNodeViewProps {
+type CollectionNodeViewProps = ReactNodeViewProps<HTMLDivElement>;
+
+function createProps(): CollectionNodeViewProps {
   return {
-    editor: {} as ReactNodeViewProps['editor'],
+    editor: {} as CollectionNodeViewProps['editor'],
     node: {
       attrs: {
         collection: 'posts',
@@ -139,20 +142,21 @@ function createProps(): ReactNodeViewProps {
         sortOrder: 'desc',
         tagFilters: ['topic-news'],
       },
-    } as ReactNodeViewProps['node'],
+    } as unknown as CollectionNodeViewProps['node'],
     decorations: [],
     selected: false,
     extension: {
       options: {
         siteId: 'site-1',
       },
-    } as ReactNodeViewProps['extension'],
+    } as CollectionNodeViewProps['extension'],
     getPos: vi.fn(),
     updateAttributes: vi.fn(),
     deleteNode: vi.fn(),
-    view: {} as ReactNodeViewProps['view'],
-    innerDecorations: {} as ReactNodeViewProps['innerDecorations'],
+    view: {} as CollectionNodeViewProps['view'],
+    innerDecorations: {} as CollectionNodeViewProps['innerDecorations'],
     HTMLAttributes: {},
+    ref: createRef<HTMLDivElement>(),
   };
 }
 
