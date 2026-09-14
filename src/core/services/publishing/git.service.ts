@@ -5,10 +5,11 @@
  * the pre-flight conflict check and the sync-state bookkeeping after a successful push. The
  * mechanics of a push live in `github/`:
  *
- * - `githubApiClient.ts`   — every HTTP call, and GitHub's original errors as `GitHubApiError`.
- * - `githubBlobUploader.ts`— binary assets, always through the blob API as base64.
- * - `githubTreePlanner.ts` — which paths to inline, upload and delete, and which to keep.
- * - `githubDeployment.ts`  — the flow that uses the three above.
+ * - `githubApiClient.ts`    every HTTP call, and GitHub's original errors as `GitHubApiError`.
+ * - `githubBlobUploader.ts` binary assets, always through the blob API as base64.
+ * - `githubTreePlanner.ts`  which paths to inline, upload and delete, and which to keep.
+ * - `githubPathTracker.ts`  the generated-path history that makes those deletions safe.
+ * - `githubDeployment.ts`   the flow that uses the four above.
  */
 
 import { BaseProvider } from './basePublishing.service';
@@ -24,15 +25,15 @@ export type { GitHubConfig } from './github/githubApiClient';
 
 const GITHUB_CONFIG_ERROR = 'accessToken, owner and repo must be non-empty strings';
 
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
 /**
  * Narrows the loose provider config to `GitHubConfig`, or returns `null` when a required field is
  * not a usable string. Callers report the null case rather than coercing values, so a token or
  * repository name of the wrong type fails as a configuration error instead of reaching the API.
  */
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === 'string' && value.trim() !== '';
-}
-
 function resolveGitHubConfig(config: Record<string, unknown>): GitHubConfig | null {
   const { accessToken, owner, repo, branch } = config;
 
