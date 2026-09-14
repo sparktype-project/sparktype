@@ -26,14 +26,16 @@ import {
   updateImageReferences,
 } from '../imageRegistry.service';
 import { listBlobPaths } from '@/core/services/storage/siteStorage.service';
+import { saveCustomThemeBundle } from '@/core/services/assetStorage.service';
 import { getCachedDerivative, setCachedDerivative } from '../derivativeCache.service';
 import { ensureImageRegistry, validateAndRepairRegistry } from '../registryMigration.service';
-import { cleanupOrphanedImages } from '../imageCleanup.service';
+import { cleanupOrphanedImages, previewCleanup } from '../imageCleanup.service';
 import { localImageService } from '../localImage.service';
 
 const blobMocks = vi.hoisted(() => ({
   readBlob: vi.fn(),
   removeBlob: vi.fn(),
+  listBlobPaths: vi.fn(),
   realReadBlob: null as null | ((
     namespace: 'images' | 'derivatives' | 'imports' | 'exports' | 'snapshots',
     siteId: string,
@@ -44,6 +46,10 @@ const blobMocks = vi.hoisted(() => ({
     siteId: string,
     relativePath: string,
   ) => Promise<void>),
+  realListBlobPaths: null as null | ((
+    namespace: 'images' | 'derivatives' | 'imports' | 'exports' | 'snapshots',
+    siteId: string,
+  ) => Promise<string[]>),
 }));
 
 vi.mock('@/core/services/storage/siteStorage.service', async (importOriginal) => {
@@ -51,9 +57,16 @@ vi.mock('@/core/services/storage/siteStorage.service', async (importOriginal) =>
   const stubbed = await stubBlobBackend(() => importOriginal<typeof StorageModule>());
   blobMocks.realReadBlob = stubbed.readBlob;
   blobMocks.realRemoveBlob = stubbed.removeBlob;
+  blobMocks.realListBlobPaths = stubbed.listBlobPaths;
   blobMocks.readBlob.mockImplementation(stubbed.readBlob);
   blobMocks.removeBlob.mockImplementation(stubbed.removeBlob);
-  return { ...stubbed, readBlob: blobMocks.readBlob, removeBlob: blobMocks.removeBlob };
+  blobMocks.listBlobPaths.mockImplementation(stubbed.listBlobPaths);
+  return {
+    ...stubbed,
+    readBlob: blobMocks.readBlob,
+    removeBlob: blobMocks.removeBlob,
+    listBlobPaths: blobMocks.listBlobPaths,
+  };
 });
 
 const LEGACY_IMAGE_STORE = localforage.createInstance({
@@ -97,6 +110,8 @@ describe('imageCleanup.service', () => {
     blobMocks.readBlob.mockImplementation(blobMocks.realReadBlob!);
     blobMocks.removeBlob.mockReset();
     blobMocks.removeBlob.mockImplementation(blobMocks.realRemoveBlob!);
+    blobMocks.listBlobPaths.mockReset();
+    blobMocks.listBlobPaths.mockImplementation(blobMocks.realListBlobPaths!);
   });
 
   test('deletes orphaned originals from storage and leaves referenced originals byte-identical', async () => {
@@ -334,11 +349,38 @@ describe('imageCleanup.service', () => {
     expect(await getImageAsset(siteId, USED_IMAGE)).not.toBeNull();
   });
 
-  test('does not delete an image that only a layout file references', async () => {
+  test('does not delete an image that only a custom theme partial references', async () => {
+    const siteId = 'cleanup-custom-theme-site';
+    const site = createSiteWithReferences(siteId, []);
+    // This is the path that actually renders: `getThemeAssetContent` serves a custom theme from the
+    // `customThemeFiles` store (`configHelpers.service.ts:88-115`), and a theme imported as a bundle
+    // lives only there (`themeImport.service.ts:236`). `siteData.themeFiles` is not read by any
+    // renderer, so a scan of that field alone would leave this image unprotected.
+    const themeImage = 'assets/images/theme-hero.png';
+    const themeName = 'imported-theme';
+    site.manifest.themes = [{ id: themeName, name: 'Imported Theme', path: themeName }];
+    site.manifest.theme = { name: themeName, config: {} };
+    await saveCustomThemeBundle(siteId, themeName, {
+      'layouts/page/partials/hero.hbs': `<img src="${themeImage}" data-sparktype-asset="true" alt="Hero">`,
+    });
+    await storeOriginal(siteId, themeImage, 'theme-hero-bytes');
+    await storeOriginal(siteId, ORPHAN_IMAGE, 'orphan-image-bytes');
+
+    const result = await cleanupOrphanedImages(site);
+
+    const stored = await getAllImageAssetsForSite(siteId);
+    expect(Object.keys(stored)).toEqual([themeImage]);
+    expect(await stored[themeImage].text()).toBe('theme-hero-bytes');
+    expect(result.originalImagesRemoved).toBe(1);
+    expect(result.bytesFreed).toBe('orphan-image-bytes'.length);
+    expect((await getImageRegistry(siteId)).images[themeImage]).toBeDefined();
+  });
+
+  test('does not delete an image that only an imported layout file references', async () => {
     const siteId = 'cleanup-layout-reference-site';
     const site = createSiteWithReferences(siteId, []);
-    // The renderer resolves `<img data-sparktype-asset="true">` out of storage, so a layout partial
-    // is a live reference the content parser never sees.
+    // The import/backup payload path (`localFileSystem.service.ts:184-185`), kept as a second
+    // safety net beside the store-backed scan above.
     const layoutImage = 'assets/images/layout-hero.png';
     site.layoutFiles = [
       {
@@ -411,5 +453,57 @@ describe('imageCleanup.service', () => {
     expect(result.cleanupLog.some((line) => line.includes('still cached'))).toBe(true);
     // The namespace listing is the ground truth the accounting uses.
     expect(await listBlobPaths('derivatives', siteId)).toContain(orphanDerivativePath);
+  });
+
+  test('keeps the originals accounting when the derivative listing fails', async () => {
+    const siteId = 'cleanup-listing-failure-site';
+    const site = createSiteWithReferences(siteId, []);
+    const doomed = await storeOriginal(siteId, ORPHAN_IMAGE, 'orphan-image-bytes');
+    const derivativePath = 'assets/derivatives/orphan_w300_hauto_c-scale_g-center.jpg';
+    await setCachedDerivative(`${siteId}/${derivativePath}`, new Blob(['orphan-derivative']));
+    await addDerivativeToRegistry(siteId, ORPHAN_IMAGE, derivativePath);
+
+    // An unreadable listing must not bubble into cleanup's catch: the fallback path would report
+    // all zeros and no failures, discarding the count for the original that was really deleted.
+    blobMocks.listBlobPaths.mockImplementation(async (namespace, siteId) => {
+      if (namespace === 'derivatives') throw new Error('backend list failed');
+      return blobMocks.realListBlobPaths!(namespace, siteId);
+    });
+
+    const result = await cleanupOrphanedImages(site);
+
+    expect(result.originalImagesRemoved).toBe(1);
+    expect(result.bytesFreed).toBe(doomed.size);
+    expect(result.derivativesRemoved).toBe(0);
+    expect(result.failures).toEqual([derivativePath]);
+    expect(result.cleanupLog.some((line) => line.includes('unverified'))).toBe(true);
+  });
+
+  test('preview advertises nothing when cleanup would refuse', async () => {
+    const siteId = 'cleanup-preview-refusal-site';
+    const site = createSiteWithReferences(siteId, [USED_IMAGE]);
+    await storeOriginal(siteId, USED_IMAGE, 'used-image-bytes');
+    await storeOriginal(siteId, ORPHAN_IMAGE, 'orphan-image-bytes');
+    await markReferenced(siteId, USED_IMAGE);
+
+    await expect(previewCleanup(site)).resolves.toEqual({
+      orphanedOriginals: [ORPHAN_IMAGE],
+      orphanedDerivatives: [],
+      estimatedBytesFreed: 'orphan-image-bytes'.length,
+    });
+
+    // With the content absent, cleanup deletes nothing — so the preview must not promise otherwise.
+    await expect(previewCleanup({ siteId, manifest: site.manifest })).resolves.toEqual({
+      orphanedOriginals: [],
+      orphanedDerivatives: [],
+      estimatedBytesFreed: 0,
+    });
+
+    const emptied: LocalSiteData = { ...site, contentFiles: [] };
+    await expect(previewCleanup(emptied)).resolves.toEqual({
+      orphanedOriginals: [],
+      orphanedDerivatives: [],
+      estimatedBytesFreed: 0,
+    });
   });
 });
