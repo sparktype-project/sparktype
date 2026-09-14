@@ -16,7 +16,7 @@ import { PageType } from '@/core/types';
 import { generateNavLinks } from '@/core/services/navigationStructure.service';
 import { getUrlForNode } from '@/core/services/urlUtils.service';
 import { generateStyleOverrides } from './asset.service';
-import { type RenderOptions } from './render.service';
+import { type RenderOptions } from './render.types';
 import { getRelativePath } from '@/core/services/relativePaths.service';
 import { getTagsByIds } from '@/core/services/tags.service';
 import { getJsonAsset } from '@/core/services/config/configHelpers.service';

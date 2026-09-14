@@ -25,60 +25,22 @@ import {
   isPaginationEnabled,
 } from '@/core/services/collectionPagination.service';
 import { filterContentBySelectedTags } from '@/core/services/tags.service';
+import type {
+    CollectionDirectiveAttributes,
+    HastElementNode,
+    HastRootNode,
+    MdastDirectiveNode,
+    MdastImageNode,
+    MdxJsxAttribute,
+    MdxJsxFlowElementNode,
+    MdxJsxElementLike,
+    RenderOptions,
+} from './render.types';
 
-interface CollectionDirectiveAttributes {
-    collection?: string;
-    layout?: string;
-    displayType?: string;
-    maxItems?: string;
-    sortBy?: string;
-    sortOrder?: string;
-    tagFilters?: string;
-    [key: string]: unknown;
-}
-
-interface MdastDirectiveNode {
-    type: string;
-    name?: string;
-    attributes?: CollectionDirectiveAttributes;
-    children?: unknown[];
-    value?: string;
-}
-
-interface MdxJsxAttribute {
-    type: 'mdxJsxAttribute';
-    name: string;
-    value: string | null;
-}
-
-interface MdxJsxFlowElementNode {
-    type: 'mdxJsxFlowElement';
-    name?: string;
-    attributes?: MdxJsxAttribute[];
-    children?: MdxJsxFlowElementNode[];
-}
-
-interface MdxJsxElementLike {
-    name?: string;
-    attributes?: MdxJsxAttribute[];
-}
-
-interface MdastImageNode {
-    type: 'image';
-    url: string;
-    alt?: string | null;
-}
-
-interface HastElementNode {
-    type: 'element';
-    tagName?: string;
-    properties?: Record<string, unknown>;
-    children?: HastElementNode[];
-}
-
-interface HastRootNode {
-    type: 'root';
-}
+// `RenderOptions` lives in a dependency leaf (render.types) so services that feed the
+// renderer can import the type without importing the orchestrator. It stays part of this
+// module's public surface for existing callers.
+export type { RenderOptions } from './render.types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
@@ -142,16 +104,6 @@ function isAbsoluteOrSpecialImageUrl(url: string): boolean {
 
 function isExternalOrDataImageUrl(url: string): boolean {
     return /^(?:[a-z]+:)?\/\//i.test(url) || url.startsWith('data:');
-}
-
-/**
- * Defines the options passed to the main render function.
- */
-export interface RenderOptions {
-    siteRootPath: string;
-    isExport: boolean;
-    relativeAssetPath?: string;
-    forIframe?: boolean;
 }
 
 /**
