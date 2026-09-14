@@ -12,8 +12,7 @@
  *    GitHub *retains* every base-tree path the new tree does not mention. A deleted, renamed or
  *    unpublished page would stay live forever unless its path is submitted with `sha: null`.
  *
- * Deletion is doubly constrained, because deleting the wrong thing is worse than deleting
- * nothing:
+ * Deletion is triply constrained, because deleting the wrong thing is worse than deleting nothing:
  *
  * - Only paths this site generated in a previous deployment to the same repository and branch are
  *   candidates. With no recorded history — a repository predating path tracking, a new site, or a
@@ -22,7 +21,18 @@
  * - A candidate is deleted only if it is still present in the base tree. The tree API rejects a
  *   `sha: null` entry for a missing file, so a page a collaborator already removed remotely would
  *   otherwise fail the whole deployment and leave it failing on every retry.
+ * - A candidate the listing could not account for — absent from a listing GitHub reported as
+ *   **truncated** — is reported as `deferredPaths` instead of being resolved either way. It is not
+ *   deleted (absence is not evidence), and it is not dropped from the tracked record (that would
+ *   abandon the pending deletion permanently), so the next deployment with a complete listing
+ *   settles it.
  */
+
+/** A tree's blob paths, and whether the listing was cut short. */
+export interface BaseTreeListing {
+  paths: ReadonlySet<string>;
+  truncated: boolean;
+}
 
 export interface DeploymentPlanInput {
   files: Map<string, string | Uint8Array>;
@@ -31,8 +41,8 @@ export interface DeploymentPlanInput {
    * there is no recorded history. `null` disables deletions.
    */
   previousPaths: readonly string[] | null;
-  /** Blob paths already in the base tree, or `null` for a root commit that has no base. */
-  baseTreePaths: ReadonlySet<string> | null;
+  /** The base tree's blob paths, or `null` for a root commit that has no base. */
+  baseTree: BaseTreeListing | null;
 }
 
 export type PlannedEntry =
@@ -46,6 +56,8 @@ export interface DeploymentPlan {
   generatedPaths: string[];
   /** Obsolete tracked paths this deployment asks GitHub to delete. */
   deletedPaths: string[];
+  /** Tracked paths this deployment could not evaluate, to be recorded again and retried. */
+  deferredPaths: string[];
 }
 
 export function planDeployment(input: DeploymentPlanInput): DeploymentPlan {
@@ -59,12 +71,21 @@ export function planDeployment(input: DeploymentPlanInput): DeploymentPlan {
     );
   }
 
-  let deletedPaths: string[] = [];
-  if (input.previousPaths !== null && input.baseTreePaths !== null) {
-    const baseTreePaths = input.baseTreePaths;
-    deletedPaths = input.previousPaths
-      .filter((path) => !input.files.has(path) && baseTreePaths.has(path))
-      .sort();
+  const { previousPaths, baseTree } = input;
+  const deletedPaths: string[] = [];
+  const deferredPaths = new Set<string>();
+
+  if (previousPaths !== null && baseTree !== null) {
+    for (const path of previousPaths) {
+      if (input.files.has(path)) continue;
+
+      if (baseTree.paths.has(path)) {
+        deletedPaths.push(path);
+      } else if (baseTree.truncated) {
+        deferredPaths.add(path);
+      }
+    }
+    deletedPaths.sort();
   }
 
   for (const path of deletedPaths) {
@@ -75,5 +96,6 @@ export function planDeployment(input: DeploymentPlanInput): DeploymentPlan {
     entries,
     generatedPaths: [...input.files.keys()].sort(),
     deletedPaths,
+    deferredPaths: [...deferredPaths].sort(),
   };
 }

@@ -1,10 +1,32 @@
 import { deployGeneratedFiles } from '../github/githubDeployment';
 import { readTrackedPaths } from '../github/githubPathTracker';
 import { GitHubApiStub, decodeBase64 } from '@/test/support/githubApiStub';
+import type * as SiteStorage from '@/core/services/storage/siteStorage.service';
+
+const { failDeployStateWrites } = vi.hoisted(() => ({ failDeployStateWrites: { value: false } }));
+
+// Only the deploy-state store is made to fail; the sync-state store must keep working, because a
+// storage outage for the path record is exactly what must not be confused with a failed push.
+vi.mock('@/core/services/storage/siteStorage.service', async (importOriginal) => {
+  const actual = await importOriginal<typeof SiteStorage>();
+  return {
+    ...actual,
+    writeMetadata: async (storeName: string, key: string, value: unknown) => {
+      if (storeName === 'githubDeployState' && failDeployStateWrites.value) {
+        throw new Error('QuotaExceededError: storage is full');
+      }
+      await actual.writeMetadata(storeName, key, value);
+    },
+  };
+});
 
 const CONFIG = { accessToken: 'token', owner: 'o', repo: 'r', branch: 'main' };
 
 describe('deployGeneratedFiles', () => {
+  beforeEach(() => {
+    failDeployStateWrites.value = false;
+  });
+
   test('uploads binary assets as blobs and inlines text verbatim', async () => {
     const stub = new GitHubApiStub();
     stub.install();
@@ -60,6 +82,12 @@ describe('deployGeneratedFiles', () => {
     expect(stub.treeRequests[0].baseTree).toBe(baseCommitTreeSHA);
     expect(stub.treeRequests[0].baseTree).not.toBe('commit-0');
     expect(stub.commitRequests[0].parents).toEqual(['commit-0']);
+
+    // The whole non-overwrite guarantee is this payload: a plain `{ sha }` PATCH fast-forwards or
+    // is rejected. Adding `force` would silently overwrite a concurrent remote change, so the body
+    // is asserted exactly rather than by property.
+    const refUpdate = stub.requests.find((request) => request.method === 'PATCH');
+    expect(refUpdate?.body).toEqual({ sha: stub.branchCommitSHA('main') });
   });
 
   test('deploys a first commit into an empty repository without the Contents API', async () => {
@@ -270,6 +298,59 @@ describe('deployGeneratedFiles', () => {
     expect(stub.textFile('index.html')).toBe('home');
   });
 
+  test('retries a pending deletion after a truncated base-tree listing', async () => {
+    const stub = new GitHubApiStub();
+    stub.install();
+
+    const deploy = (paths: string[]) =>
+      deployGeneratedFiles({
+        siteId: 'site-truncated',
+        siteTitle: 'Truncated',
+        config: CONFIG,
+        branch: 'main',
+        files: new Map(paths.map((path) => [path, `content of ${path}`])),
+      });
+
+    await deploy(['index.html', 'team/index.html']);
+
+    // GitHub cuts the listing short, so `team/index.html` cannot be seen at all. Absence from a
+    // partial listing is not evidence the file is gone, so it must not be deleted — and must not
+    // be forgotten either, or the pending deletion is abandoned for good.
+    stub.truncateTreeListing = true;
+    const truncated = await deploy(['index.html']);
+
+    expect(truncated.deletedPaths).toEqual([]);
+    expect(stub.hasFile('team/index.html')).toBe(true);
+    expect(await readTrackedPaths('site-truncated', 'o/r#main')).toEqual(['index.html', 'team/index.html']);
+
+    // A complete listing on the next deployment settles it.
+    stub.truncateTreeListing = false;
+    const next = await deploy(['index.html']);
+
+    expect(next.deletedPaths).toEqual(['team/index.html']);
+    expect(stub.hasFile('team/index.html')).toBe(false);
+  });
+
+  test('reports success when the path record cannot be written after the push landed', async () => {
+    const stub = new GitHubApiStub();
+    stub.install();
+    failDeployStateWrites.value = true;
+
+    const result = await deployGeneratedFiles({
+      siteId: 'site-record-write-failure',
+      siteTitle: 'Record write failure',
+      config: CONFIG,
+      branch: 'main',
+      files: new Map([['index.html', 'home']]),
+    });
+
+    // The commit is on the branch, so the deployment succeeded; failing here would report a live
+    // site as a failed one and invite a retry that adds another commit.
+    expect(result.commitSHA).toBe(stub.branchCommitSHA('main'));
+    expect(stub.textFile('index.html')).toBe('home');
+    expect(await readTrackedPaths('site-record-write-failure', 'o/r#main')).toBeNull();
+  });
+
   test('surfaces a rejected branch update with GitHub’s own error body', async () => {
     const stub = new GitHubApiStub({
       refUpdateFailure: {
@@ -293,6 +374,10 @@ describe('deployGeneratedFiles', () => {
     expect(stub.branchCommitSHA('main')).toBe('commit-0');
     expect(stub.requests.filter((request) => request.method === 'POST' && request.path.endsWith('/git/refs'))).toHaveLength(0);
     expect(await readTrackedPaths('site-concurrent', 'o/r#main')).toBeNull();
+    // The refused update was a non-forcing fast-forward attempt, which is what GitHub rejected.
+    expect(stub.requests.find((request) => request.method === 'PATCH')?.body).toEqual({
+      sha: expect.any(String),
+    });
   });
 
   test('recreates a branch that disappeared between reading and updating it', async () => {

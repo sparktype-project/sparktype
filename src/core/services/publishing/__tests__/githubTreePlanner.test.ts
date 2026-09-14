@@ -2,8 +2,8 @@ import { planDeployment } from '../github/githubTreePlanner';
 
 const textFiles = (paths: string[]) => new Map(paths.map((path) => [path, `<html>${path}</html>`]));
 
-/** The paths a base tree would contain, as the deployment flow reads them. */
-const baseTree = (...paths: string[]) => new Set(paths);
+/** A base tree as the deployment flow reads it; complete unless stated otherwise. */
+const baseTree = (...paths: string[]) => ({ paths: new Set(paths), truncated: false });
 
 describe('planDeployment', () => {
   test('inlines text and marks binary assets for the blob API', () => {
@@ -14,7 +14,7 @@ describe('planDeployment', () => {
         ['assets/logo.png', bytes],
       ]),
       previousPaths: null,
-      baseTreePaths: null,
+      baseTree: null,
     });
 
     expect(plan.entries).toEqual([
@@ -28,7 +28,7 @@ describe('planDeployment', () => {
     const plan = planDeployment({
       files: textFiles(['index.html']),
       previousPaths: ['about/index.html', 'index.html', 'old/index.html'],
-      baseTreePaths: baseTree('index.html', 'about/index.html', 'old/index.html', 'README.md'),
+      baseTree: baseTree('index.html', 'about/index.html', 'old/index.html', 'README.md'),
     });
 
     expect(plan.deletedPaths).toEqual(['about/index.html', 'old/index.html']);
@@ -37,6 +37,7 @@ describe('planDeployment', () => {
       { kind: 'delete', path: 'old/index.html' },
     ]);
     expect(plan.generatedPaths).toEqual(['index.html']);
+    expect(plan.deferredPaths).toEqual([]);
   });
 
   test('does not ask to delete a tracked path that is already gone from the base tree', () => {
@@ -45,18 +46,32 @@ describe('planDeployment', () => {
     const plan = planDeployment({
       files: textFiles(['index.html']),
       previousPaths: ['removed-by-a-collaborator/index.html'],
-      baseTreePaths: baseTree('index.html'),
+      baseTree: baseTree('index.html'),
     });
 
     expect(plan.deletedPaths).toEqual([]);
+    expect(plan.deferredPaths).toEqual([]);
     expect(plan.entries.some((entry) => entry.kind === 'delete')).toBe(false);
+  });
+
+  test('defers a tracked path that a truncated listing could not account for', () => {
+    // Absence from a partial listing is not evidence the file is gone, so it is neither deleted
+    // nor forgotten: the deployment records it again and a later one settles it.
+    const plan = planDeployment({
+      files: textFiles(['index.html']),
+      previousPaths: ['listed-but-obsolete/index.html', 'missing-from-listing/index.html'],
+      baseTree: { paths: new Set(['index.html', 'listed-but-obsolete/index.html']), truncated: true },
+    });
+
+    expect(plan.deletedPaths).toEqual(['listed-but-obsolete/index.html']);
+    expect(plan.deferredPaths).toEqual(['missing-from-listing/index.html']);
   });
 
   test('never deletes a path that is in the base tree but was not generated here', () => {
     const plan = planDeployment({
       files: textFiles(['index.html']),
       previousPaths: ['old/index.html'],
-      baseTreePaths: baseTree('index.html', 'old/index.html', 'README.md', 'notes/todo.md'),
+      baseTree: baseTree('index.html', 'old/index.html', 'README.md', 'notes/todo.md'),
     });
 
     expect(plan.deletedPaths).toEqual(['old/index.html']);
@@ -68,10 +83,11 @@ describe('planDeployment', () => {
     const plan = planDeployment({
       files: textFiles(['index.html']),
       previousPaths: null,
-      baseTreePaths: baseTree('index.html', 'legacy-page.html', 'README.md'),
+      baseTree: baseTree('index.html', 'legacy-page.html', 'README.md'),
     });
 
     expect(plan.deletedPaths).toEqual([]);
+    expect(plan.deferredPaths).toEqual([]);
     expect(plan.entries.some((entry) => entry.kind === 'delete')).toBe(false);
   });
 
@@ -79,7 +95,7 @@ describe('planDeployment', () => {
     const plan = planDeployment({
       files: textFiles(['index.html']),
       previousPaths: ['old/index.html'],
-      baseTreePaths: null,
+      baseTree: null,
     });
 
     expect(plan.deletedPaths).toEqual([]);

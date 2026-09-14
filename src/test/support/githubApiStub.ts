@@ -56,6 +56,8 @@ export interface GitHubApiStubOptions {
   extraBranches?: string[];
   /** Repository metadata; `push: false` makes validation fail. */
   pushPermission?: boolean;
+  /** Makes tree listings report `truncated: true`. Also settable after construction. */
+  truncateTreeListing?: boolean;
   /** Makes PATCH on the branch ref fail, e.g. a non-fast-forward rejection. */
   refUpdateFailure?: { status: number; body: string };
 }
@@ -106,6 +108,7 @@ export class GitHubApiStub {
 
   constructor(options: GitHubApiStubOptions = {}) {
     this.options = options;
+    this.truncateTreeListing = options.truncateTreeListing ?? false;
 
     if (!options.emptyRepository) {
       let tree = new Map<string, StubTreeItem>(
@@ -249,6 +252,12 @@ export class GitHubApiStub {
     return response(200, { object: { sha: existing.commitSHA } });
   }
 
+  /**
+   * Whether `GET /git/trees/{sha}` reports a truncated listing. Settable after construction so a
+   * test can deploy normally, then model GitHub cutting a later listing short.
+   */
+  truncateTreeListing: boolean;
+
   /** Lists a tree's blob paths, matching the recursive `GET /git/trees/{sha}` response. */
   private handleListTree(treeSHA: string) {
     const tree = this.treeBySHA.get(treeSHA);
@@ -263,7 +272,16 @@ export class GitHubApiStub {
       sha: item.kind === 'binary' ? item.blobSHA : `text-blob-of-${path}`,
       size: item.kind === 'text' ? item.content.length : 0,
     }));
-    return response(200, { sha: treeSHA, truncated: false, tree: entries });
+
+    if (!this.truncateTreeListing) {
+      return response(200, { sha: treeSHA, truncated: false, tree: entries });
+    }
+    // A truncated response stops early, so its last entry is missing from what the caller sees.
+    return response(200, {
+      sha: treeSHA,
+      truncated: true,
+      tree: entries.slice(0, Math.max(0, entries.length - 1)),
+    });
   }
 
   private handleCreateBlob(body: unknown) {

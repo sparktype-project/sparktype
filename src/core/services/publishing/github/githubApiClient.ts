@@ -20,7 +20,6 @@ export interface GitHubConfig {
   owner: string;
   repo: string;
   branch?: string; // defaults to 'main'
-  netlifyIntegration?: boolean; // whether to trigger a Netlify build
 }
 
 /** A tree entry that inlines its content. GitHub commits `content` verbatim as UTF-8 text. */
@@ -51,6 +50,16 @@ export interface DeletionTreeEntry {
 }
 
 export type GitHubTreeEntry = InlineTreeEntry | BlobTreeEntry | DeletionTreeEntry;
+
+/** A tree's blob paths, and whether GitHub cut the listing short. */
+export interface TreeListing {
+  paths: Set<string>;
+  /**
+   * True when the response was truncated (over 100,000 entries, or 7 MB with `recursive=1`), so
+   * `paths` is a sample rather than the whole tree.
+   */
+  truncated: boolean;
+}
 
 /**
  * A failed GitHub request. `body` is GitHub's response body as text (normally a JSON error
@@ -160,10 +169,11 @@ export class GitHubApiClient {
    * Every blob path in a tree, so a deletion can be limited to paths that are actually there:
    * the tree API errors on a `sha: null` entry for a file that does not exist.
    *
-   * A truncated response (over 100,000 entries) yields a partial set, which can only cause a
-   * deletion to be skipped — obsolete files then stay live, which is the safe direction.
+   * `truncated` is propagated rather than absorbed. A partial listing cannot distinguish "this
+   * path is gone" from "this path was not listed", and treating the two alike would let a pending
+   * deletion be dropped from the tracked record by a deploy that never evaluated it.
    */
-  async listTreePaths(treeSHA: string): Promise<Set<string>> {
+  async listTreePaths(treeSHA: string): Promise<TreeListing> {
     const payload = await this.sendJson(
       'List tree',
       'GET',
@@ -179,7 +189,10 @@ export class GitHubApiClient {
         paths.add(entry.path);
       }
     }
-    return paths;
+
+    // GitHub always sends `truncated`. Anything but an explicit `false` is treated as partial,
+    // because guessing wrong in that direction only costs a deferred deletion.
+    return { paths, truncated: payload.truncated !== false };
   }
 
   /**

@@ -47,13 +47,13 @@ export async function deployGeneratedFiles(
   //    listing then tells us which tracked paths may be deleted, since the tree API errors on a
   //    deletion for a file that is not there.
   const baseTreeSHA = baseCommitSHA === null ? null : await client.getCommitTreeSHA(baseCommitSHA);
-  const baseTreePaths = baseTreeSHA === null ? null : await client.listTreePaths(baseTreeSHA);
+  const baseTree = baseTreeSHA === null ? null : await client.listTreePaths(baseTreeSHA);
 
   // 3. Paths recorded by a previous deployment into this exact repository and branch. `null`
   //    means there is no history, which disables deletions for this deployment.
   const target = `${config.owner}/${config.repo}#${branch}`;
   const previousPaths = await readTrackedPaths(siteId, target);
-  const plan = planDeployment({ files, previousPaths, baseTreePaths });
+  const plan = planDeployment({ files, previousPaths, baseTree });
 
   // 4. Materialise the plan: inline text, upload binary assets as blobs, delete with `sha: null`.
   const entries: GitHubTreeEntry[] = [];
@@ -106,7 +106,18 @@ export async function deployGeneratedFiles(
     }
   }
 
-  await writeTrackedPaths(siteId, target, plan.generatedPaths);
+  // Paths the deployment could not evaluate stay tracked, so a pending deletion is retried by the
+  // next deployment rather than abandoned.
+  const trackedPaths = [...new Set([...plan.generatedPaths, ...plan.deferredPaths])].sort();
+
+  try {
+    await writeTrackedPaths(siteId, target, trackedPaths);
+  } catch (error) {
+    // The push has already landed, so the deployment succeeded whatever the storage layer did
+    // here. Reporting a live site as a failed one would invite a retry that adds another commit;
+    // losing the record only costs a future deletion.
+    console.error(`[GitHubProvider] Failed to record generated paths for ${target}:`, error);
+  }
 
   return {
     commitSHA,
