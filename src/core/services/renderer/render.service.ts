@@ -1,7 +1,7 @@
 // src/core/services/renderer/render.service.ts
 
 import Handlebars from 'handlebars';
-import type { ImageRef, LocalSiteData, PageResolutionResult, StructureNode } from '@/core/types';
+import type { LocalSiteData, PageResolutionResult } from '@/core/types';
 import { PageType } from '@/core/types';
 import { clearAssetContentCache, getLayoutManifest, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
 import { getActiveImageService } from '@/core/services/images/images.service';
@@ -9,98 +9,23 @@ import { getMergedThemeDataForForm } from '@/core/services/config/theme.service'
 import { prepareRenderEnvironment } from './asset.service';
 import { assemblePageContext, assembleBaseContext } from './context.service';
 import { imagePreprocessor } from '@/core/services/images/imagePreprocessor.service';
-import { generateExportUrl, generatePreviewUrl, getUrlForNode } from '@/core/services/urlUtils.service';
-import { getRelativePath } from '@/core/services/relativePaths.service';
+import { getUrlForNode } from '@/core/services/urlUtils.service';
 import { replaceCloudinaryHostedVideos } from './cloudinaryVideoPlayer';
-import type { Node as UnistNode } from 'unist';
 import { sanitizeHtml } from './sanitize';
+import { renderMarkdownToHtml } from './markdownPipeline';
+import { enrichListLayoutResolution } from './listLayoutEnrichment';
 import { renderLayoutHierarchy } from './layoutHierarchy';
 import { postProcessCollectionDirectives } from './collectionDirectives';
 import {
-    isAbsoluteOrSpecialImageUrl,
-    isExternalOrDataImageUrl,
     postProcessSparkTypeImages,
     postProcessSparkTypeImagesForExport,
 } from './images';
-import {
-  createPaginationData,
-  getCollectionItemsForLayoutConfig,
-  getCollectionPaginationState,
-  getItemsPerPage,
-  isPaginationEnabled,
-} from '@/core/services/collectionPagination.service';
-import type {
-    CollectionDirectiveAttributes,
-    HastElementNode,
-    HastRootNode,
-    MdastDirectiveNode,
-    MdastImageNode,
-    MdxJsxAttribute,
-    MdxJsxFlowElementNode,
-    MdxJsxElementLike,
-    RenderOptions,
-} from './render.types';
+import type { RenderOptions } from './render.types';
 
 // `RenderOptions` lives in a dependency leaf (render.types) so services that feed the
 // renderer can import the type without importing the orchestrator. It stays part of this
 // module's public surface for existing callers.
 export type { RenderOptions } from './render.types';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null;
-}
-
-function getDirectiveAttributes(node: MdastDirectiveNode): CollectionDirectiveAttributes {
-    return isRecord(node.attributes) ? node.attributes as CollectionDirectiveAttributes : {};
-}
-
-function escapeDirectiveAttr(value: unknown): string {
-    return Handlebars.escapeExpression(String(value || ''));
-}
-
-function escapeHtmlAttribute(value: string): string {
-    return value
-        .replaceAll('&', '&amp;')
-        .replaceAll('"', '&quot;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
-}
-
-function serializeMdxJsxAttributes(attributes: MdxJsxAttribute[] = []): string {
-    return attributes
-        .map((attribute) => {
-            if (attribute.value === null) {
-                return attribute.name;
-            }
-
-            return `${attribute.name}="${escapeHtmlAttribute(attribute.value)}"`;
-        })
-        .join(' ');
-}
-
-function isCustomMdxElement(node: MdxJsxElementLike): boolean {
-    return node.name === 'column_group' || node.name === 'column';
-}
-
-function hasMdxAttribute(node: MdxJsxElementLike, name: string): boolean {
-    return Boolean(node.attributes?.some((attribute) => attribute.name === name));
-}
-
-function shouldPreserveHtmlMdxElement(node: MdxJsxElementLike): boolean {
-    if (!node.name || isCustomMdxElement(node) || node.name !== node.name.toLowerCase()) {
-        return false;
-    }
-
-    if (node.name === 'video' || node.name === 'audio') {
-        return true;
-    }
-
-    if (node.name === 'iframe' && hasMdxAttribute(node, 'data-sparktype-embed-url')) {
-        return true;
-    }
-
-    return false;
-}
 
 /**
  * Renders a resolved page into a full HTML string. This is the primary
@@ -142,106 +67,13 @@ export async function render(
     await imagePreprocessor.preprocessImages(synchronizedSiteData, options.isExport, options.forIframe);
     console.log('[Render Service] Image pre-processing complete');
 
-    // 2.6. Populate collection items for list layout types
-    let enrichedResolution = resolution;
-    let itemLayoutId: string | undefined;
-    if (pageLayoutManifest.layoutType === 'list') {
-      const layoutConfig = resolution.contentFile.frontmatter.layoutConfig;
-      if (layoutConfig && layoutConfig.collectionId) {
-        const collectionItems = getCollectionItemsForLayoutConfig(synchronizedSiteData, layoutConfig);
-
-        // Get the collection to retrieve its default item layout
-        const collection = synchronizedSiteData.manifest.collections?.find(c => c.id === layoutConfig.collectionId);
-        if (collection) {
-          itemLayoutId = collection.defaultItemLayout;
-          console.log('[Render Service] Collection uses item layout:', itemLayoutId);
-        }
-
-        const requestedPage = resolution.pageNumber;
-        const currentPageNode: StructureNode = {
-          type: 'page',
-          title: resolution.contentFile.frontmatter.title,
-          path: resolution.contentFile.path,
-          slug: resolution.contentFile.slug,
-        };
-
-        if (isPaginationEnabled(layoutConfig)) {
-          const paginationState = getCollectionPaginationState(
-            collectionItems.length,
-            requestedPage,
-            getItemsPerPage(layoutConfig),
-          );
-          const currentPagePath = generateExportUrl(
-            currentPageNode,
-            synchronizedSiteData.manifest,
-            paginationState.currentPage,
-            synchronizedSiteData,
-            undefined,
-            true,
-          );
-          const previousPageNumber = paginationState.currentPage > 1 ? paginationState.currentPage - 1 : undefined;
-          const nextPageNumber = paginationState.currentPage < paginationState.totalPages
-            ? paginationState.currentPage + 1
-            : undefined;
-          const getPaginationPageUrl = (targetPage: number | undefined) => {
-            if (!targetPage) {
-              return undefined;
-            }
-
-            if (options.forIframe) {
-              const iframeUrl = generateExportUrl(
-                currentPageNode,
-                synchronizedSiteData.manifest,
-                targetPage,
-                synchronizedSiteData,
-                undefined,
-                false,
-                true,
-              );
-              return iframeUrl === '' ? '/' : iframeUrl;
-            }
-
-            if (options.isExport) {
-              const exportFilePath = generateExportUrl(
-                currentPageNode,
-                synchronizedSiteData.manifest,
-                targetPage,
-                synchronizedSiteData,
-                undefined,
-                true,
-              );
-              return getRelativePath(currentPagePath, exportFilePath);
-            }
-
-            return generatePreviewUrl(
-              currentPageNode,
-              synchronizedSiteData.manifest,
-              synchronizedSiteData.siteId,
-              targetPage,
-              synchronizedSiteData,
-            );
-          };
-          const prevPageUrl = previousPageNumber
-            ? getPaginationPageUrl(previousPageNumber)
-            : undefined;
-          const nextPageUrl = nextPageNumber
-            ? getPaginationPageUrl(nextPageNumber)
-            : undefined;
-
-          enrichedResolution = {
-            ...resolution,
-            pageNumber: paginationState.currentPage,
-            collectionItems: collectionItems.slice(paginationState.startIndex, paginationState.endIndex),
-            pagination: createPaginationData(paginationState, prevPageUrl, nextPageUrl),
-          };
-        } else {
-          enrichedResolution = {
-            ...resolution,
-            collectionItems,
-          };
-        }
-      }
-    }
+    // 2.6. Populate collection items and pagination for list layout types
+    const { resolution: enrichedResolution, itemLayoutId } = enrichListLayoutResolution(
+      synchronizedSiteData,
+      resolution,
+      pageLayoutManifest,
+      options,
+    );
 
     // 3. Assemble Data Contexts for the Templates
     const pageContext = await assemblePageContext(synchronizedSiteData, enrichedResolution, options, imageService, pageLayoutManifest);
@@ -253,280 +85,31 @@ export async function render(
     const bodyTemplateSource = await getThemeAssetContent(synchronizedSiteData, themeName, bodyTemplatePath);
     if (!bodyTemplateSource) throw new Error(`Body template not found: themes/${themeName}/${bodyTemplatePath}`);
 
-    // Process markdown content using the existing markdown helper
+    // Markdown source for this page; empty content skips the whole HTML pipeline.
     const markdownContent = enrichedResolution.contentFile.content || '';
     console.log('[Render Service] Raw markdown content:', markdownContent);
     console.log('[Render Service] Content contains directive:', markdownContent.includes('::collection_view'));
     
-    // Import the remark processing logic
-    const { remark } = await import('remark');
-    const { default: remarkDirective } = await import('remark-directive');
-    const { default: remarkMdx } = await import('remark-mdx');
-    const { default: remarkRehype } = await import('remark-rehype');
-    const { default: rehypeSlug } = await import('rehype-slug');
-    const { default: rehypeStringify } = await import('rehype-stringify');
-    const { visit } = await import('unist-util-visit');
-
     let processedContent: string;
     if (markdownContent.trim()) {
-        // Configure remark with directive support, MDX support, and custom image handling
-        const processor = remark()
-          .use(remarkDirective)
-          .use(remarkMdx)
-          .use(() => {
-            return async (tree: UnistNode) => {
-              // Process collection_view directives (both leaf and container types)
-              const processCollectionDirective = (node: MdastDirectiveNode) => {
-                if (node.name === 'collection_view') {
-                  // Convert directive to HTML placeholder for post-processing
-                  const attrs = getDirectiveAttributes(node);
-
-                  // Escape all attributes to prevent HTML injection
-                  const collection = escapeDirectiveAttr(attrs.collection);
-                  const layout = escapeDirectiveAttr(attrs.layout);
-                  const displayType = escapeDirectiveAttr(attrs.displayType);
-                  const maxItems = escapeDirectiveAttr(attrs.maxItems);
-                  const sortBy = escapeDirectiveAttr(attrs.sortBy);
-                  const sortOrder = escapeDirectiveAttr(attrs.sortOrder);
-                  const tagFilters = escapeDirectiveAttr(attrs.tagFilters);
-
-                  const directiveHtml = `<div data-collection-directive="true" data-collection="${collection}" data-layout="${layout}" data-display-type="${displayType}" data-max-items="${maxItems}" data-sort-by="${sortBy}" data-sort-order="${sortOrder}" data-tag-filters="${tagFilters}"></div>`;
-
-                  // Replace the directive node with an HTML node
-                  node.type = 'html';
-                  node.value = directiveHtml;
-                  delete node.name;
-                  delete node.attributes;
-                  delete node.children;
-                }
-              };
-              
-              visit(tree, 'leafDirective', processCollectionDirective);
-              visit(tree, 'containerDirective', processCollectionDirective);
-
-              // Track unique column configurations to generate CSS
-              const columnConfigs = new Set<number>();
-
-              // Process MDX JSX elements (columns) to add classes and preserve attributes
-              // First pass: count columns in each column_group
-              const columnGroupInfo = new Map<MdxJsxFlowElementNode, number>();
-              visit(tree, 'mdxJsxFlowElement', (node) => {
-                const flowNode = node as MdxJsxFlowElementNode;
-                console.log('[Render Service] Found mdxJsxFlowElement:', flowNode.name);
-                if (flowNode.name === 'column_group') {
-                  // Count direct column children
-                  const columnCount = flowNode.children?.filter((child) =>
-                    child.type === 'mdxJsxFlowElement' && child.name === 'column'
-                  ).length || 0;
-                  console.log('[Render Service] column_group has', columnCount, 'columns');
-                  columnGroupInfo.set(flowNode, columnCount);
-                  columnConfigs.add(columnCount);
-                }
-              });
-
-              // Second pass: add classes to column_group and columns
-              visit(tree, 'mdxJsxFlowElement', (node, _index, parent) => {
-                const flowNode = node as MdxJsxFlowElementNode;
-                const flowParent = parent as MdxJsxFlowElementNode | undefined;
-                if (flowNode.name === 'column_group') {
-                  console.log('[Render Service] Adding class to column_group');
-                  // Add class for styling
-                  flowNode.attributes = flowNode.attributes || [];
-                  flowNode.attributes.push({
-                    type: 'mdxJsxAttribute',
-                    name: 'class',
-                    value: 'column-group'
-                  });
-                } else if (flowNode.name === 'column' && flowParent) {
-                  // Find the parent column_group to get total column count
-                  const parentGroup = flowParent.type === 'mdxJsxFlowElement' && flowParent.name === 'column_group' ? flowParent : null;
-                  const totalColumns = parentGroup ? columnGroupInfo.get(parentGroup) || 1 : 1;
-
-                  console.log('[Render Service] Adding class to column, totalColumns:', totalColumns);
-
-                  // Add class with column count for CSS targeting
-                  flowNode.attributes = flowNode.attributes || [];
-                  flowNode.attributes.push({
-                    type: 'mdxJsxAttribute',
-                    name: 'class',
-                    value: `column column-${totalColumns}`
-                  });
-
-                  // Store total columns as data attribute for potential JS use
-                  flowNode.attributes.push({
-                    type: 'mdxJsxAttribute',
-                    name: 'data-columns',
-                    value: String(totalColumns)
-                  });
-                }
-              });
-
-              // Preserve raw HTML elements that remark-mdx parses as JSX, such as
-              // uploaded videos and embeds generated by the editor.
-              visit(tree, 'mdxJsxFlowElement', (node) => {
-                const flowNode = node as {
-                  type: string;
-                  name?: string;
-                  attributes?: MdxJsxAttribute[];
-                  children?: MdxJsxFlowElementNode[];
-                  value?: string;
-                };
-
-                if (!shouldPreserveHtmlMdxElement(flowNode) || !flowNode.name) {
-                  return;
-                }
-
-                const serializedAttributes = serializeMdxJsxAttributes(flowNode.attributes);
-                const openTag = serializedAttributes.length > 0
-                  ? `<${flowNode.name} ${serializedAttributes}>`
-                  : `<${flowNode.name}>`;
-
-                flowNode.type = 'html';
-                flowNode.value = `${openTag}</${flowNode.name}>`;
-                delete flowNode.name;
-                delete flowNode.attributes;
-                delete flowNode.children;
-              });
-
-              // Process images to use preprocessed URLs
-              const providerImageResolutions: Array<Promise<void>> = [];
-              visit(tree, 'image', (node) => {
-                const imageNode = node as MdastImageNode;
-                if (imageNode.url && (imageNode.url.startsWith('assets/originals/') || imageNode.url.startsWith('assets/images/'))) {
-                  console.log('[Render Service] Processing Sparktype markdown image:', imageNode.url);
-
-                  // Get preprocessed URL (page_display preset for markdown images)
-                  const contentPath = enrichedResolution.contentFile.path;
-                  let processedUrl = imagePreprocessor.getProcessedMarkdownImageUrl(
-                    synchronizedSiteData.siteId,
-                    contentPath,
-                    imageNode.url,
-                    'page_display'
-                  );
-
-                  if (processedUrl) {
-                    console.log('[Render Service] Using preprocessed URL:', processedUrl);
-
-                    // Convert to relative path for export mode
-                    if (options.isExport && !isExternalOrDataImageUrl(processedUrl)) {
-                      const currentPageNode = {
-                        type: 'page' as const,
-                        title: enrichedResolution.contentFile.frontmatter.title,
-                        path: enrichedResolution.contentFile.path,
-                        slug: enrichedResolution.contentFile.slug
-                      };
-                      const currentPagePath = getUrlForNode(
-                        currentPageNode,
-                        synchronizedSiteData.manifest,
-                        true,
-                        enrichedResolution.pageNumber,
-                        synchronizedSiteData,
-                      );
-                      
-                      // Strip leading slash from processed URL if present
-                      const cleanProcessedUrl = processedUrl.startsWith('/')
-                        ? processedUrl.substring(1)
-                        : processedUrl;
-                      processedUrl = getRelativePath(currentPagePath, cleanProcessedUrl);
-                      console.log('[Render Service] Converted to relative path for export:', processedUrl);
-                    }
-
-                    // Replace with preprocessed URL
-                    imageNode.url = processedUrl;
-                  } else {
-                    console.warn('[Render Service] No preprocessed URL found for:', imageNode.url, '- falling back to original');
-                    // Fallback: keep original path, which points to assets/originals/
-                    // This will work for preview/export as originals are copied
-                  }
-                } else if (
-                  imageNode.url &&
-                  imageService.id !== 'local' &&
-                  !isAbsoluteOrSpecialImageUrl(imageNode.url)
-                ) {
-                  console.log('[Render Service] Resolving provider-backed markdown image:', imageNode.url);
-                  const imageRef: ImageRef = {
-                    serviceId: imageService.id,
-                    src: imageNode.url,
-                    alt: imageNode.alt || '',
-                  };
-
-                  providerImageResolutions.push((async () => {
-                    imageNode.url = await imageService.getDisplayUrl(
-                      synchronizedSiteData.manifest,
-                      imageRef,
-                      {},
-                      options.isExport,
-                      options.forIframe,
-                    );
-                  })());
-                } else {
-                  console.log('[Render Service] Standard image handling for:', imageNode.url);
-                }
-              });
-
-              await Promise.all(providerImageResolutions);
-            };
-          })
-          .use(remarkRehype, { allowDangerousHtml: true })
-          .use(rehypeSlug) // Add unique IDs to all headings for TOC anchor navigation
-          .use(() => {
-            // Rehype plugin to add classes to column elements after HTML conversion
-            return (tree: UnistNode) => {
-              // Track column groups and their column counts
-              const columnGroupCounts = new Map<HastElementNode, number>();
-
-              // First pass: count columns in each group
-              visit(tree, 'element', (node) => {
-                const elementNode = node as HastElementNode;
-                if (elementNode.tagName === 'div' && elementNode.properties?.dataColumn === 'group') {
-                  const columnCount = elementNode.children?.filter((child) =>
-                    child.type === 'element' && child.tagName === 'div' && child.properties?.dataColumn === 'item'
-                  ).length || 0;
-                  columnGroupCounts.set(elementNode, columnCount);
-                }
-              });
-
-              // Second pass: add classes
-              visit(tree, 'element', (node, _index, parent) => {
-                const elementNode = node as HastElementNode;
-                const elementParent = parent as HastRootNode | HastElementNode | undefined;
-                // Check if this came from an MDX element by looking at raw data
-                const isColumnGroup = elementNode.tagName === 'div' &&
-                  elementNode.children?.some((child) => child.tagName === 'div');
-
-                if (isColumnGroup && elementParent?.type === 'root') {
-                  // This is likely a column_group
-                  const columnCount = elementNode.children?.filter((child) =>
-                    child.type === 'element' && child.tagName === 'div'
-                  ).length || 0;
-
-                  if (columnCount > 1) {
-                    elementNode.properties = elementNode.properties || {};
-                    elementNode.properties.className = ['column-group'];
-                    console.log('[Render Service] Rehype: Added column-group class');
-
-                    // Add classes to child columns
-                    elementNode.children?.forEach((child) => {
-                      if (child.type === 'element' && child.tagName === 'div') {
-                        child.properties = child.properties || {};
-                        child.properties.className = ['column', `column-${columnCount}`];
-                        child.properties.dataColumns = String(columnCount);
-                        console.log('[Render Service] Rehype: Added column classes');
-                      }
-                    });
-                  }
-                }
-              });
-            };
-          })
-          .use(rehypeStringify, { allowDangerousHtml: true });
-        
-        // Process markdown to HTML
-        const result = await processor.process(markdownContent);
-        processedContent = String(result);
+        // 5. Markdown/MDX to HTML. The pipeline owns its internal ordering (directive
+        // placeholders, MDX column handling, raw HTML element preservation, markdown image URL
+        // rewriting, then rehype conversion) - see markdownPipeline.ts. Its output is
+        // unsanitised HTML and is intentionally not trusted yet.
+        processedContent = await renderMarkdownToHtml({
+            markdownContent,
+            siteData: synchronizedSiteData,
+            contentFile: enrichedResolution.contentFile,
+            pageNumber: enrichedResolution.pageNumber,
+            imageService,
+            options,
+        });
         console.log('[Render Service] After remark processing:', processedContent.substring(0, 500));
 
-        // Post-process HTML to convert collection directives (must happen before sanitization)
+        // Post-process HTML to convert collection directives. This must happen before
+        // sanitization: the expanded items are page content and have to cross the security
+        // boundary below. It also has to happen after the markdown pipeline, which is what
+        // turns the directives into placeholders in the first place.
         processedContent = await postProcessCollectionDirectives(
           processedContent,
           synchronizedSiteData,
@@ -537,9 +120,12 @@ export async function render(
 
         processedContent = replaceCloudinaryHostedVideos(processedContent, synchronizedSiteData.manifest);
 
-        // Sanitize HTML AFTER all HTML generation to prevent XSS attacks
-        // This includes both user markdown and generated collection directive HTML
-        // Uses custom sanitizeHtml() that allows scripts from trusted domains only
+        // --- Sanitisation boundary -------------------------------------------------------
+        // Sanitize HTML AFTER all HTML generation to prevent XSS attacks.
+        // This includes both user markdown and generated collection directive HTML.
+        // Uses custom sanitizeHtml() that allows scripts from trusted domains only.
+        // Nothing that injects HTML may be added after this point except the image URL
+        // rewrite below, which only substitutes URLs.
         processedContent = sanitizeHtml(processedContent);
         console.log('[Render Service] After security sanitization');
         
@@ -558,6 +144,12 @@ export async function render(
           synchronizedSiteData,
         );
         
+        // --- Image URL rewriting (preview vs export) --------------------------------------
+        // Deliberately after sanitisation. Both branches only replace the `src` of
+        // `<img data-sparktype-asset="true">` tags with URLs DOMPurify would otherwise reject
+        // (blob:, data:, relative) because ALLOW_UNKNOWN_PROTOCOLS is false. The branches
+        // differ in target: preview needs URLs the browser can load from memory, export needs
+        // paths that survive being written to disk.
         if (!options.isExport) {
           // For preview: convert asset paths to blob URLs or data URLs
           console.log('[Render Service] Processing images for preview, content before:', processedContent.substring(0, 500));
@@ -584,7 +176,7 @@ export async function render(
     const bodyTemplate = Handlebars.compile(bodyTemplateSource);
     const bodyHtml = bodyTemplate(contentContext);
 
-    // 5. Use nested layout rendering (Jekyll-style inheritance)
+    // 6. Use nested layout rendering (Jekyll-style inheritance)
     console.log(`[Render Service] Starting nested layout rendering for: ${enrichedResolution.layoutPath}`);
 
     const fullContext = { ...baseContext, ...contentContext };

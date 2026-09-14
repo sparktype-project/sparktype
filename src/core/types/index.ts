@@ -506,6 +506,13 @@ export type PageResolutionResult =
       errorMessage: string;
     };
 
+/**
+ * A resolution that has a page to render: everything except `PageType.NotFound`.
+ * Renderers return early for NotFound, so stages downstream can rely on `contentFile`,
+ * `layoutPath` and `pageNumber` being present.
+ */
+export type RenderablePageResolution = Exclude<PageResolutionResult, { type: typeof PageType.NotFound }>;
+
 
 // ============================================================================
 // IMAGE & SERVICE TYPES
