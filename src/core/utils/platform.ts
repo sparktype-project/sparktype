@@ -16,6 +16,10 @@ declare global {
 /**
  * Checks if the application is running in the Tauri desktop environment.
  * Returns true for Tauri app, false for web browser.
+ *
+ * The Tauri globals are tested for truthiness rather than mere presence: web
+ * builds replace `__TAURI__` with `false` (see `vite.config.web.ts`), and an
+ * explicitly-false global means "not Tauri", not "Tauri is present".
  */
 export function isTauriApp(): boolean {
   if (typeof window === 'undefined') return false;
@@ -23,9 +27,9 @@ export function isTauriApp(): boolean {
   const tauriEnv = import.meta.env;
 
   return Boolean(
-    window.__TAURI__ !== undefined ||
-    window.__TAURI_IPC__ !== undefined ||
-    window.tauri !== undefined ||
+    window.__TAURI__ ||
+    window.__TAURI_IPC__ ||
+    window.tauri ||
     navigator.userAgent.includes('Tauri') ||
     navigator.userAgent.includes('tauri') ||
     window.location.protocol === 'tauri:' ||
