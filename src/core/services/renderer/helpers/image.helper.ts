@@ -6,6 +6,7 @@ import type { ImageRef, LocalSiteData, MarkdownFrontmatter, StructureNode } from
 import { imagePreprocessor } from '@/core/services/images/imagePreprocessor.service';
 import { getUrlForNode } from '@/core/services/urlUtils.service';
 import { getRelativePath } from '@/core/services/relativePaths.service';
+import { isExternalOrDataImageUrl } from '../images';
 
 interface RootTemplateContext {
   contentFile?: {
@@ -28,10 +29,6 @@ interface ImageHelperContext {
   tagName?: string;
   path?: string;
   frontmatter?: Record<string, unknown>;
-}
-
-function isExternalOrDataImageUrl(url: string): boolean {
-  return /^(?:[a-z]+:)?\/\//i.test(url) || url.startsWith('data:');
 }
 
 export const imageHelper: SparktypeHelper = (siteData: LocalSiteData) => {

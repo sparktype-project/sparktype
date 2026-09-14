@@ -9,13 +9,18 @@ import { getMergedThemeDataForForm } from '@/core/services/config/theme.service'
 import { prepareRenderEnvironment } from './asset.service';
 import { assemblePageContext, assembleBaseContext } from './context.service';
 import { getCollectionContent, sortCollectionItems } from '@/core/services/collections.service';
-import type { ImageService } from '@/core/types';
 import { imagePreprocessor } from '@/core/services/images/imagePreprocessor.service';
 import { generateExportUrl, generatePreviewUrl, getUrlForNode } from '@/core/services/urlUtils.service';
 import { getRelativePath } from '@/core/services/relativePaths.service';
 import { replaceCloudinaryHostedVideos } from './cloudinaryVideoPlayer';
 import type { Node as UnistNode } from 'unist';
 import { sanitizeHtml } from './sanitize';
+import {
+    isAbsoluteOrSpecialImageUrl,
+    isExternalOrDataImageUrl,
+    postProcessSparkTypeImages,
+    postProcessSparkTypeImagesForExport,
+} from './images';
 import {
   createPaginationData,
   getCollectionItemsForLayoutConfig,
@@ -95,14 +100,6 @@ function shouldPreserveHtmlMdxElement(node: MdxJsxElementLike): boolean {
     }
 
     return false;
-}
-
-function isAbsoluteOrSpecialImageUrl(url: string): boolean {
-    return /^(?:[a-z]+:)?\/\//i.test(url) || url.startsWith('data:') || url.startsWith('/');
-}
-
-function isExternalOrDataImageUrl(url: string): boolean {
-    return /^(?:[a-z]+:)?\/\//i.test(url) || url.startsWith('data:');
 }
 
 /**
@@ -682,116 +679,6 @@ export async function render(
 
     console.log(`[Render Service] Nested layout rendering complete`);
     return finalHtml;
-}
-
-/**
- * Post-processes HTML content to convert Sparktype asset paths to blob URLs for preview
- */
-async function postProcessSparkTypeImages(
-  htmlContent: string, 
-  siteData: LocalSiteData, 
-  imageService: ImageService,
-  forIframe?: boolean
-): Promise<string> {
-  // Find all Sparktype asset images (support both legacy and new paths)
-  const imageRegex = /<img[^>]*src="(assets\/(originals|images)\/[^"]+)"[^>]*data-sparktype-asset="true"[^>]*>/g;
-  
-  let processedHtml = htmlContent;
-  const matches = Array.from(htmlContent.matchAll(imageRegex));
-  
-  console.log('[Render Service] Found Sparktype images to process:', matches.length);
-  
-  for (const match of matches) {
-    const [fullMatch, assetPath] = match;
-    
-    try {
-      // Create ImageRef from asset path
-      const imageRef = {
-        serviceId: 'local' as const,
-        src: assetPath,
-        alt: '',
-        width: 0,
-        height: 0
-      };
-      
-      // Generate blob URL or data URL for preview
-      const blobUrl = await imageService.getDisplayUrl(
-        siteData.manifest,
-        imageRef,
-        { width: imageRef.width, height: imageRef.height },
-        false, // isExport = false for blob URL generation
-        forIframe // Use data URLs for iframe contexts
-      );
-      
-      // Replace the entire img tag with blob URL version
-      const newImg = fullMatch.replace(`src="${assetPath}"`, `src="${blobUrl}"`).replace(' data-sparktype-asset="true"', '');
-      processedHtml = processedHtml.replace(fullMatch, newImg);
-      
-      console.log('[Render Service] Converted asset to blob URL:', assetPath, '->', blobUrl);
-    } catch (error) {
-      console.error('[Render Service] Failed to convert asset to blob URL:', assetPath, error);
-    }
-  }
-  
-  return processedHtml;
-}
-
-/**
- * Post-processes HTML content to convert Sparktype asset paths to relative derivative paths for export
- */
-async function postProcessSparkTypeImagesForExport(
-  htmlContent: string, 
-  siteData: LocalSiteData, 
-  imageService: ImageService,
-  currentPagePath: string
-): Promise<string> {
-  // Find all Sparktype asset images (support both legacy and new paths)
-  const imageRegex = /<img[^>]*src="(assets\/(originals|images)\/[^"]+)"[^>]*data-sparktype-asset="true"[^>]*>/g;
-  
-  let processedHtml = htmlContent;
-  const matches = Array.from(htmlContent.matchAll(imageRegex));
-  
-  console.log('[Render Service] Found Sparktype images to process for export:', matches.length);
-  
-  for (const match of matches) {
-    const [fullMatch, assetPath] = match;
-    
-    try {
-      // Create ImageRef from asset path
-      const imageRef = {
-        serviceId: 'local' as const,
-        src: assetPath,
-        alt: '',
-        width: 0,
-        height: 0
-      };
-      
-      // Generate derivative filename for export (with size data appended)
-      const derivativeFilename = await imageService.getDisplayUrl(
-        siteData.manifest,
-        imageRef,
-        { width: imageRef.width, height: imageRef.height },
-        true // isExport = true for derivative filename
-      );
-      
-      const relativePath = isExternalOrDataImageUrl(derivativeFilename)
-        ? derivativeFilename
-        : getRelativePath(
-            currentPagePath,
-            derivativeFilename.startsWith('/') ? derivativeFilename.substring(1) : derivativeFilename
-          );
-      
-      // Replace the entire img tag with relative derivative path
-      const newImg = fullMatch.replace(`src="${assetPath}"`, `src="${relativePath}"`).replace(' data-sparktype-asset="true"', '');
-      processedHtml = processedHtml.replace(fullMatch, newImg);
-      
-      console.log('[Render Service] Converted asset to relative derivative path:', assetPath, '->', relativePath);
-    } catch (error) {
-      console.error('[Render Service] Failed to convert asset to derivative filename:', assetPath, error);
-    }
-  }
-  
-  return processedHtml;
 }
 
 /**
