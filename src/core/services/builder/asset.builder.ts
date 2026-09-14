@@ -1,9 +1,8 @@
-// src/core/services/builder/asset.service.ts
+// src/core/services/builder/asset.builder.ts
 
 import type { LocalSiteData, SiteBundle, ImageRef, ThemeManifest, LayoutManifest } from '@/core/types';
 import { getAssetContent, getJsonAsset, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
 import { getActiveImageService } from '@/core/services/images/images.service';
-import { cleanupOrphanedImages } from '@/core/services/images/imageCleanup.service';
 import { generateMediaManifest } from '../images/mediaManifest.service';
 
 /**
@@ -103,26 +102,11 @@ async function generateMediaDataFile(bundle: SiteBundle, siteData: LocalSiteData
  * Gathers and adds all site assets (images, themes, layouts) to the bundle.
  */
 export async function bundleAllAssets(bundle: SiteBundle, siteData: LocalSiteData): Promise<void> {
-    // 1. Cleanup orphaned images before bundling
-    try {
-        console.log(`[AssetBuilder] Starting image cleanup...`);
-
-        // Add timeout to prevent infinite hanging
-        const cleanupPromise = cleanupOrphanedImages(siteData);
-        const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('Image cleanup timeout after 30 seconds')), 30000);
-        });
-
-        const cleanupResult = await Promise.race([cleanupPromise, timeoutPromise]);
-        console.log(`[AssetBuilder] ✅ Image cleanup completed: ${cleanupResult.originalImagesRemoved} originals, ${cleanupResult.derivativesRemoved} derivatives removed, ${(cleanupResult.bytesFreed / 1024 / 1024).toFixed(2)} MB freed`);
-    } catch (error) {
-        console.error('[AssetBuilder] ❌ Image cleanup failed:', error);
-        console.error('[AssetBuilder] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-        console.warn('[AssetBuilder] Continuing with export despite cleanup failure...');
-        // Export continues even if cleanup fails - this ensures exports always work
-    }
-
-    // 2. Bundle images (now only the referenced ones remain)
+    // 1. Bundle images. This reads the references in the site data and copies those originals
+    // and cached derivatives into the bundle; orphan cleanup deliberately does not run here.
+    // Cleanup writes to the site's stored data (`saveAllImageAssetsForSite`, registry updates)
+    // and a build must not do that: exporting must never delete images, including images that
+    // only unpublished content references. Orphan cleanup belongs to an explicit user action.
     try {
         const allImageRefs = findAllImageRefs(siteData);
         console.log(`[AssetBuilder] Found ${allImageRefs.length} image references`);

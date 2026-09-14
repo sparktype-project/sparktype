@@ -37,12 +37,6 @@ import { bundleAllAssets } from '../asset.builder';
 describe('asset.builder', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    cleanupOrphanedImagesMock.mockResolvedValue({
-      originalImagesRemoved: 1,
-      derivativesRemoved: 2,
-      bytesFreed: 1024,
-      cleanupLog: [],
-    });
     getJsonAssetMock.mockResolvedValue({
       files: [{ path: 'base.hbs' }, { path: 'styles.css' }],
       layouts: ['page'],
@@ -78,7 +72,6 @@ describe('asset.builder', () => {
 
     await bundleAllAssets(bundle, site);
 
-    expect(cleanupOrphanedImagesMock).toHaveBeenCalledWith(site);
     expect(bundle['_site/assets/originals/logo.png']).toBeInstanceOf(Blob);
     expect(bundle['_site/themes/starter/theme.json']).toContain('"layouts"');
     expect(bundle['_site/themes/starter/base.hbs']).toBe('<html>{{{body}}}</html>');
@@ -86,11 +79,19 @@ describe('asset.builder', () => {
     expect(bundle['_site/data/media.json']).toContain('assets/originals/logo.png');
   });
 
-  test('continues when cleanup or image bundling fails, but still generates media.json', async () => {
+  test('does not run orphan cleanup: cleanup writes to the site’s stored data, which a build must not touch', async () => {
     const site = createSiteFixture('imageHeavySite');
     const bundle: Record<string, Blob | string> = {};
 
-    cleanupOrphanedImagesMock.mockRejectedValueOnce(new Error('cleanup timeout'));
+    await bundleAllAssets(bundle, site);
+
+    expect(cleanupOrphanedImagesMock).not.toHaveBeenCalled();
+  });
+
+  test('continues when image bundling fails, but still generates media.json', async () => {
+    const site = createSiteFixture('imageHeavySite');
+    const bundle: Record<string, Blob | string> = {};
+
     getActiveImageServiceMock.mockReturnValueOnce({
       getExportableAssets: vi.fn().mockRejectedValue(new Error('asset failure')),
     });
