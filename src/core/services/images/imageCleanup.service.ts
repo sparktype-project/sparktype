@@ -3,10 +3,15 @@
 import type { LocalSiteData } from '@/core/types';
 import { deleteImageAsset, getAllImageAssetsForSite } from '@/core/services/localFileSystem.service';
 import { listBlobPaths } from '@/core/services/storage/siteStorage.service';
+import { getAllCustomThemeFiles } from '@/core/services/assetStorage.service';
+import { getAvailableThemes, isCoreTheme } from '@/core/services/config/configHelpers.service';
 import { findImagesInContentFile, findImagesInObject } from './imageReferenceFinder.service';
 import { getCachedDerivative, removeCachedDerivative } from './derivativeCache.service';
 import { getOrphanedImages, removeImageFromRegistry, getImageUsageStats as getRegistryImageStats } from './imageRegistry.service';
 import { ensureImageRegistry, validateAndRepairRegistry } from './registryMigration.service';
+
+/** Deadline for the post-deletion derivative listing; matches the cache's own listing budget. */
+const DERIVATIVE_LISTING_TIMEOUT_MS = 10_000;
 
 /**
  * Result of an image cleanup operation
@@ -37,20 +42,58 @@ function collectLiveImageReferences(siteData: LocalSiteData): Set<string> {
 }
 
 /**
- * The text of every file that can reference an image but that the reference finder does not parse:
- * layout and theme templates, partials and manifests, plus data files.
+ * The reason cleanup must not delete anything, or `null` when the site's reference set is known.
  *
- * A rendered layout partial emits `<img src="assets/…" data-sparktype-asset="true">` and the
- * renderer resolves that path straight out of storage, so an image that only a layout mentions is
- * still in use even though no content file names it. Such a path appears in Handlebars source in
- * no structured shape, so a literal mention is the only signal available — and the failure modes
- * are asymmetric: a false positive keeps a file that might have been deletable, a false negative
- * deletes an image a page still renders.
+ * Both an absent and an empty content list refuse. `contentFiles` is absent on a site the store has
+ * only ever been given a manifest for (`initializeSites`), and an empty array is what
+ * `getSiteContentFiles` returns when storage holds no content array — a state a half-finished
+ * restore or a cleared content key also produces. Nothing here can tell those apart from a site
+ * that genuinely has no content, and in each of them the registry repair would zero every
+ * reference, so the honest answer is to refuse. Shared so cleanup and the preview agree.
  */
-function collectTemplateText(siteData: LocalSiteData): string {
-  const templateFiles = [...(siteData.layoutFiles ?? []), ...(siteData.themeFiles ?? [])];
-  const parts = templateFiles.map((file) => file.content);
+function describeUnsafeReferenceSet(siteData: LocalSiteData): string | null {
+  if (siteData.contentFiles?.length) {
+    return null;
+  }
+  return siteData.contentFiles ? 'empty' : 'not loaded';
+}
+
+/**
+ * The text of every file that can reference an image but that the reference finder does not parse.
+ *
+ * A rendered partial emits `<img src="assets/…" data-sparktype-asset="true">` and the renderer
+ * resolves that path straight out of storage, so an image that only a template mentions is still in
+ * use even though no content file names it. Such a path appears in Handlebars source in no
+ * structured shape, so a literal mention is the only signal available — and the failure modes are
+ * asymmetric: a false positive keeps a file that might have been deletable, a false negative
+ * deletes an image a page still renders.
+ *
+ * The templates that actually render come from the `customThemeFiles` store, not from
+ * `siteData.themeFiles`: `getThemeAssetContent` → `getAssetContent` serves core themes from
+ * `/public` and every custom theme from `assetStorage.getCustomThemeFileContent`
+ * (`configHelpers.service.ts:88-115`). A theme imported as a bundle lives only in that store
+ * (`themeImport.service.ts:236`), so it is the one that protects real sites.
+ * `siteData.themeFiles`/`layoutFiles` are scanned too — they carry the import/backup payload — and
+ * the data files because layouts render their values.
+ */
+async function collectTemplateText(siteData: LocalSiteData): Promise<string> {
+  const importedFiles = [...(siteData.layoutFiles ?? []), ...(siteData.themeFiles ?? [])];
+  const parts = importedFiles.map((file) => file.content);
+
+  const customThemes = getAvailableThemes(siteData.manifest).filter((theme) => !isCoreTheme(theme.path));
+  const themeBundles = await Promise.all(
+    customThemes.map((theme) => getAllCustomThemeFiles(siteData.siteId, theme.path)),
+  );
+  themeBundles.forEach((bundle) => {
+    Object.values(bundle).forEach((fileContent) => {
+      if (typeof fileContent === 'string') {
+        parts.push(fileContent);
+      }
+    });
+  });
+
   parts.push(...Object.values(siteData.dataFiles ?? {}));
+
   return parts.join('\n');
 }
 
@@ -65,12 +108,12 @@ function collectTemplateText(siteData: LocalSiteData): string {
  * templates and data files the parser does not reach. Deletion requires both sources to agree that
  * nothing references the image; anything else keeps its blob and its registry record.
  */
-function partitionReferencedOrphans(
+async function partitionReferencedOrphans(
   siteData: LocalSiteData,
   orphanedOriginals: string[],
-): { deletable: string[]; stillReferenced: string[] } {
+): Promise<{ deletable: string[]; stillReferenced: string[] }> {
   const parsedReferences = collectLiveImageReferences(siteData);
-  const templateText = collectTemplateText(siteData);
+  const templateText = await collectTemplateText(siteData);
 
   const deletable: string[] = [];
   const stillReferenced: string[] = [];
@@ -201,6 +244,11 @@ async function deleteOrphanedOriginals(
  * error and a 2s timeout as "absent", so it cannot tell a deleted derivative from an unreadable
  * one, and the OPFS backend swallows removal errors. Only derivatives the listing no longer
  * contains are counted, which is also what makes a repeated cleanup report zero.
+ *
+ * A listing that fails or times out leaves every removal unverified: nothing is counted and every
+ * candidate is reported as a failure. The alternative — letting the rejection escape to cleanup's
+ * catch — would run the fallback path and discard the counts for the originals already deleted in
+ * this same run, telling a user who just lost files that nothing happened.
  */
 async function deleteOrphanedDerivatives(
   siteId: string,
@@ -227,7 +275,23 @@ async function deleteOrphanedDerivatives(
     }
   }
 
-  const remaining = new Set(await listBlobPaths('derivatives', siteId));
+  let remaining: Set<string>;
+  try {
+    // Same deadline the derivative cache itself puts on this call. It rejects rather than falling
+    // back to an empty list, which here would read as "every derivative was deleted".
+    const timeout = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`Listing derivatives timed out after ${DERIVATIVE_LISTING_TIMEOUT_MS}ms`)), DERIVATIVE_LISTING_TIMEOUT_MS);
+    });
+    remaining = new Set(await Promise.race([listBlobPaths('derivatives', siteId), timeout]));
+  } catch (error) {
+    const unverified = orphanedDerivatives.filter((path) => !failures.includes(path));
+    log.push(
+      `[ImageCleanup] Could not list the derivative namespace, so ${unverified.length} derivative ` +
+      `deletion(s) are unverified and no bytes are counted as freed: ${error}`
+    );
+    console.error('[ImageCleanup] Failed to list derivatives after deletion:', error);
+    return { removed: 0, bytesFreed: 0, failures: [...failures, ...unverified] };
+  }
 
   let removed = 0;
   let bytesFreed = 0;
@@ -282,18 +346,11 @@ export async function cleanupOrphanedImages(siteData: LocalSiteData): Promise<Cl
   log.push(`[ImageCleanup] Starting registry-based cleanup for site: ${siteData.siteId}`);
 
   try {
-    // Refuse when the site's content is not loaded. `contentFiles` is absent on a site the store
-    // has only ever given a manifest to (`initializeSites`), and an empty array is what the loader
-    // returns when storage holds no content — a state a half-finished restore or a cleared content
-    // store also produces, and cleanup cannot tell those apart. In either state the reference set
-    // is unknown: `validateAndRepairRegistry` would rewrite every `referencedIn` to empty, the
-    // registry would then report every stored image as an orphan, and nothing would veto it.
-    // Refusing costs a no-op the user can retry; deleting on a wrong reference set is permanent.
-    if (!siteData.contentFiles?.length) {
+    const unsafeReferenceSet = describeUnsafeReferenceSet(siteData);
+    if (unsafeReferenceSet) {
       log.push(
-        `[ImageCleanup] The site's content files are ${
-          siteData.contentFiles ? 'empty' : 'not loaded'
-        }, so the reference set is unknown; refusing to delete anything`
+        `[ImageCleanup] The site's content files are ${unsafeReferenceSet}, so the reference set is ` +
+        `unknown; refusing to delete anything`
       );
       return {
         originalImagesRemoved: 0,
@@ -314,7 +371,7 @@ export async function cleanupOrphanedImages(siteData: LocalSiteData): Promise<Cl
     const { orphanedOriginals, orphanedDerivatives } = await getOrphanedImages(siteData.siteId);
     log.push(`[ImageCleanup] Found ${orphanedOriginals.length} orphaned originals, ${orphanedDerivatives.length} orphaned derivatives`);
 
-    const { deletable: deletableOriginals, stillReferenced } = partitionReferencedOrphans(
+    const { deletable: deletableOriginals, stillReferenced } = await partitionReferencedOrphans(
       siteData,
       orphanedOriginals,
     );
@@ -381,13 +438,24 @@ export async function previewCleanup(siteData: LocalSiteData): Promise<{
   estimatedBytesFreed: number;
 }> {
   try {
+    // Agree with cleanup: when the reference set is unknown, cleanup deletes nothing, so the
+    // preview must not advertise savings for a run that will do nothing.
+    const unsafeReferenceSet = describeUnsafeReferenceSet(siteData);
+    if (unsafeReferenceSet) {
+      console.warn(
+        `[ImageCleanup] Preview: the site's content files are ${unsafeReferenceSet}, so the reference ` +
+        `set is unknown and cleanup would delete nothing`
+      );
+      return { orphanedOriginals: [], orphanedDerivatives: [], estimatedBytesFreed: 0 };
+    }
+
     // Ensure registry is available
     await ensureImageRegistry(siteData);
 
     // Get orphaned images from registry, then apply the same reference veto that cleanup applies:
     // nothing the site's files still reference is reported as deletable.
     const { orphanedOriginals: registryOrphans, orphanedDerivatives } = await getOrphanedImages(siteData.siteId);
-    const { deletable: orphanedOriginals } = partitionReferencedOrphans(siteData, registryOrphans);
+    const { deletable: orphanedOriginals } = await partitionReferencedOrphans(siteData, registryOrphans);
 
     // Estimate bytes that would be freed
     let estimatedBytes = 0;
