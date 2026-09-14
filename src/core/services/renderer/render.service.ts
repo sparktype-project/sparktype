@@ -1,7 +1,6 @@
 // src/core/services/renderer/render.service.ts
 
 import Handlebars from 'handlebars';
-import DOMPurify from 'dompurify';
 import type { ImageRef, LocalSiteData, PageResolutionResult, ParsedMarkdownFile, StructureNode } from '@/core/types';
 import { PageType } from '@/core/types';
 import { clearAssetContentCache, getAssetContent, getLayoutManifest, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
@@ -14,9 +13,9 @@ import type { ImageService } from '@/core/types';
 import { imagePreprocessor } from '@/core/services/images/imagePreprocessor.service';
 import { generateExportUrl, generatePreviewUrl, getUrlForNode } from '@/core/services/urlUtils.service';
 import { getRelativePath } from '@/core/services/relativePaths.service';
-import { SECURITY_CONFIG } from '@/config/editorConfig';
-import type { Node as UnistNode } from 'unist';
 import { replaceCloudinaryHostedVideos } from './cloudinaryVideoPlayer';
+import type { Node as UnistNode } from 'unist';
+import { sanitizeHtml } from './sanitize';
 import {
   createPaginationData,
   getCollectionItemsForLayoutConfig,
@@ -104,158 +103,6 @@ function isAbsoluteOrSpecialImageUrl(url: string): boolean {
 
 function isExternalOrDataImageUrl(url: string): boolean {
     return /^(?:[a-z]+:)?\/\//i.test(url) || url.startsWith('data:');
-}
-
-/**
- * Sanitizes HTML content to prevent XSS while allowing scripts from trusted domains.
- *
- * Security model:
- * - Blocks all inline scripts and event handlers
- * - Allows external scripts only from TRUSTED_SCRIPT_DOMAINS
- * - Preserves safe HTML for content formatting
- * - Protects SiteViewer users from malicious site authors
- *
- * @param htmlContent The HTML to sanitize
- * @returns Sanitized HTML safe for rendering
- */
-function sanitizeHtml(htmlContent: string): string {
-    if (typeof window === 'undefined') {
-        console.warn('[Render Service] DOMPurify not available in Node environment - HTML not sanitized');
-        return htmlContent;
-    }
-
-    // Configure DOMPurify to allow scripts from trusted domains only
-    const config = {
-        // Allow most HTML tags for content formatting
-        ALLOWED_TAGS: [
-            // Text formatting
-            'p', 'br', 'span', 'strong', 'em', 'b', 'i', 'u', 's', 'del', 'ins', 'mark', 'small', 'sub', 'sup',
-            // Headings
-            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-            // Lists
-            'ul', 'ol', 'li', 'dl', 'dt', 'dd',
-            // Links and media
-            'a', 'img', 'figure', 'figcaption', 'picture', 'source',
-            // Tables
-            'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
-            // Blocks
-            'div', 'section', 'article', 'aside', 'header', 'footer', 'nav', 'main',
-            'blockquote', 'pre', 'code', 'hr',
-            // Forms (for Alpine.js interactivity)
-            'form', 'input', 'button', 'select', 'option', 'textarea', 'label', 'fieldset', 'legend',
-            // Other
-            'details', 'summary', 'iframe', 'video', 'audio', 'track',
-            // Scripts (will be filtered by domain in the hook)
-            'script'
-        ],
-        ALLOWED_ATTR: [
-            // Standard attributes
-            'id', 'class', 'style', 'title', 'alt', 'src', 'href', 'target', 'rel',
-            'width', 'height', 'data-*', 'aria-*', 'role',
-            'allow', 'allowfullscreen', 'loading', 'frameborder', 'sandbox',
-            // Table attributes
-            'colspan', 'rowspan', 'scope',
-            // Form attributes
-            'type', 'name', 'value', 'placeholder', 'required', 'disabled', 'checked', 'selected',
-            // Media attributes
-            'controls', 'autoplay', 'loop', 'muted', 'poster',
-            // Alpine.js attributes (x-data, x-bind, x-on, etc.)
-            'x-data', 'x-bind', 'x-on', 'x-text', 'x-html', 'x-model', 'x-show', 'x-if', 'x-for',
-            'x-transition', 'x-cloak', 'x-init', 'x-effect', 'x-ref', 'x-teleport',
-            // @click, @input, etc. (Alpine shorthand)
-            '@click', '@input', '@change', '@submit', '@keydown', '@keyup',
-            // :class, :href, etc. (Alpine shorthand)
-            ':class', ':href', ':src', ':style',
-        ],
-        // Allow data URIs for images
-        ALLOW_DATA_ATTR: true,
-        // Keep relative URLs
-        ALLOW_UNKNOWN_PROTOCOLS: false,
-        // Add custom hook to filter scripts
-        FORBID_TAGS: [],
-        // Block ALL inline event handlers (comprehensive list)
-        FORBID_ATTR: [
-            'onerror', 'onload', 'onclick', 'onmouseover', 'onmouseout', 'onmousedown', 'onmouseup',
-            'onmousemove', 'onmouseenter', 'onmouseleave', 'ondblclick', 'oncontextmenu',
-            'onfocus', 'onblur', 'onchange', 'oninput', 'onsubmit', 'onreset', 'onselect',
-            'onkeydown', 'onkeyup', 'onkeypress', 'onscroll', 'onresize', 'ondrag', 'ondrop',
-            'onabort', 'oncanplay', 'oncanplaythrough', 'ondurationchange', 'onemptied', 'onended',
-            'onloadeddata', 'onloadedmetadata', 'onloadstart', 'onpause', 'onplay', 'onplaying',
-            'onprogress', 'onratechange', 'onseeked', 'onseeking', 'onstalled', 'onsuspend',
-            'ontimeupdate', 'onvolumechange', 'onwaiting',
-        ],
-    };
-
-    // Create a DOMPurify instance and add hooks
-    const purify = DOMPurify(window);
-
-    // Hook to validate script sources against trusted domains
-    purify.addHook('uponSanitizeElement', (node, data) => {
-        if (data.tagName === 'script') {
-            const scriptElement = node as HTMLScriptElement;
-            const src = scriptElement.getAttribute('src');
-
-            // If no src (inline script), remove it
-            if (!src) {
-                console.warn('[Render Service] Removed inline script tag (not allowed)');
-                if (node.parentNode) node.parentNode.removeChild(node);
-                return;
-            }
-
-            // Check if src is from a trusted domain
-            const isTrusted = SECURITY_CONFIG.TRUSTED_SCRIPT_DOMAINS.some(domain => {
-                try {
-                    const url = new URL(src, window.location.origin);
-                    return url.hostname === domain || url.hostname.endsWith(`.${domain}`);
-                } catch {
-                    return false;
-                }
-            });
-
-            if (!isTrusted) {
-                console.warn(`[Render Service] Removed script from untrusted domain: ${src}`);
-                if (node.parentNode) node.parentNode.removeChild(node);
-            }
-        }
-
-        // Also validate iframes to prevent embedding malicious content
-        if (data.tagName === 'iframe') {
-            const iframeElement = node as HTMLIFrameElement;
-            const src = iframeElement.getAttribute('src');
-
-            if (!src) {
-                // Iframes without src are suspicious - remove them
-                console.warn('[Render Service] Removed iframe without src');
-                if (node.parentNode) node.parentNode.removeChild(node);
-                return;
-            }
-
-            // Enforce https:// for iframes (prevent protocol-relative and javascript: URLs)
-            try {
-                const url = new URL(src, window.location.origin);
-                if (url.protocol !== 'https:') {
-                    console.warn(`[Render Service] Removed iframe with non-HTTPS protocol: ${src}`);
-                    if (node.parentNode) node.parentNode.removeChild(node);
-                    return;
-                }
-            } catch {
-                console.warn(`[Render Service] Removed iframe with invalid URL: ${src}`);
-                if (node.parentNode) node.parentNode.removeChild(node);
-            }
-
-            // Add sandbox attribute for additional security
-            if (!iframeElement.hasAttribute('sandbox')) {
-                iframeElement.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups');
-            }
-        }
-    });
-
-    const sanitized = purify.sanitize(htmlContent, config);
-
-    // Clean up hooks
-    purify.removeAllHooks();
-
-    return String(sanitized);
 }
 
 /**
