@@ -4,19 +4,32 @@ import type { LocalSiteData, SiteBundle, StructureNode, CollectionItemRef } from
 import { flattenStructure } from '@/core/services/fileTree.service';
 import { getUrlForNode } from '@/core/services/urlUtils.service';
 
+const XML_ENTITIES: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&apos;',
+};
+
 /**
- * Escapes special characters in a string for safe inclusion in XML.
- * @param str The string to escape.
+ * Escapes a value for use in XML text or an attribute value.
+ * @param value The value to escape.
  * @returns The escaped string.
  */
-function escapeForXml(str: unknown): string {
-    if (str === undefined || str === null) return '';
-    return String(str)
-        .replace(/&/g, '&')
-        .replace(/</g, '<')
-        .replace(/>/g, '>')
-        .replace(/"/g, '"')
-        .replace(/'/g, "'");
+function escapeForXml(value: unknown): string {
+    if (value === undefined || value === null) return '';
+    return String(value).replace(/[&<>"']/g, (char) => XML_ENTITIES[char]);
+}
+
+/**
+ * Wraps HTML content in a CDATA section. A CDATA section cannot contain the terminator `]]>`,
+ * so an embedded terminator closes the section, escapes the `>` as `&gt;`, and opens a new one.
+ * @param content The raw content to wrap.
+ * @returns A CDATA section safe to embed in an XML document.
+ */
+function wrapInCData(content: string): string {
+    return `<![CDATA[${content.split(']]>').join(']]]]><![CDATA[>')}]]>`;
 }
 
 /**
@@ -56,9 +69,9 @@ export function generateMetadataFiles(
             
             // Include full content in the feed, with CDATA to handle HTML
             const fullContent = file.content || '';
-            const contentCData = `<![CDATA[${fullContent}]]>`;
+            const contentCData = wrapInCData(fullContent);
             
-            const rssItem = `<item><title>${escapeForXml(item.title)}</title><link>${escapeForXml(absoluteUrl)}</link><guid isPermaLink="true">${escapeForXml(absoluteUrl)}</guid><pubDate>${pubDate}</pubDate><description>${escapeForXml(description)}</description><content:encoded>${contentCData}</content:encoded></item>`;
+            const rssItem = `<item><title>${escapeForXml(item.title)}</title><link>${escapeForXml(absoluteUrl)}</link><guid isPermaLink="true">${escapeForXml(absoluteUrl)}</guid><pubDate>${escapeForXml(pubDate)}</pubDate><description>${escapeForXml(description)}</description><content:encoded>${contentCData}</content:encoded></item>`;
             acc.push(rssItem);
         }
         return acc;
@@ -70,7 +83,8 @@ export function generateMetadataFiles(
 
     // Only generate RSS if there are collection items with dates
     if (rssItems) {
-        bundle['rss.xml'] = `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>${escapeForXml(manifest.title)}</title><link>${siteBaseUrl}</link><description>${escapeForXml(manifest.description)}</description><lastBuildDate>${new Date().toUTCString()}</lastBuildDate><atom:link href="${new URL('rss.xml', siteBaseUrl).href}" rel="self" type="application/rss+xml" />${rssItems}</channel></rss>`;
+        const selfLink = new URL('rss.xml', siteBaseUrl).href;
+        bundle['rss.xml'] = `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>${escapeForXml(manifest.title)}</title><link>${escapeForXml(siteBaseUrl)}</link><description>${escapeForXml(manifest.description)}</description><lastBuildDate>${new Date().toUTCString()}</lastBuildDate><atom:link href="${escapeForXml(selfLink)}" rel="self" type="application/rss+xml" />${rssItems}</channel></rss>`;
     }
 
     // --- 3. Sitemap Generation ---
@@ -78,7 +92,7 @@ export function generateMetadataFiles(
         const file = contentFiles.find(f => f.path === node.path);
         const absoluteUrl = new URL(getUrlForNode(node, manifest, false, undefined, siteData), siteBaseUrl).href;
         const lastMod = (file?.frontmatter.date as string || new Date().toISOString()).split('T')[0];
-        return `<url><loc>${escapeForXml(absoluteUrl)}</loc><lastmod>${lastMod}</lastmod></url>`;
+        return `<url><loc>${escapeForXml(absoluteUrl)}</loc><lastmod>${escapeForXml(lastMod)}</lastmod></url>`;
     }).join('');
     bundle['sitemap.xml'] = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${sitemapUrls}</urlset>`;
 }
