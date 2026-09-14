@@ -48,4 +48,20 @@ npm run test:e2e   # Playwright browser smoke suite
 npm run lint       # ESLint
 ```
 
+### Notes
+
+- **Editor**: TipTap 3.x (`src/components/editor/tiptap/`).
+- **Desktop edit protection**: unavailable in the desktop app
+  (`src/core/services/authPolicy.service.ts` is the single decision point:
+  `isEditProtectionSupported()`, `requiresAuthentication(manifest)`,
+  `EDIT_PROTECTION_UNAVAILABLE_MESSAGE`). `manifest.auth` is preserved untouched
+  through load, save, export, and backup; desktop stops enforcing it, browsers are unchanged.
+- **Backups**: ZIP archives rooted at `_site/` (see `src/core/services/backup/backupFormat.ts`
+  for the contract). Legacy archives carrying originals but no media index are still restored
+  via the legacy-originals path; damaged archives are rejected before storage is touched.
+- **Modules**: content slice composes `src/core/state/slices/content/`; renderer splits into
+  focused modules behind `src/core/services/renderer/render.service.ts`; backups live under
+  `src/core/services/backup/`; the GitHub provider splits under
+  `src/core/services/publishing/github/`.
+
 

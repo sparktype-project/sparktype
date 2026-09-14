@@ -133,6 +133,32 @@ The application uses Zustand with a slice-based pattern:
   single decision point. `manifest.auth` is preserved untouched so protected sites still export and
   back up their credentials intact.
 
+### Backup format
+- Site backups are ZIP archives rooted at `_site/` (`SIGNUM_FOLDER` in
+  `src/core/services/backup/backupFormat.ts`, kept for backwards compatibility with older archives).
+- Contract: export preserves, and import restores, Markdown content, the manifest verbatim
+  (including `manifest.auth`), secrets, every original image (bytes and path), the
+  `data/media.json` media index, site data files, and custom themes/layouts. Derivatives are
+  regenerated, never archived.
+- Legacy path: archives that carry originals under `_site/assets/originals/` but no media index
+  are still restored, keyed by their own archive path. A damaged archive (unreadable ZIP,
+  missing/invalid manifest, unparseable `secrets.json` or `media.json`) is rejected before any
+  storage is touched.
+- Modules: `src/core/services/backup/` (`backupFormat.ts`, `backupExport.ts`, `backupImport.ts`,
+  `backupValidation.ts`).
+
+### Module boundaries
+- Content slice (`src/core/state/slices/contentSlice.ts`) is a thin composition over
+  `src/core/state/slices/content/`: `contentActions`, `navigationActions`, `slugActions`,
+  `slugPaths`, `collectionRefs`, `tagActions`.
+- Renderer (`src/core/services/renderer/`) is focused modules (`render.types`, `sanitize`,
+  `markdownPipeline`, `images`, `layoutHierarchy`, `collectionDirectives`, `listLayoutEnrichment`)
+  behind the `render.service.ts` facade, plus `asset.service`, `context.service`,
+  `cloudinaryVideoPlayer`, and `helpers/`.
+- Publishing: the GitHub provider is split under `src/core/services/publishing/github/`
+  (`githubApiClient`, `githubDeployment`, `githubTreePlanner`, `githubPathTracker`,
+  `githubBlobUploader`).
+
 ### Dual Build Targets
 - Web builds exclude Tauri APIs and desktop-specific features
 - Desktop builds include full Tauri integration
