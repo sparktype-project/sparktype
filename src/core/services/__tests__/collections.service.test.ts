@@ -61,8 +61,6 @@ describe('getCollectionContent', () => {
 });
 
 describe('selectCollectionItems', () => {
-  // Distinct collection id/path from the test above: getCollectionContent caches by
-  // collection path, and this test needs its own items.
   function createNotesManifest(): Manifest {
     return {
       siteId: 'site-1',
@@ -130,5 +128,53 @@ describe('selectCollectionItems', () => {
 
     // A non-positive limit keeps every item.
     expect(selectCollectionItems(siteData, 'notes', { maxItems: 0 })).toHaveLength(3);
+  });
+});
+
+describe('getCollectionContent isolation', () => {
+  function createSite(siteId: string, itemPath: string): { manifest: Manifest; contentFiles: ParsedMarkdownFile[] } {
+    return {
+      manifest: { ...createManifest(), siteId },
+      contentFiles: [
+        {
+          path: 'content/blog.md',
+          slug: 'blog',
+          frontmatter: { title: 'Blog', layout: 'list-view' },
+          content: 'Listing page',
+        },
+        {
+          path: itemPath,
+          slug: itemPath.replace(/^content\//, '').replace(/\.md$/, ''),
+          frontmatter: { title: itemPath, layout: 'blog-post' },
+          content: `${itemPath} body`,
+        },
+      ],
+    };
+  }
+
+  test('two sites with identical collection config and file counts never share content', () => {
+    const siteOne = createSite('site-one', 'content/blog/from-site-one.md');
+    const siteTwo = createSite('site-two', 'content/blog/from-site-two.md');
+
+    expect(getCollectionContent(siteOne, 'blog').map((file) => file.path)).toEqual([
+      'content/blog/from-site-one.md',
+    ]);
+    expect(getCollectionContent(siteTwo, 'blog').map((file) => file.path)).toEqual([
+      'content/blog/from-site-two.md',
+    ]);
+  });
+
+  test('reflects frontmatter changes made since the previous call', () => {
+    const site = createSite('site-one', 'content/blog/post.md');
+
+    expect(getCollectionContent(site, 'blog')[0].frontmatter.published).toBeUndefined();
+
+    // The store replaces files immutably on save, so an edited file is a new object.
+    site.contentFiles[1] = {
+      ...site.contentFiles[1],
+      frontmatter: { ...site.contentFiles[1].frontmatter, published: false },
+    };
+
+    expect(getCollectionContent(site, 'blog')[0].frontmatter.published).toBe(false);
   });
 });

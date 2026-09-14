@@ -4,6 +4,7 @@ import type { Manifest, Collection, ParsedMarkdownFile } from '@/core/types';
 import { sortCollectionItems } from './contentSorting.service';
 import type { SortOrder } from './contentSorting.service';
 import { filterContentBySelectedTags } from './tags.service';
+import { isPathWithinCollectionDirectory } from '@/core/state/slices/content/slugPaths';
 
 /**
  * ============================================================================
@@ -39,76 +40,32 @@ export function getCollection(manifest: Manifest, collectionId: string): Collect
   return getCollections(manifest).find(c => c.id === collectionId) || null;
 }
 
-// Cache for collection content to avoid repeated filtering
-const collectionContentCache = new Map<string, { data: ParsedMarkdownFile[]; timestamp: number; siteDataHash: string }>();
-const CACHE_TTL = 5000; // 5 seconds cache
-
-/**
- * Creates a simple hash of siteData for cache invalidation
- */
-function createSiteDataHash(siteData: { manifest: Manifest; contentFiles?: ParsedMarkdownFile[] }): string {
-  const fileCount = siteData.contentFiles?.length || 0;
-  const manifestStr = JSON.stringify(siteData.manifest.collections || []);
-  return `${fileCount}-${manifestStr.slice(0, 100)}`;
-}
-
-function normalizeCollectionContentPath(contentPath: string): string {
-  return contentPath.endsWith('/') ? contentPath : `${contentPath}/`;
-}
-
 /**
  * Gets all content files that belong to a specific collection.
- * Uses caching to improve performance for repeated calls.
+ *
+ * Membership is "inside the collection's directory" (see `isPathWithinCollectionDirectory`),
+ * which excludes the collection's own listing page.
+ *
+ * This is a plain filter over the caller's files. It used to be memoised in a module-level
+ * cache, which leaked content between sites: the key was the collection id and content path,
+ * and the validity hash counted files and looked at collection configuration, so a second site
+ * with the same shape received the first site's files, and a `published` toggle kept serving the
+ * pre-toggle objects until the TTL expired. Filtering is cheap; correctness is not optional.
+ *
  * @param siteData The complete data for the site.
  * @param collectionId The ID of the collection.
  * @returns An array of ParsedMarkdownFile objects belonging to the collection.
  */
 export function getCollectionContent(siteData: { manifest: Manifest; contentFiles?: ParsedMarkdownFile[] }, collectionId: string): ParsedMarkdownFile[] {
   const collection = getCollection(siteData.manifest, collectionId);
-  console.log(`[getCollectionContent] Looking for collection "${collectionId}"`);
-  console.log(`[getCollectionContent] Found collection:`, collection);
-  console.log(`[getCollectionContent] Available collections:`, siteData.manifest.collections);
-  console.log(`[getCollectionContent] Total content files:`, siteData.contentFiles?.length || 0);
-  
+
   if (!collection || !siteData.contentFiles) {
     return [];
   }
 
-  // Create cache key and check cache
-  const cacheKey = `${collectionId}-${collection.contentPath}`;
-  const siteDataHash = createSiteDataHash(siteData);
-  const now = Date.now();
-  const cached = collectionContentCache.get(cacheKey);
-
-  if (cached && 
-      now - cached.timestamp < CACHE_TTL && 
-      cached.siteDataHash === siteDataHash) {
-    return cached.data;
-  }
-
-  // Filter and cache the result
-  const collectionItemPathPrefix = normalizeCollectionContentPath(collection.contentPath);
-  const result = siteData.contentFiles.filter(file =>
-    file.path.startsWith(collectionItemPathPrefix)
+  return siteData.contentFiles.filter(file =>
+    isPathWithinCollectionDirectory(file.path, collection.contentPath)
   );
-
-  collectionContentCache.set(cacheKey, {
-    data: result,
-    timestamp: now,
-    siteDataHash
-  });
-
-  // Clean up old cache entries periodically
-  if (collectionContentCache.size > 50) {
-    const cutoff = now - CACHE_TTL * 2;
-    for (const [key, value] of collectionContentCache.entries()) {
-      if (value.timestamp < cutoff) {
-        collectionContentCache.delete(key);
-      }
-    }
-  }
-
-  return result;
 }
 
 // Import the centralized sorting logic
