@@ -43,14 +43,17 @@ export async function deployGeneratedFiles(
   const baseCommitSHA = await client.getBranchCommitSHA(branch);
 
   // 2. `base_tree` takes a tree SHA, not a commit SHA. The ref gives us the commit, so its tree
-  //    has to be read separately; the commit SHA is still the new commit's parent below.
+  //    has to be read separately; the commit SHA is still the new commit's parent below. The
+  //    listing then tells us which tracked paths may be deleted, since the tree API errors on a
+  //    deletion for a file that is not there.
   const baseTreeSHA = baseCommitSHA === null ? null : await client.getCommitTreeSHA(baseCommitSHA);
+  const baseTreePaths = baseTreeSHA === null ? null : await client.listTreePaths(baseTreeSHA);
 
   // 3. Paths recorded by a previous deployment into this exact repository and branch. `null`
   //    means there is no history, which disables deletions for this deployment.
   const target = `${config.owner}/${config.repo}#${branch}`;
   const previousPaths = await readTrackedPaths(siteId, target);
-  const plan = planDeployment({ files, previousPaths, hasBaseTree: baseTreeSHA !== null });
+  const plan = planDeployment({ files, previousPaths, baseTreePaths });
 
   // 4. Materialise the plan: inline text, upload binary assets as blobs, delete with `sha: null`.
   const entries: GitHubTreeEntry[] = [];

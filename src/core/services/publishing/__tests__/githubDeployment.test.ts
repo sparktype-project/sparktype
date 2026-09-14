@@ -203,7 +203,10 @@ describe('deployGeneratedFiles', () => {
   });
 
   test('applies a path history only to the branch it was recorded for', async () => {
-    const stub = new GitHubApiStub({ extraBranches: ['gh-pages'] });
+    const stub = new GitHubApiStub({
+      existingFiles: { 'legacy/index.html': 'an older generated page' },
+      extraBranches: ['gh-pages'],
+    });
     stub.install();
 
     const deploy = (branch: string, paths: string[]) =>
@@ -215,19 +218,56 @@ describe('deployGeneratedFiles', () => {
         files: new Map(paths.map((path) => [path, `content of ${path}`])),
       });
 
-    await deploy('main', ['index.html', 'preview-only/index.html']);
+    await deploy('main', ['index.html', 'legacy/index.html']);
+    expect(await readTrackedPaths('site-branch-change', 'o/r#main')).toEqual([
+      'index.html',
+      'legacy/index.html',
+    ]);
 
-    // gh-pages has a base tree to delete from, but no history of its own: deleting main's
-    // obsolete paths here would remove files this branch never held.
+    // gh-pages holds that same file — a collaborator merged the branch — but has no history of its
+    // own. Reading main's record as gh-pages' would delete a file this branch never generated.
     const otherBranch = await deploy('gh-pages', ['index.html']);
 
     expect(otherBranch.deletedPaths).toEqual([]);
-    expect(stub.treeRequests[1].entries.some((entry) => entry.sha === null)).toBe(false);
+    expect(stub.hasFile('legacy/index.html', 'gh-pages')).toBe(true);
 
-    // The main history is still there, and it is what drives deletions on main.
+    // main's own history is intact and still drives deletions there.
     const mainAgain = await deploy('main', ['index.html']);
 
-    expect(mainAgain.deletedPaths).toEqual(['preview-only/index.html']);
+    expect(mainAgain.deletedPaths).toEqual(['legacy/index.html']);
+    expect(stub.hasFile('legacy/index.html', 'main')).toBe(false);
+  });
+
+  test('deploys over a generated path a collaborator already deleted remotely', async () => {
+    const stub = new GitHubApiStub();
+    stub.install();
+
+    await deployGeneratedFiles({
+      siteId: 'site-remote-delete',
+      siteTitle: 'Remote delete',
+      config: CONFIG,
+      branch: 'main',
+      files: new Map([
+        ['index.html', 'home'],
+        ['team/index.html', 'team'],
+      ]),
+    });
+
+    // The collaborator removes the page on GitHub; Sparktype no longer generates it either.
+    stub.deleteFile('team/index.html');
+
+    const result = await deployGeneratedFiles({
+      siteId: 'site-remote-delete',
+      siteTitle: 'Remote delete',
+      config: CONFIG,
+      branch: 'main',
+      files: new Map([['index.html', 'home']]),
+    });
+
+    // GitHub errors on a deletion for a file that is not there, which would fail every retry.
+    expect(result.deletedPaths).toEqual([]);
+    expect(stub.treeRequests[1].entries.some((entry) => entry.sha === null)).toBe(false);
+    expect(stub.textFile('index.html')).toBe('home');
   });
 
   test('surfaces a rejected branch update with GitHub’s own error body', async () => {

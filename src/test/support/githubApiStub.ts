@@ -154,6 +154,27 @@ export class GitHubApiStub {
     return this.treeByCommitSHA.get(commitSHA) ?? null;
   }
 
+  /**
+   * Removes a path by advancing the branch the way a collaborator's commit would: a new tree
+   * (without the path), a new commit pointing at it, then the branch moved. A branch whose tree
+   * merely changed in place would not resemble the repository the provider then reads back.
+   */
+  deleteFile(path: string, branch = 'main'): void {
+    const existing = this.branches.get(branch);
+    if (!existing) {
+      throw new Error(`GitHubApiStub: no branch ${branch}`);
+    }
+
+    const nextTree = new Map(existing.tree);
+    nextTree.delete(path);
+    const treeSHA = this.nextSHA('tree');
+    this.treeBySHA.set(treeSHA, nextTree);
+
+    const commitSHA = this.nextSHA('commit');
+    this.treeByCommitSHA.set(commitSHA, treeSHA);
+    this.branches.set(branch, { commitSHA, tree: nextTree });
+  }
+
   /** Text content of `path` in the branch's current tree, or `null`. */
   textFile(path: string, branch = 'main'): string | null {
     const item = this.branches.get(branch)?.tree.get(path);
@@ -191,6 +212,9 @@ export class GitHubApiStub {
         ? response(200, { sha: commitSHA, tree: { sha: treeSHA } })
         : response(404, { message: 'Not Found' });
     }
+    if (method === 'GET' && suffix.startsWith('/git/trees/')) {
+      return this.handleListTree(suffix.slice('/git/trees/'.length));
+    }
     if (method === 'GET' && suffix.startsWith('/contents/')) {
       // Conflict detection probes `_site`; nothing has been imported from this repository.
       return response(404, { message: 'Not Found' });
@@ -223,6 +247,23 @@ export class GitHubApiStub {
       return response(404, { message: 'Not Found' });
     }
     return response(200, { object: { sha: existing.commitSHA } });
+  }
+
+  /** Lists a tree's blob paths, matching the recursive `GET /git/trees/{sha}` response. */
+  private handleListTree(treeSHA: string) {
+    const tree = this.treeBySHA.get(treeSHA);
+    if (!tree) {
+      return response(404, { message: 'Not Found' });
+    }
+    // Only `path` and `type` are consulted by the client; the SHAs are placeholders.
+    const entries = [...tree.entries()].map(([path, item]) => ({
+      path,
+      mode: '100644',
+      type: 'blob',
+      sha: item.kind === 'binary' ? item.blobSHA : `text-blob-of-${path}`,
+      size: item.kind === 'text' ? item.content.length : 0,
+    }));
+    return response(200, { sha: treeSHA, truncated: false, tree: entries });
   }
 
   private handleCreateBlob(body: unknown) {

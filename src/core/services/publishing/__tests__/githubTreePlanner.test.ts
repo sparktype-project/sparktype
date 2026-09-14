@@ -2,6 +2,9 @@ import { planDeployment } from '../github/githubTreePlanner';
 
 const textFiles = (paths: string[]) => new Map(paths.map((path) => [path, `<html>${path}</html>`]));
 
+/** The paths a base tree would contain, as the deployment flow reads them. */
+const baseTree = (...paths: string[]) => new Set(paths);
+
 describe('planDeployment', () => {
   test('inlines text and marks binary assets for the blob API', () => {
     const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
@@ -11,7 +14,7 @@ describe('planDeployment', () => {
         ['assets/logo.png', bytes],
       ]),
       previousPaths: null,
-      hasBaseTree: false,
+      baseTreePaths: null,
     });
 
     expect(plan.entries).toEqual([
@@ -25,7 +28,7 @@ describe('planDeployment', () => {
     const plan = planDeployment({
       files: textFiles(['index.html']),
       previousPaths: ['about/index.html', 'index.html', 'old/index.html'],
-      hasBaseTree: true,
+      baseTreePaths: baseTree('index.html', 'about/index.html', 'old/index.html', 'README.md'),
     });
 
     expect(plan.deletedPaths).toEqual(['about/index.html', 'old/index.html']);
@@ -36,13 +39,36 @@ describe('planDeployment', () => {
     expect(plan.generatedPaths).toEqual(['index.html']);
   });
 
+  test('does not ask to delete a tracked path that is already gone from the base tree', () => {
+    // The tree API errors on `sha: null` for a file that does not exist, so a path a collaborator
+    // removed remotely must not be deletion-planned, or every later deployment would fail.
+    const plan = planDeployment({
+      files: textFiles(['index.html']),
+      previousPaths: ['removed-by-a-collaborator/index.html'],
+      baseTreePaths: baseTree('index.html'),
+    });
+
+    expect(plan.deletedPaths).toEqual([]);
+    expect(plan.entries.some((entry) => entry.kind === 'delete')).toBe(false);
+  });
+
+  test('never deletes a path that is in the base tree but was not generated here', () => {
+    const plan = planDeployment({
+      files: textFiles(['index.html']),
+      previousPaths: ['old/index.html'],
+      baseTreePaths: baseTree('index.html', 'old/index.html', 'README.md', 'notes/todo.md'),
+    });
+
+    expect(plan.deletedPaths).toEqual(['old/index.html']);
+  });
+
   test('deletes nothing without a recorded path history', () => {
     // A repository that predates path tracking: the deployment replaces what it can, but the
     // paths it did not generate itself are never inferred to be its own.
     const plan = planDeployment({
       files: textFiles(['index.html']),
       previousPaths: null,
-      hasBaseTree: true,
+      baseTreePaths: baseTree('index.html', 'legacy-page.html', 'README.md'),
     });
 
     expect(plan.deletedPaths).toEqual([]);
@@ -53,7 +79,7 @@ describe('planDeployment', () => {
     const plan = planDeployment({
       files: textFiles(['index.html']),
       previousPaths: ['old/index.html'],
-      hasBaseTree: false,
+      baseTreePaths: null,
     });
 
     expect(plan.deletedPaths).toEqual([]);

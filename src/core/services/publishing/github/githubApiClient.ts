@@ -157,6 +157,32 @@ export class GitHubApiClient {
   }
 
   /**
+   * Every blob path in a tree, so a deletion can be limited to paths that are actually there:
+   * the tree API errors on a `sha: null` entry for a file that does not exist.
+   *
+   * A truncated response (over 100,000 entries) yields a partial set, which can only cause a
+   * deletion to be skipped — obsolete files then stay live, which is the safe direction.
+   */
+  async listTreePaths(treeSHA: string): Promise<Set<string>> {
+    const payload = await this.sendJson(
+      'List tree',
+      'GET',
+      `${this.repoPath}/git/trees/${treeSHA}?recursive=1`,
+    );
+    if (!isJsonObject(payload) || !Array.isArray(payload.tree)) {
+      throw new Error(`GitHub returned no entries for tree ${treeSHA}`);
+    }
+
+    const paths = new Set<string>();
+    for (const entry of payload.tree) {
+      if (isJsonObject(entry) && entry.type === 'blob' && typeof entry.path === 'string') {
+        paths.add(entry.path);
+      }
+    }
+    return paths;
+  }
+
+  /**
    * Creates a blob from base64 content. This is the only place a binary asset may be written:
    * the blob API accepts the `encoding` parameter, whereas tree entries have no `encoding`
    * field and commit their `content` verbatim.
