@@ -6,6 +6,10 @@ import * as localSiteFs from '@/core/services/localFileSystem.service';
 
 /**
  * Bundles all raw source files (Markdown, manifest) into the `_site` directory.
+ *
+ * The caller passes the public snapshot, so `siteData.contentFiles` and `siteData.manifest` are
+ * already publication-filtered; this module deliberately does not re-check `frontmatter.published`
+ * (see `publication.ts` for the single definition of what a published site contains).
  */
 export async function bundleSourceFiles(bundle: SiteBundle, siteData: LocalSiteData): Promise<void> {
     // 1. Add the synchronized manifest with data files reference
@@ -16,13 +20,9 @@ export async function bundleSourceFiles(bundle: SiteBundle, siteData: LocalSiteD
     };
     bundle['_site/manifest.json'] = JSON.stringify(manifestWithDataFiles, null, 2);
 
-    // 2. Add all published content files only
+    // 2. Add the site's content files
     siteData.contentFiles?.forEach(file => {
-        // Only include published content in the source bundle
-        const isPublished = file.frontmatter.published !== false;
-        if (isPublished) {
-            bundle[`_site/${file.path}`] = stringifyToMarkdown(file.frontmatter, file.content);
-        }
+        bundle[`_site/${file.path}`] = stringifyToMarkdown(file.frontmatter, file.content);
     });
 
     // 3. Add all data files (e.g., categories.json)

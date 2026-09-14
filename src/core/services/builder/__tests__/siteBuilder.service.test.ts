@@ -1,3 +1,4 @@
+import type { LocalSiteData } from '@/core/types';
 import { createSiteFixture } from '@/test/support/siteFixtures';
 
 const {
@@ -90,6 +91,45 @@ describe('siteBuilder.service', () => {
       '_site/data/media.json': '{"images":{}}',
       'sitemap.xml': '<urlset />',
     });
+  });
+
+  test('hands the publication-filtered snapshot to every build stage', async () => {
+    const site = createSiteFixture('basicSite');
+    site.contentFiles!.push({
+      path: 'content/draft.md',
+      slug: 'draft',
+      frontmatter: { title: 'Draft', layout: 'page', published: false },
+      content: 'Hidden',
+    });
+    site.manifest.structure.push({
+      type: 'page',
+      path: 'content/draft.md',
+      slug: 'draft',
+      title: 'Draft',
+      navOrder: 2,
+    });
+
+    await buildSiteBundle(site);
+
+    for (const builder of [
+      generateHtmlPagesMock,
+      bundleSourceFilesMock,
+      bundleAllAssetsMock,
+      generateMetadataFilesMock,
+    ]) {
+      const passedSiteData = builder.mock.calls[0].at(-1) as LocalSiteData;
+      expect(passedSiteData.contentFiles?.map((file) => file.path)).toEqual(['content/home.md']);
+      expect(passedSiteData.manifest.structure.map((node) => node.path)).toEqual(['content/home.md']);
+    }
+    expect(generateHtmlPagesMock.mock.calls[0][0]).not.toBe(site);
+  });
+
+  test('fails the build when the homepage is unpublished', async () => {
+    const site = createSiteFixture('basicSite');
+    site.contentFiles![0].frontmatter.published = false;
+
+    await expect(buildSiteBundle(site)).rejects.toThrow(/homepage/);
+    expect(generateHtmlPagesMock).not.toHaveBeenCalled();
   });
 
   test('wraps asset and metadata errors with build-stage context', async () => {

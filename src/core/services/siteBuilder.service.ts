@@ -7,6 +7,7 @@ import { bundleAllAssets } from './builder/asset.builder';
 import { bundleSourceFiles } from './builder/source.builder';
 import { generateMetadataFiles } from './builder/metadata.builder';
 import { generateHtmlPages } from './builder/page.builder';
+import { createPublicSiteSnapshot } from './builder/publication';
 
 /**
  * Orchestrates the entire site build process by calling specialized builder modules.
@@ -34,17 +35,22 @@ export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBund
         manifest: { ...siteData.manifest, theme: { ...siteData.manifest.theme, config: finalMergedConfig } },
     };
 
-    // 2. Generate all HTML pages for every piece of content.
-    const htmlPages = await generateHtmlPages(synchronizedSiteData);
+    // 2. Derive the public snapshot the whole build renders from. This filters drafts out of
+    // the structure, the collection index and the content files without touching `siteData`,
+    // and it fails the build when the homepage itself is unpublished.
+    const publicSiteData = createPublicSiteSnapshot(synchronizedSiteData);
+
+    // 3. Generate all HTML pages for every piece of content.
+    const htmlPages = await generateHtmlPages(publicSiteData);
     Object.assign(bundle, htmlPages);
 
-    // 3. Bundle all raw source files (Markdown, manifest, etc.) into the `_site` directory.
-    await bundleSourceFiles(bundle, synchronizedSiteData);
+    // 4. Bundle all raw source files (Markdown, manifest, etc.) into the `_site` directory.
+    await bundleSourceFiles(bundle, publicSiteData);
 
-    // 4. Bundle all assets (images, themes, layouts).
+    // 5. Bundle all assets (images, themes, layouts).
     try {
         console.log(`[SiteBuilder] Starting asset bundling...`);
-        await bundleAllAssets(bundle, synchronizedSiteData);
+        await bundleAllAssets(bundle, publicSiteData);
         console.log(`[SiteBuilder] ✅ Assets bundled successfully`);
     } catch (error) {
         console.error(`[SiteBuilder] ❌ Failed to bundle assets:`, error);
@@ -52,9 +58,9 @@ export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBund
         throw new Error(`Asset bundling failed: ${error}`);
     }
 
-    // 5. Generate metadata files (RSS, sitemap).
+    // 6. Generate metadata files (RSS, sitemap).
     try {
-        generateMetadataFiles(bundle, synchronizedSiteData);
+        generateMetadataFiles(bundle, publicSiteData);
         console.log(`[SiteBuilder] Metadata files generated`);
     } catch (error) {
         console.error(`[SiteBuilder] Failed to generate metadata:`, error);

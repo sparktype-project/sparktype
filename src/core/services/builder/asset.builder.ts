@@ -4,6 +4,7 @@ import type { LocalSiteData, SiteBundle, ImageRef, ThemeManifest, LayoutManifest
 import { getAssetContent, getJsonAsset, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
 import { getActiveImageService } from '@/core/services/images/images.service';
 import { generateMediaManifest } from '../images/mediaManifest.service';
+import { pruneUnpublishedMediaReferences } from './publication';
 
 /**
  * Recursively finds all ImageRef objects within the site's data.
@@ -79,15 +80,16 @@ async function generateMediaDataFile(bundle: SiteBundle, siteData: LocalSiteData
       includeOrphaned: false,
       verbose: true,
     });
+    const publishedMediaManifest = pruneUnpublishedMediaReferences(mediaManifest, siteData);
 
     // Convert to JSON string with proper formatting
-    const mediaJson = JSON.stringify(mediaManifest, null, 2);
+    const mediaJson = JSON.stringify(publishedMediaManifest, null, 2);
 
     // Add to bundle at the data file location
     bundle['_site/data/media.json'] = mediaJson;
 
     console.log(
-      `[AssetBuilder] ✅ Generated media.json with ${Object.keys(mediaManifest.images).length} images ` +
+      `[AssetBuilder] ✅ Generated media.json with ${Object.keys(publishedMediaManifest.images).length} images ` +
       `(${(mediaJson.length / 1024).toFixed(2)} KB)`
     );
 

@@ -36,14 +36,11 @@ export const queryHelper: SparktypeHelper = (siteData) => ({
     }
     
     const childPaths = new Set(collectionNode.children.map(c => c.path));
-    let items = (siteData.contentFiles ?? []).filter(f => {
-        // Must be a child of the collection
-        if (!childPaths.has(f.path)) return false;
-        
-        // Must be published (default to true for backward compatibility)
-        const isPublished = f.frontmatter.published !== false;
-        return isPublished;
-    });
+    // No `published` filter here. Publication filtering happens once, when a build derives its
+    // public snapshot (`builder/publication.ts`), so preview — which renders live site data —
+    // shows a writer their drafts, and export never sees them. `render_collection` follows the
+    // same rule, keeping both listing paths consistent.
+    let items = (siteData.contentFiles ?? []).filter(f => childPaths.has(f.path));
 
     // Use centralized sorting logic
     const sortBy = config.sort_by || 'date';
