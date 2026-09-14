@@ -180,7 +180,6 @@ describe('contentSlice characterisation', () => {
         title: 'Homepage',
       });
       expect(state.contentFiles?.[0].frontmatter.title).toBe('Homepage');
-      expect(state.manifest.collectionItems).toBeDefined();
     });
 
     test('keeps collection items out of the navigation structure', async () => {
@@ -199,15 +198,56 @@ describe('contentSlice characterisation', () => {
         'content/home.md',
         'content/posts.md',
       ]);
-      expect(state.manifest.collectionItems).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            collectionId: 'posts',
-            path: 'content/posts/second-post.md',
-            slug: 'second-post',
-          }),
-        ])
+      // Exactly the items inside `content/posts/`. The collection's own listing page
+      // (`content/posts.md`) is a navigation page and must not be indexed as an item of
+      // itself: that entry produced a bogus `posts/posts` page and sitemap URL at build time.
+      expect(state.manifest.collectionItems).toEqual([
+        {
+          collectionId: 'posts',
+          slug: 'launch-day',
+          path: 'content/posts/launch-day.md',
+          title: 'Launch Day',
+          url: '',
+        },
+        {
+          collectionId: 'posts',
+          slug: 'second-post',
+          path: 'content/posts/second-post.md',
+          title: 'Second Post',
+          url: '',
+        },
+      ]);
+    });
+
+    test('a page at a collection content path appears in navigation, not in the item index', async () => {
+      const store = createTestAppStore();
+      const site = createSiteFixture('collectionSite', { siteId: 'char-collection-path-page' });
+      // A collection whose listing page does not exist yet.
+      site.contentFiles = site.contentFiles!.filter((file) => file.path !== 'content/posts.md');
+      site.manifest.structure = site.manifest.structure.filter((node) => node.path !== 'content/posts.md');
+      await store.getState().addSite(site);
+
+      // Saved without the `collection` frontmatter flag that marks a listing page.
+      await store.getState().addOrUpdateContentFile(
+        site.siteId,
+        'content/posts.md',
+        stringifyToMarkdown({ title: 'Posts', layout: 'page' }, 'Not flagged as a listing page')
       );
+
+      // The two membership rules must agree: the page is a navigation page (it is not
+      // inside `content/posts/`), and it is not an item. Disagreeing would leave it out
+      // of the structure and out of the item index — visible in neither listing.
+      const state = store.getState().getSiteById(site.siteId)!;
+      expect(state.manifest.structure.map((node) => node.path)).toContain('content/posts.md');
+      expect(state.manifest.collectionItems).toEqual([
+        {
+          collectionId: 'posts',
+          slug: 'launch-day',
+          path: 'content/posts/launch-day.md',
+          title: 'Launch Day',
+          url: '',
+        },
+      ]);
     });
   });
 

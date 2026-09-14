@@ -2,6 +2,7 @@
 
 import { type CollectionItemRef, type LocalSiteData, type ParsedMarkdownFile } from '@/core/types';
 import { getCollections } from '@/core/services/collections.service';
+import { isPathWithinCollectionDirectory } from './slugPaths';
 
 /**
  * Derives the manifest's collection item index from the current content files.
@@ -9,12 +10,19 @@ import { getCollections } from '@/core/services/collections.service';
  * Collection items are deliberately kept out of `manifest.structure` (they are not
  * navigation pages), so this index is the only record of collection membership. Every
  * action that adds, removes or moves a content file must rebuild it.
+ *
+ * Membership means "inside the collection's directory". A collection's own listing page
+ * (`content/posts.md`) is a navigation page, not an item of the `content/posts`
+ * collection; indexing it as one produced a bogus `posts/posts` page and sitemap entry
+ * at build time, so the directory test must include the trailing separator.
  */
 export function buildCollectionItemRefs(siteData: LocalSiteData): CollectionItemRef[] {
   const collections = getCollections(siteData.manifest);
   const newCollectionItems: CollectionItemRef[] = [];
   for (const collection of collections) {
-    const items = (siteData.contentFiles || []).filter((file: ParsedMarkdownFile) => file.path.startsWith(collection.contentPath));
+    const items = (siteData.contentFiles || []).filter((file: ParsedMarkdownFile) =>
+      isPathWithinCollectionDirectory(file.path, collection.contentPath)
+    );
     for (const item of items) {
       // Extract just the filename part of the slug, removing the collection path
       const collectionPathSlug = collection.contentPath.replace(/^content\//, '').replace(/\/$/, '');

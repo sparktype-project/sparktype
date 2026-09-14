@@ -10,6 +10,7 @@ import { stringifyToMarkdown } from '@/core/libraries/markdownParser';
 import type { SiteSlice } from '@/core/state/slices/siteSlice';
 import type { ContentSlice, ContentSliceFragment } from '@/core/state/slices/contentSlice';
 import { buildCollectionItemRefs } from './collectionRefs';
+import { syncImageReferencesForMoves } from './contentActions';
 import { updateContentFilePaths } from './slugPaths';
 
 /**
@@ -71,6 +72,11 @@ export const createNavigationActions: ContentSliceFragment<
         siteToUpdate.contentFiles = updateContentFilePaths(siteToUpdate.contentFiles!, pathsToMove);
         siteToUpdate.manifest.collectionItems = buildCollectionItemRefs(siteToUpdate as LocalSiteData);
       }));
+
+      // Keep the image registry keyed to the moved paths. Registry references are stored
+      // per content file path, so a move that skipped this would leave images referenced
+      // only from the moved page looking orphaned — the input cleanup deletes.
+      await syncImageReferencesForMoves(siteId, pathsToMove, get().getSiteById(siteId)?.contentFiles ?? []);
 
       const finalManifest = get().getSiteById(siteId)!.manifest;
       await localSiteFs.saveManifest(siteId, finalManifest);

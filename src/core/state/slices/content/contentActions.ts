@@ -13,7 +13,7 @@ import { findImagesInContentFile } from '@/core/services/images/imageReferenceFi
 import type { SiteSlice } from '@/core/state/slices/siteSlice';
 import type { ContentSlice, ContentSliceFragment } from '@/core/state/slices/contentSlice';
 import { buildCollectionItemRefs } from './collectionRefs';
-import type { PathMove } from './slugPaths';
+import { isPathWithinCollectionDirectory, type PathMove } from './slugPaths';
 
 /**
  * Content CRUD.
@@ -146,10 +146,12 @@ export const createContentActions: ContentSliceFragment<
     // Atomically create the new manifest with all necessary updates.
     const newManifest = produce(site.manifest, draft => {
       if (isNewFileInStructure) {
-        // Determine if this is a collection item by checking path against collection contentPaths
+        // Determine if this is a collection item by checking path against collection contentPaths.
+        // Must match `buildCollectionItemRefs` exactly: a page that is neither in the
+        // structure nor in the item index would disappear from navigation and every listing.
         const collections = getCollections(draft);
         const isCollectionPage = savedFile?.frontmatter?.collection;
-        const isCollectionItem = !isCollectionPage && collections.some(c => savedFile.path.startsWith(c.contentPath));
+        const isCollectionItem = !isCollectionPage && collections.some(c => isPathWithinCollectionDirectory(savedFile.path, c.contentPath));
 
         // Only add to structure if it's NOT a collection item
         // Collection items should be managed separately and not appear in navigation

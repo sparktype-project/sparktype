@@ -200,7 +200,7 @@ describe('changePageSlugWithContent > collection items', () => {
     ]);
     // The item stays a collection item and stays out of the navigation structure.
     expect(state.manifest.structure.map((node) => node.path)).toEqual(['content/home.md', 'content/posts.md']);
-    expect(state.manifest.collectionItems?.filter((item) => item.path.startsWith('content/posts/'))).toEqual([
+    expect(state.manifest.collectionItems).toEqual([
       {
         collectionId: 'posts',
         slug: 'launch-party',
@@ -312,7 +312,9 @@ describe('changePageSlugWithContent > collection items', () => {
 
     const state = store.getState().getSiteById(COLLECTION_SITE_ID)!;
     expect(state.manifest.structure.map((node) => node.path)).toContain('content/launch-party.md');
-    expect(state.manifest.collectionItems?.some((ref) => ref.path.startsWith('content/posts/'))).toBe(false);
+    // The file moved out of `content/posts/`, so the rebuilt index no longer lists it —
+    // and the listing page is never an item, so nothing remains.
+    expect(state.manifest.collectionItems).toEqual([]);
   });
 });
 
@@ -457,6 +459,61 @@ describe('changePageSlugWithContent > image references', () => {
       NESTED_SITE_ID,
       'content/about.md',
       stringifyToMarkdown({ title: 'About', layout: 'page' }, 'No images here')
+    );
+
+    const orphans = await getOrphanedImages(NESTED_SITE_ID);
+    expect(orphans.orphanedOriginals).not.toContain(HERO_IMAGE);
+    expect(orphans.orphanedOriginals).not.toContain(TEAM_IMAGE);
+  });
+});
+
+describe('repositionNode > image references', () => {
+  async function createImageSite() {
+    const store = await createNestedSite();
+    const site = store.getState().getSiteById(NESTED_SITE_ID)!;
+    const about = aboutFile(site);
+    const team = site.contentFiles!.find((file) => file.path === 'content/about/team.md')!;
+
+    await addImageToRegistry(NESTED_SITE_ID, HERO_IMAGE, 1000);
+    await addImageToRegistry(NESTED_SITE_ID, TEAM_IMAGE, 2000);
+
+    await store.getState().updateContentFileOnly(NESTED_SITE_ID, {
+      ...about,
+      content: `About page\n\n![Hero](${HERO_IMAGE})`,
+    });
+    await store.getState().updateContentFileOnly(NESTED_SITE_ID, {
+      ...team,
+      content: `Meet the team\n\n![Team](${TEAM_IMAGE})`,
+    });
+
+    return store;
+  }
+
+  test('re-keys image references when a page is drag-moved', async () => {
+    const store = await createImageSite();
+
+    await store.getState().repositionNode(NESTED_SITE_ID, 'content/about.md', 'content/home.md', 0);
+
+    const registry = await getImageRegistry(NESTED_SITE_ID);
+    expect(registry.images[HERO_IMAGE].referencedIn).toEqual(['content/home/about.md']);
+    expect(registry.images[TEAM_IMAGE].referencedIn).toEqual(['content/home/about/team.md']);
+  });
+
+  test('does not report an image referenced only by a moved page as orphaned', async () => {
+    const store = await createImageSite();
+
+    await store.getState().repositionNode(NESTED_SITE_ID, 'content/about.md', 'content/home.md', 0);
+
+    // Saving a fresh page at a vacated path clears any reference still recorded against it.
+    await store.getState().addOrUpdateContentFile(
+      NESTED_SITE_ID,
+      'content/about.md',
+      stringifyToMarkdown({ title: 'About', layout: 'page' }, 'No images here')
+    );
+    await store.getState().addOrUpdateContentFile(
+      NESTED_SITE_ID,
+      'content/about/team.md',
+      stringifyToMarkdown({ title: 'Team', layout: 'page' }, 'No images here either')
     );
 
     const orphans = await getOrphanedImages(NESTED_SITE_ID);
