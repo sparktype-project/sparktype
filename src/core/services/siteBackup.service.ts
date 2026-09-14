@@ -15,4 +15,4 @@
  * `HomePageDashboard.tsx`).
  */
 export { exportSiteBackup } from './backup/backupExport';
-export { importSiteFromZip } from './backup/backupImport';
+export { importSiteFromZip, type ImportedSiteData } from './backup/backupImport';

@@ -1,13 +1,16 @@
 // src/core/services/backup/backupValidation.ts
 
 import JSZip from 'jszip';
-import type { Manifest, SiteSecrets } from '@/core/types';
-import { MANIFEST_FILE, SECRETS_FILE, SIGNUM_FOLDER } from './backupFormat';
+import type { Manifest, MediaManifest, SiteSecrets } from '@/core/types';
+import { validateMediaManifest } from '../images/mediaManifest.service';
+import { MANIFEST_FILE, MEDIA_INDEX_PATH, SECRETS_FILE, SIGNUM_FOLDER } from './backupFormat';
 
 /** The header every backup archive must carry, read and validated up front. */
 export interface BackupArchiveHeader {
   manifest: Manifest;
   secrets: SiteSecrets;
+  /** `null` for legacy archives written before the media index existed. */
+  mediaIndex: MediaManifest | null;
 }
 
 /** Reads a ZIP archive, reporting unreadable files as an invalid backup. */
@@ -20,20 +23,85 @@ export async function loadBackupArchive(zipFile: Blob): Promise<JSZip> {
 }
 
 /**
- * Reads the manifest and secrets before anything else is extracted, so an
- * archive that cannot yield a usable site is rejected before storage is touched.
+ * Parses a required JSON entry.
+ *
+ * A backup is machine-written, so unparseable JSON means the archive is damaged.
+ * Damaged archives are rejected rather than silently restored without the data
+ * they failed to yield — the same policy for `secrets.json` and `media.json`.
+ */
+function parseJsonEntry(raw: string, entryName: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`Invalid backup file: ${entryName} is not valid JSON (${(error as Error).message}).`);
+  }
+}
+
+/**
+ * Rejects manifests that cannot identify a restorable site. `siteId` and `title`
+ * are the same fields the storage layer's own manifest guard requires, so an
+ * import can never produce a site the app refuses to list.
+ */
+export function validateManifest(value: unknown): Manifest {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`Invalid backup file: ${MANIFEST_FILE} must be a JSON object.`);
+  }
+  const candidate = value as Partial<Manifest>;
+  if (typeof candidate.siteId !== 'string' || candidate.siteId.trim() === '') {
+    throw new Error(`Invalid backup file: ${MANIFEST_FILE} is missing a siteId.`);
+  }
+  if (typeof candidate.title !== 'string') {
+    throw new Error(`Invalid backup file: ${MANIFEST_FILE} is missing a title.`);
+  }
+  if (candidate.generatorVersion !== undefined && typeof candidate.generatorVersion !== 'string') {
+    throw new Error(`Invalid backup file: ${MANIFEST_FILE} has an invalid generatorVersion.`);
+  }
+  return candidate as Manifest;
+}
+
+/**
+ * Reads the manifest, secrets and media index before anything else is extracted,
+ * so an archive that cannot yield a usable site is rejected before storage is
+ * touched.
+ *
+ * `zip.folder(SIGNUM_FOLDER)` cannot prove the folder exists — JSZip creates a
+ * folder on demand — so the manifest entry itself is the presence check.
  */
 export async function readBackupHeader(zip: JSZip): Promise<BackupArchiveHeader> {
-  const signumFolder = zip.folder(SIGNUM_FOLDER);
+  const manifestEntry = zip.file(`${SIGNUM_FOLDER}/${MANIFEST_FILE}`);
+  if (!manifestEntry) {
+    throw new Error(`Invalid backup file: ${SIGNUM_FOLDER}/${MANIFEST_FILE} is missing.`);
+  }
+  const manifest = validateManifest(parseJsonEntry(await manifestEntry.async('string'), MANIFEST_FILE));
 
-  if (!signumFolder) throw new Error(`Invalid backup file: ${SIGNUM_FOLDER} folder not found.`);
+  const secretsEntry = zip.file(`${SIGNUM_FOLDER}/${SECRETS_FILE}`);
+  let secrets: SiteSecrets = {};
+  if (secretsEntry) {
+    const parsedSecrets = parseJsonEntry(await secretsEntry.async('string'), SECRETS_FILE);
+    if (typeof parsedSecrets !== 'object' || parsedSecrets === null || Array.isArray(parsedSecrets)) {
+      throw new Error(`Invalid backup file: ${SECRETS_FILE} must be a JSON object.`);
+    }
+    secrets = parsedSecrets as SiteSecrets;
+  }
 
-  const manifestFile = signumFolder.file(MANIFEST_FILE);
-  if (!manifestFile) throw new Error(`Invalid backup file: ${MANIFEST_FILE} is missing.`);
-  const manifest: Manifest = JSON.parse(await manifestFile.async('string'));
+  const mediaIndexEntry = zip.file(`${SIGNUM_FOLDER}/${MEDIA_INDEX_PATH}`);
+  let mediaIndex: MediaManifest | null = null;
+  if (mediaIndexEntry) {
+    const parsedIndex = parseJsonEntry(await mediaIndexEntry.async('string'), MEDIA_INDEX_PATH);
+    const validation = validateMediaManifest(parsedIndex);
+    const images = (parsedIndex as { images?: unknown } | null)?.images;
+    if (typeof images !== 'object' || images === null || Array.isArray(images)) {
+      throw new Error(
+        `Invalid backup file: ${MEDIA_INDEX_PATH} is not a usable media index (${validation.errors.join('; ')}).`
+      );
+    }
+    // Entry-level metadata problems (dimensions, alt text, references) do not
+    // stop the bytes being restored, so they are reported, not fatal.
+    validation.warnings.forEach((warning) => {
+      console.warn(`[SiteBackup] ${MEDIA_INDEX_PATH}: ${warning}`);
+    });
+    mediaIndex = parsedIndex as MediaManifest;
+  }
 
-  const secretsFile = signumFolder.file(SECRETS_FILE);
-  const secrets: SiteSecrets = secretsFile ? JSON.parse(await secretsFile.async('string')) : {};
-
-  return { manifest, secrets };
+  return { manifest, secrets, mediaIndex };
 }

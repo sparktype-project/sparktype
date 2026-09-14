@@ -10,7 +10,7 @@ import { type LocalSiteData } from '@/core/types';
 // Services
 import { importSiteFromZip, exportSiteBackup } from '@/core/services/siteBackup.service';
 import { importSiteFromGitHub, importSiteFromUrl } from '@/core/services/remoteImport.service';
-import { saveAllImageAssetsForSite } from '@/core/services/localFileSystem.service';
+import { saveAllImageAssetsForSite, getManifestById } from '@/core/services/localFileSystem.service';
 import { slugify } from '@/core/libraries/utils';
 
 // UI Components & Icons
@@ -35,6 +35,15 @@ export default function HomePageDashboard() {
   const finishImport = useCallback(async (data: LocalSiteData & { imageAssetsToSave?: Record<string, Blob> }) => {
     try {
       const { imageAssetsToSave, ...siteDataToSave } = data;
+      // Importing replaces the target site: if a site already occupies this
+      // siteId, clear it (blobs, derivatives, image registry, data files,
+      // secrets) before writing the imported data, so no stale original survives
+      // an overwrite. Checked against storage, not just the loaded store. The
+      // archive is fully validated and parsed in memory first, so nothing is
+      // cleared unless the import can actually be written.
+      if (await getManifestById(siteDataToSave.siteId)) {
+        await deleteSiteAndState(siteDataToSave.siteId);
+      }
       await addSite(siteDataToSave);
       if (siteDataToSave.secrets) {
         await updateSiteSecrets(siteDataToSave.siteId, siteDataToSave.secrets);
@@ -47,7 +56,7 @@ export default function HomePageDashboard() {
       console.error("Error finishing site import:", error);
       toast.error(`Failed to save imported site: ${(error as Error).message}`);
     }
-  }, [addSite, updateSiteSecrets]);
+  }, [addSite, deleteSiteAndState, updateSiteSecrets]);
 
   const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

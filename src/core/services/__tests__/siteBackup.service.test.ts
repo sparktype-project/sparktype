@@ -1,325 +1,316 @@
 /**
- * Site Backup Service Tests
+ * Backup import contract tests.
  *
- * Tests for site import/export functionality, focusing on:
- * - Media.json-based image import
- * - Derivative filtering during import
- * - Export structure integrity
+ * These build archives by hand so the reader is exercised against shapes
+ * Sparktype itself does not produce: legacy archives without a media index,
+ * unrelated archive entries, and damaged manifests.
+ *
+ * The archive contract is documented in `src/core/services/backup/backupFormat.ts`.
  */
 
-import { importSiteFromZip, exportSiteBackup } from '../siteBackup.service';
-import type { LocalSiteData, Manifest } from '@/core/types';
 import JSZip from 'jszip';
+import { exportSiteBackup, importSiteFromZip } from '../siteBackup.service';
+import {
+  getAllDataFiles,
+  getAllImageAssetsForSite,
+  getManifestById,
+  saveAllImageAssetsForSite,
+  saveDataFile,
+  saveSite,
+} from '../localFileSystem.service';
+import type { Manifest, ParsedMarkdownFile } from '@/core/types';
+import { createSiteFixture } from '@/test/support/siteFixtures';
+import { resetIndexedDbForTests } from '@/test/support/storage';
 
-describe('siteBackup.service', () => {
-  const createMockManifest = (): Manifest => ({
-    siteId: 'test-site',
-    generatorVersion: '1.0.0',
-    title: 'Test Site',
-    description: 'Test Description',
-    theme: { name: 'default', config: {} },
-    structure: [],
-    settings: {
-      imageService: 'local'
-    }
-  });
+const createMockManifest = (overrides: Partial<Manifest> = {}): Manifest => ({
+  siteId: 'test-site',
+  generatorVersion: '1.0.0',
+  title: 'Test Site',
+  description: 'Test Description',
+  theme: { name: 'default', config: {} },
+  structure: [],
+  settings: { imageService: 'local' },
+  ...overrides,
+});
 
-  const createMockSiteData = (): LocalSiteData => ({
-    siteId: 'test-site',
-    manifest: createMockManifest(),
-    contentFiles: [],
-    secrets: {}
-  });
+function mediaEntry(sizeBytes = 1024) {
+  return {
+    referencedIn: ['content/home.md'],
+    metadata: { sizeBytes, mimeType: 'image/jpeg' },
+    providerId: 'local',
+  };
+}
 
-  describe('Import Filtering Tests - media.json-based', () => {
-    test('should import ONLY images listed in media.json', async () => {
-      const zip = new JSZip();
-      const siteFolder = zip.folder('_site');
+function createArchive(build: (siteFolder: JSZip) => void): JSZip {
+  const zip = new JSZip();
+  const siteFolder = zip.folder('_site');
+  if (!siteFolder) throw new Error('Failed to create mock zip');
+  build(siteFolder);
+  return zip;
+}
 
-      if (!siteFolder) throw new Error('Failed to create mock zip');
+async function importArchive(zip: JSZip) {
+  const blob = await zip.generateAsync({ type: 'blob' });
+  return importSiteFromZip(new File([blob], 'backup.zip'));
+}
 
-      // Add manifest
-      siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
-
-      // Add media.json with 2 images
-      const mediaManifest = {
-        version: 1,
-        imageService: 'local',
-        images: {
-          'assets/originals/image1.jpg': {
-            path: 'assets/originals/image1.jpg',
-            uploadedAt: Date.now(),
-            width: 800,
-            height: 600,
-            size: 1024,
-            mimeType: 'image/jpeg'
+describe('importSiteFromZip', () => {
+  describe('image restoration', () => {
+    test('restores only the originals listed in the media index', async () => {
+      const zip = createArchive((siteFolder) => {
+        siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
+        siteFolder.folder('data')?.file('media.json', JSON.stringify({
+          version: 1,
+          providerId: 'local',
+          images: {
+            'assets/originals/image1.jpg': mediaEntry(),
+            'assets/originals/image2.png': mediaEntry(512),
           },
-          'assets/originals/image2.png': {
-            path: 'assets/originals/image2.png',
-            uploadedAt: Date.now(),
-            width: 400,
-            height: 300,
-            size: 512,
-            mimeType: 'image/png'
-          }
-        }
-      };
+        }));
+        siteFolder.folder('assets/originals')?.file('image1.jpg', 'fake-image-1');
+        siteFolder.folder('assets/originals')?.file('image2.png', 'fake-image-2');
+        siteFolder.folder('assets/originals')?.file('extra-image.jpg', 'fake-extra-image');
+      });
 
-      siteFolder.folder('data')?.file('media.json', JSON.stringify(mediaManifest));
+      const result = await importArchive(zip);
 
-      // Add 3 actual files in originals folder (one extra not in media.json)
-      const originalsFolder = siteFolder.folder('assets/originals');
-      originalsFolder?.file('image1.jpg', 'fake-image-1');
-      originalsFolder?.file('image2.png', 'fake-image-2');
-      originalsFolder?.file('extra-image.jpg', 'fake-extra-image'); // NOT in media.json
-
-      const zipData = await zip.generateAsync({ type: 'blob' });
-      const file = new File([zipData], 'test-site.zip');
-
-      const result = await importSiteFromZip(file);
-
-      // Should have imported ONLY the 2 images from media.json
-      expect(result.imageAssetsToSave).toBeDefined();
-      const importedPaths = Object.keys(result.imageAssetsToSave || {});
-      expect(importedPaths).toHaveLength(2);
-      expect(importedPaths).toContain('assets/originals/image1.jpg');
-      expect(importedPaths).toContain('assets/originals/image2.png');
-      expect(importedPaths).not.toContain('assets/originals/extra-image.jpg');
+      expect(Object.keys(result.imageAssetsToSave ?? {})).toEqual([
+        'assets/originals/image1.jpg',
+        'assets/originals/image2.png',
+      ]);
     });
 
-    test('should NOT import derivatives from ZIP', async () => {
-      const zip = new JSZip();
-      const siteFolder = zip.folder('_site');
+    test('keeps originals that share a basename in different folders', async () => {
+      const zip = createArchive((siteFolder) => {
+        siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
+        siteFolder.folder('data')?.file('media.json', JSON.stringify({
+          version: 1,
+          providerId: 'local',
+          images: {
+            'assets/originals/hero.jpg': mediaEntry(),
+            'assets/originals/posts/hero.jpg': mediaEntry(),
+          },
+        }));
+        siteFolder.folder('assets/originals')?.file('hero.jpg', 'root-hero');
+        siteFolder.folder('assets/originals/posts')?.file('hero.jpg', 'post-hero');
+      });
 
-      if (!siteFolder) throw new Error('Failed to create mock zip');
+      const result = await importArchive(zip);
 
-      siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
-
-      // media.json with only originals
-      const mediaManifest = {
-        version: 1,
-        imageService: 'local',
-        images: {
-          'assets/originals/image1.jpg': {
-            path: 'assets/originals/image1.jpg',
-            uploadedAt: Date.now(),
-            width: 800,
-            height: 600,
-            size: 1024,
-            mimeType: 'image/jpeg'
-          }
-        }
-      };
-
-      siteFolder.folder('data')?.file('media.json', JSON.stringify(mediaManifest));
-
-      // Add original to originals folder
-      siteFolder.folder('assets/originals')?.file('image1.jpg', 'fake-image-1');
-
-      // Add derivatives to derivatives folder (should be ignored)
-      const derivativesFolder = siteFolder.folder('assets/derivatives');
-      derivativesFolder?.file('image1_w600_h400_c-fill_g-center.jpg', 'fake-derivative-1');
-      derivativesFolder?.file('image1_w300_h200_c-fit_g-center.jpg', 'fake-derivative-2');
-
-      const zipData = await zip.generateAsync({ type: 'blob' });
-      const file = new File([zipData], 'test-site.zip');
-
-      const result = await importSiteFromZip(file);
-
-      // Should have imported ONLY the original, NOT the derivatives
-      const importedPaths = Object.keys(result.imageAssetsToSave || {});
-      expect(importedPaths).toHaveLength(1);
-      expect(importedPaths).toContain('assets/originals/image1.jpg');
-
-      // Verify no derivative filenames imported
-      const derivativePattern = /_w(auto|\d+)_h(auto|\d+)_c-[^_]+_g-[^_]+/;
-      for (const path of importedPaths) {
-        const filename = path.split('/').pop() || '';
-        expect(filename).not.toMatch(derivativePattern);
-      }
+      expect(await result.imageAssetsToSave?.['assets/originals/hero.jpg'].text()).toBe('root-hero');
+      expect(await result.imageAssetsToSave?.['assets/originals/posts/hero.jpg'].text()).toBe('post-hero');
     });
 
-    test('should handle missing media.json gracefully', async () => {
-      const zip = new JSZip();
-      const siteFolder = zip.folder('_site');
+    test('never imports derivatives', async () => {
+      const zip = createArchive((siteFolder) => {
+        siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
+        siteFolder.folder('data')?.file('media.json', JSON.stringify({
+          version: 1,
+          providerId: 'local',
+          images: { 'assets/originals/image1.jpg': mediaEntry() },
+        }));
+        siteFolder.folder('assets/originals')?.file('image1.jpg', 'fake-image-1');
+        siteFolder.folder('assets/derivatives')?.file('image1_w600_h400_c-fill_g-center.jpg', 'derivative');
+      });
 
-      if (!siteFolder) throw new Error('Failed to create mock zip');
+      const result = await importArchive(zip);
 
-      siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
-
-      // NO media.json file
-
-      // Add images to originals folder
-      siteFolder.folder('assets/originals')?.file('image1.jpg', 'fake-image-1');
-
-      const zipData = await zip.generateAsync({ type: 'blob' });
-      const file = new File([zipData], 'test-site.zip');
-
-      const result = await importSiteFromZip(file);
-
-      // Should still succeed, but no images imported
-      expect(result.siteId).toBe('test-site');
-      expect(result.imageAssetsToSave).toBeDefined();
-      expect(Object.keys(result.imageAssetsToSave || {})).toHaveLength(0);
+      expect(Object.keys(result.imageAssetsToSave ?? {})).toEqual(['assets/originals/image1.jpg']);
     });
 
-    test('should warn about images in media.json but missing from ZIP', async () => {
+    test('reports images the media index lists but the archive does not carry', async () => {
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      const zip = new JSZip();
-      const siteFolder = zip.folder('_site');
-
-      if (!siteFolder) throw new Error('Failed to create mock zip');
-
-      siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
-
-      // media.json lists 2 images
-      const mediaManifest = {
-        version: 1,
-        imageService: 'local',
-        images: {
-          'assets/originals/image1.jpg': {
-            path: 'assets/originals/image1.jpg',
-            uploadedAt: Date.now(),
-            width: 800,
-            height: 600,
-            size: 1024,
-            mimeType: 'image/jpeg'
+      const zip = createArchive((siteFolder) => {
+        siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
+        siteFolder.folder('data')?.file('media.json', JSON.stringify({
+          version: 1,
+          providerId: 'local',
+          images: {
+            'assets/originals/image1.jpg': mediaEntry(),
+            'assets/originals/missing.jpg': mediaEntry(),
           },
-          'assets/originals/missing.jpg': {
-            path: 'assets/originals/missing.jpg',
-            uploadedAt: Date.now(),
-            width: 800,
-            height: 600,
-            size: 1024,
-            mimeType: 'image/jpeg'
-          }
-        }
-      };
+        }));
+        siteFolder.folder('assets/originals')?.file('image1.jpg', 'fake-image-1');
+      });
 
-      siteFolder.folder('data')?.file('media.json', JSON.stringify(mediaManifest));
+      const result = await importArchive(zip);
 
-      // But only 1 image actually in ZIP
-      siteFolder.folder('assets/originals')?.file('image1.jpg', 'fake-image-1');
-
-      const zipData = await zip.generateAsync({ type: 'blob' });
-      const file = new File([zipData], 'test-site.zip');
-
-      const result = await importSiteFromZip(file);
-
-      // Should import the 1 available image
-      const importedPaths = Object.keys(result.imageAssetsToSave || {});
-      expect(importedPaths).toHaveLength(1);
-      expect(importedPaths).toContain('assets/originals/image1.jpg');
-
-      // Should have warned about missing file
+      expect(Object.keys(result.imageAssetsToSave ?? {})).toEqual(['assets/originals/image1.jpg']);
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         expect.stringContaining('Image listed in media.json not found')
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
-    test('should handle corrupt media.json gracefully', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    test('reports originals the archive carries but the media index does not list', async () => {
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      const zip = new JSZip();
-      const siteFolder = zip.folder('_site');
+      const zip = createArchive((siteFolder) => {
+        siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
+        siteFolder.folder('data')?.file('media.json', JSON.stringify({
+          version: 1,
+          providerId: 'local',
+          images: { 'assets/originals/image1.jpg': mediaEntry() },
+        }));
+        siteFolder.folder('assets/originals')?.file('image1.jpg', 'fake-image-1');
+        siteFolder.folder('assets/originals')?.file('unlisted.jpg', 'unlisted');
+      });
 
-      if (!siteFolder) throw new Error('Failed to create mock zip');
+      const result = await importArchive(zip);
 
-      siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
-
-      // Invalid JSON in media.json
-      siteFolder.folder('data')?.file('media.json', '{invalid json}');
-
-      // Add images to originals folder
-      siteFolder.folder('assets/originals')?.file('image1.jpg', 'fake-image-1');
-
-      const zipData = await zip.generateAsync({ type: 'blob' });
-      const file = new File([zipData], 'test-site.zip');
-
-      const result = await importSiteFromZip(file);
-
-      // Should still succeed without images
-      expect(result.siteId).toBe('test-site');
-      expect(Object.keys(result.imageAssetsToSave || {})).toHaveLength(0);
-
-      // Should have logged error
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to parse media.json'),
-        expect.anything()
+      expect(Object.keys(result.imageAssetsToSave ?? {})).toEqual(['assets/originals/image1.jpg']);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('not listed in media.json')
       );
+    });
 
-      consoleErrorSpy.mockRestore();
+    test('restores a legacy archive (originals, no media index) by archive path', async () => {
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const zip = createArchive((siteFolder) => {
+        siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
+        siteFolder.folder('assets/originals')?.file('photo.jpg', 'photo-bytes');
+        siteFolder.folder('assets/originals/nested')?.file('pic.png', 'pic-bytes');
+      });
+
+      const result = await importArchive(zip);
+
+      expect(Object.keys(result.imageAssetsToSave ?? {}).sort()).toEqual([
+        'assets/originals/nested/pic.png',
+        'assets/originals/photo.jpg',
+      ]);
+      expect(await result.imageAssetsToSave?.['assets/originals/photo.jpg'].text()).toBe('photo-bytes');
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Legacy backup without')
+      );
     });
   });
 
-  describe('Export Structure Tests', () => {
-    test('should export only originals from siteImageAssetsStore', async () => {
-      const siteData = createMockSiteData();
+  describe('content scoping', () => {
+    test('reads content only from _site/content and only Markdown entries', async () => {
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      // Mock that getAllImageAssetsForSite is called and returns only originals
-      // (This will be tested more thoroughly in integration tests)
+      const zip = createArchive((siteFolder) => {
+        siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
+        siteFolder.folder('content')?.file('home.md', '---\ntitle: Home\nlayout: page\n---\nHome body');
+        siteFolder.folder('content/notes')?.file('deep.md', '---\ntitle: Deep\n---\nDeep body');
+        siteFolder.folder('content')?.file('draft.txt', 'not markdown');
+        siteFolder.folder('content-archive')?.file('old.md', '---\ntitle: Old\n---\nOld body');
+        siteFolder.file('.DS_Store', 'junk');
+      });
+      zip.file('README.md', 'unrelated root entry');
+      zip.file('.DS_Store', 'root junk');
 
-      const exported = await exportSiteBackup(siteData);
+      const result = await importArchive(zip);
 
-      expect(exported).toBeInstanceOf(Blob);
-      expect(exported.size).toBeGreaterThan(0);
+      expect(result.contentFiles?.map((file) => file.path).sort()).toEqual([
+        'content/home.md',
+        'content/notes/deep.md',
+      ]);
+      expect(result.contentFiles?.map((file) => file.slug).sort()).toEqual([
+        'home',
+        'notes/deep',
+      ]);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('content/draft.txt')
+      );
     });
 
-    test('should not include derivatives folder in backup', async () => {
-      const siteData = createMockSiteData();
-
-      const exportedBlob = await exportSiteBackup(siteData);
-
-      // Parse the ZIP to verify structure
-      const zip = await JSZip.loadAsync(exportedBlob);
-
-      // Check if derivatives folder exists (it shouldn't in backup source)
-      const derivativesFolder = zip.folder('_site/assets/derivatives');
-      const files = derivativesFolder?.file(/.*/);
-
-      // Backup should NOT include derivatives (only originals)
-      // Derivatives are regenerated on import
-      expect(files?.length || 0).toBe(0);
-    });
-  });
-
-  describe('Roundtrip Tests', () => {
-    test('should maintain data integrity through export → import cycle', async () => {
-      // Create site with data
-      const originalSiteData = createMockSiteData();
-      originalSiteData.contentFiles = [
-        {
-          path: 'content/test.md',
-          slug: 'test',
-          frontmatter: {
-            title: 'Test',
-            layout: 'default'
-          },
-          content: 'Test content'
-        }
+    test('excludes non-Markdown and escaping paths from exported content', async () => {
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const site = createSiteFixture('basicSite', { siteId: 'poisoned-content-site' });
+      // A malformed import used to store archive entries as content files.
+      const poisonedContentFiles: ParsedMarkdownFile[] = [
+        { path: 'manifest.json', slug: 'manifest', frontmatter: { title: 'Manifest', layout: 'page' }, content: '{}' },
+        { path: 'content/../secrets.json', slug: 'secrets', frontmatter: { title: 'Secrets', layout: 'page' }, content: '{}' },
+        { path: 'content/notes.txt', slug: 'notes', frontmatter: { title: 'Notes', layout: 'page' }, content: 'text' },
       ];
+      site.contentFiles = [...(site.contentFiles ?? []), ...poisonedContentFiles];
 
-      // Export
-      const exportedBlob = await exportSiteBackup(originalSiteData);
+      const exported = await exportSiteBackup(site);
+      const zip = await JSZip.loadAsync(exported);
 
-      // Import
-      const file = new File([exportedBlob], 'test-export.zip');
-      const importedData = await importSiteFromZip(file);
-
-      // Verify
-      expect(importedData.siteId).toBe(originalSiteData.siteId);
-      expect(importedData.manifest.title).toBe(originalSiteData.manifest.title);
-
-      // Filter to only actual content files (not manifest.json, secrets.json, etc.)
-      const actualContentFiles = importedData.contentFiles?.filter(f =>
-        f.path.startsWith('content/')
+      expect(contentEntries(zip)).toEqual(['home.md']);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Skipping non-content entry')
       );
+    });
+  });
 
-      expect(actualContentFiles).toHaveLength(1);
-      expect(actualContentFiles?.[0].frontmatter.title).toBe('Test');
+  describe('archive validation', () => {
+    test('rejects an archive with no manifest', async () => {
+      const zip = createArchive((siteFolder) => {
+        siteFolder.folder('content')?.file('home.md', '---\ntitle: Home\n---\nbody');
+      });
+
+      await expect(importArchive(zip)).rejects.toThrow(/manifest\.json/);
+    });
+
+    test('rejects a manifest that is not valid JSON', async () => {
+      const zip = createArchive((siteFolder) => {
+        siteFolder.file('manifest.json', '{not json}');
+      });
+
+      await expect(importArchive(zip)).rejects.toThrow(/manifest\.json is not valid JSON/);
+    });
+
+    test('rejects a manifest without a usable siteId', async () => {
+      const zip = createArchive((siteFolder) => {
+        siteFolder.file('manifest.json', JSON.stringify({ title: 'No id', theme: { name: 'starter' } }));
+      });
+
+      await expect(importArchive(zip)).rejects.toThrow(/siteId/);
+    });
+
+    test('rejects an unreadable archive', async () => {
+      const file = new File([new Uint8Array([1, 2, 3, 4])], 'broken.zip');
+
+      await expect(importSiteFromZip(file)).rejects.toThrow(/could not be read/);
+    });
+
+    test('treats corrupt secrets.json and corrupt media.json the same way', async () => {
+      const corruptSecrets = createArchive((siteFolder) => {
+        siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
+        siteFolder.file('secrets.json', '{not json}');
+      });
+
+      const corruptMediaIndex = createArchive((siteFolder) => {
+        siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
+        siteFolder.folder('data')?.file('media.json', '{not json}');
+      });
+
+      await expect(importArchive(corruptSecrets)).rejects.toThrow(/secrets\.json is not valid JSON/);
+      await expect(importArchive(corruptMediaIndex)).rejects.toThrow(/media\.json is not valid JSON/);
+    });
+
+    test('rejects a damaged archive before touching an existing site', async () => {
+      await resetIndexedDbForTests();
+      const site = createSiteFixture('basicSite', { siteId: 'existing-site' });
+      await saveSite(site);
+      await saveAllImageAssetsForSite(site.siteId, {
+        'assets/originals/existing.jpg': new Blob(['existing-bytes']),
+      });
+      await saveDataFile(site.siteId, 'data/categories.json', '["news"]');
+
+      const zip = createArchive((siteFolder) => {
+        siteFolder.file('manifest.json', JSON.stringify(createMockManifest({ title: 'Damaged' })));
+        siteFolder.file('secrets.json', '{not json}');
+      });
+
+      await expect(importArchive(zip)).rejects.toThrow(/secrets\.json/);
+
+      expect((await getManifestById(site.siteId))?.title).toBe('Basic Site');
+      expect(Object.keys(await getAllImageAssetsForSite(site.siteId))).toEqual(['assets/originals/existing.jpg']);
+      expect(await getAllDataFiles(site.siteId)).toEqual({ 'data/categories.json': '["news"]' });
     });
   });
 });
+
+/** Names of the content files written into an archive, without folder entries. */
+function contentEntries(zip: JSZip): string[] {
+  return Object.entries(zip.files)
+    .filter(([name, entry]) => !entry.dir && name.startsWith('_site/content/'))
+    .map(([name]) => name.slice('_site/content/'.length))
+    .sort();
+}
+

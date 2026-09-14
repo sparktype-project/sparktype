@@ -159,6 +159,9 @@ export async function saveSite(siteData: LocalSiteData): Promise<void> {
       writeMetadata(STORE_NAMES.content, siteData.siteId, siteData.contentFiles ?? []),
       writeMetadata(STORE_NAMES.layouts, siteData.siteId, siteData.layoutFiles ?? []),
       writeMetadata(STORE_NAMES.themes, siteData.siteId, siteData.themeFiles ?? []),
+      // Data files (data/media.json, data/categories.json, ...) are part of the
+      // site payload: backups restore them and publishing reads them back.
+      writeMetadata(STORE_NAMES.dataFiles, siteData.siteId, siteData.dataFiles ?? {}),
     ]);
   });
 }
