@@ -9,6 +9,8 @@ import { type LocalSiteData } from '@/core/types';
 
 // Services
 import { importSiteFromZip, exportSiteBackup } from '@/core/services/siteBackup.service';
+import { restoreImportedImageRegistry } from '@/core/services/backup/backupImport';
+import { MEDIA_INDEX_PATH } from '@/core/services/backup/backupFormat';
 import { importSiteFromGitHub, importSiteFromUrl } from '@/core/services/remoteImport.service';
 import { saveAllImageAssetsForSite, getManifestById } from '@/core/services/localFileSystem.service';
 import { slugify } from '@/core/libraries/utils';
@@ -33,28 +35,41 @@ export default function HomePageDashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const finishImport = useCallback(async (data: LocalSiteData & { imageAssetsToSave?: Record<string, Blob> }) => {
+    const { imageAssetsToSave, ...siteDataToSave } = data;
+    const { siteId } = siteDataToSave;
+    let clearedPreviousSite = false;
     try {
-      const { imageAssetsToSave, ...siteDataToSave } = data;
       // Importing replaces the target site: if a site already occupies this
       // siteId, clear it (blobs, derivatives, image registry, data files,
       // secrets) before writing the imported data, so no stale original survives
       // an overwrite. Checked against storage, not just the loaded store. The
       // archive is fully validated and parsed in memory first, so nothing is
       // cleared unless the import can actually be written.
-      if (await getManifestById(siteDataToSave.siteId)) {
-        await deleteSiteAndState(siteDataToSave.siteId);
+      if (await getManifestById(siteId)) {
+        await deleteSiteAndState(siteId);
+        clearedPreviousSite = true;
       }
       await addSite(siteDataToSave);
       if (siteDataToSave.secrets) {
-        await updateSiteSecrets(siteDataToSave.siteId, siteDataToSave.secrets);
+        await updateSiteSecrets(siteId, siteDataToSave.secrets);
       }
       if (imageAssetsToSave) {
-        await saveAllImageAssetsForSite(siteDataToSave.siteId, imageAssetsToSave);
+        await saveAllImageAssetsForSite(siteId, imageAssetsToSave);
+      }
+      // Only now can the registry be rebuilt from the imported media index: the
+      // teardown above deletes whatever registry existed, and this restores the
+      // image metadata (dimensions, alt text, references) the archive carried.
+      const mediaIndexJson = siteDataToSave.dataFiles?.[MEDIA_INDEX_PATH];
+      if (mediaIndexJson) {
+        await restoreImportedImageRegistry(siteId, mediaIndexJson);
       }
       toast.success(`Site "${data.manifest.title}" imported successfully!`);
     } catch (error) {
       console.error("Error finishing site import:", error);
-      toast.error(`Failed to save imported site: ${(error as Error).message}`);
+      const lossNote = clearedPreviousSite
+        ? " The site that was already stored under this ID has been cleared; the backup file is untouched, so importing it again will retry from scratch."
+        : "";
+      toast.error(`Failed to save imported site: ${(error as Error).message}${lossNote}`);
     }
   }, [addSite, deleteSiteAndState, updateSiteSecrets]);
 

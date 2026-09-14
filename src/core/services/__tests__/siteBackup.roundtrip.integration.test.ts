@@ -26,58 +26,37 @@ import {
 } from '../localFileSystem.service';
 import type { LocalSiteData, ParsedMarkdownFile, RawFile } from '@/core/types';
 import type * as StorageModule from '@/core/services/storage/siteStorage.service';
+import { resetInMemoryBlobStore } from '@/test/support/blobStorageStub';
 import { createSiteFixture } from '@/test/support/siteFixtures';
 import { resetIndexedDbForTests } from '@/test/support/storage';
 
-/**
- * fake-indexeddb cannot structured-clone a `Blob` (it comes back as `{}`, which
- * JSZip then refuses to read), so the storage layer's blob namespace is backed
- * by an in-memory map here. Metadata stores still run on real IndexedDB, and the
- * browser's real blob backend is untouched by this file.
- */
-const blobStore = vi.hoisted(() => new Map<string, Blob>());
-
+// Image bytes need a Blob-preserving blob namespace; see the stub for why.
 vi.mock('@/core/services/storage/siteStorage.service', async (importOriginal) => {
-  const actual = await importOriginal<typeof StorageModule>();
-  const blobKey = (namespace: string, siteId: string, relativePath: string) => `${namespace}:${siteId}:${relativePath}`;
-
-  return {
-    ...actual,
-    writeBlob: vi.fn(async (namespace: string, siteId: string, relativePath: string, blob: Blob) => {
-      blobStore.set(blobKey(namespace, siteId, relativePath), blob);
-    }),
-    readBlob: vi.fn(async (namespace: string, siteId: string, relativePath: string) =>
-      blobStore.get(blobKey(namespace, siteId, relativePath)) ?? null
-    ),
-    removeBlob: vi.fn(async (namespace: string, siteId: string, relativePath: string) => {
-      blobStore.delete(blobKey(namespace, siteId, relativePath));
-    }),
-    listBlobPaths: vi.fn(async (namespace: string, siteId: string) => {
-      const prefix = `${namespace}:${siteId}:`;
-      return [...blobStore.keys()].filter((key) => key.startsWith(prefix)).map((key) => key.slice(prefix.length));
-    }),
-    clearBlobNamespace: vi.fn(async (namespace: string, siteId: string) => {
-      const prefix = `${namespace}:${siteId}:`;
-      for (const key of [...blobStore.keys()]) {
-        if (key.startsWith(prefix)) blobStore.delete(key);
-      }
-    }),
-  };
+  const { stubBlobBackend } = await import('@/test/support/blobStorageStub');
+  return stubBlobBackend(() => importOriginal<typeof StorageModule>());
 });
 
 /** Empties every store the tests use, as if the app had been reinstalled. */
 async function clearAllStorage(): Promise<void> {
-  blobStore.clear();
+  resetInMemoryBlobStore();
   await resetIndexedDbForTests();
 }
 
 const SITE_ID = 'round-trip-site';
 
-/** Original images as they sit in storage, including two sharing a basename. */
+/**
+ * Original images as they sit in storage, including two sharing a basename. The
+ * bytes are binary rather than UTF-8 text, so a round trip can only pass if the
+ * payload survives byte for byte.
+ */
+const HERO_BYTES = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]);
+const NESTED_HERO_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xff]);
+const LOGO_BYTES = new Uint8Array([0x3c, 0x73, 0x76, 0x67, 0x3e, 0xff, 0xfe, 0x00]);
+
 const ORIGINAL_IMAGES: Record<string, Blob> = {
-  'assets/originals/hero.jpg': new Blob(['hero-bytes'], { type: 'image/jpeg' }),
-  'assets/originals/photos/hero.jpg': new Blob(['nested-hero-bytes'], { type: 'image/jpeg' }),
-  'assets/originals/logo.svg': new Blob(['<svg>logo</svg>'], { type: 'image/svg+xml' }),
+  'assets/originals/hero.jpg': new Blob([HERO_BYTES], { type: 'image/jpeg' }),
+  'assets/originals/photos/hero.jpg': new Blob([NESTED_HERO_BYTES], { type: 'image/jpeg' }),
+  'assets/originals/logo.svg': new Blob([LOGO_BYTES], { type: 'image/svg+xml' }),
 };
 
 const CUSTOM_LAYOUT_FILES: RawFile[] = [
@@ -177,6 +156,27 @@ describe('site backup round trip', () => {
     ]);
   });
 
+  test('does not archive editor droppings stored alongside originals', async () => {
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const site = buildRepresentativeSite();
+    await saveAllImageAssetsForSite(site.siteId, {
+      ...ORIGINAL_IMAGES,
+      'assets/originals/.DS_Store': new Blob(['junk']),
+      'assets/originals/Thumbs.db': new Blob(['junk']),
+    });
+
+    const zip = await exportZip(site);
+
+    expect(originalEntries(zip)).toEqual([
+      'assets/originals/hero.jpg',
+      'assets/originals/logo.svg',
+      'assets/originals/photos/hero.jpg',
+    ]);
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Skipping stored image')
+    );
+  });
+
   test('does not archive core themes', async () => {
     const site = createSiteFixture('basicSite', { siteId: 'core-theme-site' });
     site.manifest.theme = { name: 'sparksite', config: {} };
@@ -212,9 +212,11 @@ describe('site backup round trip', () => {
 
     const reloadedImages = await getAllImageAssetsForSite(site.siteId);
     expect(Object.keys(reloadedImages).sort()).toEqual(Object.keys(ORIGINAL_IMAGES).sort());
-    expect(await reloadedImages['assets/originals/hero.jpg'].text()).toBe('hero-bytes');
-    expect(await reloadedImages['assets/originals/photos/hero.jpg'].text()).toBe('nested-hero-bytes');
-    expect(await reloadedImages['assets/originals/logo.svg'].text()).toBe('<svg>logo</svg>');
+    expect(new Uint8Array(await reloadedImages['assets/originals/hero.jpg'].arrayBuffer())).toEqual(HERO_BYTES);
+    expect(new Uint8Array(await reloadedImages['assets/originals/photos/hero.jpg'].arrayBuffer())).toEqual(
+      NESTED_HERO_BYTES
+    );
+    expect(new Uint8Array(await reloadedImages['assets/originals/logo.svg'].arrayBuffer())).toEqual(LOGO_BYTES);
 
     const reloadedDataFiles = await getAllDataFiles(site.siteId);
     expect(reloadedDataFiles['data/categories.json']).toBe('["news","essays"]');

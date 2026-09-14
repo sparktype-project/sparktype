@@ -104,7 +104,7 @@ async function writeOriginalImages(signumFolder: JSZip, siteId: string): Promise
   for (const [path, blob] of Object.entries(imageAssets)) {
     const relativePath = toOriginalArchivePath(path);
     if (!relativePath) {
-      console.warn(`[SiteBackup] Skipping stored image outside ${ORIGINALS_FOLDER}: ${path}`);
+      console.warn(`[SiteBackup] Skipping stored image that is not archivable media: ${path}`);
       continue;
     }
     originalsFolder?.file(relativePath, blob);

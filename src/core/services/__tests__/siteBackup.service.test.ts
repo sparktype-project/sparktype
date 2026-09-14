@@ -184,6 +184,25 @@ describe('importSiteFromZip', () => {
         expect.stringContaining('Legacy backup without')
       );
     });
+
+    test('ignores editor droppings stored alongside a legacy archive originals', async () => {
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const zip = createArchive((siteFolder) => {
+        siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
+        const originals = siteFolder.folder('assets/originals');
+        originals?.file('photo.jpg', 'photo-bytes');
+        originals?.file('.DS_Store', 'junk');
+        originals?.file('Thumbs.db', 'junk');
+      });
+
+      const result = await importArchive(zip);
+
+      expect(Object.keys(result.imageAssetsToSave ?? {})).toEqual(['assets/originals/photo.jpg']);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Skipping non-media entry')
+      );
+    });
   });
 
   describe('content scoping', () => {
@@ -281,6 +300,41 @@ describe('importSiteFromZip', () => {
 
       await expect(importArchive(corruptSecrets)).rejects.toThrow(/secrets\.json is not valid JSON/);
       await expect(importArchive(corruptMediaIndex)).rejects.toThrow(/media\.json is not valid JSON/);
+    });
+
+    test('rejects a media index that cannot be imported', async () => {
+      const zip = createArchive((siteFolder) => {
+        siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
+        // No version and no providerId: the index cannot rebuild the registry.
+        siteFolder.folder('data')?.file('media.json', JSON.stringify({
+          images: { 'assets/originals/image1.jpg': mediaEntry() },
+        }));
+        siteFolder.folder('assets/originals')?.file('image1.jpg', 'fake-image-1');
+      });
+
+      await expect(importArchive(zip)).rejects.toThrow(/cannot be imported.*numeric version.*providerId/);
+    });
+
+    test('reports entry-level media index problems instead of dropping them silently', async () => {
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const zip = createArchive((siteFolder) => {
+        siteFolder.file('manifest.json', JSON.stringify(createMockManifest()));
+        siteFolder.folder('data')?.file('media.json', JSON.stringify({
+          version: 1,
+          providerId: 'local',
+          // A zero size is a validator error, but the bytes are still restorable.
+          images: { 'assets/originals/image1.jpg': mediaEntry(0) },
+        }));
+        siteFolder.folder('assets/originals')?.file('image1.jpg', 'fake-image-1');
+      });
+
+      const result = await importArchive(zip);
+
+      expect(Object.keys(result.imageAssetsToSave ?? {})).toEqual(['assets/originals/image1.jpg']);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid sizeBytes for assets/originals/image1.jpg')
+      );
     });
 
     test('rejects a damaged archive before touching an existing site', async () => {

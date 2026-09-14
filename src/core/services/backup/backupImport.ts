@@ -9,6 +9,7 @@ import type {
   RawFile,
 } from '@/core/types';
 import { parseMarkdownString } from '@/core/libraries/markdownParser';
+import { importMediaManifest } from '../images/mediaManifest.service';
 import { loadBackupArchive, readBackupHeader } from './backupValidation';
 import {
   CONTENT_FOLDER,
@@ -19,6 +20,7 @@ import {
   SIGNUM_FOLDER,
   THEMES_FOLDER,
   contentSlug,
+  isMediaRelativePath,
   isSafeRelativePath,
   isSupportedContentEntry,
   toOriginalArchivePath,
@@ -139,12 +141,21 @@ async function readDataFiles(zip: JSZip): Promise<Record<string, string>> {
   return dataFiles;
 }
 
-/** Originals present in the archive, keyed by their path inside `assets/originals/`. */
+/**
+ * Originals present in the archive, keyed by their path inside
+ * `assets/originals/`. Non-media entries (`.DS_Store`, `Thumbs.db`) are skipped
+ * for both the indexed and the legacy path, so neither restores a droppings file
+ * as an image.
+ */
 function collectOriginals(zip: JSZip): { relativePath: string; entry: JSZipObject }[] {
-  return collectFolderEntries(zip, ORIGINALS_FOLDER).map(({ sitePath, entry }) => ({
-    relativePath: sitePath.slice(ORIGINALS_FOLDER.length),
-    entry,
-  }));
+  return collectFolderEntries(zip, ORIGINALS_FOLDER).flatMap(({ sitePath, entry }) => {
+    const relativePath = sitePath.slice(ORIGINALS_FOLDER.length);
+    if (!isMediaRelativePath(relativePath)) {
+      console.warn(`[SiteBackup] Skipping non-media entry under ${ORIGINALS_FOLDER}: ${sitePath}`);
+      return [];
+    }
+    return [{ relativePath, entry }];
+  });
 }
 
 /**
@@ -201,4 +212,29 @@ async function readLegacyOriginals(zip: JSZip): Promise<{ [path: string]: Blob }
     `[SiteBackup] Legacy backup without ${MEDIA_INDEX_PATH}: restoring ${entries.length} originals from ${SIGNUM_FOLDER}/${ORIGINALS_FOLDER}`
   );
   return imageAssets;
+}
+
+/**
+ * Rebuilds the image registry for a restored site from the media index the
+ * import preserved in `dataFiles`.
+ *
+ * `importSiteFromZip` is deliberately read-only, so image metadata (dimensions,
+ * alt text, references) only reaches the registry if the caller asks for it once
+ * the site and its original bytes are saved. Failures are reported, never
+ * thrown: the site itself is already persisted, and the registry can always be
+ * rebuilt from stored blobs by `ensureImageRegistry`.
+ */
+export async function restoreImportedImageRegistry(siteId: string, mediaIndexJson: string): Promise<void> {
+  try {
+    const result = await importMediaManifest(JSON.parse(mediaIndexJson) as MediaManifest, siteId, {
+      preserveExisting: false,
+    });
+    if (!result.success) {
+      console.warn(
+        `[SiteBackup] Could not restore image metadata for ${siteId}: ${result.errors.join('; ')}`
+      );
+    }
+  } catch (error) {
+    console.warn(`[SiteBackup] Could not restore image metadata for ${siteId}:`, error);
+  }
 }

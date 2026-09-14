@@ -88,19 +88,34 @@ export async function readBackupHeader(zip: JSZip): Promise<BackupArchiveHeader>
   let mediaIndex: MediaManifest | null = null;
   if (mediaIndexEntry) {
     const parsedIndex = parseJsonEntry(await mediaIndexEntry.async('string'), MEDIA_INDEX_PATH);
+    const index = (typeof parsedIndex === 'object' && parsedIndex !== null ? parsedIndex : {}) as Partial<MediaManifest>;
     const validation = validateMediaManifest(parsedIndex);
-    const images = (parsedIndex as { images?: unknown } | null)?.images;
-    if (typeof images !== 'object' || images === null || Array.isArray(images)) {
+
+    // Structural problems stop the index doing its job — `importMediaManifest`
+    // cannot rebuild a registry from an index in this shape, and the same index
+    // is what `restoreImportedImageRegistry` reads after a restore — so they are
+    // fatal rather than merely warned about.
+    const structuralProblems: string[] = [];
+    if (typeof index.version !== 'number') structuralProblems.push('a numeric version is required');
+    if (typeof index.providerId !== 'string' && typeof index.imageService !== 'string') {
+      structuralProblems.push('a string providerId is required');
+    }
+    if (typeof index.images !== 'object' || index.images === null || Array.isArray(index.images)) {
+      structuralProblems.push('an images object is required');
+    }
+    if (structuralProblems.length > 0) {
       throw new Error(
-        `Invalid backup file: ${MEDIA_INDEX_PATH} is not a usable media index (${validation.errors.join('; ')}).`
+        `Invalid backup file: ${MEDIA_INDEX_PATH} cannot be imported (${structuralProblems.join('; ')}).`
       );
     }
-    // Entry-level metadata problems (dimensions, alt text, references) do not
-    // stop the bytes being restored, so they are reported, not fatal.
-    validation.warnings.forEach((warning) => {
-      console.warn(`[SiteBackup] ${MEDIA_INDEX_PATH}: ${warning}`);
+
+    // Everything else the validator reports is entry-level metadata (dimensions,
+    // alt text, reference paths) that does not stop the bytes being restored, so
+    // it is reported rather than fatal — but never silently dropped.
+    [...validation.errors, ...validation.warnings].forEach((problem) => {
+      console.warn(`[SiteBackup] ${MEDIA_INDEX_PATH}: ${problem}`);
     });
-    mediaIndex = parsedIndex as MediaManifest;
+    mediaIndex = index as MediaManifest;
   }
 
   return { manifest, secrets, mediaIndex };

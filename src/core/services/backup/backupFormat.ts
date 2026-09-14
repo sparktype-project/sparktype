@@ -73,6 +73,9 @@ export const LAYOUTS_FOLDER = 'layouts/';
 /** Only Markdown entries are content. Everything else in the archive is data. */
 const CONTENT_EXTENSION = '.md';
 
+/** Droppings that share folder names with real media: never read as an image. */
+const NON_MEDIA_FILENAMES = new Set(['Thumbs.db', 'desktop.ini']);
+
 /**
  * True for a site-relative path that cannot escape the folder it is written to.
  * The storage layer rejects the same shapes, so a `false` answer means the entry
@@ -130,14 +133,28 @@ export function toDataArchivePath(dataFilePath: string): string | null {
 }
 
 /**
+ * True for a relative path that can hold user media. Editor and OS droppings
+ * share folder names with real uploads (`_site/assets/originals/.DS_Store`) and
+ * have historically been mistaken for images, so every path is checked before it
+ * is read as an original or written into the archive.
+ */
+export function isMediaRelativePath(relativePath: string): boolean {
+  if (typeof relativePath !== 'string' || !isSafeRelativePath(relativePath)) return false;
+  const segments = relativePath.split('/');
+  if (segments.some((segment) => segment.startsWith('.'))) return false;
+  return !NON_MEDIA_FILENAMES.has(segments[segments.length - 1] ?? '');
+}
+
+/**
  * Maps a stored original's site path to its entry inside `_site/assets/originals/`
  * (`assets/originals/photos/hero.jpg` becomes `photos/hero.jpg`), preserving
- * nesting so files that share a basename cannot collide.
+ * nesting so files that share a basename cannot collide. Returns `null` for
+ * anything that is not restorable media, including `.DS_Store`-style droppings.
  */
 export function toOriginalArchivePath(imagePath: string): string | null {
   if (typeof imagePath !== 'string' || !imagePath.startsWith(ORIGINALS_FOLDER)) return null;
   const relativePath = imagePath.slice(ORIGINALS_FOLDER.length);
-  return isSafeRelativePath(relativePath) ? relativePath : null;
+  return isMediaRelativePath(relativePath) ? relativePath : null;
 }
 
 /** Inverse of {@link toOriginalArchivePath}: the storage key for an archived original. */

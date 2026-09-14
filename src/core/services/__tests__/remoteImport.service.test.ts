@@ -112,6 +112,11 @@ describe('remoteImport.service', () => {
     expect(result.imageAssetsToSave).toEqual({
       'assets/originals/photo.jpg': expect.any(Blob),
     });
+    // The index travels with the imported site so its image metadata survives a
+    // round trip (and an overwrite, which clears the registry built above).
+    expect(result.dataFiles).toEqual({
+      'data/media.json': expect.stringContaining('assets/originals/photo.jpg'),
+    });
   });
 
   test('continues when media manifest import fails', async () => {
@@ -124,6 +129,11 @@ describe('remoteImport.service', () => {
     const result = await processSiteZip(await createSiteArchive(true));
 
     expect(result.imageAssetsToSave).toEqual({});
+    // The index is still handed to the caller, which rebuilds the registry once
+    // the site exists.
+    expect(result.dataFiles).toEqual({
+      'data/media.json': expect.stringContaining('assets/originals/photo.jpg'),
+    });
   });
 
   describe('importSiteFromUrl', () => {

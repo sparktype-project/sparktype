@@ -30,10 +30,19 @@ import {
 } from '@/core/services/localFileSystem.service';
 import { createEmptyRegistry, getImageRegistry, saveImageRegistry } from '@/core/services/images/imageRegistry.service';
 import type { Manifest } from '@/core/types';
+import type * as StorageModule from '@/core/services/storage/siteStorage.service';
+import { failBlobWrites, resetInMemoryBlobStore } from '@/test/support/blobStorageStub';
 import { createSiteFixture } from '@/test/support/siteFixtures';
+import { toast } from 'sonner';
 
 const OVERWRITE_SITE_ID = 'overwrite-site';
 const FRESH_SITE_ID = 'fresh-import-site';
+
+// Image bytes need a Blob-preserving blob namespace; see the stub for why.
+vi.mock('@/core/services/storage/siteStorage.service', async (importOriginal) => {
+  const { stubBlobBackend } = await import('@/test/support/blobStorageStub');
+  return stubBlobBackend(() => importOriginal<typeof StorageModule>());
+});
 
 const importMock = vi.hoisted(() => vi.fn());
 
@@ -93,6 +102,7 @@ async function waitForImportedManifest(siteId: string): Promise<void> {
 
 describe('site import persistence', () => {
   beforeEach(async () => {
+    resetInMemoryBlobStore();
     importMock.mockReset();
     useAppStore.setState({ sites: [], loadingSites: new Set<string>() });
     await deleteSite(OVERWRITE_SITE_ID);
@@ -118,7 +128,7 @@ describe('site import persistence', () => {
     });
 
     selectBackupFile();
-    await userEvent.setup().click(await screen.findByRole('button', { name: /overwrite/i }));
+    await userEvent.setup().click(await screen.findByRole('button', { name: /overwrite/i }, { timeout: 5000 }));
     await waitForImportedManifest(OVERWRITE_SITE_ID);
 
     await waitFor(async () => {
@@ -127,6 +137,42 @@ describe('site import persistence', () => {
       ]);
     }, { timeout: 5000 });
     expect(await getAllDataFiles(OVERWRITE_SITE_ID)).toEqual({ 'data/new.json': '["new"]' });
+  });
+
+  test('a failed overwrite says the previous site has already been cleared', { timeout: 20000 }, async () => {
+    const existing = createSiteFixture('basicSite', { siteId: OVERWRITE_SITE_ID });
+    await saveSite(existing);
+    await saveAllImageAssetsForSite(OVERWRITE_SITE_ID, {
+      'assets/originals/stale.jpg': new Blob(['stale-bytes']),
+    });
+    await useAppStore.getState().initializeSites();
+
+    importMock.mockResolvedValue({
+      siteId: OVERWRITE_SITE_ID,
+      manifest: importedManifestFor(OVERWRITE_SITE_ID),
+      contentFiles: [],
+      secrets: {},
+      imageAssetsToSave: { 'assets/originals/new.jpg': new Blob(['new-bytes']) },
+    });
+
+    selectBackupFile();
+    const overwriteButton = await screen.findByRole('button', { name: /overwrite/i }, { timeout: 5000 });
+    // Blob writes fail from here on, so the import dies after the previous site
+    // has already been torn down.
+    failBlobWrites(new Error('storage offline'));
+    await userEvent.setup().click(overwriteButton);
+
+    await waitFor(() => {
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
+        expect.stringContaining('has been cleared')
+      );
+    }, { timeout: 3000 });
+    expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
+      expect.stringContaining('importing it again will retry')
+    );
+
+    // The message tells the truth: the previous site's original is gone.
+    expect(Object.keys(await getAllImageAssetsForSite(OVERWRITE_SITE_ID))).toEqual([]);
   });
 
   test('first-time import keeps the data it already wrote for the new site', { timeout: 20000 }, async () => {

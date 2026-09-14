@@ -241,6 +241,10 @@ export async function processSiteZip(zipData: ArrayBuffer): Promise<ImportResult
 
   // Handle data files (e.g., media.json) FIRST to know which images to import
   let mediaManifestProcessed = false;
+  // Data files travel with the imported site so the caller can persist them and
+  // rebuild the image registry once the site exists; the media index is the only
+  // place image dimensions and alt text survive.
+  const dataFiles: Record<string, string> = {};
   const dataFolder = signumFolder.folder('data');
   if (dataFolder && manifest.dataFiles?.includes('data/media.json')) {
     const mediaJsonFile = dataFolder.file('media.json');
@@ -248,6 +252,7 @@ export async function processSiteZip(zipData: ArrayBuffer): Promise<ImportResult
       try {
         const mediaJsonContent = await mediaJsonFile.async('string');
         const mediaManifest: MediaManifest = JSON.parse(mediaJsonContent);
+        dataFiles['data/media.json'] = mediaJsonContent;
 
         console.log(`[ZipImport] Found media.json with ${Object.keys(mediaManifest.images).length} images`);
 
@@ -300,6 +305,7 @@ export async function processSiteZip(zipData: ArrayBuffer): Promise<ImportResult
     contentFiles,
     themeFiles,
     layoutFiles,
+    dataFiles,
     imageAssetsToSave: imageAssets,
   };
 }
