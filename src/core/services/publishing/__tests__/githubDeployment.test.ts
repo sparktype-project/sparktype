@@ -1,4 +1,5 @@
 import { deployGeneratedFiles } from '../github/githubDeployment';
+import { readTrackedPaths } from '../github/githubPathTracker';
 import { GitHubApiStub, decodeBase64 } from '@/test/support/githubApiStub';
 
 const CONFIG = { accessToken: 'token', owner: 'o', repo: 'r', branch: 'main' };
@@ -247,8 +248,11 @@ describe('deployGeneratedFiles', () => {
     });
 
     await expect(deployment).rejects.toThrow(/422 Unprocessable Entity.*Update is not a fast forward/);
-    // The branch already exists, so retrying as a creation would hide the real problem.
+    // The rejection is surfaced, not worked around: the branch keeps the commit the remote user
+    // pushed, and no path history is recorded for a deployment that never landed.
+    expect(stub.branchCommitSHA('main')).toBe('commit-0');
     expect(stub.requests.filter((request) => request.method === 'POST' && request.path.endsWith('/git/refs'))).toHaveLength(0);
+    expect(await readTrackedPaths('site-concurrent', 'o/r#main')).toBeNull();
   });
 
   test('recreates a branch that disappeared between reading and updating it', async () => {
