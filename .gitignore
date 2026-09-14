@@ -25,3 +25,6 @@ blob-report
 *.njsproj
 *.sln
 *.sw?
+
+# TypeScript incremental build cache (rewritten by every `tsc -b` / build:web run)
+tsconfig.tsbuildinfo
