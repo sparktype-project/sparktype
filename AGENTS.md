@@ -127,8 +127,11 @@ The application uses Zustand with a slice-based pattern:
 - Automatic derivative generation and caching
 
 ### Authentication
-- WebAuthn-based authentication system
+- WebAuthn-based authentication system, browser only
 - Credential storage in manifest for site access control
+- Desktop app does not enforce edit protection; `src/core/services/authPolicy.service.ts` is the
+  single decision point. `manifest.auth` is preserved untouched so protected sites still export and
+  back up their credentials intact.
 
 ### Dual Build Targets
 - Web builds exclude Tauri APIs and desktop-specific features

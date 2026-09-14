@@ -7,8 +7,10 @@ import {
   type PublicKeyCredentialRequestOptionsJSON
 } from '@simplewebauthn/browser';
 import { AUTH_CONFIG } from '@/config/editorConfig';
-import { isTauriApp } from '@/core/utils/platform';
-import { invoke } from '@tauri-apps/api/core';
+import {
+  EDIT_PROTECTION_UNAVAILABLE_MESSAGE,
+  isEditProtectionSupported,
+} from '@/core/services/authPolicy.service';
 
 /**
  * Configuration for site-specific WebAuthn authentication
@@ -58,6 +60,11 @@ export interface RegistrationResult {
  * - Private keys never leave user's device (WebAuthn security guarantee)
  * - Each site has its own isolated credential
  * - Authentication state maintained in memory only
+ *
+ * Platform support:
+ * - Browser only. The desktop app has no passkey integration, so
+ *   `isEditProtectionSupported()` is false there and this service refuses
+ *   registration and authentication instead of simulating success.
  * 
  * Usage:
  * ```typescript
@@ -166,12 +173,11 @@ export class WebAuthnService {
     siteName: string,
     userDisplayName = 'Site Owner'
   ): Promise<RegistrationResult> {
-    try {
-      // Check if running in Tauri environment
-      if (isTauriApp()) {
-        return await this.registerCredentialTauri(siteId, siteName, userDisplayName);
-      }
+    if (!isEditProtectionSupported()) {
+      return { success: false, error: EDIT_PROTECTION_UNAVAILABLE_MESSAGE };
+    }
 
+    try {
       // Web browser registration
       return await this.registerCredentialWeb(siteId, siteName, userDisplayName);
     } catch (error) {
@@ -239,32 +245,6 @@ export class WebAuthnService {
   }
 
   /**
-   * Register credential using Tauri native authentication
-   * @private
-   */
-  private async registerCredentialTauri(
-    siteId: string,
-    siteName: string,
-    userDisplayName: string
-  ): Promise<RegistrationResult> {
-    try {
-      const result = await invoke('register_passkey', {
-        siteId,
-        siteName,
-        userDisplayName,
-      });
-
-      return result as RegistrationResult;
-    } catch (error) {
-      console.error('Tauri WebAuthn registration failed:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Tauri registration failed'
-      };
-    }
-  }
-
-  /**
    * Authenticate user for site access using registered WebAuthn credential
    *
    * This verifies the user possesses the private key corresponding to the
@@ -298,16 +278,15 @@ export class WebAuthnService {
     siteId: string,
     authConfig: SiteAuthConfig
   ): Promise<AuthenticationResult> {
+    if (!authConfig.requiresAuth) {
+      return { success: true };
+    }
+
+    if (!isEditProtectionSupported()) {
+      return { success: false, error: EDIT_PROTECTION_UNAVAILABLE_MESSAGE };
+    }
+
     try {
-      if (!authConfig.requiresAuth) {
-        return { success: true };
-      }
-
-      // Check if running in Tauri environment
-      if (isTauriApp()) {
-        return await this.authenticateForSiteTauri(siteId, authConfig);
-      }
-
       // Web browser authentication
       return await this.authenticateForSiteWeb(siteId, authConfig);
     } catch (error) {
@@ -359,36 +338,6 @@ export class WebAuthnService {
   }
 
   /**
-   * Authenticate using Tauri native authentication
-   * @private
-   */
-  private async authenticateForSiteTauri(
-    siteId: string,
-    authConfig: SiteAuthConfig
-  ): Promise<AuthenticationResult> {
-    try {
-      const result = await invoke('authenticate_passkey', {
-        siteId,
-        authConfig,
-      });
-
-      return result as AuthenticationResult;
-    } catch (error) {
-      console.error('Tauri WebAuthn authentication failed:', error);
-
-      // Handle user cancellation gracefully
-      if (error instanceof Error && error.message.includes('cancelled')) {
-        return { success: false, error: 'Authentication was cancelled' };
-      }
-
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Tauri authentication failed'
-      };
-    }
-  }
-
-  /**
    * Remove authentication from a site (make it public)
    */
   async removeAuthentication(siteId: string): Promise<boolean> {
@@ -406,26 +355,6 @@ export class WebAuthnService {
    */
   isAuthenticatedForSite(siteId: string): boolean {
     return this.registeredCredentials.has(siteId);
-  }
-
-  /**
-   * Get authentication status for a site
-   */
-  getSiteAuthStatus(siteId: string, manifest: { auth?: SiteAuthConfig }): {
-    isPublic: boolean;
-    requiresAuth: boolean;
-    isAuthenticated: boolean;
-  } {
-    const authConfig = manifest.auth;
-    const isPublic = !authConfig || !authConfig.requiresAuth;
-    const requiresAuth = !!authConfig?.requiresAuth;
-    const isAuthenticated = this.isAuthenticatedForSite(siteId);
-
-    return {
-      isPublic,
-      requiresAuth,
-      isAuthenticated: isPublic || isAuthenticated,
-    };
   }
 
   /**

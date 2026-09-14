@@ -2,6 +2,8 @@
 
 import { type StateCreator } from 'zustand';
 import { webAuthnService, type SiteAuthConfig, type AuthenticationResult, type RegistrationResult } from '@/core/services/webauthn.service';
+import { requiresAuthentication } from '@/core/services/authPolicy.service';
+import type { Manifest } from '@/core/types';
 import { AUTH_CONFIG } from '@/config/editorConfig';
 
 const AUTH_SESSION_STORAGE_KEY = 'sparktype_auth_sessions';
@@ -68,7 +70,7 @@ export interface AuthSlice {
   registerSiteAuthentication: (siteId: string, siteName: string, userDisplayName?: string) => Promise<RegistrationResult>;
   removeSiteAuthentication: (siteId: string) => Promise<boolean>;
   isAuthenticatedForSite: (siteId: string) => boolean;
-  getSiteAuthStatus: (siteId: string, manifest: { auth?: SiteAuthConfig }) => {
+  getSiteAuthStatus: (siteId: string, manifest: Manifest) => {
     isPublic: boolean;
     requiresAuth: boolean;
     isAuthenticated: boolean;
@@ -198,16 +200,13 @@ export const createAuthSlice: StateCreator<
   /**
    * Get comprehensive authentication status for a site
    */
-  getSiteAuthStatus: (siteId: string, manifest: { auth?: SiteAuthConfig }) => {
-    const authConfig = manifest.auth;
-    const isPublic = !authConfig || !authConfig.requiresAuth;
-    const requiresAuth = !!authConfig?.requiresAuth;
-    const isAuthenticated = get().authenticatedSites.has(siteId);
+  getSiteAuthStatus: (siteId: string, manifest: Manifest) => {
+    const requiresAuth = requiresAuthentication(manifest);
 
     return {
-      isPublic,
-      requiresAuth, 
-      isAuthenticated
+      isPublic: !requiresAuth,
+      requiresAuth,
+      isAuthenticated: get().authenticatedSites.has(siteId)
     };
   },
 

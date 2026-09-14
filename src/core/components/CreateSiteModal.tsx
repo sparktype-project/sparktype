@@ -6,6 +6,10 @@ import { useAppStore } from '@/core/state/useAppStore';
 
 // Services and Config
 import { generateSiteId } from '@/core/libraries/utils';
+import {
+  EDIT_PROTECTION_UNAVAILABLE_MESSAGE,
+  isEditProtectionSupported,
+} from '@/core/services/authPolicy.service';
 import { getMergedThemeDataForForm } from '@/core/services/config/theme.service';
 import { GENERATOR_VERSION, CORE_THEMES } from '@/config/editorConfig';
 
@@ -38,6 +42,7 @@ export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalP
   const [siteDescription, setSiteDescription] = useState('');
   const [enableEditProtection, setEnableEditProtection] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const editProtectionSupported = isEditProtectionSupported();
   const availableThemes = useMemo(() => CORE_THEMES, []);
   const [selectedTheme, setSelectedTheme] = useState<ThemeInfo | null>(availableThemes[0] || null);
 
@@ -87,8 +92,8 @@ export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalP
 
       await addSite(newSiteData);
 
-      // Handle edit protection setup
-      if (enableEditProtection) {
+      // Handle edit protection setup — desktop never offers or registers it.
+      if (isEditProtectionSupported() && enableEditProtection) {
         try {
           const authResult = await registerSiteAuthentication(
             newSiteId,
@@ -192,29 +197,35 @@ export default function CreateSiteModal({ open, onOpenChange }: CreateSiteModalP
           </div>
 
           <div className="space-y-3 pt-2 border-t">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label
-                  htmlFor="edit-protection"
-                  className="text-sm font-medium flex items-center gap-2"
-                >
-                  <Shield className="h-4 w-4" />
-                  Edit protection
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Require authentication to edit this site
-                </p>
-              </div>
-              <Switch
-                id="edit-protection"
-                checked={enableEditProtection}
-                onCheckedChange={setEnableEditProtection}
-              />
-            </div>
-            {enableEditProtection && (
-              <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                You'll be prompted to set up a passkey after creating the site.
-              </p>
+            {editProtectionSupported ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label
+                      htmlFor="edit-protection"
+                      className="text-sm font-medium flex items-center gap-2"
+                    >
+                      <Shield className="h-4 w-4" />
+                      Edit protection
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Require authentication to edit this site
+                    </p>
+                  </div>
+                  <Switch
+                    id="edit-protection"
+                    checked={enableEditProtection}
+                    onCheckedChange={setEnableEditProtection}
+                  />
+                </div>
+                {enableEditProtection && (
+                  <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                    You'll be prompted to set up a passkey after creating the site.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">{EDIT_PROTECTION_UNAVAILABLE_MESSAGE}</p>
             )}
           </div>
         </div>

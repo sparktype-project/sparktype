@@ -23,6 +23,7 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: invokeMock,
 }));
 
+import { EDIT_PROTECTION_UNAVAILABLE_MESSAGE } from '../authPolicy.service';
 import { WebAuthnService } from '../webauthn.service';
 
 describe('webauthn.service', () => {
@@ -84,17 +85,13 @@ describe('webauthn.service', () => {
     ).resolves.toEqual({ success: false, error: 'Credential verification failed' });
   });
 
-  test('uses native tauri commands when running in desktop mode', async () => {
+  test('refuses desktop registration and authentication without native or browser calls', async () => {
     const service = WebAuthnService.getInstance();
     isTauriAppMock.mockReturnValue(true);
-    invokeMock
-      .mockResolvedValueOnce({ success: true, authConfig: { credentialId: 'cred-tauri', publicKey: 'pk', requiresAuth: true, registeredAt: '2025-01-01T00:00:00.000Z' } })
-      .mockResolvedValueOnce({ success: true, credentialId: 'cred-tauri' })
-      .mockRejectedValueOnce(new Error('cancelled by user'));
 
-    await expect(service.registerCredential('site-tauri', 'Desktop Site')).resolves.toMatchObject({
-      success: true,
-      authConfig: expect.objectContaining({ credentialId: 'cred-tauri' }),
+    await expect(service.registerCredential('site-tauri', 'Desktop Site')).resolves.toEqual({
+      success: false,
+      error: EDIT_PROTECTION_UNAVAILABLE_MESSAGE,
     });
     await expect(
       service.authenticateForSite('site-tauri', {
@@ -103,14 +100,28 @@ describe('webauthn.service', () => {
         requiresAuth: true,
         registeredAt: '2025-01-01T00:00:00.000Z',
       })
-    ).resolves.toEqual({ success: true, credentialId: 'cred-tauri' });
+    ).resolves.toEqual({
+      success: false,
+      error: EDIT_PROTECTION_UNAVAILABLE_MESSAGE,
+    });
+
+    expect(invokeMock).not.toHaveBeenCalled();
+    expect(startRegistrationMock).not.toHaveBeenCalled();
+    expect(startAuthenticationMock).not.toHaveBeenCalled();
+  });
+
+  test('treats an unprotected configuration as needing no authentication on desktop', async () => {
+    const service = WebAuthnService.getInstance();
+    isTauriAppMock.mockReturnValue(true);
+
     await expect(
       service.authenticateForSite('site-tauri', {
         publicKey: 'pk',
         credentialId: 'cred-tauri',
-        requiresAuth: true,
+        requiresAuth: false,
         registeredAt: '2025-01-01T00:00:00.000Z',
       })
-    ).resolves.toEqual({ success: false, error: 'Authentication was cancelled' });
+    ).resolves.toEqual({ success: true });
+    expect(invokeMock).not.toHaveBeenCalled();
   });
 });

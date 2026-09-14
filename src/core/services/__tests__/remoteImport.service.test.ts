@@ -15,6 +15,12 @@ vi.mock('@/core/utils/platform', () => ({
   isTauriApp: isTauriAppMock,
 }));
 
+// The desktop import path uses the Tauri HTTP plugin; forward it to the stubbed
+// global fetch so the test exercises the real request flow.
+vi.mock('@tauri-apps/plugin-http', () => ({
+  fetch: (url: string, init?: RequestInit) => fetch(url, init),
+}));
+
 import { importSiteFromUrl, parseGitHubUrl, processSiteZip } from '../remoteImport.service';
 
 async function createSiteArchive(includeMedia = true): Promise<ArrayBuffer> {
@@ -294,6 +300,24 @@ describe('remoteImport.service', () => {
 
       expect(authenticate).toHaveBeenCalledWith(
         'remote-site',
+        expect.objectContaining({ credentialId: 'cred-1', requiresAuth: true })
+      );
+    });
+
+    test('imports a protected site on desktop without invoking authentication', async () => {
+      isTauriAppMock.mockReturnValue(true);
+      importMediaManifestMock.mockResolvedValue({
+        success: true,
+        imagesImported: 1,
+        errors: [],
+      });
+      mockRemoteFetch(createRemoteFiles({ requiresAuth: true }));
+      const authenticate = vi.fn();
+
+      const result = await importSiteFromUrl(baseUrl, authenticate);
+
+      expect(authenticate).not.toHaveBeenCalled();
+      expect(result.manifest.auth).toEqual(
         expect.objectContaining({ credentialId: 'cred-1', requiresAuth: true })
       );
     });

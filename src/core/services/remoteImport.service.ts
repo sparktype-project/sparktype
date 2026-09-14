@@ -12,6 +12,7 @@ import type {
 } from '@/core/types';
 import { parseMarkdownString } from '@/core/libraries/markdownParser';
 import { isTauriApp } from '@/core/utils/platform';
+import { requiresAuthentication } from './authPolicy.service';
 import { importMediaManifest } from './images/mediaManifest.service';
 import { flattenStructure } from './fileTree.service';
 import type { AuthenticationResult, SiteAuthConfig } from './webauthn.service';
@@ -425,12 +426,15 @@ export async function importSiteFromUrl(
 
     addFileToZip(siteFolder, 'manifest.json', manifestContent);
 
-    if (manifest.auth?.requiresAuth) {
+    // Desktop cannot verify passkeys, so protected sites import there without
+    // authentication; the policy keeps browser behaviour unchanged.
+    const auth = manifest.auth;
+    if (auth && requiresAuthentication(manifest)) {
       if (!authenticate) {
         throw new Error('This site is protected and requires passkey authentication before import.');
       }
 
-      const authResult = await authenticate(manifest.siteId, manifest.auth);
+      const authResult = await authenticate(manifest.siteId, auth);
       if (!authResult.success) {
         throw new Error(authResult.error || 'Authentication failed');
       }

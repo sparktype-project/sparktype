@@ -6,6 +6,7 @@ import {  type LocalSiteData,  type Manifest } from '@/core/types';
 import * as localSiteFs from '@/core/services/localFileSystem.service';
 import { loadSiteSecretsFromDb } from '@/core/services/siteSecrets.service';
 import { getStorageHealth } from '@/core/services/storage/siteStorage.service';
+import { requiresAuthentication } from '@/core/services/authPolicy.service';
 import type { AuthSlice } from './authSlice';
 import { toast } from 'sonner';
 
@@ -86,14 +87,17 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
       console.log(`[loadSite] Manifest loaded for: ${siteId}`, rawManifest);
       const manifest = rawManifest;
 
-      // Check if authentication is required for this site
-      if (manifest.auth?.requiresAuth) {
+      // Edit protection is only enforced where the platform supports it (browsers).
+      // On desktop a protected site opens without a prompt; its `manifest.auth`
+      // block is preserved untouched, just not enforced.
+      const auth = manifest.auth;
+      if (auth && requiresAuthentication(manifest)) {
         const appStore = get() as SiteSlice & AuthSlice;
         const authStatus = appStore.getSiteAuthStatus(siteId, manifest);
         
         if (!authStatus.isAuthenticated) {
           console.log(`[loadSite] Authentication required for site: ${siteId}`);
-          const authResult = await appStore.authenticateForSite(siteId, manifest.auth);
+          const authResult = await appStore.authenticateForSite(siteId, auth);
           
           if (!authResult.success) {
             throw new Error(`Authentication failed: ${authResult.error || 'Access denied'}`);
