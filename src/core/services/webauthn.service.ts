@@ -278,6 +278,9 @@ export class WebAuthnService {
     siteId: string,
     authConfig: SiteAuthConfig
   ): Promise<AuthenticationResult> {
+    // An unprotected config needs no authentication on any platform, so this
+    // check deliberately precedes the desktop refusal below: a caller passing
+    // `requiresAuth: false` must not receive a desktop error.
     if (!authConfig.requiresAuth) {
       return { success: true };
     }

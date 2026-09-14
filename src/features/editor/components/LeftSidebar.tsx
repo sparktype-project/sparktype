@@ -36,7 +36,7 @@ import { flattenTree, type FlattenedNode } from '@/core/services/fileTree.servic
 import { arrayMove } from '@dnd-kit/sortable';
 import { toast } from 'sonner';
 import { exportSiteBackup } from '@/core/services/siteBackup.service';
-import { requiresAuthentication } from '@/core/services/authPolicy.service';
+import { hasStoredEditProtection } from '@/core/services/authPolicy.service';
 import { slugify } from '@/core/libraries/utils';
 
 interface DndProjection {
@@ -334,7 +334,7 @@ export default function LeftSidebar() {
         </div>
 
         <div className=" border-t p-2 space-y-1 mt-auto">
-          {site && requiresAuthentication(site.manifest) ? (
+          {site && hasStoredEditProtection(site.manifest) ? (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start gap-2" disabled={isExporting}>

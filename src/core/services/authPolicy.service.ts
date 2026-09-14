@@ -32,3 +32,15 @@ export function isEditProtectionSupported(): boolean {
 export function requiresAuthentication(manifest: Manifest): boolean {
   return isEditProtectionSupported() && manifest.auth?.requiresAuth === true;
 }
+
+/**
+ * Whether the manifest carries stored edit-protection credentials, regardless
+ * of platform or enforcement.
+ *
+ * Use this for anything that reacts to the *contents* of a site — export
+ * warnings, backup guidance — so disabling enforcement on desktop does not also
+ * silence a warning about what the produced file contains.
+ */
+export function hasStoredEditProtection(manifest: Manifest): boolean {
+  return manifest.auth?.requiresAuth === true;
+}

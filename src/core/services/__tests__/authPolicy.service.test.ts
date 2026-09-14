@@ -10,6 +10,7 @@ vi.mock('@/core/utils/platform', () => ({
 
 import {
   EDIT_PROTECTION_UNAVAILABLE_MESSAGE,
+  hasStoredEditProtection,
   isEditProtectionSupported,
   requiresAuthentication,
 } from '../authPolicy.service';
@@ -56,6 +57,15 @@ describe('authPolicy.service', () => {
     isTauriAppMock.mockReturnValue(true);
 
     expect(requiresAuthentication(createManifest(protectedAuth))).toBe(false);
+  });
+
+  test('reports stored credentials independently of platform and enforcement', () => {
+    expect(hasStoredEditProtection(createManifest(protectedAuth))).toBe(true);
+    expect(hasStoredEditProtection(createManifest())).toBe(false);
+    expect(hasStoredEditProtection(createManifest({ ...protectedAuth, requiresAuth: false }))).toBe(false);
+
+    isTauriAppMock.mockReturnValue(true);
+    expect(hasStoredEditProtection(createManifest(protectedAuth))).toBe(true);
   });
 
   test('exposes the desktop unavailability message verbatim', () => {
