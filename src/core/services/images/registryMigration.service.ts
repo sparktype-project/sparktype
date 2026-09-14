@@ -91,10 +91,11 @@ function scanObjectForImageRefs(obj: unknown, found: string[], depth = 0): void 
 }
 
 /**
- * Initializes an image registry for a site by analyzing existing data
- * This is the migration path for sites that don't have a registry yet
+ * Builds a registry from the site's stored images and current content references, without
+ * writing anything. Callers that must not touch storage (an export, for example) use this;
+ * `initializeImageRegistry` persists the result.
  */
-export async function initializeImageRegistry(siteData: LocalSiteData): Promise<ImageRegistry> {
+export async function buildRegistryFromSiteData(siteData: LocalSiteData): Promise<ImageRegistry> {
   console.log(`[RegistryMigration] Initializing registry for site: ${siteData.siteId}`);
 
   const registry = createEmptyRegistry(siteData.siteId);
@@ -123,7 +124,6 @@ export async function initializeImageRegistry(siteData: LocalSiteData): Promise<
     }
 
     console.log(`[RegistryMigration] Created registry with ${Object.keys(registry.images).length} images`);
-    await saveImageRegistry(registry);
 
     return registry;
 
@@ -135,10 +135,28 @@ export async function initializeImageRegistry(siteData: LocalSiteData): Promise<
 }
 
 /**
- * Ensures a site has a valid image registry, creating one if needed
- * This is the main entry point that should be called before any registry operations
+ * Initializes an image registry for a site and stores it. Use this for migrations and explicit
+ * user actions, not for read-only passes over a site (see `buildRegistryFromSiteData`).
  */
-export async function ensureImageRegistry(siteData: LocalSiteData): Promise<ImageRegistry> {
+export async function initializeImageRegistry(siteData: LocalSiteData): Promise<ImageRegistry> {
+  const registry = await buildRegistryFromSiteData(siteData);
+  await saveImageRegistry(registry);
+  return registry;
+}
+
+/**
+ * Ensures a site has a valid image registry, creating one if needed.
+ *
+ * @param siteData The complete site data.
+ * @param options `persist: false` resolves a registry in memory for callers that must not write
+ *   to storage during their pass (an export or backup reading the site).
+ */
+export async function ensureImageRegistry(
+  siteData: LocalSiteData,
+  options: { persist?: boolean } = {},
+): Promise<ImageRegistry> {
+  const { persist = true } = options;
+
   try {
     const existingRegistry = await getImageRegistry(siteData.siteId);
 
@@ -150,7 +168,9 @@ export async function ensureImageRegistry(siteData: LocalSiteData): Promise<Imag
 
     // If registry is empty, initialize it from current data
     console.log(`[RegistryMigration] Registry is empty, initializing from current data`);
-    return await initializeImageRegistry(siteData);
+    return persist
+      ? await initializeImageRegistry(siteData)
+      : await buildRegistryFromSiteData(siteData);
 
   } catch (error) {
     console.error(`[RegistryMigration] Failed to ensure registry for ${siteData.siteId}:`, error);

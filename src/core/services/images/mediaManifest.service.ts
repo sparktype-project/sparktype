@@ -144,6 +144,12 @@ export interface GenerateMediaManifestOptions {
   includeOrphaned?: boolean;
   /** Whether to include detailed logging (default: false) */
   verbose?: boolean;
+  /**
+   * Whether an empty registry may be created and saved while reading the site (default: true).
+   * Read-only passes — an export building media.json — pass `false` so the pass leaves the
+   * site's storage exactly as it found it.
+   */
+  persistRegistry?: boolean;
 }
 
 /**
@@ -208,7 +214,7 @@ export async function generateMediaManifest(
   siteData: LocalSiteData,
   options: GenerateMediaManifestOptions = {}
 ): Promise<MediaManifest> {
-  const { includeOrphaned = false, verbose = false } = options;
+  const { includeOrphaned = false, verbose = false, persistRegistry = true } = options;
 
   if (verbose) {
     console.log(`[MediaManifest] Generating media manifest for site: ${siteData.siteId}`);
@@ -216,7 +222,7 @@ export async function generateMediaManifest(
 
   try {
     // Ensure the site has a valid registry
-    await ensureImageRegistry(siteData);
+    await ensureImageRegistry(siteData, { persist: persistRegistry });
     const registry = await getImageRegistry(siteData.siteId);
 
     // Extract image service configuration

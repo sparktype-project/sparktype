@@ -20,6 +20,7 @@ import {
   getAllImageAssetsForSite,
   saveImageAsset,
 } from '@/core/services/localFileSystem.service';
+import { readMetadata } from '@/core/services/storage/siteStorage.service';
 import { resetInMemoryBlobStore } from '@/test/support/blobStorageStub';
 import { resetIndexedDbForTests } from '@/test/support/storage';
 
@@ -333,6 +334,17 @@ describe('buildSiteBundle publication filtering', () => {
     );
     expect(exportListing).not.toContain('Hidden Draft Post');
     expect(exportListing).toContain('First Post');
+  });
+
+  test('does not write to persistent storage while exporting', async () => {
+    const site = createPublicationSite();
+    // Blobs only: no image registry exists yet, which is the state that used to make the
+    // export create one (recording draft references as orphans).
+    await saveImageAsset(site.siteId, PUBLISHED_IMAGE, new Blob([PUBLISHED_IMAGE_BYTES], { type: 'image/svg+xml' }));
+
+    await buildSiteBundle(site);
+
+    expect(await readMetadata('imageRegistries', site.siteId)).toBeNull();
   });
 
   test('does not mutate the caller’s site data', async () => {

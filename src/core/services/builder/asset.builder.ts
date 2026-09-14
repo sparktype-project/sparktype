@@ -75,9 +75,11 @@ async function generateMediaDataFile(bundle: SiteBundle, siteData: LocalSiteData
   try {
     console.log(`[AssetBuilder] Generating media.json data file for site: ${siteData.siteId}`);
 
-    // Generate the media manifest with only referenced images
+    // Generate the media manifest with only referenced images. `persistRegistry: false` keeps
+    // the export read-only: generating media.json must not create or rewrite the image registry.
     const mediaManifest = await generateMediaManifest(siteData, {
       includeOrphaned: false,
+      persistRegistry: false,
       verbose: true,
     });
     const publishedMediaManifest = pruneUnpublishedMediaReferences(mediaManifest, siteData);
