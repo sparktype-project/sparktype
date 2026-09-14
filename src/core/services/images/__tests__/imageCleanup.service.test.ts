@@ -25,13 +25,20 @@ import {
   saveImageRegistry,
   updateImageReferences,
 } from '../imageRegistry.service';
+import { listBlobPaths } from '@/core/services/storage/siteStorage.service';
 import { getCachedDerivative, setCachedDerivative } from '../derivativeCache.service';
 import { ensureImageRegistry, validateAndRepairRegistry } from '../registryMigration.service';
 import { cleanupOrphanedImages } from '../imageCleanup.service';
 import { localImageService } from '../localImage.service';
 
 const blobMocks = vi.hoisted(() => ({
+  readBlob: vi.fn(),
   removeBlob: vi.fn(),
+  realReadBlob: null as null | ((
+    namespace: 'images' | 'derivatives' | 'imports' | 'exports' | 'snapshots',
+    siteId: string,
+    relativePath: string,
+  ) => Promise<Blob | null>),
   realRemoveBlob: null as null | ((
     namespace: 'images' | 'derivatives' | 'imports' | 'exports' | 'snapshots',
     siteId: string,
@@ -42,9 +49,11 @@ const blobMocks = vi.hoisted(() => ({
 vi.mock('@/core/services/storage/siteStorage.service', async (importOriginal) => {
   const { stubBlobBackend } = await import('@/test/support/blobStorageStub');
   const stubbed = await stubBlobBackend(() => importOriginal<typeof StorageModule>());
+  blobMocks.realReadBlob = stubbed.readBlob;
   blobMocks.realRemoveBlob = stubbed.removeBlob;
+  blobMocks.readBlob.mockImplementation(stubbed.readBlob);
   blobMocks.removeBlob.mockImplementation(stubbed.removeBlob);
-  return { ...stubbed, removeBlob: blobMocks.removeBlob };
+  return { ...stubbed, readBlob: blobMocks.readBlob, removeBlob: blobMocks.removeBlob };
 });
 
 const LEGACY_IMAGE_STORE = localforage.createInstance({
@@ -84,6 +93,8 @@ describe('imageCleanup.service', () => {
   beforeEach(async () => {
     await resetIndexedDbForTests();
     resetInMemoryBlobStore();
+    blobMocks.readBlob.mockReset();
+    blobMocks.readBlob.mockImplementation(blobMocks.realReadBlob!);
     blobMocks.removeBlob.mockReset();
     blobMocks.removeBlob.mockImplementation(blobMocks.realRemoveBlob!);
   });
@@ -289,5 +300,116 @@ describe('imageCleanup.service', () => {
 
     await expect(deleteImageAsset(siteId, USED_IMAGE)).rejects.toThrow(USED_IMAGE);
     expect(await getImageAsset(siteId, USED_IMAGE)).not.toBeNull();
+  });
+
+  test('refuses to delete anything while the site content is not loaded', async () => {
+    const siteId = 'cleanup-unloaded-content-site';
+    // The registry records the reference the content write left behind; with the content absent the
+    // registry repair would rewrite it to empty, report the image as an orphan, and — without the
+    // guard — delete an image the site's stored content still points at.
+    const site = createSiteWithReferences(siteId, [USED_IMAGE]);
+    await storeOriginal(siteId, USED_IMAGE, 'used-image-bytes');
+    await markReferenced(siteId, USED_IMAGE);
+
+    const unloaded: LocalSiteData = { siteId, manifest: site.manifest };
+
+    const result = await cleanupOrphanedImages(unloaded);
+
+    expect(result).toMatchObject({ originalImagesRemoved: 0, derivativesRemoved: 0, bytesFreed: 0 });
+    expect(await getImageAsset(siteId, USED_IMAGE)).not.toBeNull();
+    expect((await getImageRegistry(siteId)).images[USED_IMAGE].referencedIn).toEqual(['content/home.md']);
+    expect(result.cleanupLog.some((line) => line.includes('refusing to delete'))).toBe(true);
+  });
+
+  test('refuses to delete anything when the content loaded as an empty set', async () => {
+    const siteId = 'cleanup-empty-content-site';
+    const site = createSiteWithReferences(siteId, []);
+    site.contentFiles = [];
+    await storeOriginal(siteId, USED_IMAGE, 'used-image-bytes');
+    await markReferenced(siteId, USED_IMAGE);
+
+    const result = await cleanupOrphanedImages(site);
+
+    expect(result).toMatchObject({ originalImagesRemoved: 0, bytesFreed: 0 });
+    expect(await getImageAsset(siteId, USED_IMAGE)).not.toBeNull();
+  });
+
+  test('does not delete an image that only a layout file references', async () => {
+    const siteId = 'cleanup-layout-reference-site';
+    const site = createSiteWithReferences(siteId, []);
+    // The renderer resolves `<img data-sparktype-asset="true">` out of storage, so a layout partial
+    // is a live reference the content parser never sees.
+    const layoutImage = 'assets/images/layout-hero.png';
+    site.layoutFiles = [
+      {
+        path: 'layouts/page/partials/hero.hbs',
+        content: `<img src="${layoutImage}" data-sparktype-asset="true" alt="Hero">`,
+      },
+    ];
+    await storeOriginal(siteId, layoutImage, 'layout-hero-bytes');
+    await storeOriginal(siteId, ORPHAN_IMAGE, 'orphan-image-bytes');
+
+    const result = await cleanupOrphanedImages(site);
+
+    const stored = await getAllImageAssetsForSite(siteId);
+    expect(Object.keys(stored)).toEqual([layoutImage]);
+    expect(await stored[layoutImage].text()).toBe('layout-hero-bytes');
+    expect(result.originalImagesRemoved).toBe(1);
+    expect(result.bytesFreed).toBe('orphan-image-bytes'.length);
+    expect((await getImageRegistry(siteId)).images[layoutImage]).toBeDefined();
+  });
+
+  test('does not delete an image that only a theme or data file references', async () => {
+    const siteId = 'cleanup-theme-reference-site';
+    const site = createSiteWithReferences(siteId, []);
+    const themeImage = 'assets/images/theme-bg.jpg';
+    const dataImage = 'assets/images/data-figure.jpg';
+    site.themeFiles = [
+      { path: 'themes/starter/base.hbs', content: `<body style="background:url(${themeImage})">` },
+    ];
+    site.dataFiles = { 'data/gallery.json': `{"figure":"${dataImage}"}` };
+    await storeOriginal(siteId, themeImage, 'theme-bg-bytes');
+    await storeOriginal(siteId, dataImage, 'data-figure-bytes');
+
+    const result = await cleanupOrphanedImages(site);
+
+    const stored = await getAllImageAssetsForSite(siteId);
+    expect(Object.keys(stored).sort()).toEqual([themeImage, dataImage].sort());
+    expect(result).toMatchObject({ originalImagesRemoved: 0, bytesFreed: 0 });
+  });
+
+  test('does not count a derivative whose removal silently failed', async () => {
+    const siteId = 'cleanup-derivative-failure-site';
+    const site = createSiteWithReferences(siteId, []);
+    await storeOriginal(siteId, ORPHAN_IMAGE, 'orphan-image-bytes');
+
+    const orphanDerivativePath = 'assets/derivatives/orphan_w300_hauto_c-scale_g-center.jpg';
+    await setCachedDerivative(`${siteId}/${orphanDerivativePath}`, new Blob(['orphan-derivative']));
+    await addDerivativeToRegistry(siteId, ORPHAN_IMAGE, orphanDerivativePath);
+
+    // The OPFS backend swallows removal errors, and a derivative read reports a failure (or its 2s
+    // timeout) as "absent". So the file stays in the namespace while every read says it is gone —
+    // exactly the state in which a re-read cannot be trusted to decide whether a delete happened.
+    let removeAttempted = false;
+    blobMocks.removeBlob.mockImplementation(async (namespace, id, relativePath) => {
+      if (namespace === 'derivatives') {
+        removeAttempted = true;
+        return;
+      }
+      await blobMocks.realRemoveBlob!(namespace, id, relativePath);
+    });
+    blobMocks.readBlob.mockImplementation(async (namespace, id, relativePath) => {
+      if (namespace === 'derivatives' && removeAttempted) return null;
+      return blobMocks.realReadBlob!(namespace, id, relativePath);
+    });
+
+    const result = await cleanupOrphanedImages(site);
+
+    expect(result.derivativesRemoved).toBe(0);
+    expect(result.failures).toEqual([orphanDerivativePath]);
+    expect(result.bytesFreed).toBe('orphan-image-bytes'.length);
+    expect(result.cleanupLog.some((line) => line.includes('still cached'))).toBe(true);
+    // The namespace listing is the ground truth the accounting uses.
+    expect(await listBlobPaths('derivatives', siteId)).toContain(orphanDerivativePath);
   });
 });
