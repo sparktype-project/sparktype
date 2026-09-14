@@ -1,8 +1,10 @@
 /**
  * GitHub REST client for the publishing provider.
  *
- * This module owns every HTTP call the GitHub provider makes and the error channel: a non-2xx
- * response becomes a `GitHubApiError` that carries GitHub's status and response body.
+ * This module owns every HTTP call the GitHub provider makes and, crucially, the *error
+ * channel*: a non-2xx response becomes a `GitHubApiError` that carries GitHub's status and
+ * response body verbatim, so callers can report what GitHub actually said (e.g. a
+ * non-fast-forward rejection) instead of inferring a cause from a bare `catch`.
  *
  * It deliberately knows nothing about site files, blobs-as-assets or tree planning; see
  * `githubBlobUploader.ts`, `githubTreePlanner.ts` and `githubDeployment.ts`.
@@ -21,7 +23,7 @@ export interface GitHubConfig {
   netlifyIntegration?: boolean; // whether to trigger a Netlify build
 }
 
-/** A tree entry that inlines its content. GitHub commits `content` verbatim. */
+/** A tree entry that inlines its content. GitHub commits `content` verbatim as UTF-8 text. */
 export interface InlineTreeEntry {
   path: string;
   mode: '100644';
@@ -50,7 +52,11 @@ export interface DeletionTreeEntry {
 
 export type GitHubTreeEntry = InlineTreeEntry | BlobTreeEntry | DeletionTreeEntry;
 
-/** A failed GitHub request, carrying GitHub's status and response body. */
+/**
+ * A failed GitHub request. `body` is GitHub's response body as text (normally a JSON error
+ * object such as `{"message":"Update is not a fast forward"}`) and is preserved so the user
+ * sees the provider's own explanation.
+ */
 export class GitHubApiError extends Error {
   readonly operation: string;
   readonly status: number;
@@ -139,6 +145,18 @@ export class GitHubApiClient {
   }
 
   /**
+   * The tree of a commit. The tree API's `base_tree` takes a *tree* SHA, so the commit SHA read
+   * from the ref must be resolved through this call before it can be used as a base.
+   */
+  async getCommitTreeSHA(commitSHA: string): Promise<string> {
+    const commit = await this.sendJson('Get commit', 'GET', `${this.repoPath}/git/commits/${commitSHA}`);
+    if (!isJsonObject(commit) || !isJsonObject(commit.tree)) {
+      throw new Error(`GitHub returned no tree for commit ${commitSHA}`);
+    }
+    return readSHA(commit.tree, `commit ${commitSHA}`);
+  }
+
+  /**
    * Creates a blob from base64 content. This is the only place a binary asset may be written:
    * the blob API accepts the `encoding` parameter, whereas tree entries have no `encoding`
    * field and commit their `content` verbatim.
@@ -170,35 +188,18 @@ export class GitHubApiClient {
     return readSHA(payload, 'commit');
   }
 
-  /** Commits one file through the Contents API, returning the commit SHA it creates. */
-  async createFile(path: string, contentBase64: string, message: string, branch: string): Promise<string> {
-    const payload = await this.sendJson('Create file', 'PUT', `${this.repoPath}/contents/${path}`, {
-      message,
-      content: contentBase64,
-      branch,
-    });
-    if (!isJsonObject(payload) || !isJsonObject(payload.commit)) {
-      throw new Error(`GitHub returned no commit for ${path}`);
-    }
-    return readSHA(payload.commit, `commit for ${path}`);
-  }
-
   /**
-   * Points a branch at a commit with a non-forcing PATCH. When the update does not go through
-   * the ref is created instead, on the assumption that it was missing.
+   * Fast-forwards an existing branch with a non-forcing PATCH: GitHub rejects the update when
+   * the branch has moved since it was read, and `GitHubApiError` carries that rejection.
    */
   async updateBranchRef(branch: string, commitSHA: string): Promise<void> {
-    try {
-      const response = await this.send('PATCH', `${this.repoPath}/git/refs/heads/${branch}`, {
-        sha: commitSHA,
-      });
-      if (response.ok) {
-        return;
-      }
-    } catch {
-      // Fall through to creating the ref.
-    }
+    await this.sendJson('Branch update', 'PATCH', `${this.repoPath}/git/refs/heads/${branch}`, {
+      sha: commitSHA,
+    });
+  }
 
+  /** Creates a branch ref; used only when the branch (or the whole repository) has no commits. */
+  async createBranchRef(branch: string, commitSHA: string): Promise<void> {
     await this.sendJson('Branch creation', 'POST', `${this.repoPath}/git/refs`, {
       ref: `refs/heads/${branch}`,
       sha: commitSHA,

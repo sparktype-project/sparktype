@@ -105,7 +105,10 @@ export class GitHubProvider extends BaseProvider {
         files,
       });
 
-      console.log(`[GitHubProvider] Published commit ${deployment.commitSHA}`);
+      console.log(
+        `[GitHubProvider] Published commit ${deployment.commitSHA}` +
+          ` (${deployment.generatedPaths.length} files, ${deployment.deletedPaths.length} deleted)`
+      );
 
       // Update sync state after successful deployment
       await gitSyncService.updateSyncState(site.siteId, {

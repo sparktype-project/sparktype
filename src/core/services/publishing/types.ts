@@ -43,4 +43,4 @@ export interface PublishingConfig {
   config: Record<string, unknown>;
 }
 
-export type SupportedProvider = 'zip' | 'netlify';
+export type SupportedProvider = 'zip' | 'netlify' | 'github';
