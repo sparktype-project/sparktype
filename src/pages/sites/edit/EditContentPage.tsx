@@ -221,7 +221,7 @@ function EditContentPageInternal() {
   }, [setRightAvailable, setRightSidebarContent]);
 
   // --- 3. Determine Page State for Rendering ---
-  const isSiteEmpty = siteId && siteStructure.length === 0 && !isNewFileMode;
+  const isSiteEmpty = siteId && siteStructure.length === 0 && (site?.manifest.collections ?? []).length === 0 && !isNewFileMode;
 
   const pageTitle = status === 'ready' && frontmatter?.title
     ? `Editing: ${frontmatter.title} | ${site?.manifest.title || 'Sparktype'}`

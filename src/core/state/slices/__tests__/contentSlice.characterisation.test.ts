@@ -235,6 +235,48 @@ describe('contentSlice characterisation', () => {
       ]);
     });
 
+    test('never marks the first-saved collection item on a structure-empty site as homepage', async () => {
+      const store = createTestAppStore();
+      const site = createSiteFixture('collectionSite', { siteId: 'char-first-collection-item' });
+      site.manifest.structure = [];
+      site.contentFiles = [];
+      site.manifest.collectionItems = [];
+      await store.getState().addSite(site);
+
+      const saved = await store.getState().addOrUpdateContentFile(
+        site.siteId,
+        'content/posts/first-post.md',
+        stringifyToMarkdown({ title: 'First Post', layout: 'post', date: '2025-01-12' }, 'Body')
+      );
+
+      expect(saved).toBe(true);
+      const state = store.getState().getSiteById(site.siteId)!;
+      // Findable by the path the post-save edit URL resolves to, with no homepage flag.
+      const savedFile = expectContentFile(state.contentFiles, 'content/posts/first-post.md');
+      expect(savedFile.slug).toBe('posts/first-post');
+      expect(savedFile.frontmatter.homepage).toBeUndefined();
+      // A collection item lives in the item index, never in the navigation structure,
+      // so the homepage guard cannot block its later rename.
+      expect(state.manifest.structure).toEqual([]);
+      expect(state.manifest.collectionItems).toEqual([
+        {
+          collectionId: 'posts',
+          slug: 'first-post',
+          path: 'content/posts/first-post.md',
+          title: 'First Post',
+          url: '',
+        },
+      ]);
+      const rename = await store.getState().changePageSlugWithContent(
+        site.siteId,
+        'content/posts/first-post.md',
+        'posts/renamed-post',
+        { title: 'First Post', layout: 'post', date: '2025-01-12' },
+        'Body'
+      );
+      expect(rename).toEqual({ success: true, newFilePath: 'content/posts/renamed-post.md' });
+    });
+
     test('a page at a collection content path appears in navigation, not in the item index', async () => {
       const store = createTestAppStore();
       const site = createSiteFixture('collectionSite', { siteId: 'char-collection-path-page' });

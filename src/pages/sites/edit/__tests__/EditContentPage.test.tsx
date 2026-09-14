@@ -9,6 +9,7 @@ import { usePageIdentifier } from '@/features/editor/hooks/usePageIdentifier';
 import { useFileContent } from '@/features/editor/hooks/useFileContent';
 import { useFilePersistence } from '@/features/editor/hooks/useFilePersistence';
 import { useEditor } from '@/features/editor/contexts/useEditor';
+import type { Collection } from '@/core/types';
 
 vi.mock('@/core/state/useAppStore', () => ({
   useAppStore: vi.fn(),
@@ -93,7 +94,12 @@ const mockUseFileContent = vi.mocked(useFileContent);
 const mockUseFilePersistence = vi.mocked(useFilePersistence);
 const mockUseEditor = vi.mocked(useEditor);
 
-let currentSite = {
+let currentSite: {
+  manifest: { title: string; structure: unknown[]; collections: Collection[]; theme: { name: string; config: Record<string, unknown> } };
+  contentFiles: unknown[];
+  layoutFiles: unknown[];
+  themeFiles: unknown[];
+} = {
   manifest: {
     title: 'Fixture Site',
     structure: [
@@ -251,6 +257,44 @@ describe('EditContentPage', () => {
     expect(await screen.findByTestId('collection-config-form')).toHaveTextContent('posts');
     expect(screen.queryByTestId('tiptap-editor')).not.toBeInTheDocument();
     expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+  });
+
+  test('renders the editor for a collection item on a site with no navigation pages', async () => {
+    currentSite.manifest.structure = [];
+    currentSite.manifest.collections = [
+      { id: 'posts', name: 'Posts', contentPath: 'content/posts', defaultItemLayout: 'post' },
+    ];
+    mockUsePageIdentifier.mockReturnValue({
+      siteId: 'site-1',
+      isNewFileMode: false,
+      filePath: 'content/posts/first-post.md',
+      collectionContext: {
+        isCollectionItem: true,
+        contextType: 'collection-item',
+        displayName: 'Posts',
+        isNewFile: false,
+      },
+    });
+    mockUseFileContent.mockReturnValue({
+      status: 'ready',
+      frontmatter: {
+        title: 'First Post',
+        description: 'A collection item',
+        layout: 'post',
+        displayCollection: false,
+      },
+      slug: 'posts/first-post',
+      setSlug: vi.fn(),
+      handleFrontmatterChange: vi.fn(),
+      onContentModified: vi.fn(),
+      applyPendingSlugChange: vi.fn(),
+      hasPendingSlugChange: false,
+    });
+
+    renderPage();
+
+    expect(await screen.findByTestId('tiptap-editor')).toBeInTheDocument();
+    expect(screen.queryByText('Create your first page')).not.toBeInTheDocument();
   });
 
   test('keeps the body editor when the toggle is disabled', async () => {

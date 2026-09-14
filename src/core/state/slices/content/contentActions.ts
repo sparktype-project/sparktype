@@ -121,15 +121,21 @@ export const createContentActions: ContentSliceFragment<
     const site = get().getSiteById(siteId);
     if (!site) return false;
 
-    // Check if this is the first file being created for the site
+    // Check if this is the first file being created for the site.
+    // A collection item is never the site's first navigation page: it lives in the
+    // item index, not the structure, so it must not receive the homepage flag.
+    // Classification matches the structure-membership rule below exactly.
     let processedContent = rawMarkdownContent;
-    const isFirstFile = site.manifest.structure.length === 0 && !site.contentFiles?.some(f => f.path === filePath);
+    const { frontmatter: incomingFrontmatter, content: incomingContent } = parseMarkdownString(rawMarkdownContent);
+    const isCollectionItemForFirstFile =
+      !incomingFrontmatter?.collection &&
+      getCollections(site.manifest).some(c => isPathWithinCollectionDirectory(filePath, c.contentPath));
+    const isFirstFile = site.manifest.structure.length === 0 && !isCollectionItemForFirstFile && !site.contentFiles?.some(f => f.path === filePath);
 
     if (isFirstFile) {
-      // Parse the frontmatter and mark as homepage
-      const { frontmatter, content } = parseMarkdownString(rawMarkdownContent);
-      const updatedFrontmatter = { ...frontmatter, homepage: true };
-      processedContent = stringifyToMarkdown(updatedFrontmatter, content);
+      // Mark the first navigation page as homepage
+      const updatedFrontmatter = { ...incomingFrontmatter, homepage: true };
+      processedContent = stringifyToMarkdown(updatedFrontmatter, incomingContent);
       toast.info("First page created. It has been set as the permanent homepage.");
     }
 
