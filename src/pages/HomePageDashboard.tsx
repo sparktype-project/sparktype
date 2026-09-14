@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'; // Use react-router-dom's Link
 
 // State Management (no changes needed)
 import { useAppStore } from '@/core/state/useAppStore';
+import { type AppStore } from '@/core/state/useAppStore';
 import { type LocalSiteData } from '@/core/types';
 
 // Services
@@ -26,7 +27,16 @@ import ImportModal, { type ImportModalMode } from '@/core/components/ImportModal
 import UnifiedHeader from '@/core/components/UnifiedHeader';
 
 export default function HomePageDashboard() {
-  const { sites, getSiteById, addSite, updateSiteSecrets, loadSite, deleteSiteAndState, authenticateForSite } = useAppStore();
+  // Focused selectors: subscribing to the bare store re-rendered this page on every
+  // unrelated update (activeSiteId, slug tracking, initialisation). Actions are stable
+  // references, so selecting them individually adds no re-renders of its own.
+  const sites = useAppStore((state: AppStore) => state.sites);
+  const getSiteById = useAppStore((state: AppStore) => state.getSiteById);
+  const addSite = useAppStore((state: AppStore) => state.addSite);
+  const updateSiteSecrets = useAppStore((state: AppStore) => state.updateSiteSecrets);
+  const loadSite = useAppStore((state: AppStore) => state.loadSite);
+  const deleteSiteAndState = useAppStore((state: AppStore) => state.deleteSiteAndState);
+  const authenticateForSite = useAppStore((state: AppStore) => state.authenticateForSite);
   const [isImporting, setIsImporting] = useState(false);
   const [isOverwriteDialogOpen, setIsOverwriteDialogOpen] = useState(false);
   const [importedData, setImportedData] = useState<(LocalSiteData & { imageAssetsToSave?: Record<string, Blob> }) | null>(null);

@@ -65,7 +65,7 @@ export function EditorProvider({ children }: EditorProviderProps) {
     } else {
       console.warn("Save triggered, but no save action is registered.");
     }
-  }, [contentHash]);
+  }, []);
 
   /**
    * Memoizes the context value to prevent unnecessary re-renders in consumer components.

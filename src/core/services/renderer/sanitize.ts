@@ -232,9 +232,12 @@ const MARKDOWN_HELPER_SANITIZE_CONFIG = {
  */
 export function sanitizeHtml(htmlContent: string): string {
     if (typeof window === 'undefined') {
-        console.warn('[Render Service] DOMPurify not available in Node environment - HTML not sanitized');
-        return htmlContent;
+        // Fail closed: without a DOM there is no DOMPurify, so returning the
+        // input would write unsanitised author markdown into exported HTML.
+        // All production callers run in the app webview where `window` exists.
+        throw new Error('[Render Service] sanitizeHtml requires a DOM environment - refusing to return unsanitised HTML');
     }
+
 
     // Configure DOMPurify to allow scripts from trusted domains only
     const purify = DOMPurify(window);
@@ -254,9 +257,11 @@ export function sanitizeHtml(htmlContent: string): string {
  */
 export function sanitizeMarkdownHtml(htmlContent: string): string {
     if (typeof window === 'undefined') {
-        console.warn('[Markdown Helper] DOMPurify not available - HTML not sanitized');
-        return htmlContent;
+        // Fail closed, matching sanitizeHtml: no DOM means no DOMPurify, and
+        // silently returning the input would render unsanitised helper output.
+        throw new Error('[Markdown Helper] sanitizeMarkdownHtml requires a DOM environment - refusing to return unsanitised HTML');
     }
+
 
     const purify = DOMPurify(window);
     addSecurityHooks(purify, MARKDOWN_HELPER_MESSAGES);

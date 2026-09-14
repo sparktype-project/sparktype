@@ -67,7 +67,7 @@ npm run test:all
 - **Desktop**: Tauri 2.x with Rust backend
 - **State Management**: Zustand with slice-based architecture
 - **Routing**: React Router with hash-based routing
-- **Rich Text Editing**: Plate.js editor with BlockNote integration
+- **Rich Text Editing**: TipTap editor (`src/components/editor/tiptap/`)
 
 ### Key Directories
 - `src/core/` - Core application logic, services, and state management
@@ -110,7 +110,7 @@ The application uses Zustand with a slice-based pattern:
 - Uses Playwright for browser smoke coverage
 - Unit and integration tests live in `src/**/__tests__` plus `*.test.*` / `*.spec.*`
 - Browser smoke tests live in `tests/e2e/`
-- CI enforces `npm run build:web`, `npm test`, and `npm run test:e2e`
+- CI enforces `npm run build:web`, `npm test`, `npm run lint`, and `npm run test:e2e`
 
 ### Codex Testing Procedure
 - Every production change must be test-backed. If behavior changes, add or update tests in the same task unless the user explicitly says not to.

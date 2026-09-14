@@ -180,7 +180,7 @@ export default function SiteViewer() {
       setIsLoading(false);
       setIsInitialLoad(false);
     }
-  }, [site, siteId, currentRelativePath, setIsLoading]);
+  }, [site, currentRelativePath, setIsLoading, viewRootPath]);
 
   // Re-render the iframe whenever the path or site data changes.
   useEffect(() => {

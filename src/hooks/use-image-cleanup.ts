@@ -26,7 +26,9 @@ export interface CleanupPreview {
 }
 
 export function useImageCleanup(siteId?: string) {
-  const { getSiteById } = useAppStore();
+  // Reads actions only, so it subscribes to nothing: `useAppStore()` without a selector
+  // re-renders the caller on every unrelated store update, and `getSiteById` is a stable
+  // action that already reads the latest state through the store's own `get`.
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<ImageUsageStats | null>(null);
   const [preview, setPreview] = useState<CleanupPreview | null>(null);
@@ -35,7 +37,7 @@ export function useImageCleanup(siteId?: string) {
   const loadStats = useCallback(async () => {
     if (!siteId) return;
     
-    const siteData = getSiteById(siteId);
+    const siteData = useAppStore.getState().getSiteById(siteId);
     if (!siteData) {
       console.error('Site not found:', siteId);
       return;
@@ -51,12 +53,12 @@ export function useImageCleanup(siteId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [siteId, getSiteById]);
+  }, [siteId]);
 
   const loadPreview = useCallback(async () => {
     if (!siteId) return;
     
-    const siteData = getSiteById(siteId);
+    const siteData = useAppStore.getState().getSiteById(siteId);
     if (!siteData) {
       console.error('Site not found:', siteId);
       return;
@@ -72,12 +74,12 @@ export function useImageCleanup(siteId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [siteId, getSiteById]);
+  }, [siteId]);
 
   const performCleanup = useCallback(async () => {
     if (!siteId) return;
     
-    const siteData = getSiteById(siteId);
+    const siteData = useAppStore.getState().getSiteById(siteId);
     if (!siteData) {
       console.error('Site not found:', siteId);
       return;
@@ -108,7 +110,7 @@ export function useImageCleanup(siteId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [siteId, getSiteById, loadStats]);
+  }, [siteId, loadStats]);
 
   const formatBytes = useCallback((bytes: number): string => {
     if (bytes === 0) return '0 Bytes';

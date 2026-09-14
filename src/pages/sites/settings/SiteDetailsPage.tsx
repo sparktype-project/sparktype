@@ -54,7 +54,7 @@ export default function SiteSettingsPage() {
     } catch (error) {
       console.error('Failed to load theme data schema:', error);
     }
-  }, [site?.manifest?.theme?.name, site?.manifest?.theme?.themeData]);
+  }, [site?.manifest?.theme?.name, site?.manifest?.theme?.themeData, siteId]);
 
   useEffect(() => {
     if (site?.manifest) {

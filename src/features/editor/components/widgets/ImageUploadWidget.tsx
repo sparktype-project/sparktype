@@ -1,6 +1,6 @@
 // src/features/editor/components/ImageUploadWidget.tsx
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { WidgetProps } from '@rjsf/utils';
 import { useAppStore } from '@/core/state/useAppStore';
 import { getActiveImageService } from '@/core/services/images/images.service';
@@ -32,6 +32,7 @@ export default function ImageUploadWidget(props: WidgetProps) {
 
   const site = useAppStore(state => state.getSiteById(siteId));
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const { beginProviderUpload, endProviderUpload } = useEditor();
   const service = site?.manifest ? getActiveImageService(site.manifest) : undefined;
@@ -69,11 +70,18 @@ export default function ImageUploadWidget(props: WidgetProps) {
     generatePreview();
   }, [imageRef, label, service, site]);
 
-  // Cleanup blob URLs only on actual component unmount (not recreation)
+  // Cleanup blob URLs only on actual component unmount (not recreation). The cleanup reads the
+  // latest URL from a ref because re-running it whenever the preview changes would revoke a URL
+  // the <img> is still displaying.
+  useEffect(() => {
+    previewUrlRef.current = previewUrl;
+  }, [previewUrl]);
+
   useEffect(() => {
     return () => {
-      if (previewUrl && previewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(previewUrl);
+      const url = previewUrlRef.current;
+      if (url && url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
       }
     };
   }, []); // Empty dependency array - only run on unmount

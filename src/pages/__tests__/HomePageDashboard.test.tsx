@@ -27,7 +27,7 @@ const mockUseAppStore = vi.mocked(useAppStore);
 
 describe('HomePageDashboard', () => {
   beforeEach(() => {
-    mockUseAppStore.mockReturnValue({
+    const mockStoreState = {
       sites: [],
       getSiteById: vi.fn(),
       addSite: vi.fn(),
@@ -35,7 +35,12 @@ describe('HomePageDashboard', () => {
       loadSite: vi.fn(),
       deleteSiteAndState: vi.fn(),
       authenticateForSite: vi.fn(),
-    } as unknown as ReturnType<typeof useAppStore>);
+    };
+    // The component subscribes via focused selectors, so the mocked hook is
+    // invoked once per selected field with a selector function. Resolve each
+    // call against the shared mock state.
+    mockUseAppStore.mockImplementation(((selector: (state: typeof mockStoreState) => unknown) =>
+      selector(mockStoreState)) as unknown as typeof useAppStore);
   });
 
   test('opens the URL import modal from the dashboard menu', async () => {

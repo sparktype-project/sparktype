@@ -71,7 +71,7 @@ export default function ThemeSettingsPage() {
       }
     };
     initializeData();
-  }, [site]);
+  }, [site, siteId]);
 
   // Handle changes from the dynamically generated form
   const handleFormChange = useCallback((data: object) => {
@@ -101,7 +101,7 @@ export default function ThemeSettingsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedTheme, site]);
+  }, [selectedTheme, site, siteId]);
 
   const handleThemeUpload = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

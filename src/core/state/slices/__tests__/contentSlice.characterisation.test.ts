@@ -6,6 +6,7 @@ import { resetIndexedDbForTests } from '@/test/support/storage';
 import { createTestAppStore } from '@/test/support/testAppStore';
 import * as localSiteFs from '@/core/services/localFileSystem.service';
 import type * as LocalFileSystemModule from '@/core/services/localFileSystem.service';
+import type { ParsedMarkdownFile } from '@/core/types';
 import { createContentSlice } from '../contentSlice';
 
 vi.mock('sonner', () => ({
@@ -47,6 +48,21 @@ const mockMoveContentFiles = vi.mocked(localSiteFs.moveContentFiles);
 
 let realSaveContentFile: typeof localSiteFs.saveContentFile;
 let realMoveContentFiles: typeof localSiteFs.moveContentFiles;
+
+/**
+ * Asserts a content file exists and returns it, so a missing fixture fails with the path
+ * instead of a `Cannot read properties of undefined` from the assertion below.
+ */
+function expectContentFile(
+  files: ParsedMarkdownFile[] | undefined,
+  path: string,
+): ParsedMarkdownFile {
+  const file = files?.find((candidate) => candidate.path === path);
+  if (!file) {
+    throw new Error(`Expected content file "${path}" to be present`);
+  }
+  return file;
+}
 
 beforeAll(async () => {
   const actual = await vi.importActual<typeof LocalFileSystemModule>(
@@ -384,7 +400,7 @@ describe('contentSlice characterisation', () => {
       });
 
       const state = store.getState().getSiteById(site.siteId)!;
-      const updated = state.contentFiles?.find((file) => file.path === 'content/posts.md')!;
+      const updated = expectContentFile(state.contentFiles, 'content/posts.md');
       expect(updated.frontmatter.title).toBe('All Posts');
       expect(updated.content).toBe('Listing body');
 
@@ -413,8 +429,8 @@ describe('contentSlice characterisation', () => {
         'content/about.md',
         'content/home.md',
       ]);
-      const newHome = state.contentFiles?.find((file) => file.path === 'content/about.md')!;
-      const oldHome = state.contentFiles?.find((file) => file.path === 'content/home.md')!;
+      const newHome = expectContentFile(state.contentFiles, 'content/about.md');
+      const oldHome = expectContentFile(state.contentFiles, 'content/home.md');
       expect(newHome.frontmatter.homepage).toBe(true);
       expect(oldHome.frontmatter.homepage).toBeUndefined();
 

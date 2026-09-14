@@ -43,8 +43,23 @@ function createManifest(): Manifest {
   };
 }
 
+type TestSite = {
+  siteId: string;
+  manifest: Manifest;
+  contentFiles: ParsedMarkdownFile[];
+};
+
+type TestState = {
+  sites: TestSite[];
+};
+
+type TestSliceState = TestState & {
+  getSiteById: (siteId: string) => TestSite | undefined;
+  updateManifest: (siteId: string, manifest: Manifest) => Promise<void>;
+};
+
 function createState() {
-  let state: any = {
+  let state: TestState = {
     sites: [
       {
         siteId: 'site-1',
@@ -64,13 +79,21 @@ function createState() {
   const updateManifest = vi.fn(async (siteId: string, manifest: Manifest) => {
     state = {
       ...state,
-      sites: state.sites.map((site: { siteId: string; manifest: Manifest }) =>
+      sites: state.sites.map((site) =>
         site.siteId === siteId ? { ...site, manifest } : site
       ),
     };
   });
 
-  const set = (updater: any) => {
+  const get = (): TestSliceState => ({
+    ...state,
+    getSiteById: (siteId: string) => state.sites.find((site) => site.siteId === siteId),
+    updateManifest,
+  });
+
+  // The slice is created with a minimal hand-rolled store double, so `set` accepts the
+  // partial-or-updater shapes the slice actually uses.
+  const set = (updater: Partial<TestSliceState> | ((current: TestSliceState) => TestSliceState)) => {
     if (typeof updater === 'function') {
       state = updater(get());
     } else {
@@ -79,11 +102,6 @@ function createState() {
     return state;
   };
 
-  const get = () => ({
-    ...state,
-    getSiteById: (siteId: string) => state.sites.find((site: { siteId: string }) => site.siteId === siteId),
-    updateManifest,
-  });
   const slice = createContentSlice(set as never, get as never, {} as never);
 
   return { getState: () => state, slice };

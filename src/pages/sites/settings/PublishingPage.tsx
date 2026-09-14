@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '@/core/state/useAppStore';
+import { type AppStore } from '@/core/state/useAppStore';
 import { Button } from '@/core/components/ui/button';
 import { Label } from '@/core/components/ui/label';
 import { Input } from '@/core/components/ui/input';
@@ -48,7 +49,12 @@ interface PublishingConfig {
 
 export default function PublishingSettingsPage() {
   const { siteId } = useParams<{ siteId: string }>();
-  const { getSiteById, updateManifest, updateSiteSecrets, loadSite } = useAppStore();
+  // Focused selectors: this page previously destructured the bare store, which subscribed it
+  // to every store update. `site` is the only reactive read; the rest are stable actions.
+  const site = useAppStore(useCallback((state: AppStore) => state.getSiteById(siteId ?? ''), [siteId]));
+  const updateManifest = useAppStore((state: AppStore) => state.updateManifest);
+  const updateSiteSecrets = useAppStore((state: AppStore) => state.updateSiteSecrets);
+  const loadSite = useAppStore((state: AppStore) => state.loadSite);
   const [isLoading, setIsLoading] = useState(false);
 
   // Publishing configuration state
@@ -66,8 +72,6 @@ export default function PublishingSettingsPage() {
     repo: '',
     branch: 'main'
   });
-
-  const site = siteId ? getSiteById(siteId) : null;
 
   // Load site data including secrets when component mounts
   useEffect(() => {

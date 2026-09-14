@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { getSlashMenuAnchorRect, getSlashMenuPosition } from '../extensions/SlashCommands';
+import { getSlashMenuAnchorRect, getSlashMenuPosition } from '../extensions/slashMenuPosition';
 
 describe('getSlashMenuAnchorRect', () => {
   test('prefers editor coordinates so the menu stays attached to the slash position', () => {

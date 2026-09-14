@@ -57,7 +57,7 @@ export const renderCollectionHelper: SparktypeHelper = () => ({
       if (!collection) {
         return new Handlebars.SafeString(`<!-- Collection "${layoutConfig.collectionId}" not found -->`);
       }
-      let collectionItems = selectCollectionItems(root.siteData, layoutConfig.collectionId, {
+      const collectionItems = selectCollectionItems(root.siteData, layoutConfig.collectionId, {
         tagFilters: layoutConfig.filterTags,
         sortBy: layoutConfig.sortBy,
         sortOrder: layoutConfig.sortOrder || 'desc',

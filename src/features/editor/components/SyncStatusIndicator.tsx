@@ -1,6 +1,6 @@
 // src/features/editor/components/SyncStatusIndicator.tsx
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { GitBranch, GitPullRequest, AlertTriangle, CheckCircle2, Clock, RefreshCw } from 'lucide-react';
 import { Button } from '@/core/components/ui/button';
 import { Badge } from '@/core/components/ui/badge';
@@ -26,24 +26,31 @@ export function SyncStatusIndicator({ siteId, site }: SyncStatusIndicatorProps) 
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [isResolvingConflicts, setIsResolvingConflicts] = useState(false);
 
-  // Check if this site has GitHub publishing configured
-  const githubConfig = site.manifest.publishingConfig?.provider === 'github'
-    ? {
-      ...site.manifest.publishingConfig.github,
-      accessToken: site.secrets?.publishing?.github?.accessToken || ''
-    } as GitHubConfig
-    : null;
+  // Check if this site has GitHub publishing configured. Memoised because the effect below
+  // refetches sync state whenever this object changes: rebuilding it every render would run
+  // that fetch, and its `setSyncState`, after every render.
+  const publishingConfig = site.manifest.publishingConfig;
+  const githubAccessToken = site.secrets?.publishing?.github?.accessToken;
+  const githubConfig = useMemo<GitHubConfig | null>(() => {
+    if (publishingConfig?.provider !== 'github') {
+      return null;
+    }
+    return {
+      ...publishingConfig.github,
+      accessToken: githubAccessToken || '',
+    } as GitHubConfig;
+  }, [publishingConfig, githubAccessToken]);
 
-  const loadSyncState = async () => {
+  const loadSyncState = useCallback(async () => {
     const state = await gitSyncService.getSyncState(siteId);
     setSyncState(state);
-  };
+  }, [siteId]);
 
   useEffect(() => {
     if (githubConfig) {
       loadSyncState();
     }
-  }, [siteId, githubConfig]);
+  }, [githubConfig, loadSyncState]);
 
   const checkSync = async () => {
     if (!githubConfig) return;
