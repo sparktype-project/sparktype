@@ -76,9 +76,10 @@ describe('contentSlice characterisation', () => {
   test('exposes exactly the documented action surface', () => {
     const slice = createContentSlice((() => undefined) as never, (() => undefined) as never, {} as never);
 
+    // `changePageSlug` (legacy delete-then-recreate variant) was removed by the rename
+    // fix commit; it had no callers and never participated in slug-change tracking.
     expect(Object.keys(slice).sort()).toEqual([
       'addOrUpdateContentFile',
-      'changePageSlug',
       'changePageSlugWithContent',
       'createTag',
       'createTagGroup',

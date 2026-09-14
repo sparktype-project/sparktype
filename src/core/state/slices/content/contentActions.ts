@@ -13,6 +13,7 @@ import { findImagesInContentFile } from '@/core/services/images/imageReferenceFi
 import type { SiteSlice } from '@/core/state/slices/siteSlice';
 import type { ContentSlice, ContentSliceFragment } from '@/core/state/slices/contentSlice';
 import { buildCollectionItemRefs } from './collectionRefs';
+import type { PathMove } from './slugPaths';
 
 /**
  * Content CRUD.
@@ -39,6 +40,34 @@ export async function syncImageReferences(siteId: string, file: ParsedMarkdownFi
   }
 }
 
+/**
+ * Re-keys image references from the old paths to the new ones after a rename.
+ *
+ * Registry references are stored per content file path, so a rename that skipped this
+ * would leave them pointing at files that no longer exist — and any image referenced
+ * only by a renamed file would later be reported as orphaned even though it is in use.
+ * A new path is recorded even when clearing the old one fails, so a rename can never
+ * drop a live reference; the reverse only costs a stale entry.
+ */
+export async function syncImageReferencesForMoves(
+  siteId: string,
+  pathsToMove: PathMove[],
+  files: ParsedMarkdownFile[]
+): Promise<void> {
+  for (const move of pathsToMove) {
+    const movedFile = files.find((file) => file.path === move.newPath);
+    if (!movedFile) continue;
+
+    try {
+      await updateImageReferences(siteId, move.oldPath, []);
+    } catch (error) {
+      console.warn(`[ContentSlice] Failed to clear image references for ${move.oldPath}:`, error);
+    }
+
+    await syncImageReferences(siteId, movedFile);
+  }
+}
+
 export const createContentActions: ContentSliceFragment<
   Pick<ContentSlice, 'updateContentFileOnly' | 'addOrUpdateContentFile' | 'deleteContentFileAndState'>
 > = (set, get) => ({
@@ -47,9 +76,6 @@ export const createContentActions: ContentSliceFragment<
       console.error('SavedFile is undefined in updateContentFileOnly');
       return;
     }
-
-    // Get site data for manifest and serialization options
-    // const _site = get().getSiteById(siteId); // Not currently used
 
     // Serialize to markdown (blocks are empty in our current implementation)
     const markdownContent = stringifyToMarkdown(savedFile.frontmatter, savedFile.content);

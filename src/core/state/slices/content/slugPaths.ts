@@ -1,6 +1,6 @@
 // src/core/state/slices/content/slugPaths.ts
 
-import type { ParsedMarkdownFile, StructureNode } from '@/core/types';
+import type { Collection, ParsedMarkdownFile, StructureNode } from '@/core/types';
 import { getDescendantIds } from '@/core/services/fileTree.service';
 
 /**
@@ -13,6 +13,45 @@ export interface PathMove {
   oldPath: string;
   newPath: string;
 }
+
+export const slugToFilePath = (slug: string): string => `content/${slug}.md`;
+
+/**
+ * Whether a content file sits inside a collection's directory. The trailing separator
+ * matters: the collection's own listing page (`content/posts.md`) is a navigation page,
+ * not an item of the `content/posts` collection.
+ */
+export const isPathWithinCollectionDirectory = (filePath: string, contentPath: string): boolean => {
+  const directory = contentPath.endsWith('/') ? contentPath : `${contentPath}/`;
+  return filePath.startsWith(directory);
+};
+
+/** The collection a content file belongs to, if any. When collections nest, the most
+ * specific content path wins, so an item is checked against its actual collection. */
+export const findOwningCollection = (collections: Collection[], filePath: string): Collection | undefined => {
+  let owner: Collection | undefined;
+  for (const collection of collections) {
+    if (!isPathWithinCollectionDirectory(filePath, collection.contentPath)) continue;
+    if (!owner || collection.contentPath.length > owner.contentPath.length) owner = collection;
+  }
+  return owner;
+};
+
+/**
+ * The first destination path that already exists on disk, ignoring the main target path
+ * (whose collision is reported through its slug instead).
+ */
+export const findDestinationConflict = (
+  files: ParsedMarkdownFile[] | undefined,
+  pathsToMove: PathMove[],
+  mainTargetPath: string
+): string | undefined => {
+  for (const move of pathsToMove) {
+    if (move.newPath === mainTargetPath) continue;
+    if (files?.some((file) => file.path === move.newPath)) return move.newPath;
+  }
+  return undefined;
+};
 
 // Helper: Updates content file paths immutably.
 export const updateContentFilePaths = (files: ParsedMarkdownFile[], pathsToMove: PathMove[]): ParsedMarkdownFile[] => {

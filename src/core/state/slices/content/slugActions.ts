@@ -3,27 +3,42 @@
 import { produce } from 'immer';
 import { toast } from 'sonner';
 
-import { type LocalSiteData, type MarkdownFrontmatter, type ParsedMarkdownFile } from '@/core/types';
+import { type LocalSiteData, type MarkdownFrontmatter } from '@/core/types';
 import * as localSiteFs from '@/core/services/localFileSystem.service';
-import { findNodeByPath, getDescendantIds } from '@/core/services/fileTree.service';
+import { findNodeByPath } from '@/core/services/fileTree.service';
+import { getCollections } from '@/core/services/collections.service';
 import { stringifyToMarkdown } from '@/core/libraries/markdownParser';
 import type { AppStore } from '@/core/state/useAppStore';
 import type { SiteSlice } from '@/core/state/slices/siteSlice';
 import type { ContentSlice, ContentSliceFragment } from '@/core/state/slices/contentSlice';
+import { syncImageReferencesForMoves } from './contentActions';
 import { buildCollectionItemRefs } from './collectionRefs';
-import { calculateSlugPathChanges, updateContentFilePaths, updateStructurePaths } from './slugPaths';
+import {
+  calculateSlugPathChanges,
+  findDestinationConflict,
+  findOwningCollection,
+  isPathWithinCollectionDirectory,
+  slugToFilePath,
+  updateContentFilePaths,
+  updateStructurePaths,
+} from './slugPaths';
 
 /**
  * Slug changes (renames) and the persistence they require. Path arithmetic lives in
  * `slugPaths`; this module owns the ordering, validation, state write and disk write.
+ *
+ * There is a single rename path. The former delete-then-recreate `changePageSlug`
+ * variant had no callers and never participated in slug-change tracking, so it was
+ * removed rather than carried into this split.
  */
 export const createSlugActions: ContentSliceFragment<
-  Pick<ContentSlice, 'changePageSlugWithContent' | 'changePageSlug'>
+  Pick<ContentSlice, 'changePageSlugWithContent'>
 > = (set, get) => ({
   changePageSlugWithContent: async (siteId: string, currentFilePath: string, newSlug: string, frontmatter: MarkdownFrontmatter, content: string) => {
+    const appStore = get() as AppStore;
+
     try {
       // Mark slug change as in progress
-      const appStore = get() as AppStore;
       if (appStore.markSlugChangeInProgress) {
         appStore.markSlugChangeInProgress(siteId);
       }
@@ -57,29 +72,44 @@ export const createSlugActions: ContentSliceFragment<
       }
 
       // Check if new slug already exists
-      const newFilePath = `content/${newSlug}.md`;
+      const newFilePath = slugToFilePath(newSlug);
       const slugExists = siteData.contentFiles?.some(f => f.slug === newSlug);
       if (slugExists) {
         return { success: false, error: `A page with the slug "${newSlug}" already exists` };
       }
 
-      // Find current node in structure
-      const currentNode = findNodeByPath(siteData.manifest.structure, currentFilePath);
-      if (!currentNode) {
+      // Navigation pages are declared in manifest.structure. Collection items are
+      // deliberately kept out of it, so collection membership is what identifies them.
+      // A path that is both is renamed as a page: structure membership is the explicit
+      // navigation declaration, and the collection item index is rebuilt below.
+      const structureNode = findNodeByPath(siteData.manifest.structure, currentFilePath);
+      const owningCollection = structureNode
+        ? undefined
+        : findOwningCollection(getCollections(siteData.manifest), currentFilePath);
+
+      if (!structureNode && !owningCollection) {
         return { success: false, error: "Page not found in site structure" };
       }
 
-      // Calculate all path changes using our new helper
-      const pathsToMove = calculateSlugPathChanges(currentFilePath, newSlug, currentNode);
+      // Renaming a collection item must not move it out of its collection, or the item
+      // index rebuilt below would silently drop it.
+      if (owningCollection && !isPathWithinCollectionDirectory(newFilePath, owningCollection.contentPath)) {
+        return {
+          success: false,
+          error: `A collection item must stay inside its collection "${owningCollection.name}" (${owningCollection.contentPath}/)`
+        };
+      }
+
+      // Pages bring their descendants. A collection item is a single file: descendants
+      // are children in the structure tree, which items do not have.
+      const pathsToMove = structureNode
+        ? calculateSlugPathChanges(currentFilePath, newSlug, structureNode)
+        : [{ oldPath: currentFilePath, newPath: newFilePath }];
 
       // Validate all new paths don't already exist
-      for (const pathMove of pathsToMove) {
-        if (pathMove.newPath !== newFilePath) { // We already checked the main file
-          const pathExists = siteData.contentFiles?.some(f => f.path === pathMove.newPath);
-          if (pathExists) {
-            return { success: false, error: `Cannot move page - path "${pathMove.newPath}" already exists` };
-          }
-        }
+      const conflictingPath = findDestinationConflict(siteData.contentFiles, pathsToMove, newFilePath);
+      if (conflictingPath) {
+        return { success: false, error: `Cannot move page - path "${conflictingPath}" already exists` };
       }
 
       // Update the main file's content with current editor content before moving
@@ -118,6 +148,10 @@ export const createSlugActions: ContentSliceFragment<
         siteToUpdate.manifest.collectionItems = buildCollectionItemRefs(siteToUpdate as LocalSiteData);
       }));
 
+      // Keep the image registry keyed to the moved paths, so images that are still in
+      // use are not mistaken for orphans once the old paths stop existing.
+      await syncImageReferencesForMoves(siteId, pathsToMove, get().getSiteById(siteId)?.contentFiles ?? []);
+
       // Persist the updated manifest to disk
       const finalSite = get().getSiteById(siteId);
       if (finalSite?.manifest) {
@@ -126,11 +160,6 @@ export const createSlugActions: ContentSliceFragment<
 
       // Force a complete site reload to ensure all components get fresh data
       await get().loadSite(siteId);
-
-      // Mark slug change as complete
-      if (appStore.markSlugChangeComplete) {
-        appStore.markSlugChangeComplete(siteId);
-      }
 
       toast.success(`Page slug changed from "${currentSlug}" to "${newSlug}"`);
 
@@ -144,138 +173,13 @@ export const createSlugActions: ContentSliceFragment<
       const errorMessage = `Failed to change slug: ${(error as Error).message}`;
       toast.error(errorMessage);
 
-      // Mark slug change as complete even on error
-      const appStore = get() as AppStore;
+      return { success: false, error: errorMessage };
+    } finally {
+      // Every exit path clears the flag, including validation failures and the
+      // unchanged-slug no-op; otherwise the editor waits on it forever.
       if (appStore.markSlugChangeComplete) {
         appStore.markSlugChangeComplete(siteId);
       }
-
-      return { success: false, error: errorMessage };
-    }
-  },
-
-  changePageSlug: async (siteId: string, currentFilePath: string, newSlug: string) => {
-    try {
-      const site = get().getSiteById(siteId);
-      if (!site) {
-        return { success: false, error: "Site not found" };
-      }
-
-      // Validate new slug
-      if (!newSlug || newSlug.trim() === '') {
-        return { success: false, error: "Slug cannot be empty" };
-      }
-
-      // Get current file
-      const currentFile = site.contentFiles?.find(f => f.path === currentFilePath);
-      if (!currentFile) {
-        return { success: false, error: "Current file not found" };
-      }
-
-      const currentSlug = currentFile.slug;
-
-      // If slug hasn't changed, do nothing
-      if (currentSlug === newSlug) {
-        return { success: true, newFilePath: currentFilePath };
-      }
-
-      // Check for homepage - cannot change homepage slug
-      if (currentFile.frontmatter.homepage === true) {
-        return { success: false, error: "Cannot change the slug of the homepage" };
-      }
-
-      // Check if new slug already exists
-      const newFilePath = `content/${newSlug}.md`;
-      const slugExists = site.contentFiles?.some(f => f.slug === newSlug);
-      if (slugExists) {
-        return { success: false, error: `A page with the slug "${newSlug}" already exists` };
-      }
-
-      // Find current node in structure
-      const currentNode = findNodeByPath(site.manifest.structure, currentFilePath);
-      if (!currentNode) {
-        return { success: false, error: "Page not found in site structure" };
-      }
-
-      // Collect all affected pages (current page + any descendants)
-      const affectedPaths = [currentFilePath];
-      if (currentNode.children) {
-        affectedPaths.push(...getDescendantIds([currentNode]));
-      }
-
-      // Backup all affected content before deletion
-      const contentBackup = [];
-      for (const path of affectedPaths) {
-        const file = site.contentFiles?.find(f => f.path === path);
-        if (file) {
-          // Calculate new path for this file
-          let newPath: string;
-          if (path === currentFilePath) {
-            // This is the main file being changed
-            newPath = newFilePath;
-          } else {
-            // This is a descendant - update its path to use the new slug
-            const relativePath = path.replace(`content/${currentSlug}`, '');
-            newPath = `content/${newSlug}${relativePath}`;
-          }
-
-          contentBackup.push({
-            originalPath: path,
-            newPath,
-            frontmatter: { ...file.frontmatter },
-            content: file.content
-          });
-        }
-      }
-
-      // Validate all new paths don't already exist
-      for (const backup of contentBackup) {
-        if (backup.newPath !== newFilePath) { // We already checked the main file
-          const pathExists = site.contentFiles?.some((f: ParsedMarkdownFile) => f.path === backup.newPath);
-          if (pathExists) {
-            return { success: false, error: `Cannot recreate page - path "${backup.newPath}" already exists` };
-          }
-        }
-      }
-
-      // Delete all affected pages (in reverse order to avoid structure issues)
-      for (let i = affectedPaths.length - 1; i >= 0; i--) {
-        await get().deleteContentFileAndState(siteId, affectedPaths[i]);
-      }
-
-      // Recreate all pages with new paths
-      const results = [];
-      for (const backup of contentBackup) {
-        const markdownContent = stringifyToMarkdown(backup.frontmatter, backup.content);
-        const success = await get().addOrUpdateContentFile(siteId, backup.newPath, markdownContent);
-        results.push({ path: backup.newPath, success });
-
-        if (!success) {
-          console.error(`Failed to recreate file: ${backup.newPath}`);
-          // Continue with other files rather than failing completely
-        }
-      }
-
-      // Check if all recreations were successful
-      const allSuccessful = results.every(r => r.success);
-      if (!allSuccessful) {
-        const failedPaths = results.filter(r => !r.success).map(r => r.path);
-        toast.error(`Some pages could not be recreated: ${failedPaths.join(', ')}`);
-      }
-
-      toast.success(`Page slug changed from "${currentSlug}" to "${newSlug}"`);
-
-      return { 
-        success: true, 
-        newFilePath,
-        error: allSuccessful ? undefined : "Some descendant pages failed to recreate"
-      };
-
-    } catch (error) {
-      console.error("Failed to change page slug:", error);
-      const errorMessage = `Failed to change slug: ${(error as Error).message}`;
-      toast.error(errorMessage);
-      return { success: false, error: errorMessage };
     }
   },
 });

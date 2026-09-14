@@ -19,7 +19,6 @@ export interface ContentSlice {
   repositionNode: (siteId: string, activeNodePath: string, newParentPath: string | null, newIndex: number) => Promise<void>;
   updateContentFileOnly: (siteId: string, savedFile: ParsedMarkdownFile, silent?: boolean) => Promise<void>;
   setAsHomepage: (siteId: string, filePath: string) => Promise<void>;
-  changePageSlug: (siteId: string, currentFilePath: string, newSlug: string) => Promise<{ success: boolean; newFilePath?: string; error?: string }>;
   changePageSlugWithContent: (siteId: string, currentFilePath: string, newSlug: string, frontmatter: MarkdownFrontmatter, content: string) => Promise<{ success: boolean; newFilePath?: string; error?: string }>;
 
   // Tag Group operations
