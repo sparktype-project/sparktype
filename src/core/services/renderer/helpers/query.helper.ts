@@ -10,9 +10,12 @@ export const queryHelper: SparktypeHelper = (siteData) => ({
    * The resulting array is made available to the inner block of the helper.
    *
    * @example
-   * {{#query source_collection="blog" limit=5 as |posts|}}
-   *   {{#each posts}} ... {{/each}}
+   * {{#query source_collection="blog" limit=5}}
+   *   {{#each this}} ... {{/each}}
    * {{/query}}
+   *
+   * The block-parameter form (`as |posts|`) is not supported: rendering it throws, because the
+   * helper exposes the items through the block's context and does not pass `blockParams`.
    */
   // --- FIX: The function signature now correctly matches SparktypeHelperFunction ---
   // The 'this' context is now 'unknown' and is not used.

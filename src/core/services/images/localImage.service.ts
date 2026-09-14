@@ -233,7 +233,7 @@ class LocalImageService implements ImageService {
     const derivativeFilename = `${baseFilename}_w${width || 'auto'}_h${height || 'auto'}_c-${crop}_g-${gravity}${ext}`;
     const cacheKey = `${manifest.siteId}/assets/derivatives/${derivativeFilename}`;
 
-    const finalBlob = await this.getOrProcessDerivative(manifest.siteId, ref.src, cacheKey, options);
+    const finalBlob = await this.getOrProcessDerivative(manifest.siteId, ref.src, cacheKey, options, isExport);
     
     console.log(`[LocalImageService] getDisplayUrl - isExport: ${isExport}, forIframe: ${forIframe}, cacheKey: ${cacheKey}, blobSize: ${finalBlob.size}`);
     
@@ -261,14 +261,24 @@ class LocalImageService implements ImageService {
    * Retrieves a derivative blob, either from the cache or by initiating a new processing job.
    * This method uses an in-memory map of promises to prevent race conditions where the same
    * derivative is requested multiple times before the first job completes.
+   *
+   * A generated derivative is always written to the derivative cache, including during an export:
+   * the cache is derived, additive and idempotent, and the export bundle sources its derivative
+   * files from exactly this cache (`getExportableAssets`), so skipping the write would publish
+   * pages whose images point at files the bundle does not contain.
+   *
+   * The image registry is different. It is site metadata, not a build artifact, so an export must
+   * not write it; a derivative that only the export needed stays unregistered.
+   *
    * @private
    * @param {string} siteId The site's ID.
    * @param {string} srcPath The path to the original source image.
    * @param {string} cacheKey The unique, namespaced key for the derivative.
    * @param {ImageTransformOptions} options The transformation options.
+   * @param {boolean} isExport Whether this run produces a static export rather than a preview.
    * @returns {Promise<Blob>} A promise that resolves to the final derivative blob.
    */
-  private async getOrProcessDerivative(siteId: string, srcPath: string, cacheKey: string, options: ImageTransformOptions): Promise<Blob> {
+  private async getOrProcessDerivative(siteId: string, srcPath: string, cacheKey: string, options: ImageTransformOptions, isExport: boolean): Promise<Blob> {
     console.log(`[LocalImageService] getOrProcessDerivative called - siteId: ${siteId}, srcPath: ${srcPath}, cacheKey: ${cacheKey}, options:`, options);
 
     // 1. Check persistent cache (IndexedDB) first.
@@ -368,15 +378,18 @@ class LocalImageService implements ImageService {
         // 4. Store the result in the persistent cache.
         await setCachedDerivative(cacheKey, finalBlob);
 
-        // 5. Register the derivative in the registry
-        try {
-          // Extract derivative path from cache key (format: siteId/assets/derivatives/filename)
-          const derivativePath = cacheKey.substring(siteId.length + 1);
-          await addDerivativeToRegistry(siteId, srcPath, derivativePath);
-          console.log(`[LocalImageService] Registered derivative in registry: ${srcPath} -> ${derivativePath}`);
-        } catch (error) {
-          console.warn(`[LocalImageService] Failed to register derivative in registry: ${srcPath}`, error);
-          // Don't fail derivative creation if registry update fails
+        // 5. Register the derivative in the registry. Exports skip this: the registry is site
+        // metadata and a build must not write it (see this method's doc comment).
+        if (!isExport) {
+          try {
+            // Extract derivative path from cache key (format: siteId/assets/derivatives/filename)
+            const derivativePath = cacheKey.substring(siteId.length + 1);
+            await addDerivativeToRegistry(siteId, srcPath, derivativePath);
+            console.log(`[LocalImageService] Registered derivative in registry: ${srcPath} -> ${derivativePath}`);
+          } catch (error) {
+            console.warn(`[LocalImageService] Failed to register derivative in registry: ${srcPath}`, error);
+            // Don't fail derivative creation if registry update fails
+          }
         }
 
         return finalBlob;

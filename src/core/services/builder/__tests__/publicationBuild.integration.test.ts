@@ -102,8 +102,10 @@ import { render } from '@/core/services/renderer/render.service';
 
 const PUBLISHED_IMAGE = 'assets/originals/published.svg';
 const DRAFT_IMAGE = 'assets/originals/draft-only.svg';
+const LOGO_IMAGE = 'assets/originals/logo.svg';
 const PUBLISHED_IMAGE_BYTES = '<svg id="published"></svg>';
 const DRAFT_IMAGE_BYTES = '<svg id="draft-only"></svg>';
+const LOGO_IMAGE_BYTES = '<svg id="logo"></svg>';
 
 function createItem(
   path: string,
@@ -183,6 +185,7 @@ function createPublicationSite(): LocalSiteData {
       description: 'Publication site',
       baseUrl: 'https://example.com',
       theme: { name: 'starter', config: {} },
+      logo: { serviceId: 'local', src: LOGO_IMAGE, alt: 'Logo', width: 256, height: 256 },
       structure: [
         { type: 'page', title: 'Home', slug: 'home', path: home.path, navOrder: 1 },
         { type: 'page', title: 'Posts', slug: 'posts', path: listing.path, navOrder: 2 },
@@ -212,13 +215,27 @@ function parseXml(xml: string): XMLDocument {
 async function seedStoredImages(siteId: string): Promise<void> {
   await saveImageAsset(siteId, PUBLISHED_IMAGE, new Blob([PUBLISHED_IMAGE_BYTES], { type: 'image/svg+xml' }));
   await saveImageAsset(siteId, DRAFT_IMAGE, new Blob([DRAFT_IMAGE_BYTES], { type: 'image/svg+xml' }));
+  await saveImageAsset(siteId, LOGO_IMAGE, new Blob([LOGO_IMAGE_BYTES], { type: 'image/svg+xml' }));
   await addImageToRegistry(siteId, PUBLISHED_IMAGE, PUBLISHED_IMAGE_BYTES.length);
   await addImageToRegistry(siteId, DRAFT_IMAGE, DRAFT_IMAGE_BYTES.length);
+  await addImageToRegistry(siteId, LOGO_IMAGE, LOGO_IMAGE_BYTES.length);
   // The registry tracks references per content file. `published.svg` is referenced from the
   // published homepage; `draft-only.svg` only from the unpublished page. Cleanup (which the
   // build no longer runs) would delete the draft-only image because the build must not.
   await updateImageReferences(siteId, 'content/home.md', [PUBLISHED_IMAGE]);
   await updateImageReferences(siteId, 'content/about.md', [DRAFT_IMAGE]);
+  // Site-wide assets are recorded under `manifest.*` by the editor's asset uploader, and that
+  // field reference is the logo's only one — it is a manifest field, not a content file.
+  await updateImageReferences(siteId, 'manifest.logo', [LOGO_IMAGE]);
+}
+
+/** Every string a bundle carries, including bytes decoded from its blobs. */
+async function bundleText(bundle: Record<string, string | Blob>): Promise<string> {
+  const parts: string[] = [];
+  for (const [path, content] of Object.entries(bundle)) {
+    parts.push(path, typeof content === 'string' ? content : await content.text());
+  }
+  return parts.join('\n');
 }
 
 describe('buildSiteBundle publication filtering', () => {
@@ -245,8 +262,14 @@ describe('buildSiteBundle publication filtering', () => {
     );
     expect(Object.keys(bundle)).not.toContain('about/index.html');
     expect(Object.keys(bundle)).not.toContain('posts/hidden/index.html');
-    expect(Object.values(bundle).join('')).not.toContain('Secret About Page');
-    expect(Object.values(bundle).join('')).not.toContain('Hidden Draft Post');
+
+    // No draft title or body text anywhere in the bundle, in any file, blob contents included.
+    const publishedOutput = await bundleText(bundle);
+    expect(publishedOutput).not.toContain('Secret About Page');
+    expect(publishedOutput).not.toContain('Secret about body');
+    expect(publishedOutput).not.toContain('Hidden Draft Post');
+    expect(publishedOutput).not.toContain('Hidden Draft Post body text');
+    expect(publishedOutput).toContain('First Post body text');
 
     // Pagination counts published items only: three posts fit on one page.
     expect(Object.keys(bundle)).not.toContain('posts/page/2/index.html');
@@ -298,15 +321,22 @@ describe('buildSiteBundle publication filtering', () => {
     expect(await storedAfter[PUBLISHED_IMAGE].text()).toBe(PUBLISHED_IMAGE_BYTES);
   });
 
-  test('media.json describes only images the published content references', async () => {
+  test('media.json describes only images the published content references, and keeps site-wide assets', async () => {
     const site = createPublicationSite();
     await seedStoredImages(site.siteId);
 
     const bundle = await buildSiteBundle(site);
 
     const media = JSON.parse(bundle['_site/data/media.json'] as string);
-    expect(Object.keys(media.images)).toEqual([PUBLISHED_IMAGE]);
+    expect(Object.keys(media.images).sort()).toEqual([LOGO_IMAGE, PUBLISHED_IMAGE].sort());
+    expect(media.images[PUBLISHED_IMAGE].referencedIn).toEqual(['content/home.md']);
+    // The logo's only reference is its manifest field, which is not a content path. Pruning it
+    // would drop the logo from the index that import keys off, while `manifest.logo` still points
+    // at the asset.
+    expect(media.images[LOGO_IMAGE].referencedIn).toEqual(['manifest.logo']);
+    expect(media.images[LOGO_IMAGE].metadata.sizeBytes).toBe(LOGO_IMAGE_BYTES.length);
     expect(JSON.stringify(media)).not.toContain('content/about.md');
+    expect(JSON.stringify(media)).not.toContain(DRAFT_IMAGE);
   });
 
   test('preview renders the writer’s drafts while export does not', async () => {
@@ -336,15 +366,26 @@ describe('buildSiteBundle publication filtering', () => {
     expect(exportListing).toContain('First Post');
   });
 
-  test('does not write to persistent storage while exporting', async () => {
+  test('builds a complete media index for a legacy site with no stored registry, without creating one', async () => {
     const site = createPublicationSite();
-    // Blobs only: no image registry exists yet, which is the state that used to make the
-    // export create one (recording draft references as orphans).
+    // Blobs only: no image registry exists yet. This is the state `buildRegistryFromSiteData`
+    // exists to migrate, and the state that used to make the export create a registry (recording
+    // draft references as orphans). The registry must stay absent while the index is still built
+    // from the site's stored images.
     await saveImageAsset(site.siteId, PUBLISHED_IMAGE, new Blob([PUBLISHED_IMAGE_BYTES], { type: 'image/svg+xml' }));
+    await saveImageAsset(site.siteId, LOGO_IMAGE, new Blob([LOGO_IMAGE_BYTES], { type: 'image/svg+xml' }));
 
-    await buildSiteBundle(site);
+    const bundle = await buildSiteBundle(site);
 
     expect(await readMetadata('imageRegistries', site.siteId)).toBeNull();
+
+    // An empty index here would make a re-import of this export copy zero images.
+    const media = JSON.parse(bundle['_site/data/media.json'] as string);
+    expect(Object.keys(media.images).sort()).toEqual([LOGO_IMAGE, PUBLISHED_IMAGE].sort());
+    expect(media.images[PUBLISHED_IMAGE].referencedIn).toEqual(['content/home.md']);
+    expect(media.images[PUBLISHED_IMAGE].metadata.sizeBytes).toBe(PUBLISHED_IMAGE_BYTES.length);
+    expect(media.images[LOGO_IMAGE].referencedIn).toEqual(['manifest']);
+    expect(media.images[LOGO_IMAGE].metadata.sizeBytes).toBe(LOGO_IMAGE_BYTES.length);
   });
 
   test('does not mutate the caller’s site data', async () => {

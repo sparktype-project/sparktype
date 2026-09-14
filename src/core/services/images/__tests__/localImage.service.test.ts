@@ -178,4 +178,29 @@ describe('localImage.service', () => {
       { path: '_site/assets/derivatives/photo_w300_h200_c-scale_g-center.jpg', data: expect.any(Blob) },
     ]);
   });
+
+  test('registers a generated derivative during preview but not during export', async () => {
+    const manifest: Manifest = {
+      siteId: 'site-1',
+      generatorVersion: '1.0.0',
+      title: 'Fixture Site',
+      description: 'Fixture description',
+      structure: [],
+      theme: { name: 'starter', config: {} },
+    };
+    const ref = { serviceId: 'local', src: 'assets/originals/photo.jpg' };
+    const options = { width: 300, height: 200 };
+
+    await localImageService.getDisplayUrl(manifest, ref, options, true);
+    expect(setCachedDerivativeMock).toHaveBeenCalledTimes(1);
+    expect(addDerivativeToRegistryMock).not.toHaveBeenCalled();
+
+    await localImageService.getDisplayUrl(manifest, ref, options, false);
+    expect(setCachedDerivativeMock).toHaveBeenCalledTimes(2);
+    expect(addDerivativeToRegistryMock).toHaveBeenCalledWith(
+      'site-1',
+      'assets/originals/photo.jpg',
+      'assets/derivatives/photo_w300_h200_c-scale_g-center.jpg',
+    );
+  });
 });

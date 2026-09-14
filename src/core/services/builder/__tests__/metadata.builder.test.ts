@@ -163,6 +163,24 @@ describe('metadata.builder', () => {
     expect(locations).toContain('https://example.com/posts/link');
   });
 
+  test.each([
+    ['a leading', ']]>leading terminator'],
+    ['a trailing', 'trailing terminator]]>'],
+    ['several', 'one]]>two]]>three'],
+    ['a standalone', ']]>'],
+    ['an adjacent pair', ']]>]]>'],
+  ])('round-trips %s CDATA terminator in item content', (_case, content) => {
+    const site = createSpecialCharacterSite();
+    site.contentFiles![3] = { ...site.contentFiles![3], content };
+
+    const bundle: Record<string, string> = {};
+    generateMetadataFiles(bundle, site);
+
+    const doc = expectWellFormed(bundle['rss.xml']);
+    const encoded = doc.getElementsByTagName('content:encoded')[0]?.textContent ?? '';
+    expect(encoded).toBe(content);
+  });
+
   test('omits unpublished pages and items from rss and sitemap', () => {
     const site = createSiteFixture('collectionSite');
     site.manifest.baseUrl = 'https://example.com';

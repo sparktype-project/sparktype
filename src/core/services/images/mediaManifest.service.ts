@@ -221,9 +221,13 @@ export async function generateMediaManifest(
   }
 
   try {
-    // Ensure the site has a valid registry
-    await ensureImageRegistry(siteData, { persist: persistRegistry });
-    const registry = await getImageRegistry(siteData.siteId);
+    // The registry that `ensureImageRegistry` resolves is the one to read: it either loads the
+    // stored registry or builds one from the site's stored images. Re-reading storage here would
+    // return an empty registry whenever the site has none stored — the pre-registry state of
+    // every legacy site — and the manifest would then ship with no images at all, which the
+    // import paths key off. This also keeps the read path from writing: `getImageRegistry` can
+    // persist a migrated legacy registry, and an export must not.
+    const registry = await ensureImageRegistry(siteData, { persist: persistRegistry });
 
     // Extract image service configuration
     const providerId = getConfiguredImageServiceId(siteData.manifest);

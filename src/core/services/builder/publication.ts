@@ -81,8 +81,14 @@ export function findHomepageFile(siteData: LocalSiteData): ParsedMarkdownFile | 
  * per content file regardless of publication state. In a build the caller passes the public
  * snapshot, so any reference naming a file outside it is a reference to unpublished content and
  * is dropped; an image left without references is dropped with it, because nothing the bundle
- * contains points at it. `manifest` is the registry's own marker for site-wide image references
- * (logo, favicon) and is not a content file, so it is always kept.
+ * contains points at it.
+ *
+ * Site-wide assets are not content files and are always kept. The registry marks them two ways:
+ * `manifest` for images discovered by scanning the manifest itself, and `manifest.logo` /
+ * `manifest.favicon` (see `SiteAssetsUploader`) for assets uploaded through the editor, whose
+ * only reference is that field. Pruning either would drop the logo from the export's media index,
+ * and the import paths that key off that index would then never copy an asset `manifest.logo`
+ * still points at.
  */
 export function pruneUnpublishedMediaReferences(
   mediaManifest: MediaManifest,
@@ -95,7 +101,8 @@ export function pruneUnpublishedMediaReferences(
 
   for (const [imagePath, entry] of Object.entries(mediaManifest.images)) {
     const referencedIn = entry.referencedIn.filter(
-      (reference) => reference === 'manifest' || publishedPaths.has(reference),
+      (reference) =>
+        reference === 'manifest' || reference.startsWith('manifest.') || publishedPaths.has(reference),
     );
     if (referencedIn.length === 0) continue;
     images[imagePath] = { ...entry, referencedIn };
