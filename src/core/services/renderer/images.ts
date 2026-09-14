@@ -1,6 +1,6 @@
 // src/core/services/renderer/images.ts
 
-import type { ImageService, LocalSiteData } from '@/core/types';
+import type { ImageRef, ImageService, LocalSiteData } from '@/core/types';
 import { getRelativePath } from '@/core/services/relativePaths.service';
 
 /**
@@ -31,9 +31,79 @@ export function isAbsoluteOrSpecialImageUrl(url: string): boolean {
     return /^(?:[a-z]+:)?\/\//i.test(url) || url.startsWith('data:') || url.startsWith('/');
 }
 
-/** True for absolute, protocol-relative and `data:` image URLs (root-relative URLs included). */
+/** True for absolute, protocol-relative and data: image URLs; root-relative URLs are NOT matched (callers rely on that for export path conversion). */
 export function isExternalOrDataImageUrl(url: string): boolean {
     return /^(?:[a-z]+:)?\/\//i.test(url) || url.startsWith('data:');
+}
+
+/**
+ * Console wording for the shared asset rewrite loop. Preview and export word their
+ * diagnostics differently, so each caller supplies its own strings.
+ */
+interface AssetRewriteMessages {
+  /** Logged with the number of matched asset images before rewriting starts. */
+  found: string;
+  /** Logged for each successfully rewritten asset. */
+  converted: string;
+  /** Logged when the image service rejects an asset. */
+  failed: string;
+}
+
+const PREVIEW_MESSAGES: AssetRewriteMessages = {
+  found: '[Render Service] Found Sparktype images to process:',
+  converted: '[Render Service] Converted asset to blob URL:',
+  failed: '[Render Service] Failed to convert asset to blob URL:',
+};
+
+const EXPORT_MESSAGES: AssetRewriteMessages = {
+  found: '[Render Service] Found Sparktype images to process for export:',
+  converted: '[Render Service] Converted asset to relative derivative path:',
+  failed: '[Render Service] Failed to convert asset to derivative filename:',
+};
+
+/**
+ * Rewrites every `<img data-sparktype-asset="true">` asset URL through `resolveReplacement`,
+ * which decides what a given asset should point at (a preview URL, or an export-relative path).
+ */
+async function rewriteSparktypeAssetImages(
+  htmlContent: string,
+  messages: AssetRewriteMessages,
+  resolveReplacement: (imageRef: ImageRef) => Promise<string>,
+): Promise<string> {
+  // Find all Sparktype asset images (support both legacy and new paths)
+  const imageRegex = new RegExp(SPARKTYPE_ASSET_IMAGE_PATTERN, 'g');
+
+  let processedHtml = htmlContent;
+  const matches = Array.from(htmlContent.matchAll(imageRegex));
+
+  console.log(messages.found, matches.length);
+
+  for (const match of matches) {
+    const [fullMatch, assetPath] = match;
+
+    try {
+      // Create ImageRef from asset path
+      const imageRef: ImageRef = {
+        serviceId: 'local',
+        src: assetPath,
+        alt: '',
+        width: 0,
+        height: 0
+      };
+
+      const replacementUrl = await resolveReplacement(imageRef);
+
+      // Replace the entire img tag with the resolved URL version
+      const newImg = fullMatch.replace(`src="${assetPath}"`, `src="${replacementUrl}"`).replace(' data-sparktype-asset="true"', '');
+      processedHtml = processedHtml.replace(fullMatch, newImg);
+
+      console.log(messages.converted, assetPath, '->', replacementUrl);
+    } catch (error) {
+      console.error(messages.failed, assetPath, error);
+    }
+  }
+
+  return processedHtml;
 }
 
 /**
@@ -45,47 +115,16 @@ export async function postProcessSparkTypeImages(
   imageService: ImageService,
   forIframe?: boolean
 ): Promise<string> {
-  // Find all Sparktype asset images (support both legacy and new paths)
-  const imageRegex = new RegExp(SPARKTYPE_ASSET_IMAGE_PATTERN, 'g');
-
-  let processedHtml = htmlContent;
-  const matches = Array.from(htmlContent.matchAll(imageRegex));
-
-  console.log('[Render Service] Found Sparktype images to process:', matches.length);
-
-  for (const match of matches) {
-    const [fullMatch, assetPath] = match;
-
-    try {
-      // Create ImageRef from asset path
-      const imageRef = {
-        serviceId: 'local' as const,
-        src: assetPath,
-        alt: '',
-        width: 0,
-        height: 0
-      };
-
-      // Generate blob URL or data URL for preview
-      const blobUrl = await imageService.getDisplayUrl(
-        siteData.manifest,
-        imageRef,
-        { width: imageRef.width, height: imageRef.height },
-        false, // isExport = false for blob URL generation
-        forIframe // Use data URLs for iframe contexts
-      );
-
-      // Replace the entire img tag with blob URL version
-      const newImg = fullMatch.replace(`src="${assetPath}"`, `src="${blobUrl}"`).replace(' data-sparktype-asset="true"', '');
-      processedHtml = processedHtml.replace(fullMatch, newImg);
-
-      console.log('[Render Service] Converted asset to blob URL:', assetPath, '->', blobUrl);
-    } catch (error) {
-      console.error('[Render Service] Failed to convert asset to blob URL:', assetPath, error);
-    }
-  }
-
-  return processedHtml;
+  return rewriteSparktypeAssetImages(htmlContent, PREVIEW_MESSAGES, (imageRef) =>
+    // Generate blob URL or data URL for preview
+    imageService.getDisplayUrl(
+      siteData.manifest,
+      imageRef,
+      { width: imageRef.width, height: imageRef.height },
+      false, // isExport = false for blob URL generation
+      forIframe // Use data URLs for iframe contexts
+    ),
+  );
 }
 
 /**
@@ -97,51 +136,21 @@ export async function postProcessSparkTypeImagesForExport(
   imageService: ImageService,
   currentPagePath: string
 ): Promise<string> {
-  // Find all Sparktype asset images (support both legacy and new paths)
-  const imageRegex = new RegExp(SPARKTYPE_ASSET_IMAGE_PATTERN, 'g');
+  return rewriteSparktypeAssetImages(htmlContent, EXPORT_MESSAGES, async (imageRef) => {
+    // Generate derivative filename for export (with size data appended)
+    const derivativeFilename = await imageService.getDisplayUrl(
+      siteData.manifest,
+      imageRef,
+      { width: imageRef.width, height: imageRef.height },
+      true // isExport = true for derivative filename
+    );
 
-  let processedHtml = htmlContent;
-  const matches = Array.from(htmlContent.matchAll(imageRegex));
-
-  console.log('[Render Service] Found Sparktype images to process for export:', matches.length);
-
-  for (const match of matches) {
-    const [fullMatch, assetPath] = match;
-
-    try {
-      // Create ImageRef from asset path
-      const imageRef = {
-        serviceId: 'local' as const,
-        src: assetPath,
-        alt: '',
-        width: 0,
-        height: 0
-      };
-
-      // Generate derivative filename for export (with size data appended)
-      const derivativeFilename = await imageService.getDisplayUrl(
-        siteData.manifest,
-        imageRef,
-        { width: imageRef.width, height: imageRef.height },
-        true // isExport = true for derivative filename
-      );
-
-      const relativePath = isExternalOrDataImageUrl(derivativeFilename)
-        ? derivativeFilename
-        : getRelativePath(
-            currentPagePath,
-            derivativeFilename.startsWith('/') ? derivativeFilename.substring(1) : derivativeFilename
-          );
-
-      // Replace the entire img tag with relative derivative path
-      const newImg = fullMatch.replace(`src="${assetPath}"`, `src="${relativePath}"`).replace(' data-sparktype-asset="true"', '');
-      processedHtml = processedHtml.replace(fullMatch, newImg);
-
-      console.log('[Render Service] Converted asset to relative derivative path:', assetPath, '->', relativePath);
-    } catch (error) {
-      console.error('[Render Service] Failed to convert asset to derivative filename:', assetPath, error);
-    }
-  }
-
-  return processedHtml;
+    // Root-relative derivatives are the ones that need converting to page-relative paths.
+    return isExternalOrDataImageUrl(derivativeFilename)
+      ? derivativeFilename
+      : getRelativePath(
+          currentPagePath,
+          derivativeFilename.startsWith('/') ? derivativeFilename.substring(1) : derivativeFilename
+        );
+  });
 }

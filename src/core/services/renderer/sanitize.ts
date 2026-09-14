@@ -27,14 +27,47 @@ import { SECURITY_CONFIG } from '@/config/editorConfig';
  */
 
 /**
+ * Console wording for the shared security hook. The two policies have always worded these
+ * diagnostics differently, so each caller supplies its own strings instead of sharing one set.
+ */
+interface SanitizeMessages {
+    /** A script without a `src` (an inline script) was removed. */
+    inlineScriptRemoved: string;
+    /** A script from a domain outside TRUSTED_SCRIPT_DOMAINS was removed. */
+    untrustedScriptRemoved: (src: string) => string;
+    /** An iframe without a `src` was removed. */
+    iframeWithoutSrcRemoved: string;
+    /** An iframe whose protocol is not HTTPS was removed. */
+    nonHttpsIframeRemoved: (src: string) => string;
+    /** An iframe with an unparseable URL was removed. */
+    invalidIframeUrlRemoved: (src: string) => string;
+}
+
+const RENDERER_MESSAGES: SanitizeMessages = {
+    inlineScriptRemoved: '[Render Service] Removed inline script tag (not allowed)',
+    untrustedScriptRemoved: (src) => `[Render Service] Removed script from untrusted domain: ${src}`,
+    iframeWithoutSrcRemoved: '[Render Service] Removed iframe without src',
+    nonHttpsIframeRemoved: (src) => `[Render Service] Removed iframe with non-HTTPS protocol: ${src}`,
+    invalidIframeUrlRemoved: (src) => `[Render Service] Removed iframe with invalid URL: ${src}`,
+};
+
+const MARKDOWN_HELPER_MESSAGES: SanitizeMessages = {
+    inlineScriptRemoved: '[Markdown Helper] Removed inline script',
+    untrustedScriptRemoved: (src) => `[Markdown Helper] Removed script from untrusted domain: ${src}`,
+    iframeWithoutSrcRemoved: '[Markdown Helper] Removed iframe without src',
+    nonHttpsIframeRemoved: (src) => `[Markdown Helper] Removed non-HTTPS iframe: ${src}`,
+    invalidIframeUrlRemoved: (src) => `[Markdown Helper] Removed iframe with invalid URL: ${src}`,
+};
+
+/**
  * Applies the shared script/iframe policy to a DOMPurify instance:
  * - drops inline scripts and scripts from domains outside TRUSTED_SCRIPT_DOMAINS
  * - drops iframes without a src, with a non-HTTPS protocol, or with an unparseable URL
  * - forces a restrictive `sandbox` attribute onto any surviving iframe
  *
- * `logPrefix` preserves each caller's existing console channel.
+ * Only the console wording differs between callers; the removals themselves are the same code.
  */
-function addSecurityHooks(purify: DOMPurifyInstance, logPrefix: string): void {
+function addSecurityHooks(purify: DOMPurifyInstance, messages: SanitizeMessages): void {
     purify.addHook('uponSanitizeElement', (node, data) => {
         if (data.tagName === 'script') {
             const scriptElement = node as HTMLScriptElement;
@@ -42,7 +75,7 @@ function addSecurityHooks(purify: DOMPurifyInstance, logPrefix: string): void {
 
             // If no src (inline script), remove it
             if (!src) {
-                console.warn(`${logPrefix} Removed inline script tag (not allowed)`);
+                console.warn(messages.inlineScriptRemoved);
                 if (node.parentNode) node.parentNode.removeChild(node);
                 return;
             }
@@ -58,7 +91,7 @@ function addSecurityHooks(purify: DOMPurifyInstance, logPrefix: string): void {
             });
 
             if (!isTrusted) {
-                console.warn(`${logPrefix} Removed script from untrusted domain: ${src}`);
+                console.warn(messages.untrustedScriptRemoved(src));
                 if (node.parentNode) node.parentNode.removeChild(node);
             }
         }
@@ -70,7 +103,7 @@ function addSecurityHooks(purify: DOMPurifyInstance, logPrefix: string): void {
 
             if (!src) {
                 // Iframes without src are suspicious - remove them
-                console.warn(`${logPrefix} Removed iframe without src`);
+                console.warn(messages.iframeWithoutSrcRemoved);
                 if (node.parentNode) node.parentNode.removeChild(node);
                 return;
             }
@@ -79,12 +112,12 @@ function addSecurityHooks(purify: DOMPurifyInstance, logPrefix: string): void {
             try {
                 const url = new URL(src, window.location.origin);
                 if (url.protocol !== 'https:') {
-                    console.warn(`${logPrefix} Removed iframe with non-HTTPS protocol: ${src}`);
+                    console.warn(messages.nonHttpsIframeRemoved(src));
                     if (node.parentNode) node.parentNode.removeChild(node);
                     return;
                 }
             } catch {
-                console.warn(`${logPrefix} Removed iframe with invalid URL: ${src}`);
+                console.warn(messages.invalidIframeUrlRemoved(src));
                 if (node.parentNode) node.parentNode.removeChild(node);
             }
 
@@ -205,7 +238,7 @@ export function sanitizeHtml(htmlContent: string): string {
 
     // Configure DOMPurify to allow scripts from trusted domains only
     const purify = DOMPurify(window);
-    addSecurityHooks(purify, '[Render Service]');
+    addSecurityHooks(purify, RENDERER_MESSAGES);
 
     const sanitized = purify.sanitize(htmlContent, RENDERER_SANITIZE_CONFIG);
 
@@ -226,7 +259,7 @@ export function sanitizeMarkdownHtml(htmlContent: string): string {
     }
 
     const purify = DOMPurify(window);
-    addSecurityHooks(purify, '[Markdown Helper]');
+    addSecurityHooks(purify, MARKDOWN_HELPER_MESSAGES);
 
     const sanitized = purify.sanitize(htmlContent, MARKDOWN_HELPER_SANITIZE_CONFIG);
     purify.removeAllHooks();

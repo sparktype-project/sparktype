@@ -508,8 +508,9 @@ export type PageResolutionResult =
 
 /**
  * A resolution that has a page to render: everything except `PageType.NotFound`.
- * Renderers return early for NotFound, so stages downstream can rely on `contentFile`,
- * `layoutPath` and `pageNumber` being present.
+ * Renderers return early for NotFound, so stages downstream can rely on `contentFile` and
+ * `layoutPath` being present. `pageNumber` stays optional: it is only set for paginated
+ * collection pages.
  */
 export type RenderablePageResolution = Exclude<PageResolutionResult, { type: typeof PageType.NotFound }>;
 

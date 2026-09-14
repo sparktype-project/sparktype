@@ -350,6 +350,7 @@ describe('page resolver and render integration', () => {
     expect(normalized.indexOf('Second Post')).toBeLessThan(normalized.indexOf('Launch Day'));
 
     delete Handlebars.partials['listing/index.hbs'];
+    delete Handlebars.helpers['render_collection'];
   });
 
   test('sanitizes unsafe html by stripping executable and embedded content', async () => {
