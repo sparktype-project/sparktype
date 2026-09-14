@@ -1,6 +1,9 @@
 // src/core/services/collections.service.ts
 
 import type { Manifest, Collection, ParsedMarkdownFile } from '@/core/types';
+import { sortCollectionItems } from './contentSorting.service';
+import type { SortOrder } from './contentSorting.service';
+import { filterContentBySelectedTags } from './tags.service';
 
 /**
  * ============================================================================
@@ -110,6 +113,55 @@ export function getCollectionContent(siteData: { manifest: Manifest; contentFile
 
 // Import the centralized sorting logic
 export { sortCollectionItems } from './contentSorting.service';
+
+/**
+ * Options for picking the items a list layout or `::collection_view` directive renders.
+ */
+export interface CollectionItemSelection {
+  /** Tag IDs to keep; an empty or absent list keeps every item. */
+  tagFilters?: string[];
+  /** Frontmatter field to sort on; no sorting is applied when absent. */
+  sortBy?: string;
+  sortOrder?: SortOrder;
+  /** Maximum number of items; no limit when absent or non-positive. */
+  maxItems?: number;
+}
+
+/**
+ * Selects the collection items to render, applying tag filtering, then sorting, then the item
+ * limit — the order both callers (the `render_collection` Handlebars helper and
+ * `::collection_view` directive expansion) have always applied.
+ *
+ * Existence checks and the "not found" output stay with each caller, because they report
+ * failures differently.
+ *
+ * @param siteData The complete data for the site.
+ * @param collectionId The ID of the collection.
+ * @param selection Filtering/sorting/limiting options.
+ * @returns The selected items, newest selection applied last.
+ */
+export function selectCollectionItems(
+  siteData: { manifest: Manifest; contentFiles?: ParsedMarkdownFile[] },
+  collectionId: string,
+  selection: CollectionItemSelection = {},
+): ParsedMarkdownFile[] {
+  let items = getCollectionContent(siteData, collectionId);
+
+  const tagFilters = selection.tagFilters ?? [];
+  if (tagFilters.length > 0) {
+    items = filterContentBySelectedTags(siteData.manifest, items, tagFilters);
+  }
+
+  if (selection.sortBy) {
+    items = sortCollectionItems(items, selection.sortBy, selection.sortOrder || 'desc');
+  }
+
+  if (selection.maxItems && selection.maxItems > 0) {
+    items = items.slice(0, selection.maxItems);
+  }
+
+  return items;
+}
 
 
 // --- VALIDATION & UTILITY HELPERS ---

@@ -4,8 +4,7 @@ import Handlebars from 'handlebars';
 import type { SparktypeHelper } from './types';
 import type { ParsedMarkdownFile, LayoutConfig, LocalSiteData, LayoutManifest } from '@/core/types';
 import type { HelperOptions } from 'handlebars';
-import { getCollectionContent, getCollection, sortCollectionItems } from '@/core/services/collections.service';
-import { filterContentBySelectedTags } from '@/core/services/tags.service';
+import { getCollection, selectCollectionItems } from '@/core/services/collections.service';
 
 /**
  * Defines the expected shape of the root context object passed by the theme engine.
@@ -58,16 +57,11 @@ export const renderCollectionHelper: SparktypeHelper = () => ({
       if (!collection) {
         return new Handlebars.SafeString(`<!-- Collection "${layoutConfig.collectionId}" not found -->`);
       }
-      let collectionItems = getCollectionContent(root.siteData, layoutConfig.collectionId);
-
-      if (layoutConfig.filterTags?.length) {
-        collectionItems = filterContentBySelectedTags(root.siteData.manifest, collectionItems, layoutConfig.filterTags);
-      }
-
-      // Apply sorting if specified in layoutConfig
-      if (layoutConfig.sortBy) {
-        collectionItems = sortCollectionItems(collectionItems, layoutConfig.sortBy, layoutConfig.sortOrder || 'desc');
-      }
+      let collectionItems = selectCollectionItems(root.siteData, layoutConfig.collectionId, {
+        tagFilters: layoutConfig.filterTags,
+        sortBy: layoutConfig.sortBy,
+        sortOrder: layoutConfig.sortOrder || 'desc',
+      });
 
       // 2. Determine which template partial to use. The layout manifest specifies its templates.
       // This example assumes a simple 'index.hbs' for the list and a partial for each item.
