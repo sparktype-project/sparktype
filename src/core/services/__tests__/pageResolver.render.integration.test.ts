@@ -79,6 +79,7 @@ vi.mock('@/core/services/images/imagePreprocessor.service', () => ({
 
 import { resolvePageContent } from '../pageResolver.service';
 import { render } from '../renderer/render.service';
+import { renderCollectionHelper } from '../renderer/helpers/renderCollection.helper';
 
 function enableCollectionPagination(site: LocalSiteData, itemsPerPage = 2) {
   const listingFile = site.contentFiles?.[1];
@@ -289,6 +290,66 @@ describe('page resolver and render integration', () => {
     expect(normalized).toContain('Launch Day');
 
     delete Handlebars.partials['post/partials/card'];
+  });
+
+  test('renders collection items through the render_collection helper', async () => {
+    const site = createSiteFixture('collectionSite');
+    const homeFile = site.contentFiles![0];
+    site.contentFiles![0] = {
+      ...homeFile,
+      frontmatter: {
+        ...homeFile.frontmatter,
+        layoutConfig: { collectionId: 'posts', layout: 'listing', sortBy: 'date', sortOrder: 'asc' },
+      },
+    };
+    site.contentFiles!.push({
+      path: 'content/posts/second-post.md',
+      slug: 'posts/second-post',
+      frontmatter: { title: 'Second Post', layout: 'post', date: '2025-01-09' },
+      content: 'Second post body',
+    });
+
+    Handlebars.registerPartial(
+      'listing/index.hbs',
+      '<ul>{{#each collectionItems}}<li data-collection-item>{{frontmatter.title}}</li>{{/each}}</ul>',
+    );
+    // prepareRenderEnvironment (which normally registers theme helpers) is mocked here.
+    Handlebars.registerHelper(
+      'render_collection',
+      renderCollectionHelper(site).render_collection as unknown as Handlebars.HelperDelegate,
+    );
+
+    getThemeAssetContentMock.mockImplementation(async (_siteData: unknown, _themeName: string, assetPath: string) => {
+      if (assetPath === 'layouts/page/index.hbs') {
+        return `<main data-layout="page">{{{render_collection contentFile.frontmatter.layoutConfig}}}</main>`;
+      }
+      if (assetPath === 'base.hbs') {
+        return `<html><body>{{{body}}}</body></html>`;
+      }
+      return null;
+    });
+
+    assemblePageContextMock.mockImplementation(async (siteData: LocalSiteData, resolution: PageResolutionResult) => ({
+      pageTitle: resolution.type === PageType.SinglePage ? resolution.contentFile.frontmatter.title : 'Not Found',
+      siteData,
+      layoutManifest: { id: 'listing', name: 'Listing', layoutType: 'list' },
+      contentFile: resolution.type === PageType.SinglePage ? resolution.contentFile : undefined,
+    }));
+
+    const resolution = await resolvePageContent(site, []);
+    expect(resolution.type).toBe(PageType.SinglePage);
+
+    const html = await render(site, resolution, {
+      siteRootPath: '/',
+      isExport: false,
+    });
+
+    const normalized = compactHtml(html);
+    expect(normalized).toContain('data-collection-item');
+    // Sorted by date ascending, the reverse of the content file order.
+    expect(normalized.indexOf('Second Post')).toBeLessThan(normalized.indexOf('Launch Day'));
+
+    delete Handlebars.partials['listing/index.hbs'];
   });
 
   test('sanitizes unsafe html by stripping executable and embedded content', async () => {
@@ -709,5 +770,125 @@ describe('page resolver and render integration', () => {
     const normalized = compactHtml(html);
     expect(normalized).toContain('data-prev="../../index.html"');
     expect(normalized).toContain('data-next=""');
+  });
+
+  test('rewrites sparktype asset images from collection partials to blob URLs for preview', async () => {
+    const site = createSiteFixture('collectionSite');
+    // `data-sparktype-asset` markers only reach the renderer from rendered partials: markdown
+    // content goes through remark-mdx, which rejects an unclosed <img> tag.
+    site.contentFiles![0] = {
+      ...site.contentFiles![0],
+      content: '::collection_view{collection="posts" layout="list-view"}',
+    };
+
+    Handlebars.registerPartial('post/partials/card', '<img src="assets/images/hero" data-sparktype-asset="true" alt="Hero">');
+    getLayoutManifestMock.mockImplementation(async (_siteData: LocalSiteData, layoutId: string) => {
+      if (layoutId === 'post') {
+        return {
+          id: 'post',
+          name: 'Post',
+          layoutType: 'item',
+          partials: [{ path: 'card.hbs', name: 'Card', isDefault: true }],
+        };
+      }
+
+      return {
+        id: 'page',
+        name: 'Page',
+        layoutType: 'page',
+        parentLayout: 'base',
+      };
+    });
+
+    const getDisplayUrl = vi.fn().mockResolvedValue('blob:http://localhost/hero-blob');
+    getActiveImageServiceMock.mockReturnValue({
+      id: 'local',
+      getDisplayUrl,
+    });
+
+    const resolution = await resolvePageContent(site, []);
+    expect(resolution.type).toBe(PageType.SinglePage);
+
+    const html = await render(site, resolution, {
+      siteRootPath: '/',
+      isExport: false,
+    });
+
+    const normalized = compactHtml(html);
+    expect(getDisplayUrl).toHaveBeenCalledWith(
+      site.manifest,
+      expect.objectContaining({ serviceId: 'local', src: 'assets/images/hero' }),
+      { width: 0, height: 0 },
+      false,
+      undefined,
+    );
+    expect(normalized).toContain('src="blob:http://localhost/hero-blob"');
+    expect(normalized).not.toContain('data-sparktype-asset');
+
+    delete Handlebars.partials['post/partials/card'];
+  });
+
+  test('rewrites sparktype asset images from collection partials to relative derivative paths for export', async () => {
+    const site = createSiteFixture('collectionSite');
+    site.contentFiles![0] = {
+      ...site.contentFiles![0],
+      content: '::collection_view{collection="posts" layout="list-view"}',
+    };
+
+    Handlebars.registerPartial(
+      'post/partials/card',
+      '<img src="assets/images/hero" data-sparktype-asset="true" alt="Hero">' +
+        '<img src="assets/images/remote" data-sparktype-asset="true" alt="Remote">',
+    );
+    getLayoutManifestMock.mockImplementation(async (_siteData: LocalSiteData, layoutId: string) => {
+      if (layoutId === 'post') {
+        return {
+          id: 'post',
+          name: 'Post',
+          layoutType: 'item',
+          partials: [{ path: 'card.hbs', name: 'Card', isDefault: true }],
+        };
+      }
+
+      return {
+        id: 'page',
+        name: 'Page',
+        layoutType: 'page',
+        parentLayout: 'base',
+      };
+    });
+
+    const getDisplayUrl = vi
+      .fn()
+      .mockResolvedValueOnce('/assets/derivatives/hero-1200w.jpg')
+      .mockResolvedValueOnce('https://cdn.example.com/remote.jpg');
+    getActiveImageServiceMock.mockReturnValue({
+      id: 'local',
+      getDisplayUrl,
+    });
+
+    const resolution = await resolvePageContent(site, []);
+    expect(resolution.type).toBe(PageType.SinglePage);
+
+    const html = await render(site, resolution, {
+      siteRootPath: '/',
+      isExport: true,
+      relativeAssetPath: '../../../',
+    });
+
+    const normalized = compactHtml(html);
+    expect(getDisplayUrl).toHaveBeenCalledWith(
+      site.manifest,
+      expect.objectContaining({ serviceId: 'local', src: 'assets/images/hero' }),
+      { width: 0, height: 0 },
+      true,
+    );
+    // The homepage export path is the site root, so the derivative sits beside index.html.
+    expect(normalized).toContain('src="./assets/derivatives/hero-1200w.jpg"');
+    // Absolute URLs returned by the image service are passed through untouched.
+    expect(normalized).toContain('src="https://cdn.example.com/remote.jpg"');
+    expect(normalized).not.toContain('data-sparktype-asset');
+
+    delete Handlebars.partials['post/partials/card'];
   });
 });
