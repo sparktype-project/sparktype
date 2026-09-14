@@ -5,7 +5,9 @@
  *
  * 1. **Binary assets cannot be inlined.** Tree entries have no `encoding` field, so bytes in a
  *    tree entry's `content` are committed as literal text. Inline entries are therefore text
- *    only; binary content is marked for the blob API (see `githubBlobUploader.ts`).
+ *    only; binary content is marked for the blob API (see `githubBlobUploader.ts`). Text is
+ *    always inlined, whatever its size: the generated bundle's text files are small, and mixing
+ *    a size threshold back in is what produced the base64-as-text defect.
  * 2. **Obsolete generated paths are deleted explicitly.** A tree is created with `base_tree`, and
  *    GitHub *retains* every base-tree path the new tree does not mention. A deleted, renamed or
  *    unpublished page would stay live forever unless its path is submitted with `sha: null`.

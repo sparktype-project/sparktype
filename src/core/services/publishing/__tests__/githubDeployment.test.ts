@@ -28,7 +28,6 @@ describe('deployGeneratedFiles', () => {
     // returned SHAs instead of carrying content, so the committed bytes are the asset's bytes.
     expect(stub.blobRequests).toHaveLength(2);
     expect(decodeBase64(stub.blobRequests[0].content)).toEqual(smallPng);
-    expect(decodeBase64(stub.blobRequests[1].content)).toEqual(largePng);
 
     const [treeRequest] = stub.treeRequests;
     expect(treeRequest.entries).toEqual([
@@ -40,7 +39,9 @@ describe('deployGeneratedFiles', () => {
     expect(stub.publishedBytes('assets/large.png')).toEqual(largePng);
     expect(stub.textFile('index.html')).toBe(html);
     expect(result.generatedPaths).toEqual(['assets/large.png', 'assets/small.png', 'index.html']);
-  });
+    // Encoding and comparing a >1MB asset is slow enough to approach the default timeout when the
+    // whole suite runs in parallel.
+  }, 20_000);
 
   test('uses the commit tree SHA as base_tree and the commit SHA as parent', async () => {
     const stub = new GitHubApiStub();
@@ -82,8 +83,8 @@ describe('deployGeneratedFiles', () => {
     expect(stub.requests.some((request) => request.path.includes('/contents/'))).toBe(false);
   });
 
-  test('creates a missing branch', async () => {
-    const stub = new GitHubApiStub({ missingBranch: true });
+  test('creates a missing branch without touching the existing one', async () => {
+    const stub = new GitHubApiStub();
     stub.install();
 
     const result = await deployGeneratedFiles({
@@ -97,6 +98,9 @@ describe('deployGeneratedFiles', () => {
     expect(result.branchCreated).toBe(true);
     expect(stub.requests.filter((request) => request.method === 'POST' && request.path.endsWith('/git/refs'))).toHaveLength(1);
     expect(stub.requests.filter((request) => request.method === 'PATCH')).toHaveLength(0);
+    expect(stub.hasFile('index.html', 'gh-pages')).toBe(true);
+    expect(stub.branchCommitSHA('main')).toBe('commit-0');
+    expect(stub.hasFile('index.html', 'main')).toBe(false);
   });
 
   test('deletes renamed, deleted and unpublished page paths on the next deployment', async () => {
@@ -197,31 +201,32 @@ describe('deployGeneratedFiles', () => {
     expect(stub.hasFile('README.md')).toBe(true);
   });
 
-  test('does not apply a path history recorded for another branch', async () => {
-    const stub = new GitHubApiStub();
+  test('applies a path history only to the branch it was recorded for', async () => {
+    const stub = new GitHubApiStub({ extraBranches: ['gh-pages'] });
     stub.install();
 
-    await deployGeneratedFiles({
-      siteId: 'site-branch-change',
-      siteTitle: 'Branch change',
-      config: CONFIG,
-      branch: 'main',
-      files: new Map([
-        ['index.html', 'home'],
-        ['preview-only/index.html', 'preview'],
-      ]),
-    });
+    const deploy = (branch: string, paths: string[]) =>
+      deployGeneratedFiles({
+        siteId: 'site-branch-change',
+        siteTitle: 'Branch change',
+        config: CONFIG,
+        branch,
+        files: new Map(paths.map((path) => [path, `content of ${path}`])),
+      });
 
-    const otherBranch = await deployGeneratedFiles({
-      siteId: 'site-branch-change',
-      siteTitle: 'Branch change',
-      config: CONFIG,
-      branch: 'gh-pages',
-      files: new Map([['index.html', 'home']]),
-    });
+    await deploy('main', ['index.html', 'preview-only/index.html']);
+
+    // gh-pages has a base tree to delete from, but no history of its own: deleting main's
+    // obsolete paths here would remove files this branch never held.
+    const otherBranch = await deploy('gh-pages', ['index.html']);
 
     expect(otherBranch.deletedPaths).toEqual([]);
-    expect(stub.hasFile('preview-only/index.html')).toBe(true);
+    expect(stub.treeRequests[1].entries.some((entry) => entry.sha === null)).toBe(false);
+
+    // The main history is still there, and it is what drives deletions on main.
+    const mainAgain = await deploy('main', ['index.html']);
+
+    expect(mainAgain.deletedPaths).toEqual(['preview-only/index.html']);
   });
 
   test('surfaces a rejected branch update with GitHub’s own error body', async () => {

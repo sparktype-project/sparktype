@@ -48,10 +48,12 @@ export interface RecordedCommitRequest {
 export interface GitHubApiStubOptions {
   /** Files already committed on the branch, as path → text content. */
   existingFiles?: Record<string, string>;
-  /** The repository has no commits: the branch ref read answers 409. */
+  /** The repository has no commits: every branch ref read answers 409. */
   emptyRepository?: boolean;
-  /** The branch does not exist: the branch ref read answers 404. */
-  missingBranch?: boolean;
+  /** Branch name pre-created in the stub; defaults to `main`. */
+  defaultBranch?: string;
+  /** Further branches that already exist at the same commit. */
+  extraBranches?: string[];
   /** Repository metadata; `push: false` makes validation fail. */
   pushPermission?: boolean;
   /** Makes PATCH on the branch ref fail, e.g. a non-fast-forward rejection. */
@@ -98,24 +100,31 @@ export class GitHubApiStub {
   private readonly blobContentBySHA = new Map<string, string>();
   private readonly treeBySHA = new Map<string, Map<string, StubTreeItem>>();
   private readonly treeByCommitSHA = new Map<string, string>();
+  private readonly branches = new Map<string, { commitSHA: string; tree: Map<string, StubTreeItem> }>();
   private readonly options: GitHubApiStubOptions;
-  private branchTree: Map<string, StubTreeItem>;
-  private branchCommitSHA: string | null;
   private shaCounter = 0;
 
   constructor(options: GitHubApiStubOptions = {}) {
     this.options = options;
-    this.branchTree = new Map(
-      Object.entries(options.existingFiles ?? {}).map(([path, content]) => [
-        path,
-        { kind: 'text', content } satisfies StubTreeItem,
-      ]),
-    );
-    this.branchCommitSHA = options.emptyRepository || options.missingBranch ? null : 'commit-0';
-    if (this.branchCommitSHA !== null) {
+
+    if (!options.emptyRepository) {
+      let tree = new Map<string, StubTreeItem>(
+        Object.entries(options.existingFiles ?? {}).map(([path, content]) => [
+          path,
+          { kind: 'text', content } satisfies StubTreeItem,
+        ]),
+      );
+      const commitSHA = 'commit-0';
       const treeSHA = this.nextSHA('tree');
-      this.treeByCommitSHA.set(this.branchCommitSHA, treeSHA);
-      this.treeBySHA.set(treeSHA, new Map(this.branchTree));
+      this.treeByCommitSHA.set(commitSHA, treeSHA);
+      this.treeBySHA.set(treeSHA, tree);
+
+      for (const branch of [options.defaultBranch ?? 'main', ...(options.extraBranches ?? [])]) {
+        // Each extra branch starts at its own copy of the same commit, so moving one cannot
+        // silently move another.
+        tree = new Map(tree);
+        this.branches.set(branch, { commitSHA, tree });
+      }
     }
   }
 
@@ -131,8 +140,13 @@ export class GitHubApiStub {
   }
 
   /** Whether the branch's current tree contains `path`. */
-  hasFile(path: string): boolean {
-    return this.branchTree.has(path);
+  hasFile(path: string, branch = 'main'): boolean {
+    return this.branches.get(branch)?.tree.has(path) ?? false;
+  }
+
+  /** The commit a branch points at, or `null` when the stub has no such branch. */
+  branchCommitSHA(branch = 'main'): string | null {
+    return this.branches.get(branch)?.commitSHA ?? null;
   }
 
   /** The tree SHA the stub associates with a commit, so tests can assert `base_tree` exactly. */
@@ -141,14 +155,14 @@ export class GitHubApiStub {
   }
 
   /** Text content of `path` in the branch's current tree, or `null`. */
-  textFile(path: string): string | null {
-    const item = this.branchTree.get(path);
+  textFile(path: string, branch = 'main'): string | null {
+    const item = this.branches.get(branch)?.tree.get(path);
     return item?.kind === 'text' ? item.content : null;
   }
 
   /** Bytes published at `path`, resolved through the blob the tree references, or `null`. */
-  publishedBytes(path: string): Uint8Array | null {
-    const item = this.branchTree.get(path);
+  publishedBytes(path: string, branch = 'main'): Uint8Array | null {
+    const item = this.branches.get(branch)?.tree.get(path);
     if (item?.kind !== 'binary') {
       return null;
     }
@@ -168,7 +182,7 @@ export class GitHubApiStub {
       return response(200, { permissions: { push: this.options.pushPermission ?? true } });
     }
     if (method === 'GET' && suffix.startsWith('/git/ref/heads/')) {
-      return this.handleGetBranchRef();
+      return this.handleGetBranchRef(suffix.slice('/git/ref/heads/'.length));
     }
     if (method === 'GET' && suffix.startsWith('/git/commits/')) {
       const commitSHA = suffix.slice('/git/commits/'.length);
@@ -191,7 +205,7 @@ export class GitHubApiStub {
       return this.handleCreateCommit(body);
     }
     if (method === 'PATCH' && suffix.startsWith('/git/refs/heads/')) {
-      return this.handleUpdateRef(body);
+      return this.handleUpdateRef(suffix.slice('/git/refs/heads/'.length), body);
     }
     if (method === 'POST' && suffix === '/git/refs') {
       return this.handleCreateRef(body);
@@ -200,14 +214,15 @@ export class GitHubApiStub {
     throw new Error(`GitHubApiStub: unhandled request ${method} ${path}`);
   }
 
-  private handleGetBranchRef() {
+  private handleGetBranchRef(branch: string) {
     if (this.options.emptyRepository) {
       return response(409, { message: 'Git Repository is empty.' });
     }
-    if (this.options.missingBranch || this.branchCommitSHA === null) {
+    const existing = this.branches.get(branch);
+    if (!existing) {
       return response(404, { message: 'Not Found' });
     }
-    return response(200, { object: { sha: this.branchCommitSHA } });
+    return response(200, { object: { sha: existing.commitSHA } });
   }
 
   private handleCreateBlob(body: unknown) {
@@ -287,31 +302,42 @@ export class GitHubApiStub {
     return response(201, { sha });
   }
 
-  private handleUpdateRef(body: unknown) {
+  private handleUpdateRef(branch: string, body: unknown) {
     if (this.options.refUpdateFailure) {
-      return response(this.options.refUpdateFailure.status, this.options.refUpdateFailure.body);
+      const failure = this.options.refUpdateFailure;
+      if (failure.status === 404) {
+        // A 404 here means the branch is genuinely gone, so the stub drops it too.
+        this.branches.delete(branch);
+      }
+      return response(failure.status, failure.body);
+    }
+    if (!this.branches.has(branch)) {
+      return response(404, { message: 'Not Found' });
     }
     if (!isJsonObject(body) || typeof body.sha !== 'string') {
       return response(422, { message: 'Invalid ref update' });
     }
-    this.moveBranch(body.sha);
+    this.moveBranch(branch, body.sha);
     return response(200, { object: { sha: body.sha } });
   }
 
   private handleCreateRef(body: unknown) {
-    if (!isJsonObject(body) || typeof body.sha !== 'string') {
+    if (!isJsonObject(body) || typeof body.sha !== 'string' || typeof body.ref !== 'string') {
       return response(422, { message: 'Invalid ref' });
     }
-    this.moveBranch(body.sha);
-    return response(201, { ref: 'refs/heads/main', object: { sha: body.sha } });
+    const branch = body.ref.replace(/^refs\/heads\//, '');
+    if (this.branches.has(branch)) {
+      return response(422, { message: 'Reference already exists' });
+    }
+    this.moveBranch(branch, body.sha);
+    return response(201, { ref: body.ref, object: { sha: body.sha } });
   }
 
-  private moveBranch(commitSHA: string): void {
+  private moveBranch(branch: string, commitSHA: string): void {
     const treeSHA = this.treeByCommitSHA.get(commitSHA);
     if (!treeSHA) {
       throw new Error(`GitHubApiStub: unknown commit ${commitSHA}`);
     }
-    this.branchCommitSHA = commitSHA;
-    this.branchTree = new Map(this.treeBySHA.get(treeSHA));
+    this.branches.set(branch, { commitSHA, tree: new Map(this.treeBySHA.get(treeSHA)) });
   }
 }
