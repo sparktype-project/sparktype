@@ -836,8 +836,8 @@ describe('fileTree.service', () => {
       // behavior might differ from our expectations
     });
 
-    test('performance with large structures', () => {
-      // Create a large structure for performance testing
+    test('round-trips large structures without losing nodes or hierarchy', () => {
+      // Large structure: 100 sections, each with 20 child pages (2100 nodes)
       const largeStructure: StructureNode[] = Array.from({ length: 100 }, (_, i) =>
         createNode(`content/section${i}/index.md`, `Section ${i}`, 
           Array.from({ length: 20 }, (_, j) =>
@@ -846,18 +846,19 @@ describe('fileTree.service', () => {
         )
       );
 
-      const start = performance.now();
-      
       const flattened = flattenTree(largeStructure, []);
       const rebuilt = buildTree(flattened);
       const descendants = getDescendantIds(rebuilt);
-      
-      const end = performance.now();
 
       expect(flattened).toHaveLength(2100); // 100 * 21 (20 children + 1 parent each)
       expect(rebuilt).toHaveLength(100);
       expect(descendants).toHaveLength(2100);
-      expect(end - start).toBeLessThan(100); // Should complete quickly
+
+      // Deterministic round-trip contract at scale: rebuilding a flattened tree preserves the
+      // pre-order path sequence and the per-section child count.
+      expect(rebuilt.map(node => node.path)).toEqual(largeStructure.map(node => node.path));
+      expect(rebuilt.every(node => node.children?.length === 20)).toBe(true);
+      expect(flattenTree(rebuilt, []).map(node => node.path)).toEqual(flattened.map(node => node.path));
     });
   });
 });

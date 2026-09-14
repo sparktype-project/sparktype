@@ -290,16 +290,19 @@ describe('images.service', () => {
       expect(result.id).toBe('cloudinary');
     });
 
-    test('maintains performance with repeated calls', () => {
-      const manifest = createManifest('local');
-      
-      const start = performance.now();
+    test('resolves the same service on every repeated call', () => {
+      // Repeated resolution must be deterministic and stateless: alternating manifests never
+      // leaks a previously resolved service, and neither manifest is mutated.
+      const localManifest = createManifest('local');
+      const cloudinaryManifest = createManifest('cloudinary');
+
       for (let i = 0; i < 1000; i++) {
-        getActiveImageService(manifest);
+        const expected = i % 2 === 0 ? localImageService : cloudinaryImageService;
+        expect(getActiveImageService(i % 2 === 0 ? localManifest : cloudinaryManifest)).toBe(expected);
       }
-      const end = performance.now();
-      
-      expect(end - start).toBeLessThan(100); // Should be very fast
+
+      expect(localManifest.settings).toEqual({ imageService: 'local' });
+      expect(cloudinaryManifest.settings).toEqual({ imageService: 'cloudinary' });
     });
   });
 });

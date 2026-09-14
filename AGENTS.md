@@ -8,6 +8,13 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## Development Commands
 
+### Runtime
+
+Use Node.js 22 (pinned in `.nvmrc`, declared in `package.json` `engines`, and used by CI). Do not
+run tests on Node 26+: `globalThis.localStorage` is an accessor returning `undefined` there, so
+`localStorage.clear()` in tests throws `TypeError: Cannot read properties of undefined (reading
+'clear')` and 7 tests across 2 files fail for runtime reasons. `nvm use` before `npm install` / `npm test`.
+
 ### Web Development
 ```bash
 # Install dependencies
