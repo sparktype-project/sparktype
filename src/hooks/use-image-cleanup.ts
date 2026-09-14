@@ -93,7 +93,12 @@ export function useImageCleanup(siteId?: string) {
       setPreview(null); // Clear preview since it's no longer accurate
       
       const mbFreed = (result.bytesFreed / 1024 / 1024).toFixed(2);
-      toast.success(`Cleanup completed! Removed ${result.originalImagesRemoved} images and ${result.derivativesRemoved} derivatives, freeing ${mbFreed} MB`);
+      const summary = `Removed ${result.originalImagesRemoved} images and ${result.derivativesRemoved} derivatives, freeing ${mbFreed} MB`;
+      if (result.failures.length > 0) {
+        toast.warning(`Cleanup finished with errors: ${summary}. ${result.failures.length} asset(s) could not be deleted and were left in place.`);
+      } else {
+        toast.success(`Cleanup completed! ${summary}`);
+      }
       
       return result;
     } catch (error) {

@@ -1,10 +1,11 @@
 // src/core/services/images/imageCleanup.service.ts
 
 import type { LocalSiteData } from '@/core/types';
-import { getAllImageAssetsForSite, saveAllImageAssetsForSite } from '@/core/services/localFileSystem.service';
+import { deleteImageAsset, getAllImageAssetsForSite } from '@/core/services/localFileSystem.service';
+import { findImagesInContentFile, findImagesInObject } from './imageReferenceFinder.service';
 import { getCachedDerivative, removeCachedDerivative } from './derivativeCache.service';
 import { getOrphanedImages, removeImageFromRegistry, getImageUsageStats as getRegistryImageStats } from './imageRegistry.service';
-import { ensureImageRegistry } from './registryMigration.service';
+import { ensureImageRegistry, validateAndRepairRegistry } from './registryMigration.service';
 
 /**
  * Result of an image cleanup operation
@@ -12,8 +13,29 @@ import { ensureImageRegistry } from './registryMigration.service';
 export interface CleanupResult {
   originalImagesRemoved: number;
   derivativesRemoved: number;
+  /** Sum of the sizes of the blobs that were confirmed deleted, and only those. */
   bytesFreed: number;
+  /** Image and derivative paths whose deletion failed and that were therefore left in place. */
+  failures: string[];
   cleanupLog: string[];
+}
+
+/**
+ * Collects every image the site currently references, straight from its content and manifest.
+ *
+ * This is the veto for deletion. The registry can lag a content write (`syncImageReferences`
+ * swallows its own failures), and a stale "unreferenced" entry is the one mistake cleanup cannot
+ * take back, so nothing is deleted unless a fresh scan of the site also fails to find it.
+ */
+function collectLiveImageReferences(siteData: LocalSiteData): Set<string> {
+  const references = new Set<string>();
+
+  siteData.contentFiles?.forEach((file) => {
+    findImagesInContentFile(file).forEach((imagePath) => references.add(imagePath));
+  });
+  findImagesInObject(siteData.manifest).forEach((imagePath) => references.add(imagePath));
+
+  return references;
 }
 
 /**
@@ -37,6 +59,7 @@ async function fallbackCleanup(siteData: LocalSiteData, log: string[]): Promise<
       originalImagesRemoved: 0,
       derivativesRemoved: 0,
       bytesFreed: 0,
+      failures: [],
       cleanupLog: [...log, `[ImageCleanup] Fallback mode: no images removed (safety measure)`]
     };
 
@@ -64,116 +87,177 @@ async function calculateBlobSizes(blobs: Blob[]): Promise<number> {
 }
 
 /**
- * Removes orphaned images from storage using the simplified registry approach.
+ * Deletes the stored blobs of orphaned originals and then drops each one's registry record.
  *
- * This is the main cleanup function that should be called during export/publish
- * to free up storage space by removing images that are no longer referenced
- * anywhere in the site's content or configuration.
+ * The registry record comes out only after its blob is confirmed gone. The registry is the only
+ * description of what exists, so dropping a record while the blob survives is what makes an
+ * interrupted cleanup unrecoverable: the blob is then invisible to every registry-based pass and
+ * is re-adopted by the next registry rebuild. An original whose deletion fails keeps its record
+ * and contributes nothing to `bytesFreed`.
+ */
+async function deleteOrphanedOriginals(
+  siteId: string,
+  orphanedOriginals: string[],
+  storedImages: Record<string, Blob>,
+  log: string[],
+): Promise<{ removed: number; bytesFreed: number; failures: string[] }> {
+  let removed = 0;
+  let bytesFreed = 0;
+  const failures: string[] = [];
+
+  for (const imagePath of orphanedOriginals) {
+    const blob = storedImages[imagePath];
+
+    if (!blob) {
+      // A registry entry whose bytes never landed (an import whose image was not restored).
+      // There is nothing to free, so this is a registry repair rather than a deletion.
+      log.push(`[ImageCleanup] No stored blob for registry entry ${imagePath}; dropped the record without counting a deletion`);
+      try {
+        await removeImageFromRegistry(siteId, imagePath);
+      } catch (error) {
+        log.push(`[ImageCleanup] Failed to drop registry entry ${imagePath}: ${error}`);
+      }
+      continue;
+    }
+
+    try {
+      await deleteImageAsset(siteId, imagePath);
+    } catch (error) {
+      failures.push(imagePath);
+      log.push(`[ImageCleanup] Failed to delete orphaned original ${imagePath}; its registry entry was kept: ${error}`);
+      console.error(`[ImageCleanup] Failed to delete orphaned original ${imagePath}:`, error);
+      continue;
+    }
+
+    try {
+      await removeImageFromRegistry(siteId, imagePath);
+    } catch (error) {
+      // The blob is gone, so the deletion stands. A leftover record is pruned by the next
+      // registry repair, and dropping it from the count here would understate what was freed.
+      log.push(`[ImageCleanup] Deleted ${imagePath} but could not drop its registry entry: ${error}`);
+    }
+
+    removed += 1;
+    bytesFreed += blob.size;
+    log.push(`[ImageCleanup] Deleted orphaned original: ${imagePath} (${blob.size} bytes)`);
+  }
+
+  return { removed, bytesFreed, failures };
+}
+
+/**
+ * Deletes the cache entries of orphaned derivatives.
  *
- * The new approach is much simpler and more reliable:
- * - Uses explicit registry data instead of complex inference
- * - Fast lookups instead of recursive traversal
- * - Graceful degradation when registry is unavailable
- * - Clear logging and error handling
+ * A derivative is derived data, so a missing cache entry is not an error: only removals that
+ * actually took effect are counted, which is what makes a repeated cleanup report zero.
+ */
+async function deleteOrphanedDerivatives(
+  siteId: string,
+  orphanedDerivatives: string[],
+  log: string[],
+): Promise<{ removed: number; bytesFreed: number; failures: string[] }> {
+  let removed = 0;
+  let bytesFreed = 0;
+  const failures: string[] = [];
+
+  for (const derivativePath of orphanedDerivatives) {
+    const cacheKey = `${siteId}/${derivativePath}`;
+
+    try {
+      const blob = await getCachedDerivative(cacheKey);
+      await removeCachedDerivative(cacheKey);
+
+      if (await getCachedDerivative(cacheKey)) {
+        failures.push(derivativePath);
+        log.push(`[ImageCleanup] Failed to delete orphaned derivative ${derivativePath}: it is still cached`);
+        continue;
+      }
+
+      if (!blob) {
+        log.push(`[ImageCleanup] Orphaned derivative ${derivativePath} was already absent`);
+        continue;
+      }
+
+      removed += 1;
+      bytesFreed += blob.size;
+      log.push(`[ImageCleanup] Deleted orphaned derivative: ${derivativePath} (${blob.size} bytes)`);
+    } catch (error) {
+      failures.push(derivativePath);
+      log.push(`[ImageCleanup] Failed to delete orphaned derivative ${derivativePath}: ${error}`);
+      console.warn(`[ImageCleanup] Failed to remove derivative ${derivativePath}:`, error);
+    }
+  }
+
+  return { removed, bytesFreed, failures };
+}
+
+/**
+ * Removes images that nothing references any more, from storage and from the registry.
+ *
+ * This is destructive: it deletes stored originals. It is only ever called by an explicit user
+ * action (or a storage repair), never by a build — an export must not delete a site's images.
+ * An image is deleted only when both the registry and a fresh scan of the site consider it
+ * unreferenced, and its registry record is dropped only after the blob is confirmed gone.
  *
  * @param siteData The complete site data to clean up
  * @returns Promise resolving to cleanup results with metrics and logs
  *
  * @example
  * const result = await cleanupOrphanedImages(siteData);
- * console.log(`Freed ${(result.bytesFreed / 1024 / 1024).toFixed(2)} MB`);
- * console.log(`Removed ${result.originalImagesRemoved} originals, ${result.derivativesRemoved} derivatives`);
+ * console.log(`Freed ${(result.bytesFreed / 1024 / 1024).toFixed(2)} MB of ${result.originalImagesRemoved} images`);
  */
 export async function cleanupOrphanedImages(siteData: LocalSiteData): Promise<CleanupResult> {
   const log: string[] = [];
-  let bytesFreed = 0;
 
   log.push(`[ImageCleanup] Starting registry-based cleanup for site: ${siteData.siteId}`);
 
   try {
-    // Ensure the site has a valid registry (initialize if needed)
-    await ensureImageRegistry(siteData);
-    log.push(`[ImageCleanup] Registry initialized successfully`);
+    // Reconcile before deciding anything: this drops registry records whose blob is gone and
+    // refreshes `referencedIn` from the site's current content, so the orphan set below is
+    // computed against what the site actually contains. Its failures are only logged — the
+    // freshly scanned references are re-checked against every deletion regardless.
+    const repair = await validateAndRepairRegistry(siteData);
+    repair.issues.forEach((issue) => log.push(`[ImageCleanup] Registry repair: ${issue}`));
 
-    // Get orphaned images from registry - this is now a simple lookup!
+    const liveReferences = collectLiveImageReferences(siteData);
     const { orphanedOriginals, orphanedDerivatives } = await getOrphanedImages(siteData.siteId);
     log.push(`[ImageCleanup] Found ${orphanedOriginals.length} orphaned originals, ${orphanedDerivatives.length} orphaned derivatives`);
 
-    // Remove orphaned original images
-    if (orphanedOriginals.length > 0) {
-      try {
-        const allStoredImages = await getAllImageAssetsForSite(siteData.siteId);
-        const cleanStoredImages: Record<string, Blob> = {};
-        const orphanedBlobs: Blob[] = [];
-
-        for (const [path, blob] of Object.entries(allStoredImages)) {
-          if (orphanedOriginals.includes(path)) {
-            if (blob && blob instanceof Blob) {
-              orphanedBlobs.push(blob);
-              log.push(`[ImageCleanup] Removing orphaned original: ${path}`);
-            } else {
-              log.push(`[ImageCleanup] Warning: Invalid blob data for ${path}`);
-            }
-          } else {
-            cleanStoredImages[path] = blob;
-          }
-        }
-
-        bytesFreed += await calculateBlobSizes(orphanedBlobs);
-
-        // Update stored images without the orphaned ones
-        await saveAllImageAssetsForSite(siteData.siteId, cleanStoredImages);
-
-        // Remove from registry
-        for (const imagePath of orphanedOriginals) {
-          await removeImageFromRegistry(siteData.siteId, imagePath);
-        }
-
-        log.push(`[ImageCleanup] Successfully removed ${orphanedOriginals.length} orphaned original images`);
-
-      } catch (error) {
-        log.push(`[ImageCleanup] Error removing orphaned originals: ${error}`);
-        console.error('[ImageCleanup] Failed to remove orphaned original images:', error);
-        // Continue to derivatives cleanup even if originals failed
+    const deletableOriginals = orphanedOriginals.filter((imagePath) => {
+      if (!liveReferences.has(imagePath)) {
+        return true;
       }
-    }
+      log.push(
+        `[ImageCleanup] Skipping ${imagePath}: the registry has no references for it, but the site still references it. ` +
+        `Its registry entry was kept.`
+      );
+      return false;
+    });
 
-    // Remove orphaned derivatives
-    if (orphanedDerivatives.length > 0) {
-      const derivativeBlobs: Blob[] = [];
+    const storedImages = deletableOriginals.length > 0
+      ? await getAllImageAssetsForSite(siteData.siteId)
+      : {};
 
-      for (const derivativePath of orphanedDerivatives) {
-        try {
-          const cacheKey = `${siteData.siteId}/${derivativePath}`;
-          const blob = await getCachedDerivative(cacheKey);
-          if (blob && blob instanceof Blob) {
-            derivativeBlobs.push(blob);
-          }
+    const originals = await deleteOrphanedOriginals(siteData.siteId, deletableOriginals, storedImages, log);
+    const derivatives = await deleteOrphanedDerivatives(siteData.siteId, orphanedDerivatives, log);
 
-          // Always try to remove from cache store
-          await removeCachedDerivative(cacheKey);
-          log.push(`[ImageCleanup] Removed orphaned derivative: ${derivativePath}`);
-        } catch (error) {
-          log.push(`[ImageCleanup] Error removing derivative ${derivativePath}: ${error}`);
-          console.warn(`[ImageCleanup] Failed to remove derivative ${derivativePath}:`, error);
-          // Continue with next derivative
-        }
-      }
+    const bytesFreed = originals.bytesFreed + derivatives.bytesFreed;
+    const failures = [...originals.failures, ...derivatives.failures];
 
-      bytesFreed += await calculateBlobSizes(derivativeBlobs);
-      log.push(`[ImageCleanup] Successfully removed ${orphanedDerivatives.length} orphaned derivative images`);
-    }
+    log.push(
+      `[ImageCleanup] Cleanup complete. Deleted ${originals.removed} of ${orphanedOriginals.length} orphaned originals and ` +
+      `${derivatives.removed} of ${orphanedDerivatives.length} orphaned derivatives, freeing ` +
+      `${(bytesFreed / 1024 / 1024).toFixed(2)} MB` +
+      (failures.length > 0 ? `; ${failures.length} deletion(s) failed and were left in place` : '')
+    );
 
-    const result: CleanupResult = {
-      originalImagesRemoved: orphanedOriginals.length,
-      derivativesRemoved: orphanedDerivatives.length,
+    return {
+      originalImagesRemoved: originals.removed,
+      derivativesRemoved: derivatives.removed,
       bytesFreed,
-      cleanupLog: log
+      failures,
+      cleanupLog: log,
     };
-
-    log.push(`[ImageCleanup] Registry-based cleanup complete. Freed ${(bytesFreed / 1024 / 1024).toFixed(2)} MB`);
-
-    return result;
 
   } catch (error) {
     log.push(`[ImageCleanup] Registry-based cleanup failed: ${error}`);
@@ -209,8 +293,11 @@ export async function previewCleanup(siteData: LocalSiteData): Promise<{
     // Ensure registry is available
     await ensureImageRegistry(siteData);
 
-    // Get orphaned images from registry
-    const { orphanedOriginals, orphanedDerivatives } = await getOrphanedImages(siteData.siteId);
+    // Get orphaned images from registry, then apply the same live-reference veto that cleanup
+    // applies: nothing the site's current content still references is reported as deletable.
+    const { orphanedOriginals: registryOrphans, orphanedDerivatives } = await getOrphanedImages(siteData.siteId);
+    const liveReferences = collectLiveImageReferences(siteData);
+    const orphanedOriginals = registryOrphans.filter((imagePath) => !liveReferences.has(imagePath));
 
     // Estimate bytes that would be freed
     let estimatedBytes = 0;

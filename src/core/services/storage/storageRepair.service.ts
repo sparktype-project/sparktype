@@ -110,6 +110,10 @@ export async function reconcileImageStorage(siteData: LocalSiteData): Promise<St
       actions.push(`Pruned ${cleanup.originalImagesRemoved} orphaned originals and ${cleanup.derivativesRemoved} orphaned derivatives.`);
     }
 
+    if (cleanup.failures.length > 0) {
+      issues.push(`Could not delete ${cleanup.failures.length} orphaned asset(s): ${cleanup.failures.join(', ')}`);
+    }
+
     if (!repaired) {
       await resetStorageHealth();
     }

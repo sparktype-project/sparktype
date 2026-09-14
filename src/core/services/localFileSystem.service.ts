@@ -101,6 +101,30 @@ async function migrateLegacyImageAssetsForSite(siteId: string): Promise<Record<s
   return migrated;
 }
 
+/**
+ * Drops an image from the pre-blob-namespace asset store.
+ *
+ * `migrateLegacyImageAssetsForSite` copies every entry of this store back into the blob
+ * namespace on each read and `getImageAsset` rewrites the blob on demand, so a deletion that
+ * left the legacy copy behind would reappear the next time the site's images were read.
+ * Deleting an image has to clear both stores.
+ */
+async function removeLegacyImageAsset(siteId: string, imagePath: string): Promise<void> {
+  const legacyMap = (await LEGACY_IMAGE_ASSET_STORE.getItem<Record<string, Blob | ArrayBuffer>>(siteId)) ?? {};
+  if (!(imagePath in legacyMap)) {
+    return;
+  }
+
+  delete legacyMap[imagePath];
+
+  if (Object.keys(legacyMap).length === 0) {
+    await LEGACY_IMAGE_ASSET_STORE.removeItem(siteId);
+    return;
+  }
+
+  await LEGACY_IMAGE_ASSET_STORE.setItem(siteId, legacyMap);
+}
+
 export async function loadAllSiteManifests(): Promise<Manifest[]> {
   const manifestsFromLegacyStore: Manifest[] = [];
 
@@ -306,6 +330,14 @@ export async function getAllImageAssetsForSite(siteId: string): Promise<Record<s
   return result;
 }
 
+/**
+ * Writes the given images into the site's blob namespace.
+ *
+ * This is additive by contract: it writes what it is given and never removes a path that is
+ * absent from `assets`, so callers can pass a subset (a single restored site, a remote import)
+ * without destroying the rest of the site's images. Image cleanup must not use it to prune —
+ * removing an original means calling `deleteImageAsset` for that path.
+ */
 export async function saveAllImageAssetsForSite(siteId: string, assets: Record<string, Blob>): Promise<void> {
   await withSiteOperation(siteId, 'image-bulk-import', async () => {
     await Promise.all(
@@ -316,9 +348,24 @@ export async function saveAllImageAssetsForSite(siteId: string, assets: Record<s
   }, { count: Object.keys(assets).length });
 }
 
+/**
+ * Permanently removes a stored original image.
+ *
+ * Both stores an image can live in are cleared, then the removal is verified against the
+ * namespace listing: the OPFS backend swallows removal errors, so an unverified delete can
+ * report success while the bytes are still there. The listing is used rather than a read
+ * because `readBlob` reports a failed read as absence. Callers must only drop the image's
+ * registry record after this resolves.
+ */
 export async function deleteImageAsset(siteId: string, imagePath: string): Promise<void> {
   await withSiteOperation(siteId, 'image-delete', async () => {
     await removeBlob('images', siteId, imagePath);
+    await removeLegacyImageAsset(siteId, imagePath);
+
+    const remainingPaths = await listBlobPaths('images', siteId);
+    if (remainingPaths.includes(imagePath)) {
+      throw new Error(`Stored image could not be deleted: ${imagePath}`);
+    }
   }, { imagePath });
 }
 
