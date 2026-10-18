@@ -4,6 +4,47 @@ import type { VideoRef } from '@/core/types';
 import { escapeHtmlAttribute, normalizeProviderAttributeKey } from '../helpers';
 import { NODE_NAMES } from '../constants';
 
+/**
+ * Reads the Sparktype video attributes from a <video> element. Shared by the HTML parse rule
+ * (pasted/drag-dropped HTML) and the markdown tokenizer below.
+ */
+function readVideoAttrs(video: Element) {
+              const serviceId = video.getAttribute('data-sparktype-service-id');
+    const source = video.getAttribute('data-sparktype-video-src');
+    const poster = video.getAttribute('data-sparktype-poster') || video.getAttribute('poster');
+    const width = video.getAttribute('data-sparktype-width');
+    const height = video.getAttribute('data-sparktype-height');
+    const duration = video.getAttribute('data-sparktype-duration');
+
+    const providerData = Object.fromEntries(
+      [...video.attributes]
+        .filter((attribute) => attribute.name.startsWith('data-sparktype-provider-'))
+        .map((attribute) => [
+          normalizeProviderAttributeKey(attribute.name.replace('data-sparktype-provider-', '')),
+          attribute.value,
+        ]),
+    );
+
+    const videoRef = serviceId && source
+      ? {
+          serviceId,
+          src: source,
+          poster: poster ?? undefined,
+          width: width ? Number(width) : undefined,
+          height: height ? Number(height) : undefined,
+          duration: duration ? Number(duration) : undefined,
+          providerData: Object.keys(providerData).length > 0 ? providerData : undefined,
+        }
+      : null;
+
+    return {
+      src: video.getAttribute('src') ?? '',
+      poster,
+      isUpload: video.getAttribute('data-sparktype-upload') === 'true',
+      videoRef,
+    };
+}
+
 function SparktypeVideoView({ node, selected }: ReactNodeViewProps<HTMLDivElement>) {
   const serviceId = (node.attrs.videoRef as VideoRef | null)?.serviceId;
 
@@ -56,43 +97,7 @@ export const SparktypeVideo = Node.create({
     return [
       {
         tag: 'video[src]',
-        getAttrs: (element) => {
-          const video = element as HTMLVideoElement;
-          const serviceId = video.getAttribute('data-sparktype-service-id');
-          const source = video.getAttribute('data-sparktype-video-src');
-          const poster = video.getAttribute('data-sparktype-poster') || video.getAttribute('poster');
-          const width = video.getAttribute('data-sparktype-width');
-          const height = video.getAttribute('data-sparktype-height');
-          const duration = video.getAttribute('data-sparktype-duration');
-
-          const providerData = Object.fromEntries(
-            [...video.attributes]
-              .filter((attribute) => attribute.name.startsWith('data-sparktype-provider-'))
-              .map((attribute) => [
-                normalizeProviderAttributeKey(attribute.name.replace('data-sparktype-provider-', '')),
-                attribute.value,
-              ]),
-          );
-
-          const videoRef = serviceId && source
-            ? {
-                serviceId,
-                src: source,
-                poster: poster ?? undefined,
-                width: width ? Number(width) : undefined,
-                height: height ? Number(height) : undefined,
-                duration: duration ? Number(duration) : undefined,
-                providerData: Object.keys(providerData).length > 0 ? providerData : undefined,
-              }
-            : null;
-
-          return {
-            src: video.getAttribute('src') ?? '',
-            poster,
-            isUpload: video.getAttribute('data-sparktype-upload') === 'true',
-            videoRef,
-          };
-        },
+        getAttrs: (element) => readVideoAttrs(element as HTMLVideoElement),
       },
     ];
   },
@@ -148,6 +153,36 @@ export const SparktypeVideo = Node.create({
     }
 
     return ['video', htmlAttributes];
+  },
+
+  markdownTokenName: 'sparktype_video',
+
+  // @tiptap/markdown only parses raw HTML found in an html token. CommonMark does not treat
+  // `<video ...></video>` as an HTML block (it is not in the block-tag list), so marked emits inline
+  // html tokens inside a paragraph, and TipTap 3.32+ strips the block-level video node from them.
+  // Tokenizing the single-line form we serialize keeps uploaded videos intact on reload.
+  markdownTokenizer: {
+    name: 'sparktype_video',
+    level: 'block',
+    start(src: string) {
+      return src.search(/<video[\s>]/);
+    },
+    tokenize(src: string) {
+      const match = /^<video\b[^>\n]*>\s*<\/video>[ \t]*(?:\n{1,2}|$)/.exec(src);
+      if (!match) {
+        return undefined;
+      }
+
+      return { type: 'sparktype_video', raw: match[0], html: match[0].trim() };
+    },
+  },
+
+  parseMarkdown: (token, helpers) => {
+    const video = new DOMParser().parseFromString(String(token.html || ''), 'text/html').querySelector('video');
+    if (!video) {
+      return [];
+    }
+    return helpers.createNode(NODE_NAMES.video, readVideoAttrs(video));
   },
 
   renderMarkdown(node) {
