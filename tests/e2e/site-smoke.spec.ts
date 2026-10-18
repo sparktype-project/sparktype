@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import JSZip from 'jszip';
 import { expect, test, type Page } from '@playwright/test';
 
 function uniqueName(prefix: string): string {
@@ -199,4 +201,59 @@ test('edits, saves, renames a collection item, restores a backup, and previews c
   await page.keyboard.press('Enter');
   const frame = page.frameLocator('iframe[title]');
   await expect(frame.getByText('Workflow body text.')).toBeVisible({ timeout: 15000 });
+});
+
+
+// 1x1 PNG; small enough to keep the test fast but a real image the pipeline must process.
+const TINY_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+test('uploads an image, keeps it after reload, and exports a site bundle containing it', async ({ page }) => {
+  const siteTitle = uniqueName('Export');
+  const pageTitle = uniqueName('Image Page');
+
+  await gotoDashboard(page);
+  await createUnprotectedSite(page, siteTitle);
+  await createFirstPage(page, pageTitle);
+
+  const editor = page.locator('.ProseMirror[contenteditable="true"]').first();
+  await editor.click();
+  await page.setInputFiles('input[type="file"][accept="image/*"]', {
+    name: 'tiny.png',
+    mimeType: 'image/png',
+    buffer: TINY_PNG,
+  });
+  await expect(page.locator('.ProseMirror img')).toHaveCount(1, { timeout: 15000 });
+
+  // Click the title field to blur the editor cleanly, then save through the header control
+  // (the only header button without an aria-label; see the workflow test above).
+  await page.getByRole('textbox', { name: 'Title', exact: true }).click();
+  const saveButton = page.locator('header').first().locator('button:not([aria-label])');
+  await expect(saveButton).toBeEnabled();
+  await saveButton.click();
+  // The button is disabled only while saving, so that alone does not prove the write finished.
+  // The green check is the 'saved' state; reloading before it appears would race the write.
+  await expect(saveButton.locator('svg.text-green-500')).toBeVisible({ timeout: 15000 });
+
+  await page.reload();
+  await expect(page.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue(pageTitle);
+  await expect(page.locator('.ProseMirror img')).toHaveCount(1, { timeout: 15000 });
+
+  // With no publishing provider configured, Publish downloads a ZIP bundle.
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Publish' }).click();
+  const download = await downloadPromise;
+  const bundlePath = await download.path();
+  if (!bundlePath) throw new Error('Export download has no filesystem path');
+
+  const zip = await JSZip.loadAsync(await readFile(bundlePath));
+  const names = Object.keys(zip.files).filter((name) => !zip.files[name].dir);
+  expect(names.some((name) => /\.html$/.test(name))).toBe(true);
+  expect(names.some((name) => /\.(png|webp|jpe?g|avif)$/i.test(name))).toBe(true);
+
+  const pageHtmlName = names.find((name) => /\.html$/.test(name) && !name.endsWith('404.html'));
+  const pageHtml = pageHtmlName ? await zip.files[pageHtmlName].async('string') : '';
+  expect(pageHtml).toContain(pageTitle);
 });
