@@ -165,6 +165,13 @@ test('edits, saves, renames a collection item, restores a backup, and previews c
   // The slug change navigates via setTimeout after the store reload settles, so
   // the URL assertion (not the click) carries the generous timeout.
   const slugInput = page.getByLabel('Page slug');
+  // The URL flips to the saved item's path before React has re-rendered the route
+  // and reloaded the editing state for it. Until then the slug input is still the
+  // new-file one: an edit made in that window is dropped (no pending slug change is
+  // recorded, then the reload resets the field), so Save would never rename.
+  // The saved item's slug is prefixed with its collection ('blog/'); the new-file
+  // slug is not, so wait for it as the signal that the route's data has loaded.
+  await expect(slugInput).toHaveValue(/^blog\/post-/);
   await slugInput.fill('blog/renamed-post');
   await expect(slugInput).toHaveValue('blog/renamed-post', { timeout: 5000 });
   await header.locator('button:not([aria-label])').click();
