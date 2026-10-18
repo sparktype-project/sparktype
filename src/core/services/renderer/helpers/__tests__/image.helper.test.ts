@@ -74,7 +74,7 @@ describe('imageHelper', () => {
             },
           },
         },
-      } as Handlebars.HelperOptions
+      } as unknown as Handlebars.HelperOptions
     );
 
     expect(result).toBeInstanceOf(Handlebars.SafeString);
