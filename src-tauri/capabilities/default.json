@@ -6,7 +6,7 @@
     "main"
   ],
   "permissions": [
-    "core:default",
+    "core:window:default",
     "core:window:allow-start-dragging",
     "http:default",
     "http:allow-fetch",
