@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
   getEditorSessionKey,
+  hasUserEditedEditorSession,
   normalizeEditorContentForLoad,
   shouldReinitializeEditorSession,
 } from '../editorContent';
@@ -30,5 +31,15 @@ describe('normalizeEditorContentForLoad', () => {
   test('reinitializes when switching to a different file or new-file mode', () => {
     expect(shouldReinitializeEditorSession('file:content/home.md', 'content/about.md', false)).toBe(true);
     expect(shouldReinitializeEditorSession('file:content/home.md', 'content/_new.md', true)).toBe(true);
+  });
+
+  test('detects user edits made in the current session so late initialisation does not wipe them', () => {
+    expect(hasUserEditedEditorSession('__new__', 'content/blog', true)).toBe(true);
+    expect(hasUserEditedEditorSession('file:content/a.md', 'content/a.md', false)).toBe(true);
+  });
+
+  test('ignores edits that belong to a different session', () => {
+    expect(hasUserEditedEditorSession(null, 'content/blog', true)).toBe(false);
+    expect(hasUserEditedEditorSession('__new__', 'content/blog/post.md', false)).toBe(false);
   });
 });

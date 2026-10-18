@@ -31,6 +31,7 @@ import { useFilePersistence } from '@/features/editor/hooks/useFilePersistence';
 import Loader from '@/core/components/ui/Loader';
 import {
   getEditorSessionKey,
+  hasUserEditedEditorSession,
   normalizeEditorContentForLoad,
   shouldReinitializeEditorSession,
 } from '@/features/editor/utils/editorContent';
@@ -68,6 +69,10 @@ function EditContentPageInternal() {
   const { status, frontmatter, slug, setSlug, handleFrontmatterChange, onContentModified, applyPendingSlugChange } = useFileContent(siteId, filePath, isNewFileMode, collectionContext);
   const editorRef = useRef<TipTapEditorRef>(null);
   const initializedEditorSignatureRef = useRef<string | null>(null);
+  // Session key of the most recent user edit; initialisation must not overwrite it.
+  const editedEditorSessionKeyRef = useRef<string | null>(null);
+  const currentEditorSessionKeyRef = useRef<string>('');
+  currentEditorSessionKeyRef.current = getEditorSessionKey(filePath, isNewFileMode);
   const frozenRightSidebarComponentRef = useRef<ReactNode | null>(null);
   const { activeProviderUploadCount } = useEditor();
   const initialSavedContent = useMemo(() => {
@@ -126,6 +131,12 @@ function EditContentPageInternal() {
       // Small delay to ensure the editor component is mounted and ref is set
       const timer = setTimeout(() => {
         if (editorRef.current) {
+          if (hasUserEditedEditorSession(editedEditorSessionKeyRef.current, filePath, isNewFileMode)) {
+            // The user typed before this delayed initialisation ran; loading now
+            // would replace their text (and the first save would store nothing).
+            initializedEditorSignatureRef.current = getEditorSessionKey(filePath, isNewFileMode);
+            return;
+          }
           if (isNewFileMode) {
             if (!shouldReinitializeEditorSession(initializedEditorSignatureRef.current, filePath, true)) {
               return;
@@ -134,6 +145,7 @@ function EditContentPageInternal() {
             // Initialize with empty content for new files
             console.log('Initializing new file mode with empty content');
             editorRef.current.initializeWithContent('');
+            editedEditorSessionKeyRef.current = null;
             initializedEditorSignatureRef.current = getEditorSessionKey(filePath, true);
           } else {
             if (initialSavedContent !== undefined) {
@@ -147,6 +159,7 @@ function EditContentPageInternal() {
               console.log('Initial persisted content length:', contentToLoad.length);
 
               editorRef.current.initializeWithContent(contentToLoad || '');
+              editedEditorSessionKeyRef.current = null;
               initializedEditorSignatureRef.current = getEditorSessionKey(filePath, false);
             } else {
               console.log('No file data found for path:', filePath);
@@ -310,6 +323,7 @@ function EditContentPageInternal() {
                     <TipTapEditor
                       ref={editorRef}
                       onContentChange={() => {
+                        editedEditorSessionKeyRef.current = currentEditorSessionKeyRef.current;
                         onContentModified();
                       }}
                       placeholder="Type your amazing content here..."

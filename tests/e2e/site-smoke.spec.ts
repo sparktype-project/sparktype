@@ -144,6 +144,7 @@ test('edits, saves, renames a collection item, restores a backup, and previews c
   await page.keyboard.press(selectAllShortcut);
   await page.keyboard.press('Backspace');
   await page.keyboard.type('Workflow body text.');
+  await expect(editor).toContainText('Workflow body text.');
   // Click the title field (not focus()) so the typed body text stays in the
   // editor; focus() selects nothing but the subsequent click can still move
   // the caret — clicking the title input blurs the editor cleanly.
@@ -172,12 +173,15 @@ test('edits, saves, renames a collection item, restores a backup, and previews c
   // The saved item's slug is prefixed with its collection ('blog/'); the new-file
   // slug is not, so wait for it as the signal that the route's data has loaded.
   await expect(slugInput).toHaveValue(/^blog\/post-/);
+  // The first save must not drop the body the user typed.
+  await expect(editor).toContainText('Workflow body text.');
   await slugInput.fill('blog/renamed-post');
   await expect(slugInput).toHaveValue('blog/renamed-post', { timeout: 5000 });
   await header.locator('button:not([aria-label])').click();
   await expect(page).toHaveURL(/#\/sites\/.+\/edit\/content\/blog\/renamed-post$/, { timeout: 15000 });
   await page.reload();
   await expect(page.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue(itemTitle);
+  await expect(page.locator('.ProseMirror[contenteditable="true"]').first()).toContainText('Workflow body text.');
 
   // Export a backup, delete the site, restore from the ZIP, and confirm content
   await page.goto('/#/');
