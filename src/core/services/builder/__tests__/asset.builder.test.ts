@@ -79,6 +79,31 @@ describe('asset.builder', () => {
     expect(bundle['_site/data/media.json']).toContain('assets/originals/logo.png');
   });
 
+  test('bundles local images that are referenced only from the markdown body', async () => {
+    // Images inserted in the editor are stored as plain markdown links in the body, not as
+    // ImageRef frontmatter fields. They must still reach the bundle or published pages 404.
+    const base = createSiteFixture('imageHeavySite');
+    const site = {
+      ...base,
+      manifest: { ...base.manifest, logo: undefined, favicon: undefined },
+      contentFiles: [
+        {
+          ...base.contentFiles![0],
+          frontmatter: { title: 'Body only', layout: 'page', published: true },
+          content: 'Intro\n\n![tiny](assets/originals/body-image.png)\n\n<img src="assets/originals/inline.png" alt="x">\n\n![remote](https://example.com/a.png)',
+        },
+      ],
+    };
+    const getExportableAssets = vi.fn().mockResolvedValue([]);
+    getActiveImageServiceMock.mockReturnValue({ getExportableAssets });
+
+    await bundleAllAssets({}, site);
+
+    const refs = getExportableAssets.mock.calls[0][1] as Array<{ serviceId: string; src: string }>;
+    expect(refs.map((ref) => ref.src).sort()).toEqual(['assets/originals/body-image.png', 'assets/originals/inline.png']);
+    expect(refs.every((ref) => ref.serviceId === 'local')).toBe(true);
+  });
+
   test('does not run orphan cleanup: cleanup writes to the site’s stored data, which a build must not touch', async () => {
     const site = createSiteFixture('imageHeavySite');
     const bundle: Record<string, Blob | string> = {};

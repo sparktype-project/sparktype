@@ -6,8 +6,30 @@ import { getActiveImageService } from '@/core/services/images/images.service';
 import { generateMediaManifest } from '../images/mediaManifest.service';
 import { pruneUnpublishedMediaReferences } from './publication';
 
+// Local uploads are stored under `assets/originals/`. The editor writes body images as plain
+// markdown links (or raw <img> tags), so they are invisible to the ImageRef walk over frontmatter.
+const BODY_MARKDOWN_IMAGE = /!\[[^\]]*\]\(\s*<?(assets\/originals\/[^)\s>]+)/g;
+const BODY_HTML_IMAGE = /<img\b[^>]*?\bsrc=["'](assets\/originals\/[^"']+)["']/gi;
+
 /**
- * Recursively finds all ImageRef objects within the site's data.
+ * Finds local images referenced from markdown bodies, so they are bundled with the pages that
+ * point at them.
+ */
+function findBodyImageRefs(siteData: LocalSiteData): ImageRef[] {
+    const sources = new Set<string>();
+    for (const file of siteData.contentFiles ?? []) {
+        for (const pattern of [BODY_MARKDOWN_IMAGE, BODY_HTML_IMAGE]) {
+            for (const match of file.content.matchAll(pattern)) {
+                sources.add(match[1]);
+            }
+        }
+    }
+    return Array.from(sources, (src) => ({ serviceId: 'local', src }));
+}
+
+/**
+ * Recursively finds all ImageRef objects within the site's data: manifest and frontmatter
+ * fields, plus local images embedded in markdown bodies.
  */
 function findAllImageRefs(siteData: LocalSiteData): ImageRef[] {
     const refs = new Set<ImageRef>();
@@ -22,7 +44,12 @@ function findAllImageRefs(siteData: LocalSiteData): ImageRef[] {
     }
     find(siteData.manifest);
     siteData.contentFiles?.forEach(file => find(file.frontmatter));
-    return Array.from(refs);
+    const refList = Array.from(refs);
+    const known = new Set(refList.map(ref => ref.src));
+    for (const bodyRef of findBodyImageRefs(siteData)) {
+        if (!known.has(bodyRef.src)) refList.push(bodyRef);
+    }
+    return refList;
 }
 
 /**
