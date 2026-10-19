@@ -307,6 +307,13 @@ export async function getImageAsset(siteId: string, imagePath: string): Promise<
   return migrated;
 }
 
+/** Paths of the originals with stored bytes, without reading the bytes themselves. */
+export async function listImageAssetPaths(siteId: string): Promise<string[]> {
+  const stored = await listBlobPaths('images', siteId);
+  const legacyMap = await LEGACY_IMAGE_ASSET_STORE.getItem<Record<string, unknown>>(siteId);
+  return [...new Set([...stored, ...Object.keys(legacyMap ?? {})])];
+}
+
 export async function getAllImageAssetsForSite(siteId: string): Promise<Record<string, Blob>> {
   const storedPaths = await listBlobPaths('images', siteId);
   const result: Record<string, Blob> = {};
