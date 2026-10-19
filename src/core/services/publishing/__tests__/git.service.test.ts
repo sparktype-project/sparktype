@@ -32,6 +32,24 @@ describe('GitHubProvider', () => {
     expect(syncState?.lastKnownCommitSHA).toBe(result.details?.commit);
   });
 
+  test('reports build, upload and finalise progress, and none past a failed push', async () => {
+    const stub = new GitHubApiStub();
+    stub.install();
+    const events: string[] = [];
+    const onProgress = (event: { step: string; status: string }) => events.push(`${event.step}:${event.status}`);
+
+    await new GitHubProvider().deploy(createSiteFixture('basicSite') as LocalSiteData, CONFIG, { onProgress });
+    expect(events).toEqual([
+      'build:started', 'build:completed', 'upload:started', 'upload:completed', 'finalise:started', 'finalise:completed',
+    ]);
+
+    const failing = new GitHubApiStub({ refUpdateFailure: { status: 422, body: '{"message":"Update is not a fast forward"}' } });
+    failing.install();
+    events.length = 0;
+    await new GitHubProvider().deploy(createSiteFixture('basicSite', { siteId: 'progress-fail' }) as LocalSiteData, CONFIG, { onProgress });
+    expect(events).toEqual(['build:started', 'build:completed', 'upload:started']);
+  });
+
   test('deploys into an empty repository', async () => {
     const stub = new GitHubApiStub({ emptyRepository: true });
     stub.install();

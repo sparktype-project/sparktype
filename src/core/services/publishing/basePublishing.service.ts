@@ -1,11 +1,11 @@
-import type { PublishingProvider, PublishingResult, ValidationResult, PublishingConfigSchema } from './types';
+import type { DeployOptions, PublishingProvider, PublishingResult, ValidationResult, PublishingConfigSchema } from './types';
 import type { LocalSiteData } from '@/core/types';
 
 export abstract class BaseProvider implements PublishingProvider {
   abstract readonly name: string;
   abstract readonly displayName: string;
 
-  abstract deploy(site: LocalSiteData, config: Record<string, unknown>): Promise<PublishingResult>;
+  abstract deploy(site: LocalSiteData, config: Record<string, unknown>, options?: DeployOptions): Promise<PublishingResult>;
   abstract validateConfig(config: Record<string, unknown>): Promise<ValidationResult>;
   abstract getConfigSchema(): PublishingConfigSchema;
 

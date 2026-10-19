@@ -7,6 +7,8 @@ import { GitHubProvider } from '../publishing/git.service';
 import { slugify } from '@/core/libraries/utils';
 import { tauriFileDownloadService } from '../tauri/fileDownload.service';
 import { isTauriApp } from '@/core/utils/platform';
+import { createStepReporter, trackProgress } from './progress';
+import type { PublishProgressCallback } from './types';
 
 export type PublishingProvider = 'zip' | 'netlify' | 'github';
 
@@ -18,11 +20,29 @@ export interface PublishingResult {
   filename?: string;
 }
 
+export interface PublishOptions {
+  /** Called as each step (build, upload, finalise) starts, completes or fails. */
+  onProgress?: PublishProgressCallback;
+}
+
 /**
  * Main publishing service that delegates to the appropriate provider based on site configuration.
  * This service acts as a unified interface for all publishing operations.
  */
-export async function publishSite(siteData: LocalSiteData): Promise<PublishingResult> {
+export async function publishSite(
+  siteData: LocalSiteData,
+  options: PublishOptions = {},
+): Promise<PublishingResult> {
+  const progress = trackProgress(options.onProgress);
+  const result = await dispatchPublish(siteData, progress.forward);
+  if (!result.success) progress.failActiveStep(result.message);
+  return result;
+}
+
+async function dispatchPublish(
+  siteData: LocalSiteData,
+  onProgress: PublishProgressCallback,
+): Promise<PublishingResult> {
   // Validate that site data is complete
   if (!siteData.contentFiles) {
     return {
@@ -43,13 +63,13 @@ export async function publishSite(siteData: LocalSiteData): Promise<PublishingRe
   
   switch (provider) {
     case 'zip':
-      return await publishToZip(siteData);
+      return await publishToZip(siteData, onProgress);
     
     case 'netlify':
-      return await publishToNetlify(siteData);
+      return await publishToNetlify(siteData, onProgress);
     
     case 'github':
-      return await publishToGitHub(siteData);
+      return await publishToGitHub(siteData, onProgress);
     
     default:
       return {
@@ -62,9 +82,13 @@ export async function publishSite(siteData: LocalSiteData): Promise<PublishingRe
 /**
  * Publishes site by generating a ZIP file for download
  */
-async function publishToZip(siteData: LocalSiteData): Promise<PublishingResult> {
+async function publishToZip(siteData: LocalSiteData, onProgress: PublishProgressCallback): Promise<PublishingResult> {
+  const progress = createStepReporter(onProgress);
   try {
+    progress.start('build');
     const blob = await exportSiteToZip(siteData);
+    progress.complete('build');
+    progress.start('upload');
     const siteName = siteData.manifest.title || 'sparktype-site';
 
     if (isTauriApp()) {
@@ -72,6 +96,9 @@ async function publishToZip(siteData: LocalSiteData): Promise<PublishingResult> 
       const savedPath = await tauriFileDownloadService.downloadSiteZip(blob, siteName, true);
 
       if (savedPath) {
+        progress.complete('upload');
+        progress.start('finalise');
+        progress.complete('finalise');
         return {
           success: true,
           message: `Site exported successfully to: ${savedPath}`,
@@ -87,6 +114,9 @@ async function publishToZip(siteData: LocalSiteData): Promise<PublishingResult> 
       // Web fallback - create download URL
       const filename = `${slugify(siteName)}.zip`;
       const downloadUrl = URL.createObjectURL(blob);
+      progress.complete('upload');
+      progress.start('finalise');
+      progress.complete('finalise');
 
       return {
         success: true,
@@ -107,7 +137,7 @@ async function publishToZip(siteData: LocalSiteData): Promise<PublishingResult> 
 /**
  * Publishes site to Netlify using the configured provider
  */
-async function publishToNetlify(siteData: LocalSiteData): Promise<PublishingResult> {
+async function publishToNetlify(siteData: LocalSiteData, onProgress: PublishProgressCallback): Promise<PublishingResult> {
   try {
     const publishingConfig = siteData.manifest.publishingConfig;
     const netlifyConfig = publishingConfig?.netlify;
@@ -128,7 +158,7 @@ async function publishToNetlify(siteData: LocalSiteData): Promise<PublishingResu
     };
     
     const netlifyProvider = new NetlifyProvider();
-    const result = await netlifyProvider.deploy(siteData, config);
+    const result = await netlifyProvider.deploy(siteData, config, { onProgress });
     
     return {
       success: result.success,
@@ -147,7 +177,7 @@ async function publishToNetlify(siteData: LocalSiteData): Promise<PublishingResu
 /**
  * Publishes site to GitHub using the configured provider
  */
-async function publishToGitHub(siteData: LocalSiteData): Promise<PublishingResult> {
+async function publishToGitHub(siteData: LocalSiteData, onProgress: PublishProgressCallback): Promise<PublishingResult> {
   try {
     const publishingConfig = siteData.manifest.publishingConfig;
     const githubConfig = publishingConfig?.github;
@@ -176,7 +206,7 @@ async function publishToGitHub(siteData: LocalSiteData): Promise<PublishingResul
     };
     
     const githubProvider = new GitHubProvider();
-    const result = await githubProvider.deploy(siteData, config);
+    const result = await githubProvider.deploy(siteData, config, { onProgress });
     
     return {
       success: result.success,

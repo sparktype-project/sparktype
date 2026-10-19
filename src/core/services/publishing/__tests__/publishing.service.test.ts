@@ -42,6 +42,7 @@ vi.mock('@/core/utils/platform', () => ({
 }));
 
 import { publishSite } from '../publishing.service';
+import type { PublishProgressEvent } from '../types';
 
 describe('publishing orchestration', () => {
   const objectUrlSpy = vi.spyOn(URL, 'createObjectURL');
@@ -129,7 +130,8 @@ describe('publishing orchestration', () => {
         apiToken: 'netlify-token',
         siteId: 'site-1',
         siteName: 'Netlify Site',
-      })
+      }),
+      { onProgress: expect.any(Function) }
     );
 
     const githubSite = createSiteFixture('basicSite');
@@ -143,6 +145,68 @@ describe('publishing orchestration', () => {
     await expect(publishSite(githubSite)).resolves.toEqual({
       success: false,
       message: 'GitHub deployment failed: Boom',
+    });
+  });
+
+  describe('progress', () => {
+    function collect() {
+      const events: PublishProgressEvent[] = [];
+      return { events, onProgress: (event: PublishProgressEvent) => events.push(event) };
+    }
+
+    test('reports build, upload and finalise for a zip export', async () => {
+      const { events, onProgress } = collect();
+
+      await publishSite(createSiteFixture('basicSite'), { onProgress });
+
+      expect(events).toEqual([
+        { step: 'build', status: 'started' },
+        { step: 'build', status: 'completed' },
+        { step: 'upload', status: 'started' },
+        { step: 'upload', status: 'completed' },
+        { step: 'finalise', status: 'started' },
+        { step: 'finalise', status: 'completed' },
+      ]);
+    });
+
+    test('marks the running step failed when the zip build throws', async () => {
+      exportSiteToZipMock.mockRejectedValueOnce(new Error('no memory'));
+      const { events, onProgress } = collect();
+
+      const result = await publishSite(createSiteFixture('basicSite'), { onProgress });
+
+      expect(result.success).toBe(false);
+      expect(events).toEqual([
+        { step: 'build', status: 'started' },
+        { step: 'build', status: 'failed', message: 'Failed to generate ZIP: no memory' },
+      ]);
+    });
+
+    test('forwards provider events and fails the step a provider failure leaves running', async () => {
+      const site = createSiteFixture('basicSite');
+      site.manifest.publishingConfig = { provider: 'netlify', netlify: { siteId: 'site-1' } };
+      site.secrets = { publishing: { netlify: { apiToken: 't' } } } satisfies SiteSecrets;
+      netlifyDeployMock.mockImplementationOnce(async (_site, _config, options) => {
+        options.onProgress({ step: 'build', status: 'started' });
+        options.onProgress({ step: 'build', status: 'completed' });
+        options.onProgress({ step: 'upload', status: 'started' });
+        return { success: false, message: 'Proxy error (502)' };
+      });
+      const { events, onProgress } = collect();
+
+      await publishSite(site, { onProgress });
+
+      expect(events.at(-1)).toEqual({ step: 'upload', status: 'failed', message: 'Proxy error (502)' });
+    });
+
+    test('a throwing listener does not fail the publish', async () => {
+      const result = await publishSite(createSiteFixture('basicSite'), {
+        onProgress: () => {
+          throw new Error('ui bug');
+        },
+      });
+
+      expect(result.success).toBe(true);
     });
   });
 });

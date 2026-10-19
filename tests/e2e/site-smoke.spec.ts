@@ -1,56 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import JSZip from 'jszip';
-import { expect, test, type Page } from '@playwright/test';
-
-function uniqueName(prefix: string): string {
-  return `${prefix} ${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-}
-
-const selectAllShortcut = process.platform === 'darwin' ? 'Meta+A' : 'Control+A';
-
-async function gotoDashboard(page: Page): Promise<void> {
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'My sites' })).toBeVisible();
-}
-
-async function createUnprotectedSite(page: Page, siteTitle: string): Promise<string> {
-  await page.getByRole('button', { name: 'Create new site' }).click();
-  await expect(page.getByRole('heading', { name: 'Create a New Site' })).toBeVisible();
-
-  await page.getByLabel('Site Title').fill(siteTitle);
-  await page.getByLabel('Site Description (Optional)').fill('Playwright smoke test site');
-  const editProtectionSwitch = page.locator('#edit-protection');
-  await expect(editProtectionSwitch).toHaveAttribute('data-state', 'checked');
-  await editProtectionSwitch.evaluate((node) => {
-    if (!(node instanceof HTMLElement)) {
-      throw new Error('Edit protection switch not found');
-    }
-    node.click();
-  });
-  await expect(editProtectionSwitch).toHaveAttribute('data-state', 'unchecked');
-  await page.getByRole('button', { name: 'Create Site' }).click();
-
-  await expect(page).toHaveURL(/#\/sites\/.+\/edit$/);
-  await expect(page.getByRole('heading', { name: 'Create your first page' })).toBeVisible();
-
-  const match = page.url().match(/#\/sites\/([^/]+)\/edit$/);
-  if (!match) {
-    throw new Error(`Could not extract site id from URL: ${page.url()}`);
-  }
-
-  return match[1];
-}
-
-async function createFirstPage(page: Page, pageTitle: string): Promise<void> {
-  await page.getByRole('button', { name: 'Create a page' }).click();
-  await expect(page.getByRole('heading', { name: 'Create a new page' })).toBeVisible();
-
-  await page.getByLabel('Page title').fill(pageTitle);
-  await page.getByRole('button', { name: 'Create page' }).click();
-
-  await expect(page).toHaveURL(/#\/sites\/.+\/edit\/content\/.+$/);
-  await expect(page.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue(pageTitle);
-}
+import { expect, test } from '@playwright/test';
+import { createFirstPage, createUnprotectedSite, gotoDashboard, selectAllShortcut, uniqueName } from './support';
 
 test('creates a site, persists it, and exports a backup from the dashboard', async ({ page }) => {
   const siteTitle = uniqueName('Reliability Smoke');
@@ -252,9 +203,11 @@ test('uploads an image, keeps it after reload, and exports a site bundle contain
   await expect(page.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue(pageTitle);
   await expect(page.locator('.ProseMirror img')).toHaveCount(1, { timeout: 15000 });
 
-  // With no publishing provider configured, Publish downloads a ZIP bundle.
+  // With no publishing provider configured, Publish downloads a ZIP bundle once the checks pass.
+  await page.getByRole('button', { name: 'Publish site' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Publish site' });
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Publish' }).click();
+  await dialog.getByRole('button', { name: /^Publish( anyway)?$/ }).click();
   const download = await downloadPromise;
   const bundlePath = await download.path();
   if (!bundlePath) throw new Error('Export download has no filesystem path');

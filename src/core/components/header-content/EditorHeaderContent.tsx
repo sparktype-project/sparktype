@@ -1,6 +1,6 @@
 // src/core/components/header-content/EditorHeaderContent.tsx
 
-import { type ReactNode, useCallback, useMemo } from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 
 // State Management
@@ -11,12 +11,9 @@ import { type AppStore } from '@/core/state/useAppStore';
 // UI Components & Icons
 import { Button } from '@/core/components/ui/button';
 import { Eye, PanelLeft, UploadCloud, PanelRight } from 'lucide-react';
-import { toast } from 'sonner';
-
-// Services
-import { publishSite } from '@/core/services/publishing/publishing.service';
 
 // Components
+import PublishDialog from '@/features/editor/components/publish/PublishDialog';
 import { SyncStatusIndicator } from '@/features/editor/components/SyncStatusIndicator';
 import { TooltipTrigger, Tooltip, TooltipContent } from '@/core/components/ui/tooltip';
 
@@ -28,6 +25,7 @@ interface EditorHeaderContentProps {
 export default function EditorHeaderContent({ actions, siteId: propSiteId }: EditorHeaderContentProps) {
   const { siteId = propSiteId || '' } = useParams<{ siteId: string }>();
   const location = useLocation();
+  const [isPublishOpen, setIsPublishOpen] = useState(false);
 
   // Get site and UI state from the global stores
   const site = useAppStore(useCallback((state: AppStore) => state.getSiteById(siteId), [siteId]));
@@ -62,59 +60,6 @@ export default function EditorHeaderContent({ actions, siteId: propSiteId }: Edi
     // Default to homepage view for non-content pages or empty content path
     return `/sites/${siteId}/view`;
   }, [location.pathname, siteId, site]);
-
-  const handlePublishSite = async () => {
-    if (!site) {
-      toast.error("Site data not found. Cannot publish.");
-      return;
-    }
-
-
-    // Get the configured provider for appropriate messaging
-    const provider = site.manifest.publishingConfig?.provider || 'zip';
-    const publishingMessage = provider === 'zip'
-      ? "Generating site bundle for download..."
-      : `Publishing site to ${provider}...`;
-
-    toast.info(publishingMessage);
-
-    try {
-      // Ensure site is fully loaded before publishing
-      const { loadSite } = useAppStore.getState();
-      await loadSite(siteId);
-      const fullyLoadedSite = useAppStore.getState().getSiteById(siteId);
-
-      if (!fullyLoadedSite) {
-        throw new Error("Failed to load site data for publishing.");
-      }
-
-      const result = await publishSite(fullyLoadedSite);
-
-      if (result.success) {
-        // Handle ZIP download
-        if (result.downloadUrl && result.filename) {
-          const link = document.createElement('a');
-          link.href = result.downloadUrl;
-          link.download = result.filename;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(result.downloadUrl);
-        }
-
-        // Show success message with URL if available
-        const successMessage = result.url
-          ? `${result.message} Site URL: ${result.url}`
-          : result.message;
-        toast.success(successMessage);
-      } else {
-        toast.error(result.message);
-      }
-    } catch (error) {
-      console.error("Error publishing site:", error);
-      toast.error(`Publishing failed: ${(error as Error).message}`);
-    }
-  };
 
   // Render a placeholder if site data isn't loaded yet
   if (!site) {
@@ -192,7 +137,7 @@ export default function EditorHeaderContent({ actions, siteId: propSiteId }: Edi
             <Button
               size="sm"
               variant="ghost"
-              onClick={handlePublishSite}
+              onClick={() => setIsPublishOpen(true)}
               onMouseDown={(e) => e.stopPropagation()} // Prevent dragging on button
               className='h-8 w-8 p-0 hover:cursor-pointer'
               aria-label="Publish site"
@@ -204,6 +149,7 @@ export default function EditorHeaderContent({ actions, siteId: propSiteId }: Edi
             <p>Publish</p>
           </TooltipContent>
         </Tooltip>
+        <PublishDialog siteId={siteId} open={isPublishOpen} onOpenChange={setIsPublishOpen} />
 
 
         {/* Right sidebar toggle button */}

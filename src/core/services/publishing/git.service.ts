@@ -13,7 +13,8 @@
  */
 
 import { BaseProvider } from './basePublishing.service';
-import type { PublishingResult, ValidationResult, PublishingConfigSchema } from './types';
+import type { DeployOptions, PublishingResult, ValidationResult, PublishingConfigSchema } from './types';
+import { createStepReporter } from './progress';
 import type { LocalSiteData } from '@/core/types';
 import { gitSyncService } from './gitSync.service';
 import { conflictDetectionService } from '../publishing/gitConflict.service';
@@ -53,7 +54,8 @@ export class GitHubProvider extends BaseProvider {
   readonly name = 'github';
   readonly displayName = 'GitHub + Netlify';
 
-  async deploy(site: LocalSiteData, config: Record<string, unknown>): Promise<PublishingResult> {
+  async deploy(site: LocalSiteData, config: Record<string, unknown>, options: DeployOptions = {}): Promise<PublishingResult> {
+    const progress = createStepReporter(options.onProgress);
     try {
       const validation = await this.validateConfig(config);
       if (!validation.valid) {
@@ -71,6 +73,7 @@ export class GitHubProvider extends BaseProvider {
 
       const branch = githubConfig.branch || 'main';
 
+      progress.start('build');
       console.log(`[GitHubProvider] Starting deployment to ${githubConfig.owner}/${githubConfig.repo}:${branch}`);
 
       // Check sync status before pushing to avoid conflicts
@@ -97,6 +100,8 @@ export class GitHubProvider extends BaseProvider {
       const files = await this.generateSiteFiles(site);
 
       console.log(`[GitHubProvider] Generated ${files.size} files for deployment`);
+      progress.complete('build');
+      progress.start('upload');
 
       const deployment = await deployGeneratedFiles({
         siteId: site.siteId,
@@ -112,6 +117,9 @@ export class GitHubProvider extends BaseProvider {
           `${deployment.branchCreated ? ', branch created' : ''})`
       );
 
+      progress.complete('upload');
+      progress.start('finalise');
+
       // Update sync state after successful deployment
       await gitSyncService.updateSyncState(site.siteId, {
         lastKnownCommitSHA: deployment.commitSHA,
@@ -119,6 +127,8 @@ export class GitHubProvider extends BaseProvider {
         branch,
         conflictedFiles: []
       });
+
+      progress.complete('finalise');
 
       const repoUrl = `https://github.com/${githubConfig.owner}/${githubConfig.repo}`;
 

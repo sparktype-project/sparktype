@@ -7,7 +7,7 @@ export interface PublishingProvider {
   /**
    * Deploy a site using this provider
    */
-  deploy(site: LocalSiteData, config: Record<string, unknown>): Promise<PublishingResult>;
+  deploy(site: LocalSiteData, config: Record<string, unknown>, options?: DeployOptions): Promise<PublishingResult>;
   
   /**
    * Validate the provider configuration
@@ -18,6 +18,22 @@ export interface PublishingProvider {
    * Get the configuration schema for this provider
    */
   getConfigSchema(): PublishingConfigSchema;
+}
+
+export type PublishStep = 'build' | 'upload' | 'finalise';
+
+export interface PublishProgressEvent {
+  step: PublishStep;
+  status: 'started' | 'completed' | 'failed';
+  /** Failure reason, when the step failed. */
+  message?: string;
+}
+
+export type PublishProgressCallback = (event: PublishProgressEvent) => void;
+
+export interface DeployOptions {
+  /** Providers report `started`/`completed`; the caller reports `failed` from the result. */
+  onProgress?: PublishProgressCallback;
 }
 
 export interface PublishingResult {

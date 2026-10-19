@@ -1,5 +1,6 @@
 import { BaseProvider } from './basePublishing.service';
-import type { PublishingResult, ValidationResult, PublishingConfigSchema } from './types';
+import type { DeployOptions, PublishingResult, ValidationResult, PublishingConfigSchema } from './types';
+import { createStepReporter } from './progress';
 import type { LocalSiteData } from '@/core/types';
 import { netlifyTauriService } from '@/core/services/publishing/netlify.tauri.service';
 import { loadSiteSecretsFromDb } from '@/core/services/siteSecrets.service';
@@ -44,7 +45,17 @@ export class NetlifyProvider extends BaseProvider {
     };
   }
 
-  async deploy(site: LocalSiteData, config: Record<string, unknown>): Promise<PublishingResult> {
+  async deploy(site: LocalSiteData, config: Record<string, unknown>, options: DeployOptions = {}): Promise<PublishingResult> {
+    const progress = createStepReporter(options.onProgress);
+    // A step completes only when its result succeeded; the caller marks the running step failed.
+    const finish = (result: PublishingResult): PublishingResult => {
+      if (result.success) {
+        progress.complete('upload');
+        progress.start('finalise');
+        progress.complete('finalise');
+      }
+      return result;
+    };
     try {
       const validation = await this.validateConfig(config);
       if (!validation.valid) {
@@ -66,6 +77,7 @@ export class NetlifyProvider extends BaseProvider {
       }
 
       // Generate site files
+      progress.start('build');
       const files = await this.generateSiteFiles(site);
       
       // Create a ZIP archive of the files
@@ -91,11 +103,13 @@ export class NetlifyProvider extends BaseProvider {
         }
         
         // Use the optimized ZIP for external proxy deployment
+        progress.complete('build');
+        progress.start('upload');
         if (proxyConfig.useAppProxy) {
-          return await netlifyTauriService.deploySite(netlifyConfig.apiToken, netlifyConfig.siteId!, optimizedZip);
+          return finish(await netlifyTauriService.deploySite(netlifyConfig.apiToken, netlifyConfig.siteId!, optimizedZip));
         } else {
           const zipBase64 = await this.blobToBase64(optimizedZip);
-          return await this.deployViaProxy(proxyConfig.proxyUrl, netlifyConfig.apiToken, netlifyConfig.siteId!, zipBase64);
+          return finish(await this.deployViaProxy(proxyConfig.proxyUrl, netlifyConfig.apiToken, netlifyConfig.siteId!, zipBase64));
         }
       }
 
@@ -105,6 +119,9 @@ export class NetlifyProvider extends BaseProvider {
         zipBase64 = await this.blobToBase64(zipBlob);
       }
       
+      progress.complete('build');
+      progress.start('upload');
+
       let siteId = netlifyConfig.siteId;
       
       // If no siteId provided, create a new site
@@ -182,7 +199,7 @@ export class NetlifyProvider extends BaseProvider {
         );
       }
 
-      return deployResponse;
+      return finish(deployResponse);
       
     } catch (error) {
       console.error('[NetlifyProvider] Deployment failed:', error);
