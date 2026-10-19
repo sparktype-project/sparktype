@@ -5,6 +5,7 @@ import type { LocalSiteData, ParsedMarkdownFile } from '@/core/types';
 import { getCollection, selectCollectionItems } from '@/core/services/collections.service';
 import { getLayoutManifest } from '@/core/services/config/configHelpers.service';
 import type { RenderOptions } from './render.types';
+import { renderTemplate } from './templateRuntime';
 
 /**
  * Expands `::collection_view` directives into rendered collection items.
@@ -122,14 +123,10 @@ export async function postProcessCollectionDirectives(
             const renderedItems = items.map(item => {
               const partialTemplate = Handlebars.partials[partialPath];
               if (partialTemplate) {
-                const compiledPartial = typeof partialTemplate === 'string'
-                  ? Handlebars.compile(partialTemplate)
-                  : partialTemplate;
-
                 // Pass item as context and render options through Handlebars data
                 // This ensures helpers can access renderOptions via options.data.root.options
                 // Also pass contentFile so image helper can calculate relative paths correctly
-                return compiledPartial(item, {
+                return renderTemplate(partialTemplate, item, {
                   data: {
                     root: {
                       ...item,

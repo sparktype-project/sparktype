@@ -2,6 +2,7 @@
 
 import Handlebars from 'handlebars';
 import type { LocalSiteData } from '@/core/types';
+import { renderTemplate } from './templateRuntime';
 import { getAssetContent, getLayoutManifest, getThemeAssetContent } from '@/core/services/config/configHelpers.service';
 
 /**
@@ -71,12 +72,11 @@ export async function renderLayoutHierarchy(
     }
 
     // Compile and render this layout level
-    const template = Handlebars.compile(templateSource);
     const contextWithBody = {
         ...context,
         body: childHtml ? new Handlebars.SafeString(childHtml) : undefined
     };
-    const html = template(contextWithBody);
+    const html = renderTemplate(templateSource, contextWithBody);
 
     // If this layout has a parent, recursively render the parent
     if (layoutManifest?.parentLayout) {

@@ -4,6 +4,7 @@ import Handlebars from 'handlebars';
 import type { SparktypeHelper } from './types';
 import type { ParsedMarkdownFile, LayoutManifest } from '@/core/types';
 import type { HelperOptions } from 'handlebars';
+import { renderTemplate } from '../templateRuntime';
 
 /**
  * Defines the expected shape of the root context object passed by the theme engine.
@@ -71,10 +72,8 @@ export const renderItemHelper: SparktypeHelper = () => ({
     const templateSource = Handlebars.partials[partialName];
 
     if (templateSource) {
-        // Compile the template source and render with the item context
-        const template = typeof templateSource === 'function' ? templateSource : Handlebars.compile(templateSource);
-        // --- FIX: Await the template execution to resolve any nested async helpers ---
-        const renderedHtml = await template(item);
+        // Awaited so nested async helpers resolve before the helper returns.
+        const renderedHtml = await renderTemplate(templateSource, item);
         return new Handlebars.SafeString(renderedHtml);
     } else {
         console.warn(`[render_item] Handlebars partial named "${partialName}" could not be found.`);

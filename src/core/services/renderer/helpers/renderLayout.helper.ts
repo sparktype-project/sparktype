@@ -2,6 +2,7 @@
 
 import Handlebars from 'handlebars';
 import type { SparktypeHelper } from './types';
+import { renderTemplate } from '../templateRuntime';
 
 export const renderLayoutHelper: SparktypeHelper = () => ({
   /**
@@ -36,11 +37,8 @@ export const renderLayoutHelper: SparktypeHelper = () => ({
         return new Handlebars.SafeString('');
     }
 
-    const template = Handlebars.compile(Handlebars.partials[layoutName]);
-    
-    // The key is to `await` the execution of the template here.
-    // This pauses the helper until all nested async helpers have resolved.
-    const renderedHtml = await template(context);
+    // Awaited so nested async helpers resolve before the helper returns.
+    const renderedHtml = await renderTemplate(Handlebars.partials[layoutName], context);
     
     return new Handlebars.SafeString(renderedHtml);
   }

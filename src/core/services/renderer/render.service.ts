@@ -21,6 +21,7 @@ import {
     postProcessSparkTypeImagesForExport,
 } from './images';
 import type { RenderOptions } from './render.types';
+import { renderTemplate } from './templateRuntime';
 
 // `RenderOptions` lives in a dependency leaf (render.types) so services that feed the
 // renderer can import the type without importing the orchestrator. It stays part of this
@@ -173,8 +174,7 @@ export async function render(
         ...(itemLayoutId && { itemLayoutId }) // Add itemLayoutId for list layouts
     };
 
-    const bodyTemplate = Handlebars.compile(bodyTemplateSource);
-    const bodyHtml = bodyTemplate(contentContext);
+    const bodyHtml = renderTemplate(bodyTemplateSource, contentContext);
 
     // 6. Use nested layout rendering (Jekyll-style inheritance)
     console.log(`[Render Service] Starting nested layout rendering for: ${enrichedResolution.layoutPath}`);

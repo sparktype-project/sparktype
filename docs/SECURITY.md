@@ -466,6 +466,12 @@ Themes will be able to declare external scripts in their manifest for services l
 
 ---
 
+### 7. Prototype access from templates
+
+Imported themes are untrusted Handlebars. Every template invocation goes through `renderTemplate` in `src/core/services/renderer/templateRuntime.ts`, which forces `allowProtoPropertiesByDefault: false` and `allowProtoMethodsByDefault: false`. Partials, `@partial-block` and inline partials inherit these options from the invoking call. Tests in `renderer/__tests__/templateRuntime.test.ts` cover `constructor`/`__proto__` access, `lookup` and partial injection. Themes are still compiled at runtime with `new Function`, so the Tauri CSP keeps `'unsafe-eval'`.
+
+---
+
 ## Developer guidelines
 
 ### For theme developers

@@ -4,6 +4,7 @@ import Handlebars from 'handlebars';
 import type { SparktypeHelper } from './types';
 import type { ParsedMarkdownFile, LayoutConfig, LocalSiteData, LayoutManifest } from '@/core/types';
 import type { HelperOptions } from 'handlebars';
+import { renderTemplate } from '../templateRuntime';
 import { getCollection, selectCollectionItems } from '@/core/services/collections.service';
 
 /**
@@ -82,8 +83,7 @@ export const renderCollectionHelper: SparktypeHelper = () => ({
       };
 
       // 4. Compile and render the template.
-      const template = typeof templateSource === 'function' ? templateSource : Handlebars.compile(templateSource);
-      const renderedHtml = template(templateContext);
+      const renderedHtml = renderTemplate(templateSource, templateContext);
 
       return new Handlebars.SafeString(renderedHtml);
     } catch (error) {
