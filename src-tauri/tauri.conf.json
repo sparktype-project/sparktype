@@ -42,6 +42,10 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "category": "DeveloperTool",
+    "copyright": "Copyright © 2025 Sparktype",
+    "shortDescription": "Local-first static site generator and editor",
+    "longDescription": "Sparktype is a local-first static site generator and editor. Write in a rich text editor, pick a theme and export a static site.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

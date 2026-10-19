@@ -1,7 +1,7 @@
 {
   "name": "sparktype",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "engines": {
     "node": "22.x"
@@ -23,6 +23,8 @@
     "test:all": "npm run test && npm run test:e2e",
     "ci:install": "npm ci --prefer-offline --no-audit",
     "ci:build": "npm run build:web",
+    "version:sync": "node scripts/sync-version.mjs",
+    "version:check": "node scripts/sync-version.mjs --check",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",

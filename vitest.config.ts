@@ -14,6 +14,7 @@ export default defineConfig({
     include: [
       'src/**/*.{test,spec}.{ts,tsx}',
       'src/**/__tests__/**/*.{ts,tsx}',
+      'scripts/**/*.test.mjs',
     ],
     coverage: {
       provider: 'v8',
