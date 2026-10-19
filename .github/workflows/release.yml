@@ -1,0 +1,182 @@
+name: Release
+
+# Pushing a `v*` tag builds installers for macOS (arm64 + x64), Windows and Linux and attaches
+# them to a DRAFT GitHub release. Nothing is published until a maintainer publishes the draft.
+# See docs/RELEASING.md for the secrets this workflow reads and how to create them.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      apple: ${{ steps.signing.outputs.apple }}
+      updater: ${{ steps.signing.outputs.updater }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      body: ${{ steps.signing.outputs.body }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify tag matches package.json and app versions
+        id: version
+        run: |
+          expected="v$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$expected" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version ($expected)"
+            exit 1
+          fi
+          node scripts/sync-version.mjs --check
+          case "$GITHUB_REF_NAME" in
+            *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Detect available signing secrets
+        id: signing
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          apple=false
+          if [ -n "$APPLE_CERTIFICATE" ] && [ -n "$APPLE_CERTIFICATE_PASSWORD" ] && [ -n "$APPLE_SIGNING_IDENTITY" ] \
+            && [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+            apple=true
+          fi
+          updater=false
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            updater=true
+          fi
+
+          body="Draft release. Review the artifacts, then publish."
+          if [ "$apple" != true ]; then
+            body="$body"$'\n\n'"**Unsigned macOS build.** Apple signing and notarisation secrets were not configured, so macOS users will see a Gatekeeper warning."
+          fi
+          if [ "$updater" != true ]; then
+            body="$body"$'\n\n'"**No auto-update manifest.** The updater signing key was not configured, so this release has no \`latest.json\` and installed apps will not update to it."
+          fi
+          body="$body"$'\n\n'"Windows installers are not code signed; SmartScreen may warn on first run."
+
+          {
+            echo "apple=$apple"
+            echo "updater=$updater"
+            echo "body<<RELEASE_BODY_EOF"
+            echo "$body"
+            echo "RELEASE_BODY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target aarch64-apple-darwin
+          - platform: macos-latest
+            args: --target x86_64-apple-darwin
+          - platform: ubuntu-22.04
+            args: ''
+          - platform: windows-latest
+            args: ''
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.88.0
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      # Secrets are exported only when the full set exists: Tauri treats a present-but-empty
+      # APPLE_CERTIFICATE as a signing attempt and fails the build.
+      - name: Export Apple signing credentials
+        if: needs.prepare.outputs.apple == 'true' && startsWith(matrix.platform, 'macos')
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            {
+              echo "$name<<SECRET_EOF"
+              printenv "$name"
+              echo "SECRET_EOF"
+            } >> "$GITHUB_ENV"
+          done
+
+      - name: Export updater signing key
+        if: needs.prepare.outputs.updater == 'true'
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          {
+            echo "TAURI_SIGNING_PRIVATE_KEY<<SECRET_EOF"
+            printenv TAURI_SIGNING_PRIVATE_KEY
+            echo "SECRET_EOF"
+            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD<<SECRET_EOF"
+            printenv TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+            echo "SECRET_EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Build and upload to draft release
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # The tag already exists (it triggered this run); attach to it rather than creating one.
+          tagName: ${{ github.ref_name }}
+          releaseName: Sparktype ${{ github.ref_name }}
+          releaseBody: ${{ needs.prepare.outputs.body }}
+          releaseDraft: true
+          prerelease: ${{ needs.prepare.outputs.prerelease == 'true' }}
+          uploadUpdaterJson: ${{ needs.prepare.outputs.updater == 'true' }}
+          # Without the private key, updater artifacts cannot be signed, which fails the build.
+          args: ${{ matrix.args }} ${{ needs.prepare.outputs.updater != 'true' && '--config src-tauri/tauri.no-updater.conf.json' || '' }}
