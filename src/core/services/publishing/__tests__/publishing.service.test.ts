@@ -43,6 +43,8 @@ vi.mock('@/core/utils/platform', () => ({
 
 import { publishSite } from '../publishing.service';
 import type { PublishProgressEvent } from '../types';
+import { readPublishHistory } from '../history/publishHistory.service';
+import { resetIndexedDbForTests } from '@/test/support/storage';
 
 describe('publishing orchestration', () => {
   const objectUrlSpy = vi.spyOn(URL, 'createObjectURL');
@@ -207,6 +209,88 @@ describe('publishing orchestration', () => {
       });
 
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe('history', () => {
+    beforeEach(async () => {
+      await resetIndexedDbForTests();
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2025-03-01T12:00:00.000Z'));
+    });
+    afterEach(() => vi.useRealTimers());
+
+    test('records a zip export with its step log and finding counts', async () => {
+      const site = createSiteFixture('basicSite');
+
+      await publishSite(site, { findings: { blocking: 0, warning: 2 } });
+
+      const [entry] = await readPublishHistory(site.siteId);
+      expect(entry).toMatchObject({
+        kind: 'publish',
+        provider: 'zip',
+        target: 'download',
+        outcome: 'success',
+        startedAt: '2025-03-01T12:00:00.000Z',
+        findings: { blocking: 0, warning: 2 },
+      });
+      expect(entry.log.map((line) => `${line.step}:${line.status}`)).toEqual([
+        'build:started', 'build:completed', 'upload:started', 'upload:completed', 'finalise:started', 'finalise:completed',
+      ]);
+    });
+
+    test('records the GitHub commit SHA, target and file count', async () => {
+      const site = createSiteFixture('basicSite');
+      site.manifest.publishingConfig = { provider: 'github', github: { owner: 'openai', repo: 'sparktype', branch: 'gh-pages' } };
+      site.secrets = { publishing: { github: { accessToken: 't' } } } satisfies SiteSecrets;
+      githubDeployMock.mockResolvedValueOnce({
+        success: true,
+        message: 'ok',
+        url: 'https://github.com/openai/sparktype',
+        details: { commit: 'c0ffee', filesUploaded: 12 },
+      });
+
+      const result = await publishSite(site);
+
+      expect(result).toMatchObject({ commitSHA: 'c0ffee', fileCount: 12 });
+      const [entry] = await readPublishHistory(site.siteId);
+      expect(entry).toMatchObject({
+        provider: 'github',
+        target: 'openai/sparktype#gh-pages',
+        commitSHA: 'c0ffee',
+        fileCount: 12,
+        url: 'https://github.com/openai/sparktype',
+      });
+    });
+
+    test('records the Netlify deploy id and the site it went to', async () => {
+      const site = createSiteFixture('basicSite');
+      site.manifest.publishingConfig = { provider: 'netlify', netlify: { siteId: 'site-1' } };
+      site.secrets = { publishing: { netlify: { apiToken: 't' } } } satisfies SiteSecrets;
+      netlifyDeployMock.mockResolvedValueOnce({
+        success: true,
+        message: 'ok',
+        url: 'https://x.netlify.app',
+        details: { deployId: 'deploy-9', siteId: 'site-77', filesUploaded: 3 },
+      });
+
+      await publishSite(site);
+
+      const [entry] = await readPublishHistory(site.siteId);
+      expect(entry).toMatchObject({ provider: 'netlify', target: 'netlify:site-77', deployId: 'deploy-9', fileCount: 3 });
+    });
+
+    test('records a failed publish with its error and no success fields', async () => {
+      const site = createSiteFixture('basicSite');
+      site.manifest.publishingConfig = { provider: 'github', github: { owner: 'o', repo: 'r' } };
+      site.secrets = { publishing: { github: { accessToken: 't' } } } satisfies SiteSecrets;
+      githubDeployMock.mockRejectedValueOnce(new Error('Boom'));
+
+      await publishSite(site);
+
+      const [entry] = await readPublishHistory(site.siteId);
+      expect(entry).toMatchObject({ outcome: 'failed', error: 'GitHub deployment failed: Boom', target: 'o/r#main' });
+      expect(entry.commitSHA).toBeUndefined();
     });
   });
 });

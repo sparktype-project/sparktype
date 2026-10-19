@@ -69,11 +69,17 @@ export default function PublishDialog({ siteId, open, onOpenChange }: PublishDia
     if (open) void runChecks();
   }, [open, runChecks]);
 
+  const findings = phase.name === 'report' ? phase.findings : [];
+
   const publish = async () => {
     const site = siteRef.current;
     if (!site) return;
     setPhase({ name: 'publishing' });
     const result = await publishSite(site, {
+      findings: {
+        blocking: findings.filter((f) => f.severity === 'blocking').length,
+        warning: findings.filter((f) => f.severity === 'warning').length,
+      },
       onProgress: (event) => setSteps((current) => applyProgressEvent(current, event)),
     });
     if (result.success) startDownload(result);
@@ -81,7 +87,6 @@ export default function PublishDialog({ siteId, open, onOpenChange }: PublishDia
   };
 
   const busy = phase.name === 'publishing';
-  const findings = phase.name === 'report' ? phase.findings : [];
   const hasBlocking = findings.some((f) => f.severity === 'blocking');
   const hasWarnings = findings.some((f) => f.severity === 'warning');
 

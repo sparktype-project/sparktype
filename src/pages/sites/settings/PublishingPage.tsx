@@ -12,6 +12,7 @@ import { Separator } from '@/core/components/ui/separator';
 import { toast } from 'sonner';
 import { Download, Globe, Github } from 'lucide-react';
 import { isTauriApp } from '@/core/utils/platform';
+import DeployHistory from './publishing/DeployHistory';
 
 type PublishingProvider = 'zip' | 'netlify' | 'github';
 
@@ -489,6 +490,9 @@ export default function PublishingSettingsPage() {
 
 
         </div>
+
+        <Separator />
+        <DeployHistory siteId={site.siteId} />
       </div>
     </>
   );

@@ -113,6 +113,7 @@ describe('PublishDialog', () => {
     expect(await screen.findByText('Deployed.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'https://example.netlify.app' })).toHaveAttribute('href', 'https://example.netlify.app');
     expect(publishSiteMock).toHaveBeenCalledTimes(1);
+    expect(publishSiteMock).toHaveBeenCalledWith(netlifySite, expect.objectContaining({ findings: { blocking: 0, warning: 1 } }));
   });
 
   test('a clean report offers a plain Publish', async () => {

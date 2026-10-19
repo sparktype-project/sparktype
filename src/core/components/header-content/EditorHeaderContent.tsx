@@ -1,6 +1,6 @@
 // src/core/components/header-content/EditorHeaderContent.tsx
 
-import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 
 // State Management
@@ -26,6 +26,9 @@ export default function EditorHeaderContent({ actions, siteId: propSiteId }: Edi
   const { siteId = propSiteId || '' } = useParams<{ siteId: string }>();
   const location = useLocation();
   const [isPublishOpen, setIsPublishOpen] = useState(false);
+
+  // The dialog's progress is local to it, so it must not outlive the page it was opened on.
+  useEffect(() => setIsPublishOpen(false), [location.pathname]);
 
   // Get site and UI state from the global stores
   const site = useAppStore(useCallback((state: AppStore) => state.getSiteById(siteId), [siteId]));

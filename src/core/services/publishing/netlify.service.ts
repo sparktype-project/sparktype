@@ -48,11 +48,13 @@ export class NetlifyProvider extends BaseProvider {
   async deploy(site: LocalSiteData, config: Record<string, unknown>, options: DeployOptions = {}): Promise<PublishingResult> {
     const progress = createStepReporter(options.onProgress);
     // A step completes only when its result succeeded; the caller marks the running step failed.
+    let fileCount: number | undefined;
     const finish = (result: PublishingResult): PublishingResult => {
       if (result.success) {
         progress.complete('upload');
         progress.start('finalise');
         progress.complete('finalise');
+        return { ...result, details: { ...result.details, filesUploaded: fileCount } };
       }
       return result;
     };
@@ -79,6 +81,7 @@ export class NetlifyProvider extends BaseProvider {
       // Generate site files
       progress.start('build');
       const files = await this.generateSiteFiles(site);
+      fileCount = files.size;
       
       // Create a ZIP archive of the files
       const zipBlob = await this.createZipFromFiles(files);

@@ -16,7 +16,7 @@ test('blocks publishing a site that has no homepage', async ({ page }) => {
 
 test('publishes a ZIP after the checks pass, showing each step and the result', async ({ page }) => {
   await gotoDashboard(page);
-  await createUnprotectedSite(page, uniqueName('ZIP Publish'));
+  const siteId = await createUnprotectedSite(page, uniqueName('ZIP Publish'));
   await createFirstPage(page, uniqueName('Welcome'));
 
   await page.getByRole('button', { name: 'Publish site' }).click();
@@ -37,4 +37,12 @@ test('publishes a ZIP after the checks pass, showing each step and the result', 
   if (!path) throw new Error('Publish download has no filesystem path');
   const zip = await JSZip.loadAsync(await readFile(path));
   expect(Object.keys(zip.files)).toContain('index.html');
+
+  // The publish is recorded and its log is available on the Publishing settings page.
+  await page.goto(`/#/sites/${siteId}/settings/publishing`);
+  await expect(dialog).toBeHidden();
+  const history = page.getByRole('region', { name: 'Publish history' });
+  await expect(history.getByText('Published', { exact: true })).toBeVisible();
+  await history.getByText('Show log').click();
+  await expect(history.getByText(/finalise — completed/)).toBeVisible();
 });
