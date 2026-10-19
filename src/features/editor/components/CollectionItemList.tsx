@@ -21,6 +21,7 @@ import { FileText, PlusCircle, MoreHorizontal, Eye, EyeOff, Trash2 } from 'lucid
 // CORRECTED: Removed unused type imports for ParsedMarkdownFile and StructureNode.
 // We can use a type-only import for the type we do need.
 import type { ParsedMarkdownFile } from '@/core/types';
+import { getScheduledLabel } from '@/core/services/scheduleFormat';
 
 interface CollectionItemListProps {
   siteId: string;
@@ -123,6 +124,7 @@ export default function CollectionItemList({ siteId, collectionId }: CollectionI
                 const title = item.frontmatter.title || item.slug;
                 const date = item.frontmatter.date ? new Date(item.frontmatter.date as string).toLocaleDateString() : '';
                 const isPublished = item.frontmatter.published !== false; // Default to true
+                const scheduledLabel = getScheduledLabel(item.frontmatter, Date.now());
 
                 return (
                   <TableRow key={item.path} className="hover:bg-muted/50">
@@ -137,7 +139,7 @@ export default function CollectionItemList({ siteId, collectionId }: CollectionI
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        {isPublished ? "Published" : "Draft"}
+                        {scheduledLabel ?? (isPublished ? "Published" : "Draft")}
                       </Badge>
                     </TableCell>
                     <TableCell>

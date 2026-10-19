@@ -3,10 +3,11 @@
 import { Link } from 'react-router-dom'; // CORRECT: Import from react-router-dom
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, ChevronRight, File as FileIcon, LayoutGrid, Home, EyeOff } from 'lucide-react';
+import { GripVertical, ChevronRight, File as FileIcon, LayoutGrid, Home, EyeOff, Clock } from 'lucide-react';
 import { cn } from '@/core/libraries/utils';
 import type { FlattenedNode } from '@/core/services/fileTree.service';
 import type { MarkdownFrontmatter } from '@/core/types';
+import { getScheduledLabel } from '@/core/services/scheduleFormat';
 
 /**
  * Defines the shape of the visual drop indicator state.
@@ -66,6 +67,7 @@ export default function FileTreeNode({
   const isCollection = !!(frontmatter?.collection);
   const hasChildren = item.children && item.children.length > 0;
   const isDraft = frontmatter?.published === false;
+  const scheduledLabel = frontmatter ? getScheduledLabel(frontmatter, Date.now()) : null;
 
   const showCollapseButton = hasChildren && !isCollection && !isHomepage;
 
@@ -132,6 +134,12 @@ export default function FileTreeNode({
 
           {isDraft && (
             <EyeOff className="h-3 w-3 shrink-0 text-muted-foreground/60 ml-1" />
+          )}
+
+          {scheduledLabel && (
+            <Clock role="img" aria-label={scheduledLabel} className="h-3 w-3 shrink-0 text-muted-foreground/60 ml-1">
+              <title>{scheduledLabel}</title>
+            </Clock>
           )}
 
           {/* CORRECT: Use the react-router-dom Link with the `to` prop */}

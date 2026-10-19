@@ -8,6 +8,7 @@ import ImageUploadWidget from './ImageUploadWidget';
 import DataSourceSelectWidget from './DataSourceSelectWidget';
 import SwitchWidget from './SwitchWidget';
 import PartialSelectorWidget from './PartialSelectorWidget';
+import ScheduleWidget from './ScheduleWidget';
 
 /**
  * Registry of all available editor widgets for RJSF forms.
@@ -18,7 +19,8 @@ export const editorWidgets: Record<string, ComponentType<WidgetProps>> = {
   imageUploader: ImageUploadWidget,
   dataSourceSelect: DataSourceSelectWidget,
   switch: SwitchWidget,
-  
+  schedule: ScheduleWidget,
+
   // New block-specific widgets
   partialSelector: PartialSelectorWidget,
 };
@@ -42,3 +44,4 @@ export { default as ImageUploadWidget } from './ImageUploadWidget';
 export { default as DataSourceSelectWidget } from './DataSourceSelectWidget';
 export { default as SwitchWidget } from './SwitchWidget';
 export { default as PartialSelectorWidget } from './PartialSelectorWidget';
+export { default as ScheduleWidget } from './ScheduleWidget';

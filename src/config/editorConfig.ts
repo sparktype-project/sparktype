@@ -118,6 +118,10 @@ export const BASE_SCHEMA: { schema: ExtendedRJSFSchema; uiSchema: UiSchema } = {
         title: 'Publishing status',
         default: true,
       },
+      publishAt: {
+        type: 'string',
+        title: 'Schedule',
+      },
       author: {
         type: 'string',
         title: 'Author',
@@ -136,6 +140,9 @@ export const BASE_SCHEMA: { schema: ExtendedRJSFSchema; uiSchema: UiSchema } = {
     },
     published: {
       'ui:widget': 'switch',
+    },
+    publishAt: {
+      'ui:widget': 'schedule',
     },
   },
 };
