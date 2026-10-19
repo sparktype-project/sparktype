@@ -25,6 +25,7 @@ describe('runPrePublishChecks', () => {
     const site = createSiteFixture('basicSite');
     site.contentFiles![0].frontmatter.published = false;
     site.contentFiles![0].frontmatter.description = 'x';
+    site.manifest.baseUrl = 'https://example.org';
     const findings = await runPrePublishChecks(site);
     expect(findings.map((f) => f.id)).toEqual(['homepage-unpublished:content/home.md']);
     expect(site.contentFiles![0].frontmatter.published).toBe(false);

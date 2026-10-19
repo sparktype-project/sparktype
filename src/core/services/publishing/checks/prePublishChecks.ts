@@ -5,6 +5,7 @@ import { flattenStructure } from '@/core/services/fileTree.service';
 import { findHomepageFile, isPublishedFile } from '@/core/services/builder/publication';
 import { collectImageRefs, findContentFileImageRefs } from '@/core/services/builder/imageRefs';
 import { generateExportUrl } from '@/core/services/urlUtils.service';
+import { getSiteOrigin } from '@/core/services/siteOrigin.service';
 import { findBodyImages, findBodyLinks, resolveInternalHref } from './contentScan';
 
 export type FindingSeverity = 'blocking' | 'warning';
@@ -84,6 +85,19 @@ function checkHomepage({ site }: PrePublishInput): PrePublishFinding[] {
     }];
   }
   return [];
+}
+
+function checkSiteOrigin({ site }: PrePublishInput): PrePublishFinding[] {
+  if (getSiteOrigin(site.manifest)) return [];
+  return [{
+    id: 'site-origin-missing',
+    severity: 'warning',
+    message:
+      'The site has no valid web address, so canonical links, Open Graph URLs and images, sitemap.xml and the RSS feed ' +
+      'are skipped. Set one in Site details.',
+    path: null,
+    fixHref: `/sites/${site.siteId}/settings`,
+  }];
 }
 
 function checkImages({ site, snapshot, storedImagePaths }: PrePublishInput): PrePublishFinding[] {
@@ -207,6 +221,7 @@ function checkOutputPaths({ site, snapshot }: PrePublishInput): PrePublishFindin
 export function checkSiteForPublishing(input: PrePublishInput): PrePublishFinding[] {
   return [
     ...checkHomepage(input),
+    ...checkSiteOrigin(input),
     ...checkImages(input),
     ...checkLinks(input),
     ...checkMetadata(input),

@@ -2,7 +2,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{pageTitle}} | {{manifest.title}}</title>
+{{#if canonicalUrl}}
 <link rel="canonical" href="{{canonicalUrl}}">
+{{/if}}
 
 {{!-- Description Meta Tag --}}
 {{#if contentFile.frontmatter.description}}
@@ -20,7 +22,9 @@
 {{else}}
     <meta property="og:description" content="{{manifest.description}}">
 {{/if}}
+{{#if canonicalUrl}}
 <meta property="og:url" content="{{canonicalUrl}}">
+{{/if}}
 <meta property="og:site_name" content="{{manifest.title}}">
 <meta property="og:type" content="{{#if contentFile}}article{{else}}website{{/if}}">
 
@@ -33,13 +37,11 @@
     <meta name="twitter:description" content="{{manifest.description}}">
 {{/if}}
 
-{{#if contentFile.frontmatter.featured_image}}
-    {{#if @root.options.isExport}}
-        <meta property="og:image" content="{{{image fieldname="featured_image" url_only=true}}}">
-        <meta property="og:image:width" content="1200">
-        <meta property="og:image:height" content="630">
-        <meta name="twitter:image" content="{{{image fieldname="featured_image" url_only=true}}}">
-    {{/if}}
+{{#if socialImage}}
+    <meta property="og:image" content="{{socialImage.url}}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:image" content="{{socialImage.url}}">
 {{/if}}
 
 {{!-- Favicon --}}
@@ -52,10 +54,12 @@
 {{/if}}
 
 {{!-- RSS Feed Discovery --}}
+{{#if hasFeed}}
 {{#if @root.options.isExport}}
     <link rel="alternate" type="application/rss+xml" title="{{manifest.title}}" href="{{@root.options.relativeAssetPath}}rss.xml">
 {{else}}
     <link rel="alternate" type="application/rss+xml" title="{{manifest.title}}" href="/rss.xml">
+{{/if}}
 {{/if}}
 
 {{!-- STYLESHEETS --}}

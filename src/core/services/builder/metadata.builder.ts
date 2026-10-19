@@ -3,6 +3,7 @@
 import type { LocalSiteData, SiteBundle, StructureNode, CollectionItemRef } from '@/core/types';
 import { flattenStructure } from '@/core/services/fileTree.service';
 import { getUrlForNode } from '@/core/services/urlUtils.service';
+import { absoluteSiteUrl, getSiteOrigin } from '@/core/services/siteOrigin.service';
 
 const XML_ENTITIES: Record<string, string> = {
     '&': '&amp;',
@@ -54,7 +55,9 @@ export function generateMetadataFiles(
       ...(manifest.collectionItems || [])
     ];
 
-    const siteBaseUrl = manifest.baseUrl?.replace(/\/$/, '') || 'https://example.com';
+    // Without a site address there is nothing valid to put in a sitemap or feed, so neither is written.
+    const siteBaseUrl = getSiteOrigin(manifest);
+    if (!siteBaseUrl) return;
 
     // --- 2. RSS Feed Generation ---
     // Only include collection items (blog posts, articles, etc.), not static pages
@@ -63,7 +66,7 @@ export function generateMetadataFiles(
         const file = contentFiles.find(f => f.path === item.path);
         // Only include items that have a publication date in their frontmatter.
         if (file && file.frontmatter.date) {
-            const absoluteUrl = new URL(getUrlForNode(item, manifest, false, undefined, siteData), siteBaseUrl).href;
+            const absoluteUrl = absoluteSiteUrl(siteBaseUrl, getUrlForNode(item, manifest, false, undefined, siteData));
             const description = (file.frontmatter.description || '') as string;
             const pubDate = new Date(file.frontmatter.date as string).toUTCString();
             
@@ -83,14 +86,14 @@ export function generateMetadataFiles(
 
     // Only generate RSS if there are collection items with dates
     if (rssItems) {
-        const selfLink = new URL('rss.xml', siteBaseUrl).href;
+        const selfLink = absoluteSiteUrl(siteBaseUrl, 'rss.xml');
         bundle['rss.xml'] = `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>${escapeForXml(manifest.title)}</title><link>${escapeForXml(siteBaseUrl)}</link><description>${escapeForXml(manifest.description)}</description><lastBuildDate>${new Date().toUTCString()}</lastBuildDate><atom:link href="${escapeForXml(selfLink)}" rel="self" type="application/rss+xml" />${rssItems}</channel></rss>`;
     }
 
     // --- 3. Sitemap Generation ---
     const sitemapUrls = allPageNodes.map((node) => {
         const file = contentFiles.find(f => f.path === node.path);
-        const absoluteUrl = new URL(getUrlForNode(node, manifest, false, undefined, siteData), siteBaseUrl).href;
+        const absoluteUrl = absoluteSiteUrl(siteBaseUrl, getUrlForNode(node, manifest, false, undefined, siteData));
         const lastMod = (file?.frontmatter.date as string || new Date().toISOString()).split('T')[0];
         return `<url><loc>${escapeForXml(absoluteUrl)}</loc><lastmod>${escapeForXml(lastMod)}</lastmod></url>`;
     }).join('');

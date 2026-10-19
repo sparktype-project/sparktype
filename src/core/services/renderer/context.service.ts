@@ -20,6 +20,8 @@ import { type RenderOptions } from './render.types';
 import { getRelativePath } from '@/core/services/relativePaths.service';
 import { getTagsByIds } from '@/core/services/tags.service';
 import { getJsonAsset } from '@/core/services/config/configHelpers.service';
+import { absoluteSiteUrl, getSiteOrigin } from '@/core/services/siteOrigin.service';
+import { resolveSocialImage } from './headMeta';
 
 // The context object passed into the main body template.
 type ResolvedTags = Record<string, Tag[]>;
@@ -158,6 +160,8 @@ export async function assembleBaseContext(
                 : `/themes/${manifest.theme.name}/${stylesheet.path}`,
         }));
 
+    const siteOrigin = getSiteOrigin(manifest);
+
     // CORRECTED: Create the appropriate `StructureNode` or `CollectionItemRef` before passing to `getUrlForNode`.
     // We check the manifest to see if the resolved content file is a known collection item.
     const isItem = manifest.collectionItems?.some(item => item.path === resolution.contentFile.path);
@@ -198,10 +202,11 @@ export async function assembleBaseContext(
             themeStylesheets,
             logo: manifest.logo,
             favicon: manifest.favicon,
-            canonicalUrl: new URL(
-              getUrlForNode(urlNode, manifest, false, resolution.pageNumber, siteData),
-              manifest.baseUrl || 'https://example.com',
-            ).href,
+            canonicalUrl: siteOrigin
+              ? absoluteSiteUrl(siteOrigin, getUrlForNode(urlNode, manifest, false, resolution.pageNumber, siteData))
+              : undefined,
+            socialImage: resolveSocialImage(siteData, resolution.contentFile, siteOrigin, options.isExport),
+            hasFeed: !options.isExport || siteOrigin !== null,
             baseUrl: options.relativeAssetPath ?? '/',
             styleOverrides: new Handlebars.SafeString(generateStyleOverrides(manifest.theme.config)),
         },

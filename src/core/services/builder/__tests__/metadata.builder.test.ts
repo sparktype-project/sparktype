@@ -117,12 +117,48 @@ describe('metadata.builder', () => {
 
   test('skips rss generation when there are no dated collection items', () => {
     const site = createSiteFixture('basicSite');
+    site.manifest.baseUrl = 'https://example.com';
     const bundle: Record<string, string> = {};
 
     generateMetadataFiles(bundle, site);
 
     expect(bundle['rss.xml']).toBeUndefined();
     expect(bundle['sitemap.xml']).toContain('https://example.com');
+  });
+
+  test.each([undefined, '', 'not a url'])('writes neither sitemap nor rss, nor a placeholder host, for baseUrl %j', (baseUrl) => {
+    const site = createSiteFixture('collectionSite');
+    site.manifest.baseUrl = baseUrl;
+
+    const bundle: Record<string, string> = {};
+    generateMetadataFiles(bundle, site);
+
+    expect(bundle['sitemap.xml']).toBeUndefined();
+    expect(bundle['rss.xml']).toBeUndefined();
+    expect(JSON.stringify(bundle)).not.toContain('example.com');
+  });
+
+  test('keeps the subpath of a project-site base url in every absolute url', () => {
+    const site = createSiteFixture('collectionSite');
+    site.manifest.baseUrl = 'https://user.github.io/repo/';
+
+    const bundle: Record<string, string> = {};
+    generateMetadataFiles(bundle, site);
+
+    const locations = Array.from(expectWellFormed(bundle['sitemap.xml']).getElementsByTagName('loc')).map((n) => n.textContent);
+    expect(locations).toEqual(
+      expect.arrayContaining([
+        'https://user.github.io/repo/',
+        'https://user.github.io/repo/posts',
+        'https://user.github.io/repo/posts/launch-day',
+      ]),
+    );
+    expect(locations.every((loc) => loc?.startsWith('https://user.github.io/repo/'))).toBe(true);
+
+    const rss = expectWellFormed(bundle['rss.xml']);
+    expect(firstTagText(rss, 'link')).toBe('https://user.github.io/repo');
+    expect(firstTagText(rss, 'guid')).toBe('https://user.github.io/repo/posts/launch-day');
+    expect(rss.getElementsByTagName('atom:link')[0].getAttribute('href')).toBe('https://user.github.io/repo/rss.xml');
   });
 
   test('produces well-formed rss with escaped entities, unicode and a split CDATA terminator', () => {

@@ -6,6 +6,7 @@ import { checkSiteForPublishing, type PrePublishFinding } from '../prePublishChe
 
 /** Fixtures carry no descriptions, so every page gets one unless a test wants it empty. */
 function withDescriptions(site: LocalSiteData): LocalSiteData {
+  site.manifest.baseUrl ??= 'https://example.org';
   for (const file of site.contentFiles ?? []) {
     file.frontmatter.description ??= `About ${file.frontmatter.title}`;
   }
@@ -63,6 +64,28 @@ describe('checkSiteForPublishing', () => {
         path: 'content/home.md',
         fixHref: `/sites/${site.siteId}/edit/content/home`,
       });
+    });
+  });
+
+  describe('site address', () => {
+    test('warns, linking to Site details, when baseUrl is missing or invalid', () => {
+      for (const baseUrl of [undefined, '', 'not a url']) {
+        const site = withDescriptions(createSiteFixture('basicSite'));
+        site.manifest.baseUrl = baseUrl;
+        const [finding] = ids(check(site), 'site-origin');
+        expect(finding).toMatchObject({
+          severity: 'warning',
+          path: null,
+          fixHref: `/sites/${site.siteId}/settings`,
+        });
+        expect(finding.message).toMatch(/canonical.*sitemap\.xml.*RSS/);
+      }
+    });
+
+    test('is silent when baseUrl is set, including a subpath', () => {
+      const site = withDescriptions(createSiteFixture('basicSite'));
+      site.manifest.baseUrl = 'https://user.github.io/repo';
+      expect(ids(check(site), 'site-origin')).toEqual([]);
     });
   });
 
