@@ -51,6 +51,17 @@ describe('publish history', () => {
     expect(await readPublishHistory('s2')).toHaveLength(1);
   });
 
+  test('keeps the latest successful entry even when later failures push it past the cap', async () => {
+    await recordPublishEntry('s1', entry('good', { commitSHA: 'abc123' }));
+    for (let i = 0; i < MAX_HISTORY_ENTRIES + 5; i += 1) {
+      await recordPublishEntry('s1', entry(`bad${i}`, { outcome: 'failed', error: 'boom' }));
+    }
+
+    const history = await readPublishHistory('s1');
+    expect(history).toHaveLength(MAX_HISTORY_ENTRIES + 1);
+    expect(history.at(-1)).toMatchObject({ id: 'good', commitSHA: 'abc123' });
+  });
+
   test('a failed publish records its error and leaves the previous success untouched', async () => {
     const success = entry('ok', { commitSHA: 'abc123', url: 'https://github.com/o/r' });
     await recordPublishEntry('s1', success);
