@@ -59,6 +59,14 @@ export function validateFilePath(path: string): ValidationResult {
     errors.push(`Path traversal detected: ${path}`);
   }
 
+  if (path.includes('\\')) {
+    errors.push(`Backslashes not allowed in paths: ${path}`);
+  }
+
+  if (path.includes('\0')) {
+    errors.push(`Null byte in path: ${path}`);
+  }
+
   // Must be relative (no leading slash)
   if (path.startsWith('/')) {
     errors.push(`Absolute paths not allowed: ${path}`);
@@ -79,6 +87,20 @@ export function validateFilePath(path: string): ValidationResult {
     valid: errors.length === 0,
     errors
   };
+}
+
+/** Returns an error message when a script URL is not HTTPS on a trusted domain. */
+function validateExternalScriptUrl(url: string, templatePath: string, original: string): string | null {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') {
+      return `${templatePath}: External script must use HTTPS: ${original}`;
+    }
+    const isTrusted = SECURITY_CONFIG.TRUSTED_SCRIPT_DOMAINS.some(domain => domain === parsed.hostname);
+    return isTrusted ? null : `${templatePath}: Script domain is not trusted: ${parsed.hostname}`;
+  } catch {
+    return `${templatePath}: Invalid script src URL: ${original}`;
+  }
 }
 
 /**
@@ -103,49 +125,39 @@ export function validateHandlebarsTemplate(content: string, templatePath: string
       continue;
     }
 
-    // Allow Handlebars-templated script paths used by themes for export/runtime switching.
-    const isHandlebarsTemplateSrc = src.includes('{{') || src.includes('}}');
-    if (isHandlebarsTemplateSrc) {
-      // Basic safety guard: still block clearly unsafe protocols in templated strings.
-      if (/javascript:|data:text\/javascript/i.test(src)) {
-        errors.push(`${templatePath}: Unsafe script URL is not allowed: ${src}`);
-      }
-      continue;
-    }
-
     // Block javascript: and data:text/javascript URLs
     if (/^(javascript:|data:text\/javascript)/i.test(src.trim())) {
       errors.push(`${templatePath}: Unsafe script URL is not allowed: ${src}`);
       continue;
     }
 
-    // Local scripts are allowed (theme-relative or absolute paths)
-    const isLocalPath =
-      src.startsWith('/') ||
-      src.startsWith('./') ||
-      src.startsWith('../');
+    // Protocol-relative URLs load from an arbitrary origin and would pass as "local" paths.
+    if (src.trim().startsWith('//')) {
+      errors.push(`${templatePath}: Protocol-relative script URL is not allowed, use https://: ${src}`);
+      continue;
+    }
 
-    if (isLocalPath) {
+    // Handlebars-templated paths are allowed for export/runtime switching, but a templated
+    // string that starts with an origin must still name a trusted one.
+    if (src.includes('{{') || src.includes('}}')) {
+      const literalPrefix = src.trim().split('{{')[0];
+      if (/^https?:\/\/[^/]*$/i.test(literalPrefix)) {
+        errors.push(`${templatePath}: Script origin cannot be templated: ${src}`);
+      } else if (/^https?:\/\//i.test(literalPrefix)) {
+        const originError = validateExternalScriptUrl(literalPrefix, templatePath, src);
+        if (originError) errors.push(originError);
+      }
+      continue;
+    }
+
+    // Theme-relative and site-absolute paths are local
+    if (src.startsWith('/') || src.startsWith('./') || src.startsWith('../')) {
       continue;
     }
 
     // External scripts must use HTTPS and trusted domains
-    try {
-      const url = new URL(src);
-      if (url.protocol !== 'https:') {
-        errors.push(`${templatePath}: External script must use HTTPS: ${src}`);
-        continue;
-      }
-
-      const isTrusted = SECURITY_CONFIG.TRUSTED_SCRIPT_DOMAINS.some(
-        domain => domain === url.hostname
-      );
-      if (!isTrusted) {
-        errors.push(`${templatePath}: Script domain is not trusted: ${url.hostname}`);
-      }
-    } catch {
-      errors.push(`${templatePath}: Invalid script src URL: ${src}`);
-    }
+    const originError = validateExternalScriptUrl(src, templatePath, src);
+    if (originError) errors.push(originError);
   }
 
   // 2. Block inline event handlers (onclick, onerror, etc.)

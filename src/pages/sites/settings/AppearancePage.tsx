@@ -19,6 +19,7 @@ import { Button } from '@/core/components/ui/button';
 import { Label } from '@/core/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/core/components/ui/select';
 import SchemaDrivenForm from '@/core/components/SchemaDrivenForm';
+import ThemeImportReportDialog, { type ThemeImportReport } from '@/features/site-settings/components/ThemeImportReportDialog';
 import { toast } from 'sonner';
 
 export default function ThemeSettingsPage() {
@@ -32,6 +33,7 @@ export default function ThemeSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [importReport, setImportReport] = useState<ThemeImportReport | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
   // Form-specific state
@@ -117,8 +119,11 @@ export default function ThemeSettingsPage() {
     try {
       const result = await importThemeFromZip(file, siteId);
       if (!result.success || !result.themeInfo) {
-        const errorMessage = result.errors?.[0] || 'Theme import failed';
-        toast.error(errorMessage);
+        setImportReport({
+          fileName: file.name,
+          errors: result.errors?.length ? result.errors : ['Theme import failed'],
+          warnings: result.warnings ?? [],
+        });
         return;
       }
 
@@ -149,7 +154,7 @@ export default function ThemeSettingsPage() {
       }
 
       if (result.warnings?.length) {
-        toast.warning(result.warnings[0]);
+        setImportReport({ fileName: file.name, errors: [], warnings: result.warnings });
       }
 
       toast.success(
@@ -283,6 +288,7 @@ export default function ThemeSettingsPage() {
           </Button>
         </div>
       </div>
+      <ThemeImportReportDialog report={importReport} onClose={() => setImportReport(null)} />
     </>
   );
 }

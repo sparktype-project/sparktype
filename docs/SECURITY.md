@@ -421,6 +421,7 @@ Themes will be able to declare external scripts in their manifest for services l
 - ✅ Total size limit (20MB)
 - ✅ File count limit (500 files)
 - ✅ Per-file size limit (5MB)
+- ✅ Count, declared sizes and ratios are checked from the ZIP central directory before anything is decompressed; real sizes are re-checked while extracting, because headers can lie
 
 **Status**: ✅ Protected
 
@@ -430,7 +431,9 @@ Themes will be able to declare external scripts in their manifest for services l
 
 **Mitigation**:
 - ✅ Path validation rejects `..` in file paths
-- ✅ Paths must be relative (no leading `/`)
+- ✅ Paths must be relative (no leading `/`) and may not contain backslashes or null bytes
+- ✅ Raw entry names are read from the central directory, because JSZip silently resolves `..` segments; entries outside a wrapping folder are rejected rather than dropped
+- ✅ Blocked and unlisted file types are rejected for every entry
 - ✅ Special characters blocked in paths (`<>:"|?*`)
 - ✅ Hidden files blocked (except .gitkeep and .htaccess)
 
@@ -466,7 +469,11 @@ Themes will be able to declare external scripts in their manifest for services l
 
 ---
 
-### 7. Prototype access from templates
+### 7. Import hard failures and soft warnings
+
+Theme import is blocked only on hard failures: file count, size and ratio limits, unsafe paths, blocked file types, invalid manifest, inline scripts, protocol-relative or `http:` script URLs, and script origins outside `TRUSTED_SCRIPT_DOMAINS` (including a templated host). The import dialog lists every reason. Soft issues, such as unreferenced files or `data:` URLs, only warn. The trusted-domain allowlist stays because the bundled themes load Alpine from `cdn.jsdelivr.net`.
+
+### 8. Prototype access from templates
 
 Imported themes are untrusted Handlebars. Every template invocation goes through `renderTemplate` in `src/core/services/renderer/templateRuntime.ts`, which forces `allowProtoPropertiesByDefault: false` and `allowProtoMethodsByDefault: false`. Partials, `@partial-block` and inline partials inherit these options from the invoking call. Tests in `renderer/__tests__/templateRuntime.test.ts` cover `constructor`/`__proto__` access, `lookup` and partial injection. Themes are still compiled at runtime with `new Function`, so the Tauri CSP keeps `'unsafe-eval'`.
 

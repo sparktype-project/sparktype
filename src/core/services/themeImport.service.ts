@@ -3,6 +3,8 @@
 import JSZip from 'jszip';
 import { SECURITY_CONFIG } from '@/config/editorConfig';
 import { validateThemePackage, sanitizeCSS } from './themeValidation.service';
+import { checkThemeArchive } from './themeArchiveChecks';
+import { listZipEntries } from './zipCentralDirectory';
 import { saveCustomThemeBundle } from './assetStorage.service';
 import type { ThemeInfo } from '@/core/types';
 
@@ -75,6 +77,31 @@ function formatFileSize(bytes: number): string {
 }
 
 /**
+ * Opens a theme ZIP after the central-directory checks (file count, sizes, hostile names and
+ * types) pass, so nothing is decompressed for an archive that must be rejected.
+ */
+async function openCheckedZip(file: File): Promise<{ zip: JSZip } | { errors: string[] }> {
+  let buffer: ArrayBuffer;
+  try {
+    buffer = await file.arrayBuffer();
+  } catch (error) {
+    return { errors: [`Failed to read ZIP file: ${(error as Error).message}`] };
+  }
+
+  const listing = listZipEntries(buffer, SECURITY_CONFIG.THEME_IMPORT_LIMITS.MAX_FILE_COUNT);
+  if (listing) {
+    const problems = checkThemeArchive(listing);
+    if (problems.length > 0) return { errors: problems };
+  }
+
+  try {
+    return { zip: await JSZip.loadAsync(buffer) };
+  } catch (error) {
+    return { errors: [`Failed to load ZIP file: ${(error as Error).message}`] };
+  }
+}
+
+/**
  * Imports a theme from a ZIP file.
  *
  * @param file The ZIP file to import
@@ -89,15 +116,9 @@ export async function importThemeFromZip(
     console.log(`[Theme Import] Starting import for site ${siteId}, file: ${file.name}`);
 
     // 1. Load ZIP
-    let zip: JSZip;
-    try {
-      zip = await JSZip.loadAsync(file);
-    } catch (error) {
-      return {
-        success: false,
-        errors: [`Failed to load ZIP file: ${(error as Error).message}`]
-      };
-    }
+    const opened = await openCheckedZip(file);
+    if ('errors' in opened) return { success: false, errors: opened.errors };
+    const zip = opened.zip;
 
     // 2. Check file count
     const fileCount = Object.keys(zip.files).length;
@@ -156,7 +177,9 @@ export async function importThemeFromZip(
         };
       }
 
+      // Declared sizes can lie, so the real total is enforced while extracting.
       totalSize += fileSize;
+      if (totalSize > SECURITY_CONFIG.THEME_IMPORT_LIMITS.MAX_TOTAL_SIZE) break;
       files.set(path, content);
     }
 
@@ -312,8 +335,9 @@ export async function importThemeFromUrl(
  */
 export async function validateThemeZip(file: File): Promise<ThemeImportResult> {
   try {
-    // Load ZIP
-    const zip = await JSZip.loadAsync(file);
+    const opened = await openCheckedZip(file);
+    if ('errors' in opened) return { success: false, errors: opened.errors };
+    const zip = opened.zip;
 
     // Extract files
     const files = new Map<string, string>();
