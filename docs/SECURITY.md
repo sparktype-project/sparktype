@@ -521,6 +521,22 @@ To add a new trusted domain:
 
 ---
 
+## Dependency audit status
+
+`npm audit --omit=dev` reports 0 vulnerabilities. Every finding in the full `npm audit` is recorded here.
+
+| Package | Advisory | Status |
+|---------|----------|--------|
+| `vitest`, `@vitest/mocker`, `@vitest/coverage-v8` | GHSA-82fw-gwwq-j7x9 (mock redirect path traversal) | Fixed: upgraded together to 4.1.12 |
+| `@babel/core` | GHSA-4x5r-pxfx-6jf8 (sourceMappingURL file read) | Fixed: lockfile refreshed to 7.29.x |
+| `@humanfs/node` | GHSA-p498-v437-472g (symlink copy) | Fixed: 0.16.8 via refreshed lockfile |
+| `ajv` (eslint, @eslint/eslintrc) | GHSA-2g4f-4pwh-qvx6 (`$data` ReDoS) | Fixed: 6.15.0 via refreshed lockfile |
+| `postcss-selector-parser`, `@tailwindcss/typography` | GHSA-rj75-hqrm-r3gf (quadratic selector parsing) | Accepted, dev-only. `@tailwindcss/typography` (latest 0.5.20) pins `postcss-selector-parser@6.0.10` exactly, and the only fix npm offers (`audit fix --force`) is a downgrade to 0.5.4, which is also affected. Forcing parser 7.x onto a plugin written for 6.x risks breaking the prose styles. The parser only sees our own Tailwind CSS at build time, never user or theme input, so exposure is a slow local build. Revisit when typography releases against parser 7.x. |
+
+`npm audit fix` crashes on this repository (an arborist peer-set bug in npm 10, "Cannot read properties of null (reading 'edgesOut')"). Dependency changes that touch vitest's peer set were made with `npx npm@11 install --package-lock-only` followed by `npm ci`.
+
+---
+
 ## Security audit log
 
 | Date | Change | Rationale |
@@ -529,6 +545,7 @@ To add a new trusted domain:
 | 2025-01 | Added font domain allowlist | Support professional font services while maintaining security |
 | 2025-01 | Implemented theme validation service | Prevent malicious themes at import time |
 | 2025-01 | Added DOMPurify sanitisation | Defence-in-depth HTML sanitisation for rendered content |
+| 2026-10 | Cleared dev-dependency audit findings | Upgraded vitest toolchain and refreshed lockfile; remaining finding documented above |
 
 ---
 
