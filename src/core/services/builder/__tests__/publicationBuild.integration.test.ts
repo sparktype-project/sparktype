@@ -305,6 +305,40 @@ describe('buildSiteBundle publication filtering', () => {
     expect(locations.join(' ')).not.toContain('about');
   });
 
+  test('holds scheduled items back from every public output until their time, then releases them', async () => {
+    const site = createPublicationSite();
+    await seedStoredImages(site.siteId);
+    // Turn the two drafts into items scheduled for 2026-07-01 instead.
+    for (const file of site.contentFiles!) {
+      if (file.frontmatter.published === false) {
+        delete file.frontmatter.published;
+        file.frontmatter.publishAt = '2026-07-01T00:00:00Z';
+      }
+    }
+
+    const before = await buildSiteBundle(site, Date.parse('2026-06-30T23:59:59Z'));
+    const beforeText = await bundleText(before);
+    expect(Object.keys(before)).not.toContain('about/index.html');
+    expect(Object.keys(before)).not.toContain('posts/hidden/index.html');
+    expect(beforeText).not.toContain('Secret About Page');
+    expect(beforeText).not.toContain('Hidden Draft Post');
+    expect(before['_site/content/about.md']).toBeUndefined();
+    expect(before['_site/content/posts/hidden.md']).toBeUndefined();
+    expect(before['rss.xml'] as string).not.toContain('Hidden Draft Post');
+    expect(before['sitemap.xml'] as string).not.toContain('hidden');
+    expect(before['sitemap.xml'] as string).not.toContain('about');
+    expect(before[`_site/${DRAFT_IMAGE}`]).toBeUndefined();
+    expect(JSON.parse(before['_site/manifest.json'] as string).collectionItems).toHaveLength(3);
+    expect(before['index.html']).not.toContain('about');
+
+    const after = await buildSiteBundle(site, Date.parse('2026-07-01T00:00:00Z'));
+    expect(Object.keys(after)).toContain('about/index.html');
+    expect(Object.keys(after)).toContain('posts/hidden/index.html');
+    expect(after['rss.xml'] as string).toContain('Hidden Draft Post');
+    expect(after['sitemap.xml'] as string).toContain('hidden');
+    expect(after['_site/content/about.md']).toBeDefined();
+  });
+
   test('bundles published assets and preserves stored originals, including draft-only images', async () => {
     const site = createPublicationSite();
     await seedStoredImages(site.siteId);

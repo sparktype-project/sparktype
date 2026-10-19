@@ -167,3 +167,82 @@ describe('unpublished homepage', () => {
     expect(() => createPublicSiteSnapshot(site)).not.toThrow();
   });
 });
+
+describe('scheduled content', () => {
+  const NOW = Date.parse('2026-06-01T12:00:00Z');
+
+  function schedule(file: ParsedMarkdownFile, publishAt: string): void {
+    file.frontmatter.publishAt = publishAt;
+  }
+
+  test('excludes a future-dated page, collection item and file, and keeps the rest', () => {
+    const site = createSiteFixture('collectionSite');
+    const post = site.contentFiles!.find((file) => file.path === 'content/posts/launch-day.md')!;
+    schedule(post, '2026-06-02T09:00:00+01:00');
+
+    const snapshot = createPublicSiteSnapshot(site, NOW);
+
+    expect(snapshot.contentFiles?.map((file) => file.path)).not.toContain(post.path);
+    expect(snapshot.manifest.collectionItems?.map((item) => item.path)).not.toContain(post.path);
+    expect(paths(snapshot.manifest.structure)).toEqual(['content/home.md', 'content/posts.md']);
+  });
+
+  test('releases an item exactly at its time, and any time earlier', () => {
+    const site = createSiteFixture('collectionSite');
+    const post = site.contentFiles!.find((file) => file.path === 'content/posts/launch-day.md')!;
+
+    schedule(post, '2026-06-01T12:00:00Z');
+    expect(createPublicSiteSnapshot(site, NOW).contentFiles).toContain(post);
+
+    schedule(post, '2026-06-01T12:00:01Z');
+    expect(createPublicSiteSnapshot(site, NOW).contentFiles).not.toContain(post);
+  });
+
+  test('compares instants across timezone offsets', () => {
+    const site = createSiteFixture('collectionSite');
+    const post = site.contentFiles!.find((file) => file.path === 'content/posts/launch-day.md')!;
+
+    schedule(post, '2026-06-01T12:30:00+01:00');
+    expect(createPublicSiteSnapshot(site, NOW).contentFiles).toContain(post);
+
+    schedule(post, '2026-06-01T11:30:00-01:00');
+    expect(createPublicSiteSnapshot(site, NOW).contentFiles).not.toContain(post);
+  });
+
+  test('keeps published descendants of a scheduled nested page', () => {
+    const site = createSiteFixture('nestedPagesSite');
+    schedule(site.contentFiles![1], '2027-01-01T00:00:00Z');
+
+    const snapshot = createPublicSiteSnapshot(site, NOW);
+
+    expect(paths(snapshot.manifest.structure)).toEqual(['content/home.md', 'content/about/team.md']);
+  });
+
+  test('ignores an invalid publishAt, so the item stays published', () => {
+    const site = createSiteFixture('collectionSite');
+    const post = site.contentFiles!.find((file) => file.path === 'content/posts/launch-day.md')!;
+    schedule(post, 'next tuesday');
+
+    expect(createPublicSiteSnapshot(site, NOW).contentFiles).toContain(post);
+  });
+
+  test('a draft stays a draft even once its publishAt has passed', () => {
+    const site = createSiteFixture('collectionSite');
+    addDraftItem(site);
+    schedule(site.contentFiles!.find((file) => file.path === 'content/posts/hidden.md')!, '2020-01-01T00:00:00Z');
+
+    expect(createPublicSiteSnapshot(site, NOW).contentFiles?.map((file) => file.path)).not.toContain(
+      'content/posts/hidden.md',
+    );
+  });
+
+  test('a scheduled homepage fails the build with a message naming the file and the time', () => {
+    const site = createSiteFixture('basicSite');
+    schedule(site.contentFiles![0], '2026-12-25T09:00:00Z');
+
+    expect(() => createPublicSiteSnapshot(site, NOW)).toThrow(PublicationError);
+    expect(() => createPublicSiteSnapshot(site, NOW)).toThrow(/content\/home\.md/);
+    expect(() => createPublicSiteSnapshot(site, NOW)).toThrow(/2026-12-25T09:00:00Z/);
+    expect(() => createPublicSiteSnapshot(site, Date.parse('2026-12-26T00:00:00Z'))).not.toThrow();
+  });
+});

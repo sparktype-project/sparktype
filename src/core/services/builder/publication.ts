@@ -7,13 +7,15 @@ import type {
   ParsedMarkdownFile,
   StructureNode,
 } from '@/core/types';
+import { isScheduledAfter } from './schedule';
 
 /**
  * ============================================================================
  * Publication Selection
  * ============================================================================
- * `frontmatter.published` is the only publication signal, and the absence of the flag means
- * published. This module turns live site data into the public snapshot a build may expose.
+ * `frontmatter.published` is the draft signal (absent means published), and `frontmatter.publishAt`
+ * holds an item back until its time. Sparktype only pushes built output, so no host rebuilds on a
+ * schedule: a scheduled item goes live the next time the author builds after its time. This module turns live site data into the public snapshot a build may expose.
  *
  * The snapshot is derived, never applied: it filters `contentFiles`, `manifest.structure` and
  * `manifest.collectionItems` into new arrays and shares everything else by reference, so the
@@ -39,6 +41,11 @@ export function isPublishedFile(file: Pick<ParsedMarkdownFile, 'frontmatter'> | 
   return file?.frontmatter.published !== false;
 }
 
+/** Whether a file may appear in a build made at `now`: not a draft, and not scheduled for later. */
+function isPublicAt(file: ParsedMarkdownFile | undefined, now: number): boolean {
+  return isPublishedFile(file) && !isScheduledAfter(file, now);
+}
+
 /**
  * Filters the structure tree. An unpublished page is removed, but its published descendants
  * are kept in its place: they have their own files, slugs and URLs, and removing them would
@@ -47,13 +54,14 @@ export function isPublishedFile(file: Pick<ParsedMarkdownFile, 'frontmatter'> | 
 function filterStructureNodes(
   nodes: StructureNode[],
   fileByPath: Map<string, ParsedMarkdownFile>,
+  now: number,
 ): StructureNode[] {
   const kept: StructureNode[] = [];
 
   for (const node of nodes) {
-    const children = node.children ? filterStructureNodes(node.children, fileByPath) : undefined;
+    const children = node.children ? filterStructureNodes(node.children, fileByPath, now) : undefined;
 
-    if (!isPublishedFile(fileByPath.get(node.path))) {
+    if (!isPublicAt(fileByPath.get(node.path), now)) {
       if (children) kept.push(...children);
       continue;
     }
@@ -114,10 +122,18 @@ export function pruneUnpublishedMediaReferences(
 /**
  * Builds the derived snapshot every public output is generated from. Throws rather than
  * publishing a site whose homepage is a draft, because the export would otherwise emit the
- * draft to `index.html` with no signal that anything was withheld.
+ * draft to `index.html` with no signal that anything was withheld. A scheduled homepage fails the
+ * same way. `now` is injected (epoch ms) so the cut-off is deterministic.
  */
-export function createPublicSiteSnapshot(siteData: LocalSiteData): LocalSiteData {
+export function createPublicSiteSnapshot(siteData: LocalSiteData, now: number = Date.now()): LocalSiteData {
   const homepage = findHomepageFile(siteData);
+  if (homepage && isPublishedFile(homepage) && isScheduledAfter(homepage, now)) {
+    throw new PublicationError(
+      `Cannot build site "${siteData.siteId}": the homepage "${homepage.path}" is scheduled for ` +
+        `${String(homepage.frontmatter.publishAt)}, which is still in the future. ` +
+        'Clear its schedule, or choose a different homepage, before building the site.',
+    );
+  }
   if (homepage && !isPublishedFile(homepage)) {
     throw new PublicationError(
       `Cannot build site "${siteData.siteId}": the homepage "${homepage.path}" is marked "published: false". ` +
@@ -129,15 +145,15 @@ export function createPublicSiteSnapshot(siteData: LocalSiteData): LocalSiteData
 
   const manifest: Manifest = {
     ...siteData.manifest,
-    structure: filterStructureNodes(siteData.manifest.structure, fileByPath),
+    structure: filterStructureNodes(siteData.manifest.structure, fileByPath, now),
   };
   if (siteData.manifest.collectionItems) {
     manifest.collectionItems = siteData.manifest.collectionItems.filter((item) =>
-      isPublishedFile(fileByPath.get(item.path)),
+      isPublicAt(fileByPath.get(item.path), now),
     );
   }
 
-  const contentFiles = siteData.contentFiles?.filter(isPublishedFile);
+  const contentFiles = siteData.contentFiles?.filter((file) => isPublicAt(file, now));
 
   return {
     ...siteData,

@@ -19,10 +19,13 @@ function file(site: LocalSiteData, path: string): ParsedMarkdownFile {
   return found;
 }
 
+const NOW = Date.parse('2026-06-01T12:00:00Z');
+
 function check(site: LocalSiteData, storedImagePaths: string[] = []): PrePublishFinding[] {
   return checkSiteForPublishing({
     site,
-    snapshot: createPublicSiteSnapshot(site),
+    now: NOW,
+    snapshot: createPublicSiteSnapshot(site, NOW),
     storedImagePaths: new Set(storedImagePaths),
   });
 }
@@ -55,7 +58,8 @@ describe('checkSiteForPublishing', () => {
       file(copy, 'content/home.md').frontmatter.published = true;
       const findings = checkSiteForPublishing({
         site,
-        snapshot: createPublicSiteSnapshot(copy),
+        now: NOW,
+        snapshot: createPublicSiteSnapshot(copy, NOW),
         storedImagePaths: new Set(),
       });
       const [finding] = ids(findings, 'homepage');
@@ -64,6 +68,45 @@ describe('checkSiteForPublishing', () => {
         path: 'content/home.md',
         fixHref: `/sites/${site.siteId}/edit/content/home`,
       });
+    });
+  });
+
+  describe('scheduling', () => {
+    test('blocks when the homepage is scheduled for later, pointing at the page', () => {
+      const site = withDescriptions(createSiteFixture('basicSite'));
+      file(site, 'content/home.md').frontmatter.publishAt = '2026-12-25T09:00:00Z';
+      const copy = structuredClone(site);
+      delete file(copy, 'content/home.md').frontmatter.publishAt;
+      const findings = checkSiteForPublishing({ site, now: NOW, snapshot: createPublicSiteSnapshot(copy, NOW), storedImagePaths: new Set() });
+      expect(ids(findings, 'homepage')[0]).toMatchObject({
+        id: 'homepage-scheduled:content/home.md',
+        severity: 'blocking',
+        path: 'content/home.md',
+      });
+    });
+
+    test('warns about an invalid publishAt, which the build ignores', () => {
+      const site = withDescriptions(createSiteFixture('nestedPagesSite'));
+      file(site, 'content/about.md').frontmatter.publishAt = 'next tuesday';
+      const [finding] = ids(check(site), 'invalid-publish-at');
+      expect(finding).toMatchObject({ severity: 'warning', path: 'content/about.md' });
+      expect(finding.message).toContain('next tuesday');
+    });
+
+    test('does not flag a valid future or past publishAt', () => {
+      const site = withDescriptions(createSiteFixture('nestedPagesSite'));
+      file(site, 'content/about.md').frontmatter.publishAt = '2026-12-25T09:00:00Z';
+      file(site, 'content/about/team.md').frontmatter.publishAt = '2020-01-01T00:00:00+01:00';
+      expect(ids(check(site), 'invalid-publish-at')).toEqual([]);
+    });
+
+    test('describes a link to a scheduled page as scheduled, not as a draft', () => {
+      const site = withDescriptions(createSiteFixture('nestedPagesSite'));
+      file(site, 'content/about.md').frontmatter.publishAt = '2026-12-25T09:00:00Z';
+      file(site, 'content/home.md').content = 'See [about](/about).';
+      const [finding] = ids(check(site), 'scheduled-link');
+      expect(finding).toMatchObject({ severity: 'warning', path: 'content/home.md' });
+      expect(finding.message).toContain('scheduled');
     });
   });
 

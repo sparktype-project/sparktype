@@ -15,7 +15,7 @@ import { createPublicSiteSnapshot } from './builder/publication';
  * Orchestrates the entire site build process by calling specialized builder modules.
  * This service generates a complete, in-memory representation of a static site bundle.
  */
-export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBundle> {
+export async function buildSiteBundle(siteData: LocalSiteData, now: number = Date.now()): Promise<SiteBundle> {
     clearAssetContentCache();
 
     const bundle: SiteBundle = {};
@@ -37,10 +37,10 @@ export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBund
         manifest: { ...siteData.manifest, theme: { ...siteData.manifest.theme, config: finalMergedConfig } },
     };
 
-    // 2. Derive the public snapshot the whole build renders from. This filters drafts out of
+    // 2. Derive the public snapshot the whole build renders from. This filters drafts and not-yet-due scheduled items out of
     // the structure, the collection index and the content files without touching `siteData`,
-    // and it fails the build when the homepage itself is unpublished.
-    const publicSiteData = createPublicSiteSnapshot(synchronizedSiteData);
+    // and it fails the build when the homepage itself is unpublished or scheduled.
+    const publicSiteData = createPublicSiteSnapshot(synchronizedSiteData, now);
 
     // 3. Generate all HTML pages for every piece of content, plus the 404 page hosts serve for unknown URLs.
     const htmlPages = await generateHtmlPages(publicSiteData);

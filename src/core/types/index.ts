@@ -313,6 +313,8 @@ export interface MarkdownFrontmatter {
   displayCollection?: boolean;
   layoutConfig?: LayoutConfig; // Collection layout configuration
   homepage?: boolean;
+  /** ISO datetime with offset; the page is held back from builds until then. */
+  publishAt?: string;
   tags?: Record<string, string[]>; // groupId -> array of tag IDs
   [key: string]: unknown;
 }

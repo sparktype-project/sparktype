@@ -2,6 +2,7 @@
 
 import type { LocalSiteData, ParsedMarkdownFile } from '@/core/types';
 import { findHomepageFile, isPublishedFile } from '@/core/services/builder/publication';
+import { isInvalidPublishAt, isScheduledAfter } from '@/core/services/builder/schedule';
 import { collectImageRefs, findContentFileImageRefs } from '@/core/services/builder/imageRefs';
 import { listPages, type PageEntry } from '@/core/services/builder/pageList';
 import { getSiteOrigin } from '@/core/services/siteOrigin.service';
@@ -27,6 +28,8 @@ export interface PrePublishInput {
   site: LocalSiteData;
   /** The public snapshot the build is generated from. */
   snapshot: LocalSiteData;
+  /** Epoch milliseconds the build would be made at; decides which scheduled items are still held back. */
+  now: number;
   /** Paths of the original images that have bytes in storage. */
   storedImagePaths: ReadonlySet<string>;
 }
@@ -39,7 +42,7 @@ function editHref(siteId: string, file: ParsedMarkdownFile): string {
   return `/sites/${siteId}/edit/content/${file.path.replace(/^content\//, '').replace(/\.md$/, '')}`;
 }
 
-function checkHomepage({ site }: PrePublishInput): PrePublishFinding[] {
+function checkHomepage({ site, now }: PrePublishInput): PrePublishFinding[] {
   const homepage = findHomepageFile(site);
   if (!homepage) {
     return [{
@@ -55,6 +58,15 @@ function checkHomepage({ site }: PrePublishInput): PrePublishFinding[] {
       id: `homepage-unpublished:${homepage.path}`,
       severity: 'blocking',
       message: `The homepage "${homepage.frontmatter.title}" is unpublished. Publish it, or choose another homepage.`,
+      path: homepage.path,
+      fixHref: editHref(site.siteId, homepage),
+    }];
+  }
+  if (isScheduledAfter(homepage, now)) {
+    return [{
+      id: `homepage-scheduled:${homepage.path}`,
+      severity: 'blocking',
+      message: `The homepage "${homepage.frontmatter.title}" is scheduled for ${String(homepage.frontmatter.publishAt)}, so the site cannot be built until then. Clear the schedule, or choose another homepage.`,
       path: homepage.path,
       fixHref: editHref(site.siteId, homepage),
     }];
@@ -112,8 +124,8 @@ function checkImages({ site, snapshot, storedImagePaths }: PrePublishInput): Pre
 
 function checkLinks({ site, snapshot }: PrePublishInput): PrePublishFinding[] {
   const publishedUrls = new Set(listPages(snapshot).map((page) => page.url));
-  const draftUrls = new Set(
-    listPages(site).filter((page) => !isPublishedFile(page.file)).map((page) => page.url),
+  const heldBack = new Map(
+    listPages(site).filter((page) => !publishedUrls.has(page.url)).map((page) => [page.url, page.file]),
   );
   const findings: PrePublishFinding[] = [];
 
@@ -121,13 +133,17 @@ function checkLinks({ site, snapshot }: PrePublishInput): PrePublishFinding[] {
     for (const href of findBodyLinks(page.file.content)) {
       const target = resolveInternalHref(href, page.url);
       if (target === null || publishedUrls.has(target)) continue;
-      const isDraft = draftUrls.has(target);
+      const targetFile = heldBack.get(target);
+      const kind = !targetFile ? 'broken-link' : isPublishedFile(targetFile) ? 'scheduled-link' : 'draft-link';
+      const problem = {
+        'broken-link': 'does not match any page',
+        'scheduled-link': 'is scheduled for later and will not be published yet',
+        'draft-link': 'is an unpublished draft',
+      }[kind];
       findings.push({
-        id: `${isDraft ? 'draft-link' : 'broken-link'}:${page.file.path}:${href}`,
+        id: `${kind}:${page.file.path}:${href}`,
         severity: 'warning',
-        message: isDraft
-          ? `"${page.file.frontmatter.title}" links to ${href}, which is an unpublished draft.`
-          : `"${page.file.frontmatter.title}" links to ${href}, which does not match any page.`,
+        message: `"${page.file.frontmatter.title}" links to ${href}, which ${problem}.`,
         path: page.file.path,
         fixHref: editHref(site.siteId, page.file),
       });
@@ -220,6 +236,18 @@ function checkRedirects({ site, snapshot }: PrePublishInput): PrePublishFinding[
   return findings;
 }
 
+function checkSchedules({ site }: PrePublishInput): PrePublishFinding[] {
+  return (site.contentFiles ?? [])
+    .filter((file) => isInvalidPublishAt(file.frontmatter.publishAt))
+    .map((file) => ({
+      id: `invalid-publish-at:${file.path}`,
+      severity: 'warning' as const,
+      message: `"${file.frontmatter.title}" has a schedule "${String(file.frontmatter.publishAt)}" that is not a valid date and time, so it is ignored and the page will publish immediately.`,
+      path: file.path,
+      fixHref: editHref(site.siteId, file),
+    }));
+}
+
 function checkOutputPaths({ site, snapshot }: PrePublishInput): PrePublishFinding[] {
   const byOutput = new Map<string, PageEntry[]>();
   for (const page of listPages(snapshot)) {
@@ -256,6 +284,7 @@ export function checkSiteForPublishing(input: PrePublishInput): PrePublishFindin
     ...checkImages(input),
     ...checkLinks(input),
     ...checkMetadata(input),
+    ...checkSchedules(input),
     ...checkOutputPaths(input),
     ...checkRedirects(input),
   ];
