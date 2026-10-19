@@ -14,6 +14,7 @@
     "preview:web": "vite preview --config vite.config.web.ts --outDir dist",
     "lint": "eslint .",
     "preview": "vite preview",
+    "pretest": "node scripts/check-node-version.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

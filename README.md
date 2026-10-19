@@ -34,9 +34,11 @@ npm ci
 Do not run the test suite on Node 26+. There, `globalThis.localStorage` is an accessor that
 returns `undefined` unless the process is started with `--localstorage-file`, and it exists before
 jsdom populates globals, so `localStorage.clear()` in tests throws
-`TypeError: Cannot read properties of undefined (reading 'clear')` and **7 tests across 2 files
-fail for runtime reasons, not because of the code under test** (`authSlice.test.ts` and
-`siteContent.integration.test.ts`). The same suite is green on Node 22.
+`TypeError: Cannot read properties of undefined (reading 'clear')` and **45 tests across 5 files
+fail for runtime reasons, not because of the code under test** (counted with `npx vitest run` on
+Node 26). The same suite is green on Node 22. `npm test` runs a `pretest` guard
+(`scripts/check-node-version.mjs`) that exits with a clear message on any Node major other than 22;
+`npx vitest run` bypasses the guard.
 
 ### Commands
 
