@@ -21,7 +21,7 @@ import { getRelativePath } from '@/core/services/relativePaths.service';
 import { getTagsByIds } from '@/core/services/tags.service';
 import { getJsonAsset } from '@/core/services/config/configHelpers.service';
 import { getSiteOrigin } from '@/core/services/siteOrigin.service';
-import { resolveCanonicalUrl, resolveNoindex, resolveSocialImage } from './headMeta';
+import { resolveCanonicalUrl, resolveNoindex, resolveOgType, resolveSocialImage, resolveTwitterCard } from './headMeta';
 
 // The context object passed into the main body template.
 type ResolvedTags = Record<string, Tag[]>;
@@ -161,6 +161,7 @@ export async function assembleBaseContext(
         }));
 
     const siteOrigin = getSiteOrigin(manifest);
+    const socialImage = resolveSocialImage(siteData, resolution.contentFile, siteOrigin, options.isExport);
 
     // CORRECTED: Create the appropriate `StructureNode` or `CollectionItemRef` before passing to `getUrlForNode`.
     // We check the manifest to see if the resolved content file is a known collection item.
@@ -209,7 +210,9 @@ export async function assembleBaseContext(
               resolution.pageNumber,
             ),
             noindex: resolveNoindex(resolution.contentFile, manifest),
-            socialImage: resolveSocialImage(siteData, resolution.contentFile, siteOrigin, options.isExport),
+            socialImage,
+            ogType: resolveOgType(resolution.contentFile, manifest),
+            twitterCard: resolveTwitterCard(socialImage),
             hasFeed: !options.isExport || siteOrigin !== null,
             baseUrl: options.relativeAssetPath ?? '/',
             styleOverrides: new Handlebars.SafeString(generateStyleOverrides(manifest.theme.config)),

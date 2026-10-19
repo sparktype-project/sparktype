@@ -29,10 +29,10 @@
 <meta property="og:url" content="{{canonicalUrl}}">
 {{/if}}
 <meta property="og:site_name" content="{{manifest.title}}">
-<meta property="og:type" content="{{#if contentFile}}article{{else}}website{{/if}}">
+<meta property="og:type" content="{{ogType}}">
 
 {{!-- Twitter Card Tags --}}
-<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:card" content="{{twitterCard}}">
 <meta name="twitter:title" content="{{pageTitle}}">
 {{#if contentFile.frontmatter.description}}
     <meta name="twitter:description" content="{{contentFile.frontmatter.description}}">
@@ -42,8 +42,10 @@
 
 {{#if socialImage}}
     <meta property="og:image" content="{{socialImage.url}}">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
+    {{#if socialImage.width}}
+    <meta property="og:image:width" content="{{socialImage.width}}">
+    <meta property="og:image:height" content="{{socialImage.height}}">
+    {{/if}}
     <meta name="twitter:image" content="{{socialImage.url}}">
 {{/if}}
 
