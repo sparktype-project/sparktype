@@ -10,7 +10,9 @@ import { type LocalSiteData } from '@/core/types';
 
 // Services
 import { importSiteFromZip } from '@/core/services/siteBackup.service';
-import { downloadSiteBackup } from '@/core/services/backup/downloadSiteBackup';
+import BackupReminderBanner from '@/features/backup/BackupReminderBanner';
+import LastBackedUp from '@/features/backup/LastBackedUp';
+import { useBackupExport } from '@/features/backup/useBackupExport';
 import { restoreImportedImageRegistry } from '@/core/services/backup/backupImport';
 import { MEDIA_INDEX_PATH } from '@/core/services/backup/backupFormat';
 import { importSiteFromGitHub, importSiteFromUrl } from '@/core/services/remoteImport.service';
@@ -34,7 +36,6 @@ export default function HomePageDashboard() {
   const getSiteById = useAppStore((state: AppStore) => state.getSiteById);
   const addSite = useAppStore((state: AppStore) => state.addSite);
   const updateSiteSecrets = useAppStore((state: AppStore) => state.updateSiteSecrets);
-  const loadSite = useAppStore((state: AppStore) => state.loadSite);
   const deleteSiteAndState = useAppStore((state: AppStore) => state.deleteSiteAndState);
   const authenticateForSite = useAppStore((state: AppStore) => state.authenticateForSite);
   const [isImporting, setIsImporting] = useState(false);
@@ -43,6 +44,7 @@ export default function HomePageDashboard() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [activeImportModal, setActiveImportModal] = useState<ImportModalMode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const exportBackup = useBackupExport();
 
   const finishImport = useCallback(async (data: LocalSiteData & { imageAssetsToSave?: Record<string, Blob> }) => {
     const { imageAssetsToSave, ...siteDataToSave } = data;
@@ -110,20 +112,6 @@ export default function HomePageDashboard() {
     if (importedData) await finishImport(importedData);
     setIsOverwriteDialogOpen(false);
     setImportedData(null);
-  };
-
-  const handleExportBackup = async (siteId: string) => {
-    toast.info("Preparing site backup...");
-    try {
-      await loadSite(siteId);
-      const siteToExport = getSiteById(siteId);
-      if (!siteToExport) throw new Error("Could not load site data for export.");
-      await downloadSiteBackup(siteToExport);
-      toast.success("Site backup downloaded!");
-    } catch (error) {
-      console.error("Failed to export site:", error);
-      toast.error(`Export failed: ${(error as Error).message}`);
-    }
   };
 
   const handleDeleteSite = async (siteId: string, siteTitle: string) => {
@@ -243,6 +231,7 @@ export default function HomePageDashboard() {
             </Button>
           </div>
         </div>
+        <BackupReminderBanner sites={validSites} onExport={(siteId) => void exportBackup(siteId)} />
         {validSites.length === 0 ? (
           <div className="text-center py-10 border-2 border-dashed border-muted rounded-lg">
             <h2 className="text-xl font-semibold text-muted-foreground mb-2">No sites yet</h2>
@@ -260,6 +249,7 @@ export default function HomePageDashboard() {
                     <p className="text-sm text-muted-foreground line-clamp-2" title={site.manifest.description}>
                       {site.manifest.description || 'No description provided.'}
                     </p>
+                    <LastBackedUp siteId={site.siteId} className="mt-2 text-xs text-muted-foreground" />
                   </div>
                 </Link>
                 <div className="flex flex-wrap justify-end gap-2">
@@ -280,7 +270,7 @@ export default function HomePageDashboard() {
                           <Eye className="mr-2 h-4 w-4" /> View site
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleExportBackup(site.siteId)}><Archive className="mr-2 h-4 w-4" /> Export backup</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => exportBackup(site.siteId)}><Archive className="mr-2 h-4 w-4" /> Export backup</DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <AlertDialog>
                         <AlertDialogTrigger asChild>

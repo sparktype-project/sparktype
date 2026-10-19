@@ -9,6 +9,7 @@ import { useInitialiseUIStore } from './core/hooks/useInitialiseUIStore';
 import { Toaster } from "./core/components/ui/sonner";
 import AuthGuard from './core/components/AuthGuard';
 import { PlatformProvider } from './core/providers/PlatformProvider';
+import BackupReminderToast from './features/backup/BackupReminderToast';
 import Loader from './core/components/ui/Loader';
 import { Button } from './core/components/ui/button';
 // --- Code-Splitting Page Imports using React.lazy ---
@@ -118,6 +119,7 @@ export default function App() {
               </Routes>
             </Suspense>
             <Toaster richColors position="top-center" />
+            <BackupReminderToast />
         </PlatformProvider>
     </>
   );

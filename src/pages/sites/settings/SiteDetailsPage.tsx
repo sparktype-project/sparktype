@@ -154,7 +154,7 @@ export default function SiteSettingsPage() {
           />
         </div>
 
-        <StoragePersistenceStatus />
+        <StoragePersistenceStatus siteId={siteId} />
 
         <div className="flex justify-end pt-4">
           <Button onClick={handleSave} disabled={isLoading || !hasChanges} size="lg">
