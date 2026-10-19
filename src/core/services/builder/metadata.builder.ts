@@ -107,7 +107,7 @@ export function generateMetadataFiles(
 
     const sitemapUrls = allPageNodes.flatMap((node) => {
         const file = contentFiles.find(f => f.path === node.path);
-        if (file && !isIndexable(file.frontmatter, manifest)) return [];
+        if (file && !isIndexable(file, manifest)) return [];
         const absoluteUrl = absoluteSiteUrl(siteBaseUrl, getUrlForNode(node, manifest, false, undefined, siteData));
         const lastMod = file ? getLastModified(file.frontmatter) : undefined;
         const lastModTag = lastMod ? `<lastmod>${escapeForXml(lastMod)}</lastmod>` : '';

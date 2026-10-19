@@ -8,6 +8,7 @@ const {
   bundleSourceFilesMock,
   bundleAllAssetsMock,
   generateMetadataFilesMock,
+  addNotFoundPageMock,
 } = vi.hoisted(() => ({
   getMergedThemeDataForFormMock: vi.fn(),
   clearAssetContentCacheMock: vi.fn(),
@@ -15,6 +16,7 @@ const {
   bundleSourceFilesMock: vi.fn(),
   bundleAllAssetsMock: vi.fn(),
   generateMetadataFilesMock: vi.fn(),
+  addNotFoundPageMock: vi.fn(),
 }));
 
 vi.mock('@/core/services/config/theme.service', () => ({
@@ -35,6 +37,10 @@ vi.mock('../source.builder', () => ({
 
 vi.mock('../asset.builder', () => ({
   bundleAllAssets: bundleAllAssetsMock,
+}));
+
+vi.mock('../notFound.builder', () => ({
+  addNotFoundPage: addNotFoundPageMock,
 }));
 
 vi.mock('../metadata.builder', () => ({
@@ -58,6 +64,9 @@ describe('siteBuilder.service', () => {
     });
     bundleAllAssetsMock.mockImplementation(async (bundle: Record<string, string>) => {
       bundle['_site/data/media.json'] = '{"images":{}}';
+    });
+    addNotFoundPageMock.mockImplementation(async (bundle: Record<string, string>) => {
+      bundle['404.html'] = '<html>Not found</html>';
     });
     generateMetadataFilesMock.mockImplementation((bundle: Record<string, string>) => {
       bundle['sitemap.xml'] = '<urlset />';
@@ -87,6 +96,7 @@ describe('siteBuilder.service', () => {
     );
     expect(bundle).toEqual({
       'index.html': '<html>Home</html>',
+      '404.html': '<html>Not found</html>',
       '_site/manifest.json': '{"title":"Fixture"}',
       '_site/data/media.json': '{"images":{}}',
       'sitemap.xml': '<urlset />',

@@ -5,14 +5,22 @@ export function isNoindex(frontmatter: Record<string, unknown>): boolean {
   return frontmatter.noindex === true;
 }
 
-/** True when a page may appear in the sitemap and in search results. */
-export function isIndexable(frontmatter: Record<string, unknown>, manifest: { discourageSearchEngines?: boolean }): boolean {
-  return manifest.discourageSearchEngines !== true && !isNoindex(frontmatter);
+/** Slug of the page a host serves for unknown URLs. It is never indexed. */
+export const NOT_FOUND_SLUG = '404';
+
+interface SeoPage {
+  slug: string;
+  frontmatter: Record<string, unknown>;
 }
 
-/** True when the head must carry a robots noindex tag: the page opted out, or the whole site did. */
-export function shouldNoindex(frontmatter: Record<string, unknown>, manifest: { discourageSearchEngines?: boolean }): boolean {
-  return !isIndexable(frontmatter, manifest);
+/** True when a page may appear in the sitemap and in search results. */
+export function isIndexable(page: SeoPage, manifest: { discourageSearchEngines?: boolean }): boolean {
+  return manifest.discourageSearchEngines !== true && !isNoindex(page.frontmatter) && page.slug !== NOT_FOUND_SLUG;
+}
+
+/** True when the head must carry a robots noindex tag: the page, the site or the page's role opts out. */
+export function shouldNoindex(page: SeoPage, manifest: { discourageSearchEngines?: boolean }): boolean {
+  return !isIndexable(page, manifest);
 }
 
 /**

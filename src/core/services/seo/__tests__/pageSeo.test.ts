@@ -57,11 +57,14 @@ describe('sitemap dates', () => {
 });
 
 describe('indexability', () => {
-  test('noindex or a discouraging site makes a page non-indexable', () => {
-    expect(isIndexable({}, {})).toBe(true);
-    expect(isIndexable({ noindex: true }, {})).toBe(false);
-    expect(isIndexable({}, { discourageSearchEngines: true })).toBe(false);
-    expect(shouldNoindex({}, { discourageSearchEngines: true })).toBe(true);
-    expect(shouldNoindex({}, { discourageSearchEngines: false })).toBe(false);
+  const page = (frontmatter: Record<string, unknown> = {}, slug = 'about') => ({ slug, frontmatter });
+
+  test('noindex, a discouraging site or the 404 page makes a page non-indexable', () => {
+    expect(isIndexable(page(), {})).toBe(true);
+    expect(isIndexable(page({ noindex: true }), {})).toBe(false);
+    expect(isIndexable(page(), { discourageSearchEngines: true })).toBe(false);
+    expect(isIndexable(page({}, '404'), {})).toBe(false);
+    expect(shouldNoindex(page(), { discourageSearchEngines: true })).toBe(true);
+    expect(shouldNoindex(page(), { discourageSearchEngines: false })).toBe(false);
   });
 });

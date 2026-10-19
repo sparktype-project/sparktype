@@ -7,6 +7,7 @@ import { bundleAllAssets } from './builder/asset.builder';
 import { bundleSourceFiles } from './builder/source.builder';
 import { generateMetadataFiles } from './builder/metadata.builder';
 import { generateHtmlPages } from './builder/page.builder';
+import { addNotFoundPage } from './builder/notFound.builder';
 import { createPublicSiteSnapshot } from './builder/publication';
 
 /**
@@ -40,9 +41,10 @@ export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBund
     // and it fails the build when the homepage itself is unpublished.
     const publicSiteData = createPublicSiteSnapshot(synchronizedSiteData);
 
-    // 3. Generate all HTML pages for every piece of content.
+    // 3. Generate all HTML pages for every piece of content, plus the 404 page hosts serve for unknown URLs.
     const htmlPages = await generateHtmlPages(publicSiteData);
     Object.assign(bundle, htmlPages);
+    await addNotFoundPage(bundle, publicSiteData);
 
     // 4. Bundle all raw source files (Markdown, manifest, etc.) into the `_site` directory.
     await bundleSourceFiles(bundle, publicSiteData);

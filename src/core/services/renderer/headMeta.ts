@@ -93,5 +93,5 @@ export function resolveCanonicalUrl(
 
 /** True when the page's head must carry `<meta name="robots" content="noindex">`. */
 export function resolveNoindex(file: ParsedMarkdownFile, manifest: Manifest): boolean {
-  return shouldNoindex(file.frontmatter, manifest);
+  return shouldNoindex(file, manifest);
 }
