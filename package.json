@@ -65,6 +65,8 @@
     "@tauri-apps/plugin-fs": "~2.4.1",
     "@tauri-apps/plugin-http": "^2.5.1",
     "@tauri-apps/plugin-os": "^2.3.1",
+    "@tauri-apps/plugin-process": "~2.3.0",
+    "@tauri-apps/plugin-updater": "~2.9.0",
     "@tiptap/core": "^3.32.0",
     "@tiptap/extension-character-count": "^3.32.0",
     "@tiptap/extension-code-block-lowlight": "^3.32.0",

@@ -27,6 +27,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import CreateSiteModal from '@/core/components/CreateSiteModal';
 import ImportModal, { type ImportModalMode } from '@/core/components/ImportModal';
 import UnifiedHeader from '@/core/components/UnifiedHeader';
+import UpdateSettings from '@/features/updates/UpdateSettings';
 
 export default function HomePageDashboard() {
   // Focused selectors: subscribing to the bare store re-rendered this page on every
@@ -297,6 +298,7 @@ export default function HomePageDashboard() {
             ))}
           </div>
         )}
+        <UpdateSettings />
       </main>
 
       <input type="file" ref={fileInputRef} onChange={handleFileSelected} accept=".zip" className="hidden" />

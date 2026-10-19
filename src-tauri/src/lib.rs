@@ -10,6 +10,14 @@ pub fn run() {
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
     .setup(|app| {
+      // Desktop-only. The updater verifies downloads against `plugins.updater.pubkey`; the
+      // frontend keeps the feature disabled while that key is still the placeholder.
+      #[cfg(desktop)]
+      {
+        app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+        app.handle().plugin(tauri_plugin_process::init())?;
+      }
+
       if cfg!(debug_assertions) {
         app.handle().plugin(
           tauri_plugin_log::Builder::default()

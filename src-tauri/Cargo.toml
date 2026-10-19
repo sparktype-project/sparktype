@@ -27,6 +27,8 @@ tauri-plugin-http = "2.0.0"
 tauri-plugin-mcp = { version = "0.4.27", optional = true }
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-updater = "=2.9.0"
+tauri-plugin-process = "=2.3.0"
 
 [features]
 # Dev-only automation/remote-control plugin. Enabled by `npm run tauri:dev`; never by release

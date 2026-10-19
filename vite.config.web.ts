@@ -30,5 +30,7 @@ export default defineConfig({
   define: {
     // Remove Tauri-specific code in web build
     '__TAURI__': false,
+    // The updater is a desktop feature; false lets the bundler drop it and its plugin imports.
+    '__UPDATER_ENABLED__': false,
   },
 });

@@ -3,6 +3,7 @@ import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 import { createThemePreviewReloadPlugin } from './src/dev/themePreviewReloadPlugin';
 import { createRemoteImportProxyPlugin } from './src/dev/remoteImportProxyPlugin';
+import { isUpdaterConfigured } from './src/dev/updaterConfig';
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -12,6 +13,9 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  define: {
+    __UPDATER_ENABLED__: isUpdaterConfigured(path.resolve(__dirname, './src-tauri/tauri.conf.json')),
   },
   // prevent vite from obscuring rust errors
   clearScreen: false,

@@ -42,6 +42,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "category": "DeveloperTool",
     "copyright": "Copyright © 2025 Sparktype",
     "shortDescription": "Local-first static site generator and editor",
@@ -55,6 +56,14 @@
     ],
     "macOS": {
       "entitlements": "entitlements/macOS.plist"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "REPLACE_WITH_UPDATER_PUBLIC_KEY",
+      "endpoints": [
+        "https://github.com/sparktype-project/sparktype/releases/latest/download/latest.json"
+      ]
     }
   }
 }

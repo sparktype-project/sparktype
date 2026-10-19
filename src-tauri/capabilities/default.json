@@ -32,6 +32,8 @@
     "dialog:default",
     "dialog:allow-save",
     "core:path:default",
+    "updater:default",
+    "process:allow-restart",
     "default"
   ]
 }

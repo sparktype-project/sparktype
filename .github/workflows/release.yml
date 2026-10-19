@@ -61,6 +61,10 @@ jobs:
           fi
           updater=false
           if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            if grep -q 'REPLACE_WITH_UPDATER_PUBLIC_KEY' src-tauri/tauri.conf.json; then
+              echo "::error::TAURI_SIGNING_PRIVATE_KEY is set but plugins.updater.pubkey in src-tauri/tauri.conf.json is still the placeholder. Installed apps could not verify this release."
+              exit 1
+            fi
             updater=true
           fi
 

@@ -10,6 +10,7 @@ import { Toaster } from "./core/components/ui/sonner";
 import AuthGuard from './core/components/AuthGuard';
 import { PlatformProvider } from './core/providers/PlatformProvider';
 import BackupReminderToast from './features/backup/BackupReminderToast';
+import UpdateLaunchCheck from './features/updates/UpdateLaunchCheck';
 import Loader from './core/components/ui/Loader';
 import { Button } from './core/components/ui/button';
 // --- Code-Splitting Page Imports using React.lazy ---
@@ -120,6 +121,7 @@ export default function App() {
             </Suspense>
             <Toaster richColors position="top-center" />
             <BackupReminderToast />
+            <UpdateLaunchCheck />
         </PlatformProvider>
     </>
   );
