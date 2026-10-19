@@ -50,6 +50,11 @@ npm run test:e2e   # Playwright browser smoke suite
 npm run lint       # ESLint
 ```
 
+### Releasing the desktop app
+
+Releases are built and signed by GitHub Actions from a `v*` tag. See
+[`docs/RELEASING.md`](docs/RELEASING.md) for the steps, the required secrets and how to verify a build.
+
 ### Notes
 
 - **Editor**: TipTap 3.x (`src/components/editor/tiptap/`).
