@@ -26,9 +26,9 @@
     "version:sync": "node scripts/sync-version.mjs",
     "version:check": "node scripts/sync-version.mjs --check",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev",
+    "tauri:dev": "tauri dev --features mcp",
     "tauri:build": "tauri build",
-    "tauri:start": "tauri dev"
+    "tauri:start": "tauri dev --features mcp"
   },
   "dependencies": {
     "@ariakit/react": "^0.4.17",

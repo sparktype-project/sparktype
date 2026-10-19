@@ -1,8 +1,12 @@
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  tauri::Builder::default()
+  let builder = tauri::Builder::default();
+
+  #[cfg(all(debug_assertions, feature = "mcp"))]
+  let builder = builder.plugin(tauri_plugin_mcp::Builder.build());
+
+  builder
     .plugin(tauri_plugin_http::init())
-    .plugin(tauri_plugin_mcp::Builder.build())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
     .setup(|app| {

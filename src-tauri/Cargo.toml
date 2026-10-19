@@ -24,6 +24,11 @@ log = "0.4"
 tauri = { version = "2.6.1", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-http = "2.0.0"
-tauri-plugin-mcp = { version = "0.4.27" }
+tauri-plugin-mcp = { version = "0.4.27", optional = true }
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
+
+[features]
+# Dev-only automation/remote-control plugin. Enabled by `npm run tauri:dev`; never by release
+# builds, and lib.rs additionally requires debug_assertions so it cannot ship even if enabled.
+mcp = ["dep:tauri-plugin-mcp"]
