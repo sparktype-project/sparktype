@@ -10,6 +10,7 @@ import { isTauriApp } from '@/core/utils/platform';
 import { createStepReporter, trackProgress } from './progress';
 import type { PublishLogLine } from './history/publishHistory.service';
 import { recordPublishEntry } from './history/publishHistory.service';
+import { describePublishTarget } from './history/publishTarget';
 import type { PublishProgressCallback } from './types';
 
 export type PublishingProvider = 'zip' | 'netlify' | 'github';
@@ -57,19 +58,6 @@ export async function publishSite(
   return result;
 }
 
-function describeTarget(siteData: LocalSiteData, result: PublishingResult): { provider: PublishingProvider; target: string } {
-  const config = siteData.manifest.publishingConfig;
-  const provider = config?.provider ?? 'zip';
-  switch (provider) {
-    case 'github':
-      return { provider, target: `${config?.github?.owner}/${config?.github?.repo}#${config?.github?.branch || 'main'}` };
-    case 'netlify':
-      return { provider, target: `netlify:${result.netlifySiteId ?? config?.netlify?.siteId ?? 'new site'}` };
-    default:
-      return { provider, target: 'download' };
-  }
-}
-
 /** A history write that fails must not turn a finished publish into a reported failure. */
 async function recordHistory(
   siteData: LocalSiteData,
@@ -84,7 +72,7 @@ async function recordHistory(
       kind: 'publish',
       startedAt: startedAt.toISOString(),
       finishedAt: new Date().toISOString(),
-      ...describeTarget(siteData, result),
+      ...describePublishTarget(siteData.manifest.publishingConfig, result.netlifySiteId),
       outcome: result.success ? 'success' : 'failed',
       ...(result.url && { url: result.url }),
       ...(result.commitSHA && { commitSHA: result.commitSHA }),

@@ -1,19 +1,38 @@
 // src/pages/sites/settings/publishing/DeployHistory.tsx
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/core/components/ui/alert-dialog';
+import { Button } from '@/core/components/ui/button';
 import { readPublishHistory, type PublishHistoryEntry } from '@/core/services/publishing/history/publishHistory.service';
+import { canRollbackTo, rollbackSite } from '@/core/services/publishing/rollback/rollbackSite';
+import type { LocalSiteData } from '@/core/types';
 
 const PROVIDER_LABELS = { zip: 'ZIP export', netlify: 'Netlify', github: 'GitHub' } as const;
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
 
-function EntryRow({ entry }: { entry: PublishHistoryEntry }) {
+function outcomeLabel(entry: PublishHistoryEntry): string {
+  if (entry.outcome === 'failed') return entry.kind === 'rollback' ? 'Rollback failed' : 'Failed';
+  return entry.kind === 'rollback' ? 'Rolled back' : 'Published';
+}
+
+function EntryRow({ entry, onRollback }: { entry: PublishHistoryEntry; onRollback?: () => void }) {
   const succeeded = entry.outcome === 'success';
   return (
     <li className="space-y-2 rounded-md border p-3 text-sm">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className={succeeded ? 'font-medium' : 'font-medium text-destructive'}>
-          {succeeded ? 'Published' : 'Failed'}
+          {outcomeLabel(entry)}
         </span>
         <time dateTime={entry.startedAt}>{new Date(entry.startedAt).toLocaleString()}</time>
         <span className="text-muted-foreground">{PROVIDER_LABELS[entry.provider]}</span>
@@ -34,6 +53,11 @@ function EntryRow({ entry }: { entry: PublishHistoryEntry }) {
         </a>
       )}
       {entry.error && <p className="text-destructive">{entry.error}</p>}
+      {onRollback && (
+        <Button variant="outline" size="sm" onClick={onRollback}>
+          Roll back
+        </Button>
+      )}
 
       <details>
         <summary className="cursor-pointer text-muted-foreground">Show log</summary>
@@ -50,21 +74,30 @@ function EntryRow({ entry }: { entry: PublishHistoryEntry }) {
   );
 }
 
-export default function DeployHistory({ siteId }: { siteId: string }) {
+export default function DeployHistory({ site }: { site: LocalSiteData }) {
   const [entries, setEntries] = useState<PublishHistoryEntry[] | null>(null);
+  const [pending, setPending] = useState<PublishHistoryEntry | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setEntries(await readPublishHistory(site.siteId));
+    } catch (error) {
+      console.error('[DeployHistory] Failed to read publish history:', error);
+      setEntries([]);
+    }
+  }, [site.siteId]);
 
   useEffect(() => {
-    let cancelled = false;
-    readPublishHistory(siteId)
-      .then((history) => !cancelled && setEntries(history))
-      .catch((error) => {
-        console.error('[DeployHistory] Failed to read publish history:', error);
-        if (!cancelled) setEntries([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [siteId]);
+    void load();
+  }, [load]);
+
+  const confirmRollback = async () => {
+    if (!pending) return;
+    const result = await rollbackSite(site, pending);
+    setPending(null);
+    (result.success ? toast.success : toast.error)(result.message);
+    await load();
+  };
 
   return (
     <section aria-labelledby="deploy-history-heading" className="space-y-3">
@@ -76,10 +109,31 @@ export default function DeployHistory({ siteId }: { siteId: string }) {
       {entries && entries.length > 0 && (
         <ul className="space-y-2">
           {entries.map((entry) => (
-            <EntryRow key={entry.id} entry={entry} />
+            <EntryRow
+              key={entry.id}
+              entry={entry}
+              onRollback={canRollbackTo(site, entry, entries) ? () => setPending(entry) : undefined}
+            />
           ))}
         </ul>
       )}
+
+      <AlertDialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Roll back this publish?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pending?.provider === 'github'
+                ? `A new commit will restore the repository to ${pending.commitSHA?.slice(0, 7)}. History is kept, and anything changed in the repository since then is reverted.`
+                : 'Netlify will serve the earlier deploy again. Nothing is uploaded.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmRollback()}>Roll back</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

@@ -185,6 +185,38 @@ export class NetlifyTauriService {
       };
     }
   }
+
+  /**
+   * Makes an earlier deploy the live one again (`POST /sites/{site_id}/deploys/{deploy_id}/restore`).
+   * Netlify keeps the files of past deploys, so nothing is uploaded.
+   */
+  async restoreDeploy(apiToken: string, siteId: string, deployId: string): Promise<NetlifyApiResponse> {
+    if (!isTauriApp()) {
+      return { success: false, message: 'Tauri service only available in desktop app' };
+    }
+
+    try {
+      const response = await tauriFetch(
+        `${this.baseUrl}/sites/${encodeURIComponent(siteId)}/deploys/${encodeURIComponent(deployId)}/restore`,
+        { method: 'POST', headers: { 'Authorization': `Bearer ${apiToken}` } },
+      );
+
+      if (!response.ok) {
+        return { success: false, message: `Restore failed (${response.status}): ${await response.text()}` };
+      }
+
+      const deploy = await response.json() as NetlifyDeployPayload;
+      return {
+        success: true,
+        message: 'Previous deploy restored.',
+        deployId: deploy.id,
+        url: deploy.deploy_ssl_url || deploy.deploy_url,
+        details: { deployId: deploy.id, siteId },
+      };
+    } catch (error) {
+      return { success: false, message: `Restore failed: ${(error as Error).message}` };
+    }
+  }
 }
 
 // Export singleton instance

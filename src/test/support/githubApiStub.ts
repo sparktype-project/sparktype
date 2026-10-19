@@ -60,6 +60,11 @@ export interface GitHubApiStubOptions {
   truncateTreeListing?: boolean;
   /** Makes PATCH on the branch ref fail, e.g. a non-fast-forward rejection. */
   refUpdateFailure?: { status: number; body: string };
+  /**
+   * Runs just before a branch ref update is handled, so a test can advance the branch the way a
+   * collaborator pushing mid-publish would (e.g. with `deleteFile`).
+   */
+  beforeRefUpdate?: () => void;
 }
 
 type StubTreeItem = { kind: 'text'; content: string } | { kind: 'binary'; blobSHA: string };
@@ -102,6 +107,7 @@ export class GitHubApiStub {
   private readonly blobContentBySHA = new Map<string, string>();
   private readonly treeBySHA = new Map<string, Map<string, StubTreeItem>>();
   private readonly treeByCommitSHA = new Map<string, string>();
+  private readonly parentsByCommit = new Map<string, string[]>();
   private readonly branches = new Map<string, { commitSHA: string; tree: Map<string, StubTreeItem> }>();
   private readonly options: GitHubApiStubOptions;
   private shaCounter = 0;
@@ -175,6 +181,7 @@ export class GitHubApiStub {
 
     const commitSHA = this.nextSHA('commit');
     this.treeByCommitSHA.set(commitSHA, treeSHA);
+    this.parentsByCommit.set(commitSHA, [existing.commitSHA]);
     this.branches.set(branch, { commitSHA, tree: nextTree });
   }
 
@@ -358,10 +365,23 @@ export class GitHubApiStub {
     this.commitRequests.push({ message: body.message, tree: body.tree, parents });
     const sha = this.nextSHA('commit');
     this.treeByCommitSHA.set(sha, body.tree);
+    this.parentsByCommit.set(sha, parents);
     return response(201, { sha });
   }
 
+  /** Whether `ancestor` is `commitSHA` or reachable through its parents. */
+  private descendsFrom(commitSHA: string, ancestor: string): boolean {
+    const pending = [commitSHA];
+    while (pending.length > 0) {
+      const current = pending.pop()!;
+      if (current === ancestor) return true;
+      pending.push(...(this.parentsByCommit.get(current) ?? []));
+    }
+    return false;
+  }
+
   private handleUpdateRef(branch: string, body: unknown) {
+    this.options.beforeRefUpdate?.();
     if (this.options.refUpdateFailure) {
       const failure = this.options.refUpdateFailure;
       if (failure.status === 404) {
@@ -375,6 +395,11 @@ export class GitHubApiStub {
     }
     if (!isJsonObject(body) || typeof body.sha !== 'string') {
       return response(422, { message: 'Invalid ref update' });
+    }
+    // GitHub refuses a non-forcing update that would drop commits from the branch.
+    const head = this.branches.get(branch)!.commitSHA;
+    if (body.force !== true && !this.descendsFrom(body.sha, head)) {
+      return response(422, { message: 'Update is not a fast forward' });
     }
     this.moveBranch(branch, body.sha);
     return response(200, { object: { sha: body.sha } });

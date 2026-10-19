@@ -492,7 +492,7 @@ export default function PublishingSettingsPage() {
         </div>
 
         <Separator />
-        <DeployHistory siteId={site.siteId} />
+        <DeployHistory site={site} />
       </div>
     </>
   );

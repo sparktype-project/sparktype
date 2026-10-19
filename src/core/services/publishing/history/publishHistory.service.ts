@@ -21,7 +21,7 @@ export interface PublishLogLine {
 
 export interface PublishHistoryEntry {
   id: string;
-  kind: 'publish';
+  kind: 'publish' | 'rollback';
   startedAt: string;
   finishedAt: string;
   provider: 'zip' | 'netlify' | 'github';
@@ -35,6 +35,8 @@ export interface PublishHistoryEntry {
   findings: { blocking: number; warning: number };
   log: PublishLogLine[];
   error?: string;
+  /** For a rollback: the id of the entry whose published state was restored. */
+  restoredFrom?: string;
 }
 
 // Publishes are serialised per site so two overlapping read-modify-write cycles cannot drop one.
