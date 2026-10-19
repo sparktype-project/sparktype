@@ -3,6 +3,8 @@
 import type { LocalSiteData, ParsedMarkdownFile } from '@/core/types';
 import { findHomepageFile, isPublishedFile } from '@/core/services/builder/publication';
 import { isInvalidPublishAt, isScheduledAfter } from '@/core/services/builder/schedule';
+import { getScheduleStatus } from '../schedule/scheduleStatus';
+import { formatScheduledAt } from '@/core/services/scheduleFormat';
 import { collectImageRefs, findContentFileImageRefs } from '@/core/services/builder/imageRefs';
 import { listPages, type PageEntry } from '@/core/services/builder/pageList';
 import { getSiteOrigin } from '@/core/services/siteOrigin.service';
@@ -10,7 +12,8 @@ import { validateCanonicalUrl } from '@/core/services/seo/pageSeo';
 import { getRedirectFromValues, isReservedOutput, planRedirects, redirectOutputPath, normalizeRedirectPath } from '@/core/services/seo/redirects';
 import { findBodyImages, findBodyLinks, resolveInternalHref } from './contentScan';
 
-export type FindingSeverity = 'blocking' | 'warning';
+/** `info` findings describe what a publish will do; they never need action and never stop a publish. */
+export type FindingSeverity = 'blocking' | 'warning' | 'info';
 
 export interface PrePublishFinding {
   /** Stable for a given problem, so a re-run can be compared with an earlier report. */
@@ -30,6 +33,8 @@ export interface PrePublishInput {
   snapshot: LocalSiteData;
   /** Epoch milliseconds the build would be made at; decides which scheduled items are still held back. */
   now: number;
+  /** Start time of the last successful publish, or `null` when the site was never published. */
+  lastPublishedAt: number | null;
   /** Paths of the original images that have bytes in storage. */
   storedImagePaths: ReadonlySet<string>;
 }
@@ -248,6 +253,28 @@ function checkSchedules({ site }: PrePublishInput): PrePublishFinding[] {
     }));
 }
 
+function checkScheduleSummary({ site, now, lastPublishedAt }: PrePublishInput): PrePublishFinding[] {
+  const { heldBack, due } = getScheduleStatus(site, now, lastPublishedAt);
+  const findings: PrePublishFinding[] = [];
+  const base = { severity: 'info' as const, path: null, fixHref: `/sites/${site.siteId}/edit` };
+
+  if (due.length > 0) {
+    findings.push({
+      ...base,
+      id: 'schedule-due',
+      message: `${due.length} ${due.length === 1 ? 'item has' : 'items have'} become due since your last publish and will go live with this one.`,
+    });
+  }
+  if (heldBack.length > 0) {
+    findings.push({
+      ...base,
+      id: 'schedule-held-back',
+      message: `${heldBack.length} scheduled ${heldBack.length === 1 ? 'item' : 'items'} will be held back; next on ${formatScheduledAt(new Date(heldBack[0].at).toISOString())}.`,
+    });
+  }
+  return findings;
+}
+
 function checkOutputPaths({ site, snapshot }: PrePublishInput): PrePublishFinding[] {
   const byOutput = new Map<string, PageEntry[]>();
   for (const page of listPages(snapshot)) {
@@ -287,5 +314,6 @@ export function checkSiteForPublishing(input: PrePublishInput): PrePublishFindin
     ...checkSchedules(input),
     ...checkOutputPaths(input),
     ...checkRedirects(input),
+    ...checkScheduleSummary(input),
   ];
 }

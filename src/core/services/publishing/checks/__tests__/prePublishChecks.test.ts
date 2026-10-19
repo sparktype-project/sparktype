@@ -21,10 +21,11 @@ function file(site: LocalSiteData, path: string): ParsedMarkdownFile {
 
 const NOW = Date.parse('2026-06-01T12:00:00Z');
 
-function check(site: LocalSiteData, storedImagePaths: string[] = []): PrePublishFinding[] {
+function check(site: LocalSiteData, storedImagePaths: string[] = [], lastPublishedAt: number | null = null): PrePublishFinding[] {
   return checkSiteForPublishing({
     site,
     now: NOW,
+    lastPublishedAt,
     snapshot: createPublicSiteSnapshot(site, NOW),
     storedImagePaths: new Set(storedImagePaths),
   });
@@ -59,6 +60,7 @@ describe('checkSiteForPublishing', () => {
       const findings = checkSiteForPublishing({
         site,
         now: NOW,
+        lastPublishedAt: null,
         snapshot: createPublicSiteSnapshot(copy, NOW),
         storedImagePaths: new Set(),
       });
@@ -77,7 +79,7 @@ describe('checkSiteForPublishing', () => {
       file(site, 'content/home.md').frontmatter.publishAt = '2026-12-25T09:00:00Z';
       const copy = structuredClone(site);
       delete file(copy, 'content/home.md').frontmatter.publishAt;
-      const findings = checkSiteForPublishing({ site, now: NOW, snapshot: createPublicSiteSnapshot(copy, NOW), storedImagePaths: new Set() });
+      const findings = checkSiteForPublishing({ site, now: NOW, lastPublishedAt: null, snapshot: createPublicSiteSnapshot(copy, NOW), storedImagePaths: new Set() });
       expect(ids(findings, 'homepage')[0]).toMatchObject({
         id: 'homepage-scheduled:content/home.md',
         severity: 'blocking',
@@ -107,6 +109,38 @@ describe('checkSiteForPublishing', () => {
       const [finding] = ids(check(site), 'scheduled-link');
       expect(finding).toMatchObject({ severity: 'warning', path: 'content/home.md' });
       expect(finding.message).toContain('scheduled');
+    });
+  });
+
+  describe('schedule summary', () => {
+    test('reports how many scheduled items are held back and when the next goes live', () => {
+      const site = withDescriptions(createSiteFixture('nestedPagesSite'));
+      file(site, 'content/about.md').frontmatter.publishAt = '2026-07-01T00:00:00Z';
+      file(site, 'content/about/team.md').frontmatter.publishAt = '2026-06-15T00:00:00Z';
+      const [finding] = ids(check(site), 'schedule-held-back');
+      expect(finding).toMatchObject({ severity: 'info', path: null });
+      expect(finding.message).toMatch(/^2 scheduled items will be held back; next on .+/);
+    });
+
+    test('uses the singular for one item', () => {
+      const site = withDescriptions(createSiteFixture('nestedPagesSite'));
+      file(site, 'content/about.md').frontmatter.publishAt = '2026-07-01T00:00:00Z';
+      expect(ids(check(site), 'schedule-held-back')[0].message).toMatch(/^1 scheduled item will be held back/);
+    });
+
+    test('reports items that became due since the last publish and will go live now', () => {
+      const site = withDescriptions(createSiteFixture('nestedPagesSite'));
+      file(site, 'content/about.md').frontmatter.publishAt = '2026-05-30T00:00:00Z';
+      file(site, 'content/about/team.md').frontmatter.publishAt = '2026-05-01T00:00:00Z';
+      const last = Date.parse('2026-05-20T00:00:00Z');
+      const [finding] = ids(check(site, [], last), 'schedule-due');
+      expect(finding).toMatchObject({ severity: 'info', path: null });
+      expect(finding.message).toBe('1 item has become due since your last publish and will go live with this one.');
+    });
+
+    test('says nothing when nothing is scheduled', () => {
+      const site = withDescriptions(createSiteFixture('nestedPagesSite'));
+      expect(check(site, [], Date.parse('2026-05-20T00:00:00Z'))).toEqual([]);
     });
   });
 

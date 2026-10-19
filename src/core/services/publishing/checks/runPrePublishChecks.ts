@@ -3,6 +3,8 @@
 import type { LocalSiteData } from '@/core/types';
 import { createPublicSiteSnapshot, findHomepageFile, PublicationError } from '@/core/services/builder/publication';
 import { listImageAssetPaths } from '@/core/services/localFileSystem.service';
+import { readPublishHistory } from '../history/publishHistory.service';
+import { lastSuccessfulPublishAt } from '../schedule/scheduleStatus';
 import { checkSiteForPublishing, type PrePublishFinding } from './prePublishChecks';
 
 /**
@@ -31,5 +33,6 @@ function snapshotForReport(site: LocalSiteData, now: number): LocalSiteData {
 /** Runs every pre-publish check against the site as it is stored right now. */
 export async function runPrePublishChecks(site: LocalSiteData, now: number = Date.now()): Promise<PrePublishFinding[]> {
   const storedImagePaths = new Set(await listImageAssetPaths(site.siteId));
-  return checkSiteForPublishing({ site, now, snapshot: snapshotForReport(site, now), storedImagePaths });
+  const lastPublishedAt = lastSuccessfulPublishAt(await readPublishHistory(site.siteId));
+  return checkSiteForPublishing({ site, now, lastPublishedAt, snapshot: snapshotForReport(site, now), storedImagePaths });
 }

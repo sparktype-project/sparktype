@@ -14,6 +14,7 @@ import { Eye, PanelLeft, UploadCloud, PanelRight } from 'lucide-react';
 
 // Components
 import PublishDialog from '@/features/editor/components/publish/PublishDialog';
+import ScheduleReadyIndicator from '@/features/editor/components/publish/ScheduleReadyIndicator';
 import { SyncStatusIndicator } from '@/features/editor/components/SyncStatusIndicator';
 import { TooltipTrigger, Tooltip, TooltipContent } from '@/core/components/ui/tooltip';
 
@@ -109,6 +110,8 @@ export default function EditorHeaderContent({ actions, siteId: propSiteId }: Edi
         <div onMouseDown={(e) => e.stopPropagation()}>
           {actions}
         </div>
+
+        <ScheduleReadyIndicator siteId={siteId} refreshKey={isPublishOpen} onPublish={() => setIsPublishOpen(true)} />
 
         {/* GitHub sync status indicator - prevent dragging */}
         <SyncStatusIndicator siteId={siteId} site={site} />

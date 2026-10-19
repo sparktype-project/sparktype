@@ -45,6 +45,14 @@ const warning: PrePublishFinding = {
   fixHref: '/sites/s1/edit/content/about',
 };
 
+const info: PrePublishFinding = {
+  id: 'schedule-held-back',
+  severity: 'info',
+  message: '3 scheduled items will be held back; next on 1 Jul 2026.',
+  path: null,
+  fixHref: '/sites/s1/edit',
+};
+
 function renderDialog(onOpenChange = vi.fn()) {
   render(
     <MemoryRouter>
@@ -74,6 +82,18 @@ describe('PublishDialog', () => {
 
     const warningGroup = screen.getByRole('region', { name: /Worth a look/ });
     expect(within(warningGroup).getByText(warning.message)).toBeInTheDocument();
+  });
+
+  test('scheduled-content info is listed without a Fix link and does not turn Publish into Publish anyway', async () => {
+    runChecksMock.mockResolvedValue([info]);
+    renderDialog();
+
+    const group = await screen.findByRole('region', { name: /Scheduled content/ });
+    expect(within(group).getByText(info.message)).toBeInTheDocument();
+    expect(within(group).queryByRole('link')).not.toBeInTheDocument();
+    expect(screen.getByText('No problems found.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Publish' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Publish anyway' })).not.toBeInTheDocument();
   });
 
   test('blocking findings disable publishing and never reach the publish service', async () => {

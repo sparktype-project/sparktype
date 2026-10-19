@@ -1,7 +1,7 @@
 // src/features/editor/components/publish/PublishReport.tsx
 
 import { Link } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import type { PrePublishFinding } from '@/core/services/publishing/checks/prePublishChecks';
 
 interface PublishReportProps {
@@ -13,13 +13,13 @@ interface PublishReportProps {
 interface GroupProps {
   title: string;
   findings: PrePublishFinding[];
-  tone: 'blocking' | 'warning';
+  tone: 'blocking' | 'warning' | 'info';
   onNavigate: () => void;
 }
 
 function FindingGroup({ title, findings, tone, onNavigate }: GroupProps) {
   if (findings.length === 0) return null;
-  const Icon = tone === 'blocking' ? XCircle : AlertTriangle;
+  const Icon = tone === 'blocking' ? XCircle : tone === 'warning' ? AlertTriangle : Clock;
   const headingId = `publish-findings-${tone}`;
 
   return (
@@ -32,12 +32,14 @@ function FindingGroup({ title, findings, tone, onNavigate }: GroupProps) {
           <li key={finding.id} className="flex items-start gap-2 rounded-md border p-3 text-sm">
             <Icon
               aria-hidden
-              className={`mt-0.5 h-4 w-4 shrink-0 ${tone === 'blocking' ? 'text-destructive' : 'text-amber-600'}`}
+              className={`mt-0.5 h-4 w-4 shrink-0 ${tone === 'blocking' ? 'text-destructive' : tone === 'warning' ? 'text-amber-600' : 'text-muted-foreground'}`}
             />
             <span className="flex-1">{finding.message}</span>
-            <Link to={finding.fixHref} onClick={onNavigate} className="shrink-0 font-medium underline underline-offset-2">
-              Fix<span className="sr-only"> {finding.path ?? 'site'}</span>
-            </Link>
+            {tone !== 'info' && (
+              <Link to={finding.fixHref} onClick={onNavigate} className="shrink-0 font-medium underline underline-offset-2">
+                Fix<span className="sr-only"> {finding.path ?? 'site'}</span>
+              </Link>
+            )}
           </li>
         ))}
       </ul>
@@ -46,17 +48,16 @@ function FindingGroup({ title, findings, tone, onNavigate }: GroupProps) {
 }
 
 export function PublishReport({ findings, onNavigate }: PublishReportProps) {
-  if (findings.length === 0) {
-    return (
-      <p className="flex items-center gap-2 text-sm">
-        <CheckCircle2 aria-hidden className="h-4 w-4 text-green-600" />
-        No problems found.
-      </p>
-    );
-  }
+  const needsAttention = findings.some((f) => f.severity !== 'info');
 
   return (
     <div className="max-h-[50vh] space-y-4 overflow-y-auto">
+      {!needsAttention && (
+        <p className="flex items-center gap-2 text-sm">
+          <CheckCircle2 aria-hidden className="h-4 w-4 text-green-600" />
+          No problems found.
+        </p>
+      )}
       <FindingGroup
         title="Must fix before publishing"
         tone="blocking"
@@ -67,6 +68,12 @@ export function PublishReport({ findings, onNavigate }: PublishReportProps) {
         title="Worth a look"
         tone="warning"
         findings={findings.filter((f) => f.severity === 'warning')}
+        onNavigate={onNavigate}
+      />
+      <FindingGroup
+        title="Scheduled content"
+        tone="info"
+        findings={findings.filter((f) => f.severity === 'info')}
         onNavigate={onNavigate}
       />
     </div>
