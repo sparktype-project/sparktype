@@ -4,6 +4,7 @@ import type { LocalSiteData, SiteBundle, StructureNode, CollectionItemRef } from
 import { flattenStructure } from '@/core/services/fileTree.service';
 import { getUrlForNode } from '@/core/services/urlUtils.service';
 import { absoluteSiteUrl, getSiteOrigin } from '@/core/services/siteOrigin.service';
+import { getLastModified, isIndexable } from '@/core/services/seo/pageSeo';
 
 const XML_ENTITIES: Record<string, string> = {
     '&': '&amp;',
@@ -33,8 +34,16 @@ function wrapInCData(content: string): string {
     return `<![CDATA[${content.split(']]>').join(']]]]><![CDATA[>')}]]>`;
 }
 
+/** robots.txt: block everything when discouraged, else allow everything and point at the sitemap. */
+function buildRobotsTxt(manifest: LocalSiteData['manifest'], siteBaseUrl: string | null): string {
+    if (manifest.discourageSearchEngines) return 'User-agent: *\nDisallow: /\n';
+    const lines = ['User-agent: *', 'Allow: /'];
+    if (siteBaseUrl) lines.push('', `Sitemap: ${absoluteSiteUrl(siteBaseUrl, 'sitemap.xml')}`);
+    return `${lines.join('\n')}\n`;
+}
+
 /**
- * Generates metadata files like rss.xml and sitemap.xml and adds them to the bundle.
+ * Generates metadata files like rss.xml, sitemap.xml and robots.txt and adds them to the bundle.
  * This function is now self-sufficient and derives all necessary content lists
  * from the provided siteData.
  *
@@ -55,8 +64,10 @@ export function generateMetadataFiles(
       ...(manifest.collectionItems || [])
     ];
 
-    // Without a site address there is nothing valid to put in a sitemap or feed, so neither is written.
+    // Without a site address there is nothing valid to put in a sitemap or feed, so neither is
+    // written; robots.txt needs no address and is always produced.
     const siteBaseUrl = getSiteOrigin(manifest);
+    bundle['robots.txt'] = buildRobotsTxt(manifest, siteBaseUrl);
     if (!siteBaseUrl) return;
 
     // --- 2. RSS Feed Generation ---
@@ -91,11 +102,16 @@ export function generateMetadataFiles(
     }
 
     // --- 3. Sitemap Generation ---
-    const sitemapUrls = allPageNodes.map((node) => {
+    // A site that discourages crawlers lists nothing, so it gets no sitemap at all.
+    if (manifest.discourageSearchEngines) return;
+
+    const sitemapUrls = allPageNodes.flatMap((node) => {
         const file = contentFiles.find(f => f.path === node.path);
+        if (file && !isIndexable(file.frontmatter, manifest)) return [];
         const absoluteUrl = absoluteSiteUrl(siteBaseUrl, getUrlForNode(node, manifest, false, undefined, siteData));
-        const lastMod = (file?.frontmatter.date as string || new Date().toISOString()).split('T')[0];
-        return `<url><loc>${escapeForXml(absoluteUrl)}</loc><lastmod>${escapeForXml(lastMod)}</lastmod></url>`;
+        const lastMod = file ? getLastModified(file.frontmatter) : undefined;
+        const lastModTag = lastMod ? `<lastmod>${escapeForXml(lastMod)}</lastmod>` : '';
+        return [`<url><loc>${escapeForXml(absoluteUrl)}</loc>${lastModTag}</url>`];
     }).join('');
     bundle['sitemap.xml'] = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${sitemapUrls}</urlset>`;
 }

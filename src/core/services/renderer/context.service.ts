@@ -208,7 +208,7 @@ export async function assembleBaseContext(
               getUrlForNode(urlNode, manifest, false, resolution.pageNumber, siteData),
               resolution.pageNumber,
             ),
-            noindex: resolveNoindex(resolution.contentFile),
+            noindex: resolveNoindex(resolution.contentFile, manifest),
             socialImage: resolveSocialImage(siteData, resolution.contentFile, siteOrigin, options.isExport),
             hasFeed: !options.isExport || siteOrigin !== null,
             baseUrl: options.relativeAssetPath ?? '/',

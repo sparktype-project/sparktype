@@ -246,3 +246,92 @@ describe('metadata.builder', () => {
     expect(bundle['rss.xml']).toContain('Launch Day');
   });
 });
+
+describe('metadata.builder SEO files', () => {
+  function build(site: LocalSiteData): Record<string, string> {
+    const bundle: Record<string, string> = {};
+    generateMetadataFiles(bundle, createPublicSiteSnapshot(site));
+    return bundle;
+  }
+
+  function locations(bundle: Record<string, string>): string[] {
+    return Array.from(expectWellFormed(bundle['sitemap.xml']).getElementsByTagName('loc')).map((n) => n.textContent ?? '');
+  }
+
+  test('excludes noindex pages and noindex collection items from the sitemap', () => {
+    const site = createSiteFixture('collectionSite');
+    site.manifest.baseUrl = 'https://example.org';
+    site.contentFiles!.find((f) => f.path === 'content/posts/launch-day.md')!.frontmatter.noindex = true;
+
+    const urls = locations(build(site));
+
+    expect(urls).toContain('https://example.org/');
+    expect(urls).not.toContain('https://example.org/posts/launch-day');
+  });
+
+  test('takes lastmod from updated, then date, and omits it when neither exists', () => {
+    const site = createSiteFixture('collectionSite');
+    site.manifest.baseUrl = 'https://example.org';
+    const post = site.contentFiles!.find((f) => f.path === 'content/posts/launch-day.md')!;
+    post.frontmatter.date = '2025-01-01';
+    post.frontmatter.updated = '2025-03-03';
+
+    const doc = expectWellFormed(build(site)['sitemap.xml']);
+    const entry = (loc: string) =>
+      Array.from(doc.getElementsByTagName('url')).find((u) => u.getElementsByTagName('loc')[0].textContent === loc)!;
+
+    expect(entry('https://example.org/posts/launch-day').getElementsByTagName('lastmod')[0].textContent).toBe('2025-03-03');
+    // The homepage fixture has no date: no lastmod, and certainly not today.
+    expect(entry('https://example.org/').getElementsByTagName('lastmod')).toHaveLength(0);
+    expect(build(site)['sitemap.xml']).not.toContain(new Date().toISOString().slice(0, 10));
+  });
+
+  test('keeps the sitemap well-formed for urls containing &, <, unicode and ]]>', () => {
+    const site = createSpecialCharacterSite();
+    site.contentFiles!.push({
+      path: 'content/odd.md',
+      slug: 'a&b<c>]]>日本語',
+      frontmatter: { title: 'Odd', layout: 'page' },
+      content: '',
+    });
+    site.manifest.structure.push({ type: 'page', title: 'Odd', slug: 'a&b<c>]]>日本語', path: 'content/odd.md' });
+
+    const bundle = build(site);
+    const urls = locations(bundle);
+
+    const odd = urls.find((u) => u.includes('a&b'));
+    expect(odd).toBeDefined();
+    expect(new URL(odd!).pathname).toContain('%E6%97%A5%E6%9C%AC%E8%AA%9E');
+    expect(bundle['sitemap.xml']).not.toContain(']]>');
+  });
+
+  test('writes robots.txt with a Sitemap line that keeps the base url subpath', () => {
+    const site = createSiteFixture('basicSite');
+    site.manifest.baseUrl = 'https://user.github.io/repo/';
+
+    expect(build(site)['robots.txt']).toBe(
+      'User-agent: *\nAllow: /\n\nSitemap: https://user.github.io/repo/sitemap.xml\n',
+    );
+  });
+
+  test('writes a plain robots.txt without a Sitemap line when there is no baseUrl', () => {
+    const site = createSiteFixture('basicSite');
+    site.manifest.baseUrl = undefined;
+
+    const bundle = build(site);
+
+    expect(bundle['robots.txt']).toBe('User-agent: *\nAllow: /\n');
+    expect(bundle['sitemap.xml']).toBeUndefined();
+  });
+
+  test('a discouraging site disallows everything and publishes no sitemap or Sitemap line', () => {
+    const site = createSiteFixture('collectionSite');
+    site.manifest.baseUrl = 'https://example.org';
+    site.manifest.discourageSearchEngines = true;
+
+    const bundle = build(site);
+
+    expect(bundle['robots.txt']).toBe('User-agent: *\nDisallow: /\n');
+    expect(bundle['sitemap.xml']).toBeUndefined();
+  });
+});

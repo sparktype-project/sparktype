@@ -4,6 +4,7 @@
 import { Label } from '@/core/components/ui/label';
 import { Input } from '@/core/components/ui/input';
 import { Textarea } from '@/core/components/ui/textarea';
+import { Switch } from '@/core/components/ui/switch';
 import type { ImageRef } from '@/core/types';
 import SiteAssetUploader from './SiteAssetsUploader';
 import SchemaDrivenForm from '@/core/components/SchemaDrivenForm';
@@ -16,6 +17,7 @@ interface SiteSettingsFormProps {
     description: string;
     author: string;
     baseUrl: string;
+    discourageSearchEngines: boolean;
     logo: ImageRef | undefined;
     favicon: ImageRef | undefined;
   };
@@ -99,6 +101,24 @@ export default function SiteSettingsForm({
             value={formData.baseUrl}
             onChange={(e) => handleChange('baseUrl', e.target.value)}
             placeholder="https://www.my-awesome-site.com"
+          />
+          <p className="text-xs text-muted-foreground">
+            Needed for canonical links, social previews, the sitemap and the RSS feed. Include the folder if the site is
+            served from one, for example https://user.github.io/repo.
+          </p>
+        </div>
+        <div className="flex items-center justify-between gap-4 pt-2">
+          <div className="space-y-0.5">
+            <Label htmlFor="discourageSearchEngines">Discourage search engines</Label>
+            <p className="text-xs text-muted-foreground">
+              Blocks crawlers in robots.txt, adds noindex to every page and skips the sitemap. Well-behaved search
+              engines respect this, but it is a request, not access control.
+            </p>
+          </div>
+          <Switch
+            id="discourageSearchEngines"
+            checked={formData.discourageSearchEngines}
+            onCheckedChange={(checked) => handleChange('discourageSearchEngines', checked)}
           />
         </div>
       </div>

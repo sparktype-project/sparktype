@@ -1,4 +1,4 @@
-import type { LocalSiteData, ParsedMarkdownFile } from '@/core/types';
+import type { LocalSiteData, Manifest, ParsedMarkdownFile } from '@/core/types';
 import { BUNDLED_THEMES, renderThemeHead } from '@/test/support/themeHead';
 
 const { getProcessedImageUrl } = vi.hoisted(() => ({ getProcessedImageUrl: vi.fn() }));
@@ -6,7 +6,7 @@ vi.mock('@/core/services/images/imagePreprocessor.service', () => ({
   imagePreprocessor: { getProcessedImageUrl },
 }));
 
-import { resolveCanonicalUrl, resolveSocialImage } from '../headMeta';
+import { resolveCanonicalUrl, resolveNoindex, resolveSocialImage } from '../headMeta';
 
 const site = { siteId: 's1' } as LocalSiteData;
 const file = {
@@ -100,5 +100,16 @@ describe.each(BUNDLED_THEMES)('%s head: page SEO', (theme) => {
     const html = renderThemeHead(theme, { canonicalUrl: 'https://other.example/original' });
     expect(html).toContain('<link rel="canonical" href="https://other.example/original">');
     expect(html).toContain('<meta property="og:url" content="https://other.example/original">');
+  });
+});
+
+describe('resolveNoindex', () => {
+  const page = (frontmatter: Record<string, unknown>) =>
+    ({ path: 'content/a.md', slug: 'a', frontmatter: { title: 'A', ...frontmatter }, content: '' }) as unknown as ParsedMarkdownFile;
+
+  test('is true for a noindex page or any page of a discouraging site', () => {
+    expect(resolveNoindex(page({ noindex: true }), {} as Manifest)).toBe(true);
+    expect(resolveNoindex(page({}), { discourageSearchEngines: true } as Manifest)).toBe(true);
+    expect(resolveNoindex(page({}), {} as Manifest)).toBe(false);
   });
 });

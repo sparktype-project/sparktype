@@ -1,4 +1,4 @@
-import { getCanonicalOverride, isNoindex, validateCanonicalUrl } from '../pageSeo';
+import { getCanonicalOverride, getLastModified, isIndexable, isNoindex, shouldNoindex, toSitemapDate, validateCanonicalUrl } from '../pageSeo';
 
 describe('validateCanonicalUrl', () => {
   test.each([undefined, null, '', '   ', 'https://example.org/a', 'http://example.org', ' https://example.org/a?b=1#c '])(
@@ -30,5 +30,38 @@ describe('isNoindex', () => {
     expect(isNoindex({ noindex: false })).toBe(false);
     expect(isNoindex({ noindex: 'true' })).toBe(false);
     expect(isNoindex({})).toBe(false);
+  });
+});
+
+describe('sitemap dates', () => {
+  test.each([
+    ['2025-04-04', '2025-04-04'],
+    ['2025-04-04T23:59:00Z', '2025-04-04'],
+    [new Date('2025-04-04T00:00:00Z'), '2025-04-04'],
+    ['April 4, 2025 12:00 UTC', '2025-04-04'],
+    ['', undefined],
+    ['soon', undefined],
+    [new Date('nope'), undefined],
+    [20250404, undefined],
+    [undefined, undefined],
+  ])('toSitemapDate(%j) -> %j', (value, expected) => {
+    expect(toSitemapDate(value)).toBe(expected);
+  });
+
+  test('getLastModified prefers updated, falls back to date, and never invents one', () => {
+    expect(getLastModified({ date: '2025-01-01', updated: '2025-02-02' })).toBe('2025-02-02');
+    expect(getLastModified({ date: '2025-01-01' })).toBe('2025-01-01');
+    expect(getLastModified({ date: '2025-01-01', updated: 'garbage' })).toBe('2025-01-01');
+    expect(getLastModified({ title: 'No dates' })).toBeUndefined();
+  });
+});
+
+describe('indexability', () => {
+  test('noindex or a discouraging site makes a page non-indexable', () => {
+    expect(isIndexable({}, {})).toBe(true);
+    expect(isIndexable({ noindex: true }, {})).toBe(false);
+    expect(isIndexable({}, { discourageSearchEngines: true })).toBe(false);
+    expect(shouldNoindex({}, { discourageSearchEngines: true })).toBe(true);
+    expect(shouldNoindex({}, { discourageSearchEngines: false })).toBe(false);
   });
 });

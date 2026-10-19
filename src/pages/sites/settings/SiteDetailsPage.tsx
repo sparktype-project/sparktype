@@ -24,6 +24,7 @@ interface PageFormData {
   description: string;
   author: string;
   baseUrl: string;
+  discourageSearchEngines: boolean;
   logo: ImageRef | undefined;
   favicon: ImageRef | undefined;
 }
@@ -65,6 +66,7 @@ export default function SiteSettingsPage() {
         description: site.manifest.description,
         author: site.manifest.author || '',
         baseUrl: site.manifest.baseUrl || '',
+        discourageSearchEngines: site.manifest.discourageSearchEngines === true,
         logo: site.manifest.logo,
         favicon: site.manifest.favicon,
       });
@@ -100,6 +102,7 @@ export default function SiteSettingsPage() {
       description: formData.description.trim(),
       author: formData.author.trim(),
       baseUrl: formData.baseUrl.trim(),
+      discourageSearchEngines: formData.discourageSearchEngines ? true : undefined,
       logo: formData.logo,
       favicon: formData.favicon,
       theme: {

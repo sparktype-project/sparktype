@@ -1,9 +1,9 @@
 // src/core/services/renderer/headMeta.ts
 
-import type { ImageRef, LocalSiteData, ParsedMarkdownFile } from '@/core/types';
+import type { ImageRef, LocalSiteData, Manifest, ParsedMarkdownFile } from '@/core/types';
 import { imagePreprocessor } from '@/core/services/images/imagePreprocessor.service';
 import { absoluteSiteUrl } from '@/core/services/siteOrigin.service';
-import { getCanonicalOverride, isNoindex } from '@/core/services/seo/pageSeo';
+import { getCanonicalOverride, shouldNoindex } from '@/core/services/seo/pageSeo';
 import { isExternalOrDataImageUrl } from './images';
 
 export interface SocialImage {
@@ -50,6 +50,6 @@ export function resolveCanonicalUrl(
 }
 
 /** True when the page's head must carry `<meta name="robots" content="noindex">`. */
-export function resolveNoindex(file: ParsedMarkdownFile): boolean {
-  return isNoindex(file.frontmatter);
+export function resolveNoindex(file: ParsedMarkdownFile, manifest: Manifest): boolean {
+  return shouldNoindex(file.frontmatter, manifest);
 }

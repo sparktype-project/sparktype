@@ -358,6 +358,8 @@ export interface Manifest {
   description: string;
   author?: string;
   baseUrl?: string;
+  /** Asks crawlers to stay away: robots.txt disallows everything and every page carries noindex. */
+  discourageSearchEngines?: boolean;
   theme: ThemeConfig;
   structure: StructureNode[];
   layouts?: LayoutInfo[];

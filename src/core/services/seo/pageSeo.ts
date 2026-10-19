@@ -5,6 +5,35 @@ export function isNoindex(frontmatter: Record<string, unknown>): boolean {
   return frontmatter.noindex === true;
 }
 
+/** True when a page may appear in the sitemap and in search results. */
+export function isIndexable(frontmatter: Record<string, unknown>, manifest: { discourageSearchEngines?: boolean }): boolean {
+  return manifest.discourageSearchEngines !== true && !isNoindex(frontmatter);
+}
+
+/** True when the head must carry a robots noindex tag: the page opted out, or the whole site did. */
+export function shouldNoindex(frontmatter: Record<string, unknown>, manifest: { discourageSearchEngines?: boolean }): boolean {
+  return !isIndexable(frontmatter, manifest);
+}
+
+/**
+ * The W3C date (`YYYY-MM-DD`) a sitemap `lastmod` takes from a frontmatter value, or `undefined`.
+ * YAML turns bare dates into `Date` objects, so both those and strings are accepted.
+ */
+export function toSitemapDate(value: unknown): string | undefined {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : value.toISOString().slice(0, 10);
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  const dateOnly = /^(\d{4}-\d{2}-\d{2})(?:$|T)/.exec(trimmed);
+  if (dateOnly && !Number.isNaN(Date.parse(dateOnly[1]))) return dateOnly[1];
+  const parsed = new Date(trimmed);
+  return trimmed && !Number.isNaN(parsed.getTime()) ? parsed.toISOString().slice(0, 10) : undefined;
+}
+
+/** A page's last modification date for the sitemap: `updated`, else `date`, else none. Never today's date. */
+export function getLastModified(frontmatter: Record<string, unknown>): string | undefined {
+  return toSitemapDate(frontmatter.updated) ?? toSitemapDate(frontmatter.date);
+}
+
 /**
  * Why a canonical override cannot be used, or `null` when it is blank (no override) or a usable
  * absolute http(s) URL. Relative values are rejected because a canonical link is resolved by
