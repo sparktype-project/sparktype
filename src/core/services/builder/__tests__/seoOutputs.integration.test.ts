@@ -169,3 +169,101 @@ describe('404 page', () => {
     expect(dom(html).querySelector('title')?.textContent).toBe('Page not found');
   });
 });
+
+describe('redirects', () => {
+  const moved = (extra: Record<string, unknown>) => page('content/blog/new-home.md', 'New home', extra);
+
+  test('emits a Netlify _redirects line and an HTML stub at each nested old path', async () => {
+    const bundle = await buildSiteBundle(
+      createSite({
+        baseUrl: 'https://example.org',
+        files: [moved({ redirect_from: ['/old/deeply/nested/post', '/legacy.html'] })],
+      }),
+    );
+
+    expect(bundle['_redirects']).toBe(
+      '/old/deeply/nested/post /blog/new-home 301\n/legacy.html /blog/new-home 301\n',
+    );
+
+    for (const path of ['old/deeply/nested/post/index.html', 'legacy.html']) {
+      const doc = dom(bundle[path] as string);
+      expect(doc.querySelector('meta[http-equiv="refresh"]')?.getAttribute('content')).toBe(
+        '0; url=https://example.org/blog/new-home',
+      );
+      expect(doc.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe('https://example.org/blog/new-home');
+      expect(doc.querySelector('a')?.getAttribute('href')).toBe('https://example.org/blog/new-home');
+    }
+  });
+
+  test('keeps the hosting subpath in targets', async () => {
+    const bundle = await buildSiteBundle(
+      createSite({ baseUrl: 'https://user.github.io/repo', files: [moved({ redirect_from: ['/old'] })] }),
+    );
+
+    expect(bundle['_redirects']).toBe('/old /repo/blog/new-home 301\n');
+    const doc = dom(bundle['old/index.html'] as string);
+    expect(doc.querySelector('meta[http-equiv="refresh"]')?.getAttribute('content')).toBe(
+      '0; url=https://user.github.io/repo/blog/new-home',
+    );
+  });
+
+  test('without a baseUrl the stub refreshes to a root path and has no canonical link', async () => {
+    const bundle = await buildSiteBundle(createSite({ files: [moved({ redirect_from: ['/old'] })] }));
+
+    const doc = dom(bundle['old/index.html'] as string);
+    expect(doc.querySelector('meta[http-equiv="refresh"]')?.getAttribute('content')).toBe('0; url=/blog/new-home');
+    expect(doc.querySelector('link[rel="canonical"]')).toBeNull();
+  });
+
+  test('redirecting to the homepage targets the site root', async () => {
+    const home = page('content/home.md', 'Home', { homepage: true, redirect_from: ['/start'] });
+    const site = createSite({ baseUrl: 'https://example.org' });
+    site.contentFiles![0] = home;
+
+    const bundle = await buildSiteBundle(site);
+
+    expect(bundle['_redirects']).toBe('/start / 301\n');
+    expect(dom(bundle['start/index.html'] as string).querySelector('meta[http-equiv="refresh"]')?.getAttribute('content')).toBe(
+      '0; url=https://example.org/',
+    );
+  });
+
+  test('never overwrites a real page, and drops redirects that loop back to their own page', async () => {
+    const bundle = await buildSiteBundle(
+      createSite({
+        baseUrl: 'https://example.org',
+        files: [moved({ redirect_from: ['/about', '/blog/new-home', '/ok'] })],
+      }),
+    );
+
+    expect(bundle['about/index.html']).toContain('About body');
+    expect(bundle['about/index.html']).not.toContain('http-equiv="refresh"');
+    expect(bundle['blog/new-home/index.html']).toContain('New home body');
+    expect(bundle['_redirects']).toBe('/ok /blog/new-home 301\n');
+  });
+
+  test('gives a path two pages claim to the first one', async () => {
+    const other = page('content/other.md', 'Other', { redirect_from: ['/old'] });
+    const bundle = await buildSiteBundle(createSite({ files: [moved({ redirect_from: ['/old'] }), other] }));
+
+    expect(bundle['_redirects']).toBe('/old /blog/new-home 301\n');
+  });
+
+  test('creates nothing for an unpublished page, and no _redirects file when there are no redirects', async () => {
+    const draft = moved({ published: false, redirect_from: ['/old'] });
+    const bundle = await buildSiteBundle(createSite({ files: [draft] }));
+
+    expect(bundle['old/index.html']).toBeUndefined();
+    expect(bundle['_redirects']).toBeUndefined();
+  });
+
+  test('escapes markup in a hostile old path', async () => {
+    const bundle = await buildSiteBundle(
+      createSite({ files: [moved({ redirect_from: ['/x"><script>alert(1)</script>'] })] }),
+    );
+
+    const stubs = Object.entries(bundle).filter(([path]) => path.startsWith('x'));
+    expect(stubs).toHaveLength(1);
+    expect(stubs[0][1] as string).not.toContain('<script>');
+  });
+});

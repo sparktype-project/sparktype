@@ -101,6 +101,67 @@ describe('checkSiteForPublishing', () => {
     });
   });
 
+  describe('redirects', () => {
+    function siteWithRedirect(redirectFrom: unknown, onPath = 'content/about/team.md') {
+      const site = withDescriptions(createSiteFixture('nestedPagesSite'));
+      file(site, onPath).frontmatter.redirect_from = redirectFrom;
+      return site;
+    }
+
+    test('a valid redirect on a nested page is clean', () => {
+      expect(ids(check(siteWithRedirect(['/old/team', '/legacy.html'])), 'redirect')).toEqual([]);
+    });
+
+    test('BLOCKS a redirect that shadows a real page, naming it', () => {
+      const [finding] = ids(check(siteWithRedirect(['/about'])), 'redirect');
+      expect(finding).toMatchObject({
+        severity: 'blocking',
+        id: 'redirect-shadows-page:content/about/team.md:/about',
+        path: 'content/about/team.md',
+        fixHref: `/sites/nested-pages-site/edit/content/about/team`,
+      });
+      expect(finding.message).toContain('"About"');
+    });
+
+    test('BLOCKS a redirect from a path the generator owns', () => {
+      const [finding] = ids(check(siteWithRedirect(['/sitemap.xml'])), 'redirect');
+      expect(finding.severity).toBe('blocking');
+      expect(finding.message).toContain('sitemap.xml');
+    });
+
+    test('warns, rather than blocks, on a redirect that points at its own page (a loop)', () => {
+      const [finding] = ids(check(siteWithRedirect(['/about/team'])), 'redirect');
+      expect(finding).toMatchObject({ severity: 'warning', id: 'redirect-loop:content/about/team.md:/about/team' });
+    });
+
+    test('warns on an invalid path and on a path two pages claim', () => {
+      const site = siteWithRedirect(['https://example.org/x', '/dup']);
+      file(site, 'content/about.md').frontmatter.redirect_from = ['/dup'];
+      const found = ids(check(site), 'redirect');
+      expect(found.map((f) => [f.id.split(':')[0], f.severity])).toEqual(
+        expect.arrayContaining([['redirect-invalid', 'warning'], ['redirect-duplicate', 'warning']]),
+      );
+      expect(found.some((f) => f.severity === 'blocking')).toBe(false);
+    });
+
+    test('warns when the redirecting page is unpublished, since nothing will be created', () => {
+      const site = siteWithRedirect(['/old/team']);
+      file(site, 'content/about/team.md').frontmatter.published = false;
+      const [finding] = ids(check(site), 'redirect');
+      expect(finding).toMatchObject({
+        severity: 'warning',
+        id: 'redirect-unpublished-target:content/about/team.md',
+      });
+      expect(finding.message).toContain('/old/team');
+    });
+
+    test('a redirect from the address of an unpublished draft is allowed', () => {
+      const site = siteWithRedirect(['/about/team'], 'content/about.md');
+      file(site, 'content/about/team.md').frontmatter.published = false;
+      expect(ids(check(site), 'redirect')).toEqual([]);
+    });
+  });
+
   describe('images with no stored bytes', () => {
     test('blocks on a frontmatter image whose bytes are missing, on a nested page', () => {
       const site = withDescriptions(createSiteFixture('nestedPagesSite'));

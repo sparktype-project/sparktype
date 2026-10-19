@@ -1,12 +1,12 @@
 // src/core/services/publishing/checks/prePublishChecks.ts
 
 import type { LocalSiteData, ParsedMarkdownFile } from '@/core/types';
-import { flattenStructure } from '@/core/services/fileTree.service';
 import { findHomepageFile, isPublishedFile } from '@/core/services/builder/publication';
 import { collectImageRefs, findContentFileImageRefs } from '@/core/services/builder/imageRefs';
-import { generateExportUrl } from '@/core/services/urlUtils.service';
+import { listPages, type PageEntry } from '@/core/services/builder/pageList';
 import { getSiteOrigin } from '@/core/services/siteOrigin.service';
 import { validateCanonicalUrl } from '@/core/services/seo/pageSeo';
+import { getRedirectFromValues, isReservedOutput, planRedirects, redirectOutputPath, normalizeRedirectPath } from '@/core/services/seo/redirects';
 import { findBodyImages, findBodyLinks, resolveInternalHref } from './contentScan';
 
 export type FindingSeverity = 'blocking' | 'warning';
@@ -35,34 +35,8 @@ export interface PrePublishInput {
 // never bundled as an original.
 const DERIVATIVE_FILENAME = /_w(auto|\d+)_h(auto|\d+)_c-[^_]+_g-[^_]+/;
 
-interface PageEntry {
-  file: ParsedMarkdownFile;
-  /** Public URL of the page (`''` for the homepage). */
-  url: string;
-  /** File the build writes for the page. */
-  outputPath: string;
-}
-
 function editHref(siteId: string, file: ParsedMarkdownFile): string {
   return `/sites/${siteId}/edit/content/${file.path.replace(/^content\//, '').replace(/\.md$/, '')}`;
-}
-
-/** Every page and collection item the build emits for `data`, with its URL and output file. */
-function listPages(data: LocalSiteData): PageEntry[] {
-  const filesByPath = new Map((data.contentFiles ?? []).map((file) => [file.path, file]));
-  const nodes = [...flattenStructure(data.manifest.structure), ...(data.manifest.collectionItems ?? [])];
-  const pages: PageEntry[] = [];
-
-  for (const node of nodes) {
-    const file = filesByPath.get(node.path);
-    if (!file) continue;
-    pages.push({
-      file,
-      url: generateExportUrl(node, data.manifest, undefined, data),
-      outputPath: generateExportUrl(node, data.manifest, undefined, data, undefined, true),
-    });
-  }
-  return pages;
 }
 
 function checkHomepage({ site }: PrePublishInput): PrePublishFinding[] {
@@ -199,6 +173,53 @@ function checkMetadata({ site, snapshot }: PrePublishInput): PrePublishFinding[]
   return findings;
 }
 
+function checkRedirects({ site, snapshot }: PrePublishInput): PrePublishFinding[] {
+  const findings: PrePublishFinding[] = [];
+  const published = listPages(snapshot);
+  const publishedPaths = new Set(published.map((page) => page.file.path));
+  const byPath = new Map(published.map((page) => [page.file.path, page]));
+
+  for (const { file } of listPages(site)) {
+    const values = getRedirectFromValues(file.frontmatter);
+    if (values.length === 0 || publishedPaths.has(file.path)) continue;
+    findings.push({
+      id: `redirect-unpublished-target:${file.path}`,
+      severity: 'warning',
+      message: `"${file.frontmatter.title}" is unpublished, so its ${values.length === 1 ? 'redirect' : 'redirects'} (${values.join(', ')}) will not be created.`,
+      path: file.path,
+      fixHref: editHref(site.siteId, file),
+    });
+  }
+
+  const plan = planRedirects(published.map((page) => ({ path: page.file.path, frontmatter: page.file.frontmatter, url: page.url, outputPath: page.outputPath })));
+  for (const { sourcePath, value, reason } of plan.skipped) {
+    const page = byPath.get(sourcePath);
+    if (!page) continue;
+    const title = page.file.frontmatter.title;
+    const base = { path: sourcePath, fixHref: editHref(site.siteId, page.file) };
+    const id = `${sourcePath}:${value}`;
+
+    if (reason === 'invalid') {
+      findings.push({ ...base, id: `redirect-invalid:${id}`, severity: 'warning', message: `"${title}" has a redirect from "${value}", which is not a valid path, so it is ignored.` });
+    } else if (reason === 'self') {
+      findings.push({ ...base, id: `redirect-loop:${id}`, severity: 'warning', message: `"${title}" redirects from ${value}, which is its own address, so the redirect would loop and is ignored.` });
+    } else if (reason === 'duplicate') {
+      findings.push({ ...base, id: `redirect-duplicate:${id}`, severity: 'warning', message: `More than one page redirects from ${value}; only the first is kept.` });
+    } else {
+      const from = normalizeRedirectPath(value) ?? value;
+      const shadowed = published.find((other) => other.outputPath === redirectOutputPath(from));
+      const what = shadowed ? `the page "${shadowed.file.frontmatter.title}"` : `the generated file ${redirectOutputPath(from)}`;
+      findings.push({
+        ...base,
+        id: `redirect-shadows-page:${id}`,
+        severity: 'blocking',
+        message: `"${title}" redirects from ${value}, which is ${isReservedOutput(redirectOutputPath(from)) ? 'used by' : 'the address of'} ${what}. Remove or change the redirect.`,
+      });
+    }
+  }
+  return findings;
+}
+
 function checkOutputPaths({ site, snapshot }: PrePublishInput): PrePublishFinding[] {
   const byOutput = new Map<string, PageEntry[]>();
   for (const page of listPages(snapshot)) {
@@ -236,5 +257,6 @@ export function checkSiteForPublishing(input: PrePublishInput): PrePublishFindin
     ...checkLinks(input),
     ...checkMetadata(input),
     ...checkOutputPaths(input),
+    ...checkRedirects(input),
   ];
 }

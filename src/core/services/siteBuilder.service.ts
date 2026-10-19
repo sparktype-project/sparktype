@@ -8,6 +8,7 @@ import { bundleSourceFiles } from './builder/source.builder';
 import { generateMetadataFiles } from './builder/metadata.builder';
 import { generateHtmlPages } from './builder/page.builder';
 import { addNotFoundPage } from './builder/notFound.builder';
+import { generateRedirectFiles } from './builder/redirect.builder';
 import { createPublicSiteSnapshot } from './builder/publication';
 
 /**
@@ -60,9 +61,10 @@ export async function buildSiteBundle(siteData: LocalSiteData): Promise<SiteBund
         throw new Error(`Asset bundling failed: ${error}`);
     }
 
-    // 6. Generate metadata files (RSS, sitemap).
+    // 6. Generate metadata files (RSS, sitemap, robots.txt) and redirects.
     try {
         generateMetadataFiles(bundle, publicSiteData);
+        generateRedirectFiles(bundle, publicSiteData);
         console.log(`[SiteBuilder] Metadata files generated`);
     } catch (error) {
         console.error(`[SiteBuilder] Failed to generate metadata:`, error);

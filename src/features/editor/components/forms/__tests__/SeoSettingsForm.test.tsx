@@ -61,6 +61,40 @@ describe('SeoSettingsForm', () => {
   });
 });
 
+describe('SeoSettingsForm redirects', () => {
+  test('stores one path per line as a list, keeping a typed trailing newline', () => {
+    const onChange = vi.fn();
+    render(<Harness initial={base} onChange={onChange} />);
+    const box = screen.getByLabelText('Redirect from') as HTMLTextAreaElement;
+
+    fireEvent.change(box, { target: { value: '/old\n' } });
+    expect(box.value).toBe('/old\n');
+    fireEvent.change(box, { target: { value: '/old\n/blog/older' } });
+
+    expect((onChange.mock.lastCall![0] as MarkdownFrontmatter).redirect_from).toEqual(['/old', '/blog/older']);
+  });
+
+  test('shows the stored list and clears the key when emptied', () => {
+    const onChange = vi.fn();
+    render(<Harness initial={{ ...base, redirect_from: ['/a', '/b'] }} onChange={onChange} />);
+    const box = screen.getByLabelText('Redirect from') as HTMLTextAreaElement;
+    expect(box.value).toBe('/a\n/b');
+
+    fireEvent.change(box, { target: { value: '' } });
+    expect((onChange.mock.lastCall![0] as MarkdownFrontmatter).redirect_from).toBeUndefined();
+  });
+
+  test('flags a path that cannot be a redirect source', () => {
+    render(<Harness initial={{ ...base, redirect_from: ['/ok', 'https://example.org/x'] }} onChange={vi.fn()} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('https://example.org/x');
+  });
+
+  test('persists as a YAML list', () => {
+    const { frontmatter } = parseMarkdownString(stringifyToMarkdown({ ...base, redirect_from: ['/a', '/b/c'] }, 'Body'));
+    expect(frontmatter.redirect_from).toEqual(['/a', '/b/c']);
+  });
+});
+
 describe('SEO frontmatter persistence', () => {
   test('noindex and canonical survive a save and reload; unset fields are not written', () => {
     const saved = stringifyToMarkdown(
