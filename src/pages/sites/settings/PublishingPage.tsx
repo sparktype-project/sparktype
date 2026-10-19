@@ -4,7 +4,6 @@ import { useAppStore } from '@/core/state/useAppStore';
 import { type AppStore } from '@/core/state/useAppStore';
 import { Button } from '@/core/components/ui/button';
 import { Label } from '@/core/components/ui/label';
-import { Input } from '@/core/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/core/components/ui/select';
 // Card components imported but may be used conditionally
 import { Separator } from '@/core/components/ui/separator';
@@ -13,40 +12,17 @@ import { toast } from 'sonner';
 import { Download, Globe, Github } from 'lucide-react';
 import { isTauriApp } from '@/core/utils/platform';
 import DeployHistory from './publishing/DeployHistory';
-
-type PublishingProvider = 'zip' | 'netlify' | 'github';
-
-interface NetlifyConfigUI {
-  apiToken: string;
-  siteId?: string;
-  siteName?: string;
-  useAppProxy: boolean;
-  customProxyUrl: string;
-}
-
-interface NetlifyConfigPublic {
-  siteId?: string;
-  siteName?: string;
-}
-
-interface GitHubConfigUI {
-  accessToken: string;
-  owner: string;
-  repo: string;
-  branch?: string;
-}
-
-interface GitHubConfigPublic {
-  owner: string;
-  repo: string;
-  branch?: string;
-}
-
-interface PublishingConfig {
-  provider: PublishingProvider;
-  netlify?: NetlifyConfigPublic;
-  github?: GitHubConfigPublic;
-}
+import { GitHubFields, NetlifyFields } from './publishing/ProviderFields';
+import {
+  DEFAULT_PROXY_URL,
+  buildPublishingConfig,
+  buildPublishingSecrets,
+  defaultGitHubConfig,
+  defaultNetlifyConfig,
+  type GitHubConfigUI,
+  type NetlifyConfigUI,
+  type PublishingProvider,
+} from './publishing/providerConfig';
 
 export default function PublishingSettingsPage() {
   const { siteId } = useParams<{ siteId: string }>();
@@ -60,19 +36,8 @@ export default function PublishingSettingsPage() {
 
   // Publishing configuration state
   const [provider, setProvider] = useState<PublishingProvider>('zip');
-  const [netlifyConfig, setNetlifyConfig] = useState<NetlifyConfigUI>({
-    apiToken: '',
-    siteId: '',
-    siteName: '',
-    useAppProxy: isTauriApp(), // Default to app proxy in Tauri mode
-    customProxyUrl: 'https://sparktype-proxy.netlify.app/.netlify/functions/netlify-deploy'
-  });
-  const [githubConfig, setGithubConfig] = useState<GitHubConfigUI>({
-    accessToken: '',
-    owner: '',
-    repo: '',
-    branch: 'main'
-  });
+  const [netlifyConfig, setNetlifyConfig] = useState<NetlifyConfigUI>(defaultNetlifyConfig);
+  const [githubConfig, setGithubConfig] = useState<GitHubConfigUI>(defaultGitHubConfig);
 
   // Load site data including secrets when component mounts
   useEffect(() => {
@@ -106,7 +71,7 @@ export default function PublishingSettingsPage() {
           siteName: config.netlify?.siteName || '',
           apiToken: netlifyApiToken,
           useAppProxy: netlifyProxySettings?.useAppProxy ?? isTauriApp(),
-          customProxyUrl: netlifyProxySettings?.customProxyUrl || 'https://sparktype-proxy.netlify.app/.netlify/functions/netlify-deploy'
+          customProxyUrl: netlifyProxySettings?.customProxyUrl || DEFAULT_PROXY_URL
         });
       } else if (netlifyApiToken || netlifyProxySettings) {
         setNetlifyConfig(prev => ({
@@ -158,51 +123,15 @@ export default function PublishingSettingsPage() {
 
     setIsLoading(true);
     try {
-      // Separate public config from secrets for both providers
-      const { apiToken, useAppProxy, customProxyUrl, ...publicNetlifyConfig } = netlifyConfig;
-      const { accessToken, ...publicGithubConfig } = githubConfig;
-
-      const publishingConfig: PublishingConfig = {
-        provider,
-        ...(provider === 'netlify' && { netlify: publicNetlifyConfig }),
-        ...(provider === 'github' && { github: publicGithubConfig })
-      };
-
-      const updatedManifest = {
-        ...site.manifest,
-        publishingConfig
-      };
-
       // Save public config to manifest
-      await updateManifest(siteId, updatedManifest);
+      await updateManifest(siteId, {
+        ...site.manifest,
+        publishingConfig: buildPublishingConfig(provider, netlifyConfig, githubConfig),
+      });
 
       // Save secrets separately based on provider
-      const updatedSecrets = {
-        ...site.secrets,
-        publishing: {
-          ...site.secrets?.publishing,
-          ...(provider === 'netlify' && (apiToken || useAppProxy !== undefined || customProxyUrl) && {
-            netlify: {
-              ...site.secrets?.publishing?.netlify,
-              ...(apiToken && { apiToken }),
-              proxySettings: {
-                useAppProxy,
-                customProxyUrl
-              }
-            }
-          }),
-          ...(provider === 'github' && accessToken && {
-            github: {
-              ...site.secrets?.publishing?.github,
-              accessToken
-            }
-          })
-        }
-      };
-
-      if ((provider === 'netlify' && (apiToken || useAppProxy !== undefined)) || (provider === 'github' && accessToken)) {
-        await updateSiteSecrets(siteId, updatedSecrets);
-      }
+      const secrets = buildPublishingSecrets(site, provider, netlifyConfig, githubConfig);
+      if (secrets) await updateSiteSecrets(siteId, secrets);
 
       toast.success('Publishing settings saved successfully!');
     } catch (error) {
@@ -274,211 +203,13 @@ export default function PublishingSettingsPage() {
 
           {provider === 'netlify' && (
             <>
-              <Separator />
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Netlify Configuration</h3>
-
-                <div className="space-y-2">
-                  <Label htmlFor="netlify-token">API Token</Label>
-                  <Input
-                    id="netlify-token"
-                    type="password"
-                    value={netlifyConfig.apiToken}
-                    onChange={(e) => setNetlifyConfig({ ...netlifyConfig, apiToken: e.target.value })}
-                    placeholder="Your Netlify personal access token"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Create a personal access token in your Netlify account settings. Stored securely and not exported with your site.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="netlify-site-name">Site Name (Optional)</Label>
-                  <Input
-                    id="netlify-site-name"
-                    value={netlifyConfig.siteName}
-                    onChange={(e) => setNetlifyConfig({ ...netlifyConfig, siteName: e.target.value })}
-                    placeholder="my-awesome-site"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Leave empty to auto-generate a site name
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="netlify-site-id">Site ID (Optional)</Label>
-                  <Input
-                    id="netlify-site-id"
-                    value={netlifyConfig.siteId}
-                    onChange={(e) => setNetlifyConfig({ ...netlifyConfig, siteId: e.target.value })}
-                    placeholder="existing-site-id"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Use this to update an existing Netlify site
-                  </p>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <h4 className="text-md font-semibold">Proxy Settings</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Configure how Sparktype connects to Netlify API
-                  </p>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        id="use-app-proxy"
-                        type="radio"
-                        name="proxy-type"
-                        checked={netlifyConfig.useAppProxy}
-                        onChange={() => setNetlifyConfig({ ...netlifyConfig, useAppProxy: true })}
-                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                      />
-                      <Label htmlFor="use-app-proxy" className="text-sm font-normal">
-                        Use Sparktype app {isTauriApp() ? '(Recommended)' : '(Desktop app only)'}
-                      </Label>
-                    </div>
-                    {isTauriApp() && netlifyConfig.useAppProxy && (
-                      <p className="text-xs text-muted-foreground ml-6">
-                        Direct connection through the desktop app - no external proxy needed
-                      </p>
-                    )}
-                    {!isTauriApp() && netlifyConfig.useAppProxy && (
-                      <p className="text-xs text-orange-600 ml-6">
-                        ⚠️ App proxy is only available in the desktop version of Sparktype
-                      </p>
-                    )}
-
-                    <div className="flex items-center space-x-2">
-                      <input
-                        id="use-custom-proxy"
-                        type="radio"
-                        name="proxy-type"
-                        checked={!netlifyConfig.useAppProxy}
-                        onChange={() => setNetlifyConfig({ ...netlifyConfig, useAppProxy: false })}
-                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                      />
-                      <Label htmlFor="use-custom-proxy" className="text-sm font-normal">
-                        Use custom proxy URL {!isTauriApp() ? '(Required)' : '(Advanced)'}
-                      </Label>
-                    </div>
-
-                    {!netlifyConfig.useAppProxy && (
-                      <div className="ml-6 space-y-2">
-                        <Input
-                          value={netlifyConfig.customProxyUrl}
-                          onChange={(e) => setNetlifyConfig({ ...netlifyConfig, customProxyUrl: e.target.value })}
-                          placeholder="https://your-proxy.example.com/netlify-proxy"
-                          className="text-sm"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          External proxy function to bypass browser CORS restrictions
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <NetlifyFields config={netlifyConfig} onChange={setNetlifyConfig} />
             </>
           )}
 
           {provider === 'github' && (
             <>
-              <Separator />
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">GitHub configuration</h3>
-
-                <div className="space-y-2">
-                  <Label htmlFor="github-token">Personal access token</Label>
-                  <Input
-                    id="github-token"
-                    type="password"
-                    value={githubConfig.accessToken}
-                    onChange={(e) => setGithubConfig({ ...githubConfig, accessToken: e.target.value })}
-                    placeholder="ghp_xxxxxxxxxxxx"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Create a personal access token at{' '}
-                    <a
-                      href="https://github.com/settings/tokens"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-500 hover:underline"
-                    >
-                      github.com/settings/tokens
-                    </a>{' '}
-                    with "repo" permissions. Stored securely and not exported with your site.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="github-owner">Repository Owner</Label>
-                    <Input
-                      id="github-owner"
-                      value={githubConfig.owner}
-                      onChange={(e) => setGithubConfig({ ...githubConfig, owner: e.target.value })}
-                      placeholder="username"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Your GitHub username or organization
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="github-repo">Repository Name</Label>
-                    <Input
-                      id="github-repo"
-                      value={githubConfig.repo}
-                      onChange={(e) => setGithubConfig({ ...githubConfig, repo: e.target.value })}
-                      placeholder="my-website"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      The repository name to deploy to
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="github-branch">Branch (Optional)</Label>
-                  <Input
-                    id="github-branch"
-                    value={githubConfig.branch}
-                    onChange={(e) => setGithubConfig({ ...githubConfig, branch: e.target.value })}
-                    placeholder="main"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Git branch to deploy to (defaults to "main")
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-                    <h4 className="font-semibold text-green-900 mb-2">📂 Repository Support</h4>
-                    <div className="text-sm text-green-800 space-y-2">
-                      <p><strong>✅ New Repository:</strong> Will create initial commit and branch</p>
-                      <p><strong>✅ Existing Repository:</strong> Will add commits to your existing history</p>
-                      <p><strong>✅ New Branch:</strong> Will create the branch if it doesn't exist</p>
-                      <p><strong>✅ Existing Branch:</strong> Will add new commits on top of existing ones</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-                    <h4 className="font-semibold text-blue-900 mb-2">🚀 Connect to Netlify</h4>
-                    <p className="text-sm text-blue-800">
-                      After setting up GitHub deployment, connect your repository to Netlify for automatic builds:
-                    </p>
-                    <ol className="text-sm text-blue-800 mt-2 ml-4 space-y-1">
-                      <li>1. Go to Netlify and click "Add new site"</li>
-                      <li>2. Choose "Import an existing project"</li>
-                      <li>3. Select your GitHub repository</li>
-                      <li>4. Netlify will automatically deploy when you publish</li>
-                    </ol>
-                  </div>
-                </div>
-              </div>
+              <GitHubFields config={githubConfig} onChange={setGithubConfig} />
             </>
           )}
 

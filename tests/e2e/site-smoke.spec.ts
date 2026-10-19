@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import JSZip from 'jszip';
 import { expect, test } from '@playwright/test';
-import { createFirstPage, createUnprotectedSite, gotoDashboard, selectAllShortcut, uniqueName } from './support';
+import { chooseZipPublishing, createFirstPage, createUnprotectedSite, gotoDashboard, selectAllShortcut, uniqueName } from './support';
 
 test('creates a site, persists it, and exports a backup from the dashboard', async ({ page }) => {
   const siteTitle = uniqueName('Reliability Smoke');
@@ -206,6 +206,7 @@ test('uploads an image, keeps it after reload, and exports a site bundle contain
   // With no publishing provider configured, Publish downloads a ZIP bundle once the checks pass.
   await page.getByRole('button', { name: 'Publish site' }).click();
   const dialog = page.getByRole('dialog', { name: 'Publish site' });
+  await chooseZipPublishing(dialog);
   const downloadPromise = page.waitForEvent('download');
   await dialog.getByRole('button', { name: /^Publish( anyway)?$/ }).click();
   const download = await downloadPromise;

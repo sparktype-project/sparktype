@@ -24,6 +24,10 @@ vi.mock('@/core/state/useAppStore', () => ({
   ),
 }));
 
+vi.mock('../PublishSetup', () => ({
+  default: ({ onComplete }: { onComplete: () => void }) => <button onClick={onComplete}>Finish setup</button>,
+}));
+
 import PublishDialog from '../PublishDialog';
 
 const blocking: PrePublishFinding = {
@@ -54,6 +58,7 @@ describe('PublishDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     const site = createSiteFixture('basicSite', { siteId: 's1' });
+    site.manifest.publishingConfig = { provider: 'zip' };
     storeState.loadSite = vi.fn(async () => {});
     storeState.getSiteById = () => site;
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
@@ -158,5 +163,30 @@ describe('PublishDialog', () => {
 
     await userEvent.click(await screen.findByRole('link', { name: /Fix/ }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  test('a site with no provider gets the guided setup first, then the checks', async () => {
+    const site = createSiteFixture('basicSite', { siteId: 's1' });
+    storeState.getSiteById = () => site;
+    runChecksMock.mockResolvedValue([]);
+    renderDialog();
+
+    const finish = await screen.findByRole('button', { name: 'Finish setup' });
+    // Setup saves the provider to the store before it reports completion.
+    const configured = createSiteFixture('basicSite', { siteId: 's1' });
+    configured.manifest.publishingConfig = { provider: 'zip' };
+    storeState.getSiteById = () => configured;
+    await userEvent.click(finish);
+
+    expect(runChecksMock).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('No problems found.')).toBeInTheDocument();
+  });
+
+  test('does not run the checks until setup is done', async () => {
+    storeState.getSiteById = () => createSiteFixture('basicSite', { siteId: 's1' });
+    renderDialog();
+
+    await screen.findByRole('button', { name: 'Finish setup' });
+    expect(runChecksMock).not.toHaveBeenCalled();
   });
 });

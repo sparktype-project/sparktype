@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export function uniqueName(prefix: string): string {
   return `${prefix} ${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -48,4 +48,11 @@ export async function createFirstPage(page: Page, pageTitle: string): Promise<vo
 
   await expect(page).toHaveURL(/#\/sites\/.+\/edit\/content\/.+$/);
   await expect(page.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue(pageTitle);
+}
+
+/** First-run publishing setup: a site with no provider asks where to publish; pick ZIP. */
+export async function chooseZipPublishing(dialog: Locator): Promise<void> {
+  await expect(dialog.getByText('Where do you want to publish?')).toBeVisible();
+  await dialog.getByRole('radio', { name: /Export as ZIP/ }).check();
+  await dialog.getByRole('button', { name: 'Continue' }).click();
 }

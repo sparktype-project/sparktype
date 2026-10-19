@@ -16,6 +16,7 @@ import type { PrePublishFinding } from '@/core/services/publishing/checks/prePub
 import { publishSite, type PublishingResult } from '@/core/services/publishing/publishing.service';
 import type { LocalSiteData } from '@/core/types';
 import { PublishReport } from './PublishReport';
+import PublishSetup from './PublishSetup';
 import { PublishSteps } from './PublishSteps';
 import { applyProgressEvent, INITIAL_STEP_STATES, type StepStates } from './stepStates';
 
@@ -27,6 +28,7 @@ interface PublishDialogProps {
 
 type Phase =
   | { name: 'checking' }
+  | { name: 'setup'; site: LocalSiteData }
   | { name: 'check-failed'; message: string }
   | { name: 'report'; findings: PrePublishFinding[] }
   | { name: 'publishing' }
@@ -59,6 +61,10 @@ export default function PublishDialog({ siteId, open, onOpenChange }: PublishDia
       const site = useAppStore.getState().getSiteById(siteId);
       if (!site) throw new Error('Site data not found.');
       siteRef.current = site;
+      if (!site.manifest.publishingConfig) {
+        setPhase({ name: 'setup', site });
+        return;
+      }
       setPhase({ name: 'report', findings: await runPrePublishChecks(site) });
     } catch (error) {
       setPhase({ name: 'check-failed', message: (error as Error).message });
@@ -96,9 +102,15 @@ export default function PublishDialog({ siteId, open, onOpenChange }: PublishDia
         <DialogHeader>
           <DialogTitle>Publish site</DialogTitle>
           <DialogDescription>
-            {phase.name === 'done' ? 'Publishing finished.' : 'Checking the site before it goes out.'}
+            {phase.name === 'done'
+              ? 'Publishing finished.'
+              : phase.name === 'setup'
+                ? 'Choose where this site publishes. You only do this once.'
+                : 'Checking the site before it goes out.'}
           </DialogDescription>
         </DialogHeader>
+
+        {phase.name === 'setup' && <PublishSetup site={phase.site} onComplete={() => void runChecks()} />}
 
         {phase.name === 'checking' && <p className="text-sm text-muted-foreground">Checking your site…</p>}
 

@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
-import { createFirstPage, createUnprotectedSite, gotoDashboard, uniqueName } from './support';
+import { chooseZipPublishing, createFirstPage, createUnprotectedSite, gotoDashboard, uniqueName } from './support';
 
 test('blocks publishing a site that has no homepage', async ({ page }) => {
   await gotoDashboard(page);
@@ -10,6 +10,7 @@ test('blocks publishing a site that has no homepage', async ({ page }) => {
   await page.getByRole('button', { name: 'Publish site' }).click();
 
   const dialog = page.getByRole('dialog', { name: 'Publish site' });
+  await chooseZipPublishing(dialog);
   await expect(dialog.getByText('The site has no homepage.')).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Publish', exact: true })).toBeDisabled();
 });
@@ -22,6 +23,7 @@ test('publishes a ZIP after the checks pass, showing each step and the result', 
   await page.getByRole('button', { name: 'Publish site' }).click();
 
   const dialog = page.getByRole('dialog', { name: 'Publish site' });
+  await chooseZipPublishing(dialog);
   // A new page has no description, which is a warning: the author may publish anyway.
   await expect(dialog.getByText(/has no description/)).toBeVisible();
   const downloadPromise = page.waitForEvent('download');
