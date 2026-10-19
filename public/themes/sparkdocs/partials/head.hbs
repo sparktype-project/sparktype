@@ -50,6 +50,11 @@
 {{/if}}
 
 
+{{!-- Structured data: already serialised and escaped by serializeJsonLd --}}
+{{#if jsonLd}}
+<script type="application/ld+json">{{{jsonLd}}}</script>
+{{/if}}
+
 {{!-- Favicon --}}
 {{#if @root.headContext.favicon}}
     <link rel="icon" href="{{{image fieldname="favicon" preset="logo" url_only=true}}}" sizes="any">

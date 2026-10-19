@@ -21,6 +21,7 @@ import { getRelativePath } from '@/core/services/relativePaths.service';
 import { getTagsByIds } from '@/core/services/tags.service';
 import { getJsonAsset } from '@/core/services/config/configHelpers.service';
 import { getSiteOrigin } from '@/core/services/siteOrigin.service';
+import { buildJsonLd } from '@/core/services/seo/jsonLd';
 import { resolveCanonicalUrl, resolveNoindex, resolveOgType, resolveSocialImage, resolveTwitterCard } from './headMeta';
 
 // The context object passed into the main body template.
@@ -185,6 +186,21 @@ export async function assembleBaseContext(
       };
     }
 
+    const canonicalUrl = resolveCanonicalUrl(
+        resolution.contentFile,
+        siteOrigin,
+        getUrlForNode(urlNode, manifest, false, resolution.pageNumber, siteData),
+        resolution.pageNumber,
+    );
+    const jsonLd = buildJsonLd({
+        file: resolution.contentFile,
+        manifest,
+        origin: siteOrigin,
+        pageUrl: canonicalUrl,
+        imageUrl: socialImage && !socialImage.isFallback ? socialImage.url : undefined,
+        pageNumber: resolution.pageNumber,
+    });
+
     // For navigation link calculation, we need the full file path (with index.html)
     // to correctly calculate relative paths from the current page
     const currentPagePath = getUrlForNode(urlNode, manifest, true, resolution.pageNumber, siteData, true);
@@ -203,16 +219,12 @@ export async function assembleBaseContext(
             themeStylesheets,
             logo: manifest.logo,
             favicon: manifest.favicon,
-            canonicalUrl: resolveCanonicalUrl(
-              resolution.contentFile,
-              siteOrigin,
-              getUrlForNode(urlNode, manifest, false, resolution.pageNumber, siteData),
-              resolution.pageNumber,
-            ),
+            canonicalUrl,
             noindex: resolveNoindex(resolution.contentFile, manifest),
             socialImage,
             ogType: resolveOgType(resolution.contentFile, manifest),
             twitterCard: resolveTwitterCard(socialImage),
+            jsonLd: new Handlebars.SafeString(jsonLd ?? ''),
             hasFeed: !options.isExport || siteOrigin !== null,
             baseUrl: options.relativeAssetPath ?? '/',
             styleOverrides: new Handlebars.SafeString(generateStyleOverrides(manifest.theme.config)),
