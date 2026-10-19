@@ -14,6 +14,7 @@ import { type RJSFSchema } from '@rjsf/utils';
 
 // UI Components
 import { Button } from '@/core/components/ui/button';
+import StoragePersistenceStatus from '@/features/site-settings/components/StoragePersistenceStatus';
 import SiteSettingsForm from '@/features/site-settings/components/SiteSettingsForm';
 import { toast } from 'sonner';
 
@@ -149,6 +150,8 @@ export default function SiteSettingsPage() {
             onThemeDataChange={handleThemeDataChange}
           />
         </div>
+
+        <StoragePersistenceStatus />
 
         <div className="flex justify-end pt-4">
           <Button onClick={handleSave} disabled={isLoading || !hasChanges} size="lg">

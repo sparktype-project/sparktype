@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { type LocalSiteData, type Manifest, type ParsedMarkdownFile, type StructureNode } from '@/core/types';
 import * as localSiteFs from '@/core/services/localFileSystem.service';
+import { ensureStoragePersistence } from '@/core/services/storage/storagePersistence.service';
 import { findNodeByPath } from '@/core/services/fileTree.service';
 import { getCollections } from '@/core/services/collections.service';
 import { stringifyToMarkdown, parseMarkdownString } from '@/core/libraries/markdownParser';
@@ -80,6 +81,7 @@ export const createContentActions: ContentSliceFragment<
     // Serialize to markdown (blocks are empty in our current implementation)
     const markdownContent = stringifyToMarkdown(savedFile.frontmatter, savedFile.content);
     const persistedFile = await localSiteFs.saveContentFile(siteId, savedFile.path, markdownContent);
+    ensureStoragePersistence();
 
     await syncImageReferences(siteId, persistedFile);
 
@@ -140,6 +142,7 @@ export const createContentActions: ContentSliceFragment<
     }
 
     const savedFile = await localSiteFs.saveContentFile(siteId, filePath, processedContent);
+    ensureStoragePersistence();
 
     await syncImageReferences(siteId, savedFile);
 

@@ -5,6 +5,7 @@ import { produce } from 'immer';
 import {  type LocalSiteData,  type Manifest } from '@/core/types';
 import * as localSiteFs from '@/core/services/localFileSystem.service';
 import { loadSiteSecretsFromDb } from '@/core/services/siteSecrets.service';
+import { ensureStoragePersistence } from '@/core/services/storage/storagePersistence.service';
 import { getStorageHealth } from '@/core/services/storage/siteStorage.service';
 import { requiresAuthentication } from '@/core/services/authPolicy.service';
 import type { AuthSlice } from './authSlice';
@@ -154,6 +155,7 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
   // --- This action is now safe to use because loadSite is no longer destructive ---
   updateManifest: async (siteId, newManifest) => {
     await localSiteFs.saveManifest(siteId, newManifest);
+    ensureStoragePersistence();
     set(produce((draft: SiteSlice) => {
       const site = draft.sites.find(s => s.siteId === siteId);
       if (site) site.manifest = newManifest;
@@ -162,6 +164,7 @@ export const createSiteSlice: StateCreator<SiteSlice, [], [], SiteSlice> = (set,
 
   addSite: async (newSiteData) => {
     await localSiteFs.saveSite(newSiteData);
+    ensureStoragePersistence();
     set(produce((draft: SiteSlice) => {
       const siteIndex = draft.sites.findIndex(s => s.siteId === newSiteData.siteId);
       if (siteIndex > -1) {
