@@ -6,7 +6,7 @@ vi.mock('@/core/services/images/imagePreprocessor.service', () => ({
   imagePreprocessor: { getProcessedImageUrl },
 }));
 
-import { resolveSocialImage } from '../headMeta';
+import { resolveCanonicalUrl, resolveSocialImage } from '../headMeta';
 
 const site = { siteId: 's1' } as LocalSiteData;
 const file = {
@@ -57,5 +57,48 @@ describe.each(BUNDLED_THEMES)('%s head: site address', (theme) => {
     expect(html).not.toContain('og:image');
     expect(html).not.toContain('example.com');
     expect(html).not.toContain('rss.xml');
+  });
+});
+
+describe('resolveCanonicalUrl', () => {
+  const page = (frontmatter: Record<string, unknown>) =>
+    ({ path: 'content/a.md', slug: 'a', frontmatter: { title: 'A', ...frontmatter }, content: '' }) as unknown as ParsedMarkdownFile;
+
+  test('builds the address under the origin, keeping a subpath', () => {
+    expect(resolveCanonicalUrl(page({}), 'https://user.github.io/repo', 'about')).toBe('https://user.github.io/repo/about');
+  });
+
+  test('is undefined with no origin and no override', () => {
+    expect(resolveCanonicalUrl(page({}), null, 'about')).toBeUndefined();
+  });
+
+  test('a valid override wins, with or without an origin', () => {
+    const file = page({ canonical: 'https://other.example/original' });
+    expect(resolveCanonicalUrl(file, 'https://example.org', 'about')).toBe('https://other.example/original');
+    expect(resolveCanonicalUrl(file, null, 'about')).toBe('https://other.example/original');
+  });
+
+  test('an invalid override is ignored', () => {
+    expect(resolveCanonicalUrl(page({ canonical: 'javascript:alert(1)' }), 'https://example.org', 'about')).toBe(
+      'https://example.org/about',
+    );
+  });
+
+  test('a paginated page keeps its own address instead of the override', () => {
+    const file = page({ canonical: 'https://other.example/original' });
+    expect(resolveCanonicalUrl(file, 'https://example.org', 'posts/page/2', 2)).toBe('https://example.org/posts/page/2');
+  });
+});
+
+describe.each(BUNDLED_THEMES)('%s head: page SEO', (theme) => {
+  test('noindex adds a robots meta tag; otherwise none', () => {
+    expect(renderThemeHead(theme, { noindex: true })).toContain('<meta name="robots" content="noindex">');
+    expect(renderThemeHead(theme, { noindex: false })).not.toContain('robots');
+  });
+
+  test('a canonical override is emitted as the canonical link and og:url', () => {
+    const html = renderThemeHead(theme, { canonicalUrl: 'https://other.example/original' });
+    expect(html).toContain('<link rel="canonical" href="https://other.example/original">');
+    expect(html).toContain('<meta property="og:url" content="https://other.example/original">');
   });
 });

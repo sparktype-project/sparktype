@@ -2,6 +2,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{pageTitle}} | {{manifest.title}}</title>
+{{#if noindex}}
+<meta name="robots" content="noindex">
+{{/if}}
 {{#if canonicalUrl}}
 <link rel="canonical" href="{{canonicalUrl}}">
 {{/if}}

@@ -6,6 +6,7 @@ import { findHomepageFile, isPublishedFile } from '@/core/services/builder/publi
 import { collectImageRefs, findContentFileImageRefs } from '@/core/services/builder/imageRefs';
 import { generateExportUrl } from '@/core/services/urlUtils.service';
 import { getSiteOrigin } from '@/core/services/siteOrigin.service';
+import { validateCanonicalUrl } from '@/core/services/seo/pageSeo';
 import { findBodyImages, findBodyLinks, resolveInternalHref } from './contentScan';
 
 export type FindingSeverity = 'blocking' | 'warning';
@@ -172,6 +173,15 @@ function checkMetadata({ site, snapshot }: PrePublishInput): PrePublishFinding[]
         id: `empty-title:${file.path}`,
         severity: 'warning',
         message: `The page ${file.path} has no title.`,
+        path: file.path,
+        fixHref,
+      });
+    }
+    if (validateCanonicalUrl(file.frontmatter.canonical) !== null) {
+      findings.push({
+        id: `invalid-canonical:${file.path}`,
+        severity: 'warning',
+        message: `"${file.frontmatter.title}" has a canonical URL that is not a full http(s) address, so it is ignored.`,
         path: file.path,
         fixHref,
       });

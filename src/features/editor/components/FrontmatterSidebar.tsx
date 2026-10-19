@@ -20,6 +20,7 @@ import LayoutSelector from '@/features/editor/components/forms/LayoutSelector';
 // CORRECTED: The import casing now exactly matches the actual filename 'PageMetaDataForm.tsx'.
 import PageMetadataForm from '@/features/editor/components/forms/PageMetaDataForm';
 import AdvancedSettingsForm from '@/features/editor/components/forms/AdvancedSettingsForm';
+import SeoSettingsForm from '@/features/editor/components/forms/SeoSettingsForm';
 import { MultiTagSelector } from '@/features/editor/components/TagSelector';
 
 interface FrontmatterSidebarProps {
@@ -163,7 +164,7 @@ export default function FrontmatterSidebar({
     return <div className="p-4 text-sm text-center text-muted-foreground">Loading settings...</div>;
   }
 
-  const defaultOpenSections = ['layout', 'metadata', 'advanced'];
+  const defaultOpenSections = ['layout', 'metadata', 'seo', 'advanced'];
   if (isCollectionItem && parentCollection) {
     defaultOpenSections.push('tags');
   }
@@ -222,6 +223,14 @@ export default function FrontmatterSidebar({
                 // If it's an item, use the parent's item layout. Otherwise, use its own layout.
                 layoutManifest={isCollectionItem ? itemLayoutManifest : currentLayoutManifest}
               />
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* SEO - description, indexing and canonical URL */}
+          <AccordionItem value="seo">
+            <AccordionTrigger>SEO</AccordionTrigger>
+            <AccordionContent className='p-2'>
+              <SeoSettingsForm frontmatter={frontmatter} onFrontmatterChange={onFrontmatterChange} />
             </AccordionContent>
           </AccordionItem>
 

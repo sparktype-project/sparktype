@@ -20,8 +20,8 @@ import { type RenderOptions } from './render.types';
 import { getRelativePath } from '@/core/services/relativePaths.service';
 import { getTagsByIds } from '@/core/services/tags.service';
 import { getJsonAsset } from '@/core/services/config/configHelpers.service';
-import { absoluteSiteUrl, getSiteOrigin } from '@/core/services/siteOrigin.service';
-import { resolveSocialImage } from './headMeta';
+import { getSiteOrigin } from '@/core/services/siteOrigin.service';
+import { resolveCanonicalUrl, resolveNoindex, resolveSocialImage } from './headMeta';
 
 // The context object passed into the main body template.
 type ResolvedTags = Record<string, Tag[]>;
@@ -202,9 +202,13 @@ export async function assembleBaseContext(
             themeStylesheets,
             logo: manifest.logo,
             favicon: manifest.favicon,
-            canonicalUrl: siteOrigin
-              ? absoluteSiteUrl(siteOrigin, getUrlForNode(urlNode, manifest, false, resolution.pageNumber, siteData))
-              : undefined,
+            canonicalUrl: resolveCanonicalUrl(
+              resolution.contentFile,
+              siteOrigin,
+              getUrlForNode(urlNode, manifest, false, resolution.pageNumber, siteData),
+              resolution.pageNumber,
+            ),
+            noindex: resolveNoindex(resolution.contentFile),
             socialImage: resolveSocialImage(siteData, resolution.contentFile, siteOrigin, options.isExport),
             hasFeed: !options.isExport || siteOrigin !== null,
             baseUrl: options.relativeAssetPath ?? '/',

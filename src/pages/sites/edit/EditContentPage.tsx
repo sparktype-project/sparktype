@@ -292,11 +292,7 @@ function EditContentPageInternal() {
                   </div>
 
                   <PrimaryContentFields
-                    frontmatter={{
-                      title: frontmatter.title,
-
-                      description: frontmatter.description as string | undefined
-                    }}
+                    frontmatter={{ title: frontmatter.title }}
                     onFrontmatterChange={handleFrontmatterChange as (newData: Partial<MarkdownFrontmatter>) => void}
                   />
                 </div>

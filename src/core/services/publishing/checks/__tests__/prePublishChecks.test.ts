@@ -89,6 +89,18 @@ describe('checkSiteForPublishing', () => {
     });
   });
 
+  describe('canonical override', () => {
+    test('warns on a canonical that is not an absolute http(s) URL, and accepts a valid one', () => {
+      const site = withDescriptions(createSiteFixture('basicSite'));
+      file(site, 'content/home.md').frontmatter.canonical = '/relative';
+      const [finding] = ids(check(site), 'invalid-canonical');
+      expect(finding).toMatchObject({ severity: 'warning', path: 'content/home.md' });
+
+      file(site, 'content/home.md').frontmatter.canonical = 'https://other.example/x';
+      expect(ids(check(site), 'invalid-canonical')).toEqual([]);
+    });
+  });
+
   describe('images with no stored bytes', () => {
     test('blocks on a frontmatter image whose bytes are missing, on a nested page', () => {
       const site = withDescriptions(createSiteFixture('nestedPagesSite'));

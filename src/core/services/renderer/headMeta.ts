@@ -3,6 +3,7 @@
 import type { ImageRef, LocalSiteData, ParsedMarkdownFile } from '@/core/types';
 import { imagePreprocessor } from '@/core/services/images/imagePreprocessor.service';
 import { absoluteSiteUrl } from '@/core/services/siteOrigin.service';
+import { getCanonicalOverride, isNoindex } from '@/core/services/seo/pageSeo';
 import { isExternalOrDataImageUrl } from './images';
 
 export interface SocialImage {
@@ -27,4 +28,28 @@ export function resolveSocialImage(
   if (!processed || processed.startsWith('data:')) return undefined;
   if (isExternalOrDataImageUrl(processed)) return { url: processed };
   return { url: absoluteSiteUrl(origin, processed) };
+}
+
+/**
+ * The page's canonical URL: its valid `canonical` override on the page itself (paginated
+ * listing pages keep their own address), otherwise the page's address under the site origin,
+ * or `undefined` when the site has no origin.
+ */
+export function resolveCanonicalUrl(
+  file: ParsedMarkdownFile,
+  origin: string | null,
+  pagePath: string,
+  pageNumber?: number,
+): string | undefined {
+  const isFirstPage = !pageNumber || pageNumber <= 1;
+  if (isFirstPage) {
+    const override = getCanonicalOverride(file.frontmatter);
+    if (override) return override;
+  }
+  return origin ? absoluteSiteUrl(origin, pagePath) : undefined;
+}
+
+/** True when the page's head must carry `<meta name="robots" content="noindex">`. */
+export function resolveNoindex(file: ParsedMarkdownFile): boolean {
+  return isNoindex(file.frontmatter);
 }

@@ -2,7 +2,6 @@
 
 
 import { Input } from '@/core/components/ui/input';
-import { Textarea } from '@/core/components/ui/textarea';
 import { Label } from '@/core/components/ui/label';
 import type { MarkdownFrontmatter } from '@/core/types';
 
@@ -11,11 +10,9 @@ import type { MarkdownFrontmatter } from '@/core/types';
 interface PrimaryFieldsProps {
   frontmatter: {
     title?: string;
-    description?: string;
   };
   // The callback expects a partial update to the main frontmatter state.
   onFrontmatterChange: (newData: Partial<MarkdownFrontmatter>) => void;
-  showDescription?: boolean;
 }
 
 export default function PrimaryContentFields({
@@ -23,12 +20,8 @@ export default function PrimaryContentFields({
   onFrontmatterChange,
 }: PrimaryFieldsProps) {
 
-  // FIXED: The handler now only passes back the single field that changed.
-  // This makes the component more reusable and decoupled from the parent's state shape.
-  const handleChange = (field: 'title' | 'description', value: string) => {
-    onFrontmatterChange({
-      [field]: value,
-    });
+  const handleChange = (value: string) => {
+    onFrontmatterChange({ title: value });
   };
 
   return (
@@ -41,24 +34,9 @@ export default function PrimaryContentFields({
           id="content-title"
           placeholder="Enter a title..."
           value={frontmatter.title || ''}
-          onChange={(e) => handleChange('title', e.target.value)}
+          onChange={(e) => handleChange(e.target.value)}
           // These classes create the large, "invisible" input style
           className="text-2xl md:text-3xl font-bold h-auto p-0 border-0 shadow-none focus-visible:ring-0 bg-transparent"
-        />
-      </div>
-
-      <div className="space-y-2 mb-6 border-b pb-3">
-        <Label htmlFor="content-description" className="text-[10px] font-medium uppercase text-gray-400">
-          Description
-        </Label>
-        <Textarea
-
-          placeholder="Add a short description..."
-          value={frontmatter.description || ''}
-          onChange={(e) => handleChange('description', e.target.value)}
-          // Style for a clean, borderless textarea
-          className="p-0 border-0 shadow-none focus-visible:ring-0 bg-none resize-none text-xl md:text-xl"
-          rows={1}
         />
       </div>
     </div>
