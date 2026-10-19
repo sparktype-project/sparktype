@@ -23,6 +23,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit
 
+      - name: Audit production dependencies
+        run: npm audit --omit=dev
+
       - name: Check app versions are in sync
         run: npm run version:check
 
@@ -34,6 +37,46 @@ jobs:
 
       - name: Run ESLint
         run: npm run lint
+
+  desktop:
+    # Proves the Tauri shell still compiles and bundles its frontend; no installers are produced.
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-latest, ubuntu-22.04]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.88.0
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Build desktop app (debug, no bundle)
+        run: npm run tauri:build -- --debug --no-bundle
 
   e2e:
     runs-on: ubuntu-latest
