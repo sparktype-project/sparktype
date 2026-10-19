@@ -197,6 +197,7 @@ export async function deleteSite(siteId: string): Promise<void> {
   const { deleteCustomAssetsForSite } = await import('./assetStorage.service');
   const { gitSyncService } = await import('./publishing/gitSync.service');
   const { clearPublishHistory } = await import('./publishing/history/publishHistory.service');
+  const { clearBackupRecord } = await import('./backup/backupTracking.service');
 
   await withSiteOperation(siteId, 'site-delete', async () => {
     await Promise.all([
@@ -214,6 +215,7 @@ export async function deleteSite(siteId: string): Promise<void> {
       clearSiteDerivativeCache(siteId),
       LEGACY_IMAGE_ASSET_STORE.removeItem(siteId),
     ]);
+    await clearBackupRecord(siteId);
   });
 }
 

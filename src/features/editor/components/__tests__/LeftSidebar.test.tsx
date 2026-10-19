@@ -5,15 +5,15 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import LeftSidebar from '../LeftSidebar';
 import { createSiteFixture } from '@/test/support/siteFixtures';
 
-const { isTauriAppMock, storeState, exportSiteBackupMock, authenticateForSiteMock } = vi.hoisted(() => ({
+const { isTauriAppMock, storeState, downloadSiteBackupMock, authenticateForSiteMock } = vi.hoisted(() => ({
   isTauriAppMock: vi.fn(),
   storeState: {} as Record<string, unknown>,
-  exportSiteBackupMock: vi.fn(),
+  downloadSiteBackupMock: vi.fn(),
   authenticateForSiteMock: vi.fn(),
 }));
 
-vi.mock('@/core/services/siteBackup.service', () => ({
-  exportSiteBackup: exportSiteBackupMock,
+vi.mock('@/core/services/backup/downloadSiteBackup', () => ({
+  downloadSiteBackup: downloadSiteBackupMock,
 }));
 
 vi.mock('@/core/utils/platform', () => ({
@@ -113,7 +113,7 @@ describe('LeftSidebar export backup gate', () => {
       registeredAt: '2025-01-01T00:00:00.000Z',
     };
     storeState.getSiteById = () => site;
-    exportSiteBackupMock.mockResolvedValue(new Blob(['backup']));
+    downloadSiteBackupMock.mockResolvedValue(undefined);
     vi.stubGlobal('URL', {
       ...URL,
       createObjectURL: vi.fn(() => 'blob:backup'),
@@ -125,7 +125,7 @@ describe('LeftSidebar export backup gate', () => {
     await userEvent.click(screen.getByRole('button', { name: 'I Understand, Export Backup' }));
 
     await vi.waitFor(() => {
-      expect(exportSiteBackupMock).toHaveBeenCalledWith(site);
+      expect(downloadSiteBackupMock).toHaveBeenCalledWith(site);
     });
     expect(authenticateForSiteMock).not.toHaveBeenCalled();
   });

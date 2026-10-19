@@ -9,12 +9,12 @@ import { type AppStore } from '@/core/state/useAppStore';
 import { type LocalSiteData } from '@/core/types';
 
 // Services
-import { importSiteFromZip, exportSiteBackup } from '@/core/services/siteBackup.service';
+import { importSiteFromZip } from '@/core/services/siteBackup.service';
+import { downloadSiteBackup } from '@/core/services/backup/downloadSiteBackup';
 import { restoreImportedImageRegistry } from '@/core/services/backup/backupImport';
 import { MEDIA_INDEX_PATH } from '@/core/services/backup/backupFormat';
 import { importSiteFromGitHub, importSiteFromUrl } from '@/core/services/remoteImport.service';
 import { saveAllImageAssetsForSite, getManifestById } from '@/core/services/localFileSystem.service';
-import { slugify } from '@/core/libraries/utils';
 
 // UI Components & Icons
 import { Button } from '@/core/components/ui/button';
@@ -118,14 +118,7 @@ export default function HomePageDashboard() {
       await loadSite(siteId);
       const siteToExport = getSiteById(siteId);
       if (!siteToExport) throw new Error("Could not load site data for export.");
-      const blob = await exportSiteBackup(siteToExport);
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${slugify(siteToExport.manifest.title || 'signum-backup')}.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
+      await downloadSiteBackup(siteToExport);
       toast.success("Site backup downloaded!");
     } catch (error) {
       console.error("Failed to export site:", error);

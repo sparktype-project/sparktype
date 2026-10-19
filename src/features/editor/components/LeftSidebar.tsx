@@ -35,9 +35,8 @@ import {
 import { flattenTree, type FlattenedNode } from '@/core/services/fileTree.service';
 import { arrayMove } from '@dnd-kit/sortable';
 import { toast } from 'sonner';
-import { exportSiteBackup } from '@/core/services/siteBackup.service';
+import { downloadSiteBackup } from '@/core/services/backup/downloadSiteBackup';
 import { hasStoredEditProtection } from '@/core/services/authPolicy.service';
-import { slugify } from '@/core/libraries/utils';
 
 interface DndProjection {
   parentId: string | null;
@@ -136,14 +135,7 @@ export default function LeftSidebar() {
       const siteToExport = getSiteById(siteId);
       if (!siteToExport) throw new Error("Could not load site data for export.");
 
-      const blob = await exportSiteBackup(siteToExport);
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${slugify(siteToExport.manifest.title || 'signum-backup')}.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
+      await downloadSiteBackup(siteToExport);
       toast.success("Site backup downloaded!");
     } catch (error) {
       console.error("Failed to export site:", error);
